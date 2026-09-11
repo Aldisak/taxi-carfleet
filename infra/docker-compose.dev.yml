@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: taxi_db
+    environment:
+      POSTGRES_DB: taxi
+      POSTGRES_USER: taxi
+      POSTGRES_PASSWORD: taxi_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - taxi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taxi -d taxi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    container_name: taxi_api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Db: "Host=db;Port=5432;Database=taxi;Username=taxi;Password=taxi_dev_password"
+      Jwt__Key: "dev-jwt-signing-key-min-32-chars-00000000"
+      Jwt__Issuer: "taxi-api"
+      Jwt__Audience: "taxi-clients"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  taxi_pgdata:

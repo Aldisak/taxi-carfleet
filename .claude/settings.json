@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "allow": [
+      "Edit(//C:/Users/alesm/RiderProjects/carfleetapp/**)",
+      "Write(//C:/Users/alesm/RiderProjects/carfleetapp/**)",
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash",
+      "Agent",
+      "Skill"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "skill_name": "gc-feature",
+  "evals": [
+    {
+      "id": 0,
+      "name": "archive-absence",
+      "prompt": "Add a POST endpoint to archive an absence. Route: POST api/absences/{id:guid}/archive. Sets IsArchived=true on the AbsenceDo entity. Only a manager of the absence's owner (or administrator) can archive. Returns 204 No Content. Returns 404 if absence not found, 403 if caller has no rights.",
+      "expected_output": "Feature files: CreateProblemDetailsResponse flow, AsNoTracking read, permission check via CanAccessResourceAsync, SaveChangesAsync, integration test stubs for 401/403/404/204.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "absences-overview",
+      "prompt": "Add a GET endpoint: GET api/absences/overview/{year:int}. Returns a projection of the current user's absences grouped by month for the given year. Response shape: { Year, Months: [{ Month, TotalDays, AbsenceCount }] }. Current user identity comes from ICurrentUser. No permission check beyond authentication.",
+      "expected_output": "Query with AsNoTracking and Select projection, FluentValidation validator for year range, integration tests for 401 and 200 with data assertion.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "overtime-feature",
+      "prompt": "Scaffold a new Overtime feature. A POST endpoint CreateOvertimeEndpoint (api/overtime) that creates a new OvertimeDo entity with fields: Hours (decimal), Date (DateOnly), UserId (Guid), Note (string, max 500, optional). Employees can create their own overtime; managers can create for their team members. Returns 201 with the created Guid. No existing Overtime feature folder exists — create everything from scratch including the feature configuration, the entity, the EF configuration, the DbSet registration, the migration placeholder, and the integration tests.",
+      "expected_output": "Full feature: FeatureConfiguration, Errors, Entity (AuditableDo + Guid Id), EF configuration, Endpoint, Request class, Validator, integration tests. Correct dispatch to /gc-migrate recommended.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "announcements-feature",
+      "prompt": "Add a new Announcements feature. Administrator will be able to create announcements. It has title, text and expiration. New GET endpoint will return all announcements that are not yet expired.",
+      "expected_output": "Full feature with two endpoints (Create, GetActive or similar), AnnouncementDo entity, EF config, integration tests. Tests whether the skill drives the user through an interview (permission specifics, response shape, route naming) before scaffolding.",
+      "files": []
+    }
+  ]
+}

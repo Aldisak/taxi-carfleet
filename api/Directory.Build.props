@@ -1,0 +1,10 @@
+<Project>
+  <!-- Pin EF Core package versions to avoid MSB3277 assembly conflict warnings
+       caused by indirect references from EFCore.NamingConventions, Npgsql.EF, and Design. -->
+  <ItemGroup>
+    <PackageReference Update="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Abstractions" Version="10.0.12" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Analyzers" Version="10.0.12" />
+  </ItemGroup>
+</Project>

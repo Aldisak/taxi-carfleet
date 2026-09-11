@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "uc_id": "UC-001",
+  "title": "Data model & backend core",
+  "stack": "backend",
+  "complexity_tag": "novel",
+  "phase": "done",
+  "spec_path": "docs/specs/done/001_UC_001_backend-core.md",
+  "work_items_doc": "docs/specs/done/backend-core-work-items.md",
+  "gates_passed": ["A", "B", "C", "D", "E"],
+  "design_review_round": 2,
+  "work_items": ["WI-01", "WI-02", "WI-03", "WI-04", "WI-05", "WI-06", "WI-07", "WI-08", "WI-09", "WI-10", "WI-11", "WI-12", "WI-13", "WI-14", "WI-15"],
+  "completed_wis": ["WI-01", "WI-02", "WI-03", "WI-04", "WI-05", "WI-06", "WI-07", "WI-08", "WI-09", "WI-10", "WI-11", "WI-12", "WI-13", "WI-14", "WI-15"],
+  "quality_gate": {
+    "build": "0 warnings, 0 errors (-warnaserror)",
+    "test": "228/228 passed",
+    "format": "clean"
+  },
+  "test_count": 228,
+  "ship": "initial commit on main (Gate E approved); superpowers:finishing-a-development-branch not installed — conductor performed the equivalent directly",
+  "environment": {
+    "dotnet_sdk": "10.0.401 user-local; prefix every dotnet command with: export PATH=\"/c/Users/alesm/AppData/Local/Microsoft/dotnet:$PATH\" && ",
+    "docker": "26.1.1 daemon verified"
+  },
+  "updated_at": "2026-09-11"
+}

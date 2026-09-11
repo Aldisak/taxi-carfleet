@@ -1,0 +1,27 @@
+{
+  "reviewer": "design-reviewer",
+  "uc_id": "UC-001",
+  "round": 2,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F-13",
+      "severity": "minor",
+      "wi_id": "WI-12",
+      "rule": "rules/naming.md#test-naming",
+      "title": "WI-12 temp-password test name diverges between doc and handoff JSON",
+      "detail": "The revision left the invite-happy-path test with two different names. Work-items doc names it `CreateStaff_FleetAdmin_ReturnsTempPasswordOnce` (backend-core-work-items.md:427); the designer handoff WI-12 acceptance_criteria names it `CreateStaff_ReturnsTempPasswordOnce` (handoff-designer.json WI-12 AC #4). Beyond the doc↔JSON inconsistency, the JSON variant drops the `{StateUnderTest}` segment and so does not match the `{Method}_{StateUnderTest}_{ExpectedBehavior}` convention. Not a round-1 finding; introduced/left inconsistent during revision.",
+      "recommendation": "Pin one name in both artifacts; prefer `CreateStaff_FleetAdmin_ReturnsTempPasswordOnce` to satisfy rules/naming.md#test-naming."
+    },
+    {
+      "id": "F-14",
+      "severity": "info",
+      "wi_id": "WI-15",
+      "rule": null,
+      "title": "Handoff `notes` AC-mapping line contradicts the coverage map for AC #1",
+      "detail": "The handoff JSON free-text `notes` says 'AC#1->WI-01/02' (handoff-designer.json:573), but both the work-items coverage map (backend-core-work-items.md:532) and the JSON's own WI-15 acceptance_criteria (`OpenApi_Document_ListsAllExpectedEndpoints`) assign the Swagger-lists-all-endpoints half of AC #1 to WI-15. Drift is confined to the notes summary string; the per-WI ACs and the doc agree, so no deliverable is actually mis-owned.",
+      "recommendation": "Correct the notes line to 'AC#1 -> WI-01/02 (compose + health) + WI-15 (Swagger route listing)' to match the coverage map."
+    }
+  ],
+  "summary": "Round-2 verification: all round-1 findings (F-01 blocker, F-02..F-05 major, F-06..F-09 minor) are resolved in BOTH the work-items doc and the designer handoff JSON; F-10..F-12 are recorded in Assumptions and echoed to docs/decisions.md via WI-15. No regressions: dependency graph acyclic and consistent between doc and JSON, IDs stable WI-01..WI-15, topological order preserved, no new rule violations. Two residual non-blocking items: F-13 (minor test-name drift in WI-12) and F-14 (info, cosmetic notes drift). blocks_merge: false."
+}

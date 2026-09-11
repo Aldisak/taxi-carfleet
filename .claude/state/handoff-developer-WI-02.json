@@ -1,0 +1,41 @@
+{
+  "wi_id": "WI-02",
+  "status": "done",
+  "hit_max_turns": false,
+  "build_green": true,
+  "tests_green": true,
+  "tests_added": 1,
+  "packages_added": {
+    "Testcontainers.PostgreSql": "4.15.0",
+    "Microsoft.AspNetCore.Mvc.Testing": "10.0.12",
+    "Microsoft.Extensions.TimeProvider.Testing": "10.10.0"
+  },
+  "files_changed": [
+    "api/tests/Taxi.Api.Tests/Taxi.Api.Tests.csproj",
+    "api/tests/Taxi.Api.Tests/Infrastructure/PostgresFixture.cs",
+    "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs",
+    "api/tests/Taxi.Api.Tests/Infrastructure/AuthHelpers.cs",
+    "api/tests/Taxi.Api.Tests/Infrastructure/HealthCheckTests.cs",
+    "api/tests/Taxi.Api.Tests/Infrastructure/TestCollections.cs",
+    "api/src/Taxi.Api/appsettings.json",
+    "api/src/Taxi.Api/appsettings.Development.json",
+    "CLAUDE.md"
+  ],
+  "carry_forwards_done": [
+    "UnitTest1.cs removed (I-05): deleted placeholder test now that HealthCheckTests provides a real test",
+    "Serilog config fixed (I-02): added Serilog.MinimumLevel section to appsettings.json (Information default) and appsettings.Development.json (Debug default); removed dead Logging.LogLevel sections that ReadFrom.Configuration could not consume"
+  ],
+  "tests_passing": 1,
+  "coverage_delta": "n/a",
+  "deviations": [
+    "TestCollections.cs created (not in WI files_touched) because testing-conventions require collection names from a central constants class. Recorded as intentional addition.",
+    "testing-conventions cite AppFixture<Program> (FastEndpoints testing base), but WI deliverables bind to WebApplicationFactory<Program>. Deliverables take precedence; deviation recorded here per advisor guidance.",
+    "Respawn package not added: TaxiDbContext has no entities/migrations yet (WI-03). ResetDatabaseAsync is not wired; Respawn will be added in WI-03 when the schema migration exists.",
+    "PostgresFixture.InitializeDatabaseAsync() is a private static empty method (not a TODO comment, which rules ban) to mark the WI-03 extension point.",
+    "FakeTimeProvider namespace is Microsoft.Extensions.Time.Testing (not Microsoft.Extensions.TimeProvider.Testing as the library name suggests). Verified from assembly XML docs.",
+    "PostgreSqlBuilder() parameterless constructor is obsolete in Testcontainers 4.15.0; used PostgreSqlBuilder(\"postgres:16-alpine\") constructor instead to avoid CS0618 warning-as-error.",
+    ".claude/schemas/dev-result.v1.json does not exist in the repository; handoff JSON shape follows the Process section definition in the WI system prompt."
+  ],
+  "notes": "Build: dotnet build api/Taxi.sln -warnaserror → 0 warnings, 0 errors. Tests: dotnet test --filter FullyQualifiedName~Taxi.Api.Tests.Infrastructure → 1 passed (HealthCheck_ReadyEndpoint_Returns200). RED confirmed as compile error (PostgresFixture, TestCollections types not found). GREEN via Testcontainers Postgres 16 container. Serilog config: ReadFrom.Configuration now picks up MinimumLevel from the Serilog section; the code sinks (Console with compact JSON formatter for prod, human-readable template for dev) continue to be wired in Program.cs code — ReadFrom.Configuration sets the level filter only, does not double-register sinks.",
+  "verification_output": "dotnet test api/Taxi.sln --filter 'FullyQualifiedName~Taxi.Api.Tests.Infrastructure': 1 passed, 0 failed, exit 0."
+}

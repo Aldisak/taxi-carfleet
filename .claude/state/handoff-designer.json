@@ -1,0 +1,574 @@
+{
+  "uc_id": "UC-001",
+  "spec_path": "docs/specs/in-progress/001_UC_001_backend-core.md",
+  "work_items_doc": "docs/specs/in-progress/backend-core-work-items.md",
+  "work_items": [
+    {
+      "id": "WI-01",
+      "title": "Solution scaffold, Program.cs wiring, docker-compose, health checks",
+      "goal": "Stand up an empty-but-running .NET 10 FastEndpoints API with all middleware wired, dockerized Postgres for dev, and passing health endpoints.",
+      "depends_on": [],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/Taxi.sln",
+        "api/src/Taxi.Api/Taxi.Api.csproj",
+        "api/src/Taxi.Api/Program.cs",
+        "api/src/Taxi.Api/appsettings.json",
+        "api/src/Taxi.Api/Features/Health/",
+        "api/tests/Taxi.Api.Tests/Taxi.Api.Tests.csproj",
+        "infra/docker-compose.dev.yml"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/csharp-style.md#language-version",
+        "rules/csharp-style.md#file-scoped-namespaces",
+        "rules/error-handling.md#global-exception-handler",
+        "rules/logging.md#output-template",
+        "CLAUDE.md#stack-decision"
+      ],
+      "required_reads": [
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        ".claude/state/01-data-model-and-backend-core.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "Program.cs wires Serilog (console JSON), EF Core + Npgsql from ConnectionStrings__Db, FastEndpoints + validators, Problem Details / global exception handler, SignalR, health checks, OpenAPI (Development only), CORS, and FULL JWT bearer validation (signing key from Jwt__Key, issuer and audience from Jwt__Issuer/Jwt__Audience config) so forged tokens validate in WI-04 tenancy tests; only token issuance is deferred to WI-05.",
+        "appsettings.json binds every secret via env var: ConnectionStrings__Db, Jwt__Key, Sms__ApiKey, Push__VapidPublic, Push__VapidPrivate; Jwt__Issuer and Jwt__Audience are non-secret config values, not env-only secrets.",
+        "infra/docker-compose.dev.yml starts api + db (Postgres 16); a health feature slice with its FeatureConfiguration renders in Swagger.",
+        "dotnet build -warnaserror succeeds with zero warnings."
+      ],
+      "verification": { "tool": "dotnet-build" }
+    },
+    {
+      "id": "WI-02",
+      "title": "Test infrastructure: Testcontainers Postgres fixture + WebApplicationFactory",
+      "goal": "Provide the shared integration-test harness (real Postgres via Testcontainers + WebApplicationFactory) that every later WI's red-green depends on.",
+      "depends_on": ["WI-01"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/tests/Taxi.Api.Tests/Infrastructure/PostgresFixture.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/AuthHelpers.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/HealthCheckTests.cs"
+      ],
+      "rule_citations": [
+        "rules/csharp-style.md#timeprovider",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#stack-decision"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "xUnit collection fixture starts a PostgreSqlContainer (Postgres 16) shared across the test suite.",
+        "WebApplicationFactory<Program> overrides the connection string to the container; FakeTimeProvider registration hook available per-test.",
+        "Stub auth helpers AsDispatcher/AsDriver/AsCustomer exist (real minting deferred to WI-05) so later WIs compile.",
+        "HealthCheck_ReadyEndpoint_Returns200 goes red without the harness, then green."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Infrastructure" }
+    },
+    {
+      "id": "WI-03",
+      "title": "Entities, DbContext, data conventions, initial migration + indexes",
+      "goal": "Model all 15 v1 entities (Customer = User with Role=Customer, not a 16th entity) with UUIDv7 PKs and snake_case/timestamptz/enum-as-string conventions, register DbSets, and produce the single initial migration with all required indexes.",
+      "depends_on": ["WI-01", "WI-02"],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Entities/",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/",
+        "api/src/Taxi.Api/Infrastructure/Migrations/",
+        "api/tests/Taxi.Api.Tests/Schema/SchemaTests.cs"
+      ],
+      "rule_citations": [
+        "rules/ef-core.md#entity-naming",
+        "rules/ef-core.md#primary-keys",
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#indexes",
+        "rules/ef-core.md#enums-as-strings",
+        "rules/ef-core.md#date-types",
+        "rules/ef-core.md#migrations",
+        "rules/csharp-style.md#guid-primary-keys",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#migrations"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "All 15 entities (Customer = User with Role=Customer, not a 16th entity) exist one-per-file with snake_case tables/columns, UUIDv7 PKs, timestamptz timestamps, integer _czk money; no fields beyond the exhaustive assignment list.",
+        "TaxiDbContext registers a DbSet per entity; ConfigureConventions maps all enums to strings; Order.Version is a concurrency token.",
+        "Indexes created: orders(fleet_id,status), orders(fleet_id,scheduled_at), orders(fleet_id,created_at desc), orders(fleet_id,public_code) unique, order_events(order_id,at), drivers(fleet_id,status), users(phone) unique WHERE role='Customer', users(fleet_id,email) unique WHERE email IS NOT NULL, fleets(slug) unique, refresh_tokens(token_hash) lookup, sms_codes(phone) lookup, all FK columns.",
+        "Initial migration InitialSchema generated; reviewed for destructive ops.",
+        "Schema_CustomerPhone_UniqueOnlyForCustomers, Schema_OrderPublicCode_UniquePerFleet, Schema_StaffEmail_UniquePerFleet, and Schema_FleetSlug_Unique pass against Testcontainers Postgres."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Schema" }
+    },
+    {
+      "id": "WI-04",
+      "title": "Multi-tenancy: ICurrentTenant, middleware, query filters, SaveChanges guard",
+      "goal": "Enforce tenant isolation at the data layer: resolve the current fleet per request, apply global query filters, and guard writes with a SaveChanges override.",
+      "depends_on": ["WI-03"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Common/Tenancy/ICurrentTenant.cs",
+        "api/src/Taxi.Api/Common/Tenancy/CurrentTenant.cs",
+        "api/src/Taxi.Api/Common/Tenancy/TenantClaims.cs",
+        "api/src/Taxi.Api/Common/Tenancy/TenantResolutionMiddleware.cs",
+        "api/src/Taxi.Api/Common/Tenancy/ITenantEntity.cs",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Tenancy/TenancyTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/csharp-style.md#sealed-internal",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        ".claude/state/01-data-model-and-backend-core.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "ICurrentTenant scoped service resolves FleetId via JWT claim fleet_id, then X-Fleet-Slug header, then subdomain; TenantClaims defines the shared fleet_id claim-name constant.",
+        "Global query filters applied to the enumerated tenant entities; User and PushSubscription filter only rows with non-null FleetId (customer/superadmin rows tenant-agnostic); RefreshToken and SmsCode are not tenant entities.",
+        "SaveChanges override sets FleetId when null on added tenant entities and throws when an entity's FleetId mismatches the current tenant.",
+        "Tenancy_QueryFilter_FleetASeesOnlyFleetARows is a [Theory] iterating EVERY filtered tenant entity (Driver, Vehicle, DriverShift, Order, OrderEvent, Route, Zone, Tariff, FleetSettings, PushSubscription, User, AuditLog) so isolation is proven for tables that ship no endpoint this UC (Route, Zone, Tariff, FleetSettings, DriverShift, AuditLog), satisfying the per-tenant-table DoD; Tenancy_SaveChanges_ThrowsOnFleetIdMismatch, Tenancy_NullableFleetIdEntity_CustomerRowsVisibleAcrossTenants, and Tenancy_Resolution_PrefersJwtClaimThenHeaderThenSubdomain pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Tenancy" }
+    },
+    {
+      "id": "WI-05",
+      "title": "Staff auth: JWT issuance, policies, staff login, refresh rotation, logout",
+      "goal": "Issue and validate JWTs for staff roles, define authorization policies, and implement staff login plus refresh-token rotation and logout.",
+      "depends_on": ["WI-04"],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
+        "api/src/Taxi.Api/Common/Auth/JwtIssuer.cs",
+        "api/src/Taxi.Api/Features/Auth/StaffLogin/",
+        "api/src/Taxi.Api/Features/Auth/Refresh/",
+        "api/src/Taxi.Api/Features/Auth/Logout/",
+        "api/src/Taxi.Api/Features/Auth/AuthFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/AuthHelpers.cs",
+        "api/tests/Taxi.Api.Tests/Auth/Staff/StaffAuthTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#error-codes",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#primary-constructors",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#stack-decision"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "AuthorizationPolicies defines CustomerOnly, DriverOnly, DispatcherOnly (incl. FleetAdmin), FleetAdminOnly, SuperAdminOnly, registered in Program.cs.",
+        "JWT issuance mints access (15 min) + refresh (30 days) with claims sub, role, fleet_id (via TenantClaims), fleet_slug, name.",
+        "POST /api/v1/auth/staff/login verifies BCrypt password, returns { accessToken, refreshToken, user }, sets LastLoginAt; POST /auth/refresh rotates and revokes the old token; reuse of a revoked token returns 401; POST /auth/logout revokes.",
+        "WI-02 stub auth helpers replaced with real token minting.",
+        "StaffLogin_ValidCredentials_ReturnsTokens, StaffLogin_WrongPassword_Returns401, Refresh_ReusedRevokedToken_Returns401, and Logout_RevokesRefreshToken pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Auth.Staff" }
+    },
+    {
+      "id": "WI-06",
+      "title": "Customer SMS-code auth + ISmsSender",
+      "goal": "Phone + SMS-code login for customers with rate limiting, provisioning a customer User on first successful verify.",
+      "depends_on": ["WI-04", "WI-05"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Sms/ISmsSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Sms/ConsoleSmsSender.cs",
+        "api/src/Taxi.Api/Features/Auth/RequestCode/",
+        "api/src/Taxi.Api/Features/Auth/VerifyCode/",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Auth/Customer/CustomerAuthTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#authorization",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/naming.md#error-codes"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "POST /api/v1/auth/customer/request-code normalizes phone to E.164, persists a hashed SmsCode, and rate-limits to 3 per phone / 10 min and 1 per phone / 60 s; exceeding either limit returns 429 via Send.ErrorsAsync(429, ct).",
+        "POST /api/v1/auth/customer/verify-code verifies hash + expiry + attempts, creates User(Role=Customer) if new, returns { accessToken, refreshToken, user }; 5 wrong attempts invalidate the code.",
+        "ConsoleSmsSender logs a masked marker, never the raw code, per logging secret rules.",
+        "RequestCode_FourthWithin10Min_Returns429, RequestCode_SecondWithin60s_Returns429, VerifyCode_CorrectCode_CreatesCustomerAndReturnsTokens, and VerifyCode_FiveWrongAttempts_InvalidatesCode pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Auth.Customer" }
+    },
+    {
+      "id": "WI-07",
+      "title": "OrderStateMachine + OrderService + IRealtimePublisher abstraction",
+      "goal": "Implement the single order state machine and the transactional service that applies transitions, writes one OrderEvent, updates Driver.Status, and publishes after commit via an IRealtimePublisher abstraction.",
+      "depends_on": ["WI-04"],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Common/Orders/OrderStateMachine.cs",
+        "api/src/Taxi.Api/Common/Orders/OrderTransition.cs",
+        "api/src/Taxi.Api/Common/Orders/Actor.cs",
+        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
+        "api/src/Taxi.Api/Realtime/IRealtimePublisher.cs",
+        "api/tests/Taxi.Api.Tests/Orders/StateMachine/OrderStateMachineTests.cs",
+        "api/tests/Taxi.Api.Tests/Orders/StateMachine/OrderServiceTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#banned-patterns",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/csharp-style.md#pattern-matching",
+        "rules/csharp-style.md#timeprovider",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        ".claude/state/01-data-model-and-backend-core.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "OrderStateMachine.Apply returns a result carrying an error KIND on failure (NotEntitled = wrong/non-assigned actor or role not permitted; IllegalTransition = legal actor but illegal from-status or business-rule violation) with NO exceptions for illegal transitions; enforces assigned-driver check, reassign releases old driver, complete requires paymentType and overrideReason (>=5 chars) when FinalPriceCzk != FixedPriceCzk, driver no-show cancel only from Arrived and >=5 min after ArrivedAt. Apply does NOT detect concurrency; StaleVersion is added by OrderService, not the state machine.",
+        "AllowedFor(status, role, isAssignedDriver) exposes the allowed action set for DTO allowedActions.",
+        "OrderService loads with Version, applies, updates Driver.Status, saves order + event in one transaction, publishes OrderChanged only AFTER commit; on a DbUpdateConcurrencyException it returns a StaleVersion failure kind; order.Status is never set outside the state machine.",
+        "IRealtimePublisher abstraction defined (OrderChanged/DriverStatusChanged/DriverPositionChanged/NewOrderOffered) with a recording fake in tests.",
+        "One passing test per allowed transition and >=10 disallowed; OrderService_FailingSave_NoPublish and Apply_CompleteFixedPriceDifferentPriceNoReason_Fails pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.StateMachine" }
+    },
+    {
+      "id": "WI-08",
+      "title": "Order write endpoints: create, list, detail",
+      "goal": "Create an order (Dispatcher/Customer), list with filters (Dispatcher), and fetch detail with role-scoped, no-existence-leak access.",
+      "depends_on": ["WI-05", "WI-07"],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Orders/CreateOrder/",
+        "api/src/Taxi.Api/Features/Orders/ListOrders/",
+        "api/src/Taxi.Api/Features/Orders/GetOrder/",
+        "api/src/Taxi.Api/Features/Orders/OrdersFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/",
+        "api/tests/Taxi.Api.Tests/Orders/Write/OrderWriteTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#routes",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#n-plus-one",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "POST /api/v1/orders validates addresses have coordinates, phone E.164, scheduledAt future if present; generates a per-fleet-unique 6-char PublicCode; writes a Created OrderEvent (event type, not a transition - the order is created directly in New); allowed for Dispatcher or Customer.",
+        "GET /api/v1/orders (Dispatcher) filters status[], driverId, from, to, search and returns { items, total, page, pageSize } using AsNoTracking projections.",
+        "GET /api/v1/orders/{id} returns detail with allowedActions; Dispatcher always, Driver if assigned, Customer if owner.",
+        "CreateOrder_ValidCustomerRequest_Returns201 resolves the tenant via the X-Fleet-Slug header (a customer JWT carries no fleet_id claim, so this uniquely exercises header-based tenant resolution); GetOrder_DispatcherOfFleetB_Returns404 (tenant isolation, 404 not 403), GetOrder_DriverNotAssigned_Returns404, and CreateOrderValidator_ScheduledInPast_FailsWithCode pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Write" }
+    },
+    {
+      "id": "WI-09",
+      "title": "Order transition endpoints + concurrency",
+      "goal": "Expose every state-machine transition as a POST action endpoint, mapping OrderService failure kinds to HTTP status (NotEntitled -> no-leak 404, IllegalTransition -> 409, StaleVersion -> 409) and enforcing optimistic concurrency so two dispatchers assigning the same order yield one 409.",
+      "depends_on": ["WI-08"],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Orders/AssignOrder/",
+        "api/src/Taxi.Api/Features/Orders/ReassignOrder/",
+        "api/src/Taxi.Api/Features/Orders/AcceptOrder/",
+        "api/src/Taxi.Api/Features/Orders/DeclineOrder/",
+        "api/src/Taxi.Api/Features/Orders/ArriveOrder/",
+        "api/src/Taxi.Api/Features/Orders/StartOrder/",
+        "api/src/Taxi.Api/Features/Orders/CompleteOrder/",
+        "api/src/Taxi.Api/Features/Orders/CancelOrder/",
+        "api/tests/Taxi.Api.Tests/Orders/Transitions/OrderTransitionTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#send-pattern",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/validation.md#validator-class",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/csharp-style.md#guard-clauses",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md",
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "POST /api/v1/orders/{id}/assign|reassign|accept|decline|arrive|start|complete|cancel each call OrderService; the failure kind maps to a single pinned status across all 8 transition endpoints: NotEntitled -> Send.NotFoundAsync(ct) (no-leak 404, consistent with WI-08), IllegalTransition -> AddError(...) + Send.ErrorsAsync(409, ct), StaleVersion -> AddError(...) + Send.ErrorsAsync(409, ct).",
+        "Role/actor gating matches the transition table; a non-assigned driver or wrong-role actor gets a no-leak 404 (NOT 403), never a 404-or-403 ambiguity.",
+        "Complete without paymentType returns 400 (validator); fixed-price override without reason is an IllegalTransition -> 409.",
+        "Happy-path per action: Assign_ByDispatcher_Returns200AndWritesAssignedEvent, Accept_ByAssignedDriver_Returns200, Decline_ByAssignedDriver_Returns200, Arrive_ByAssignedDriver_Returns200, Start_ByAssignedDriver_Returns200, Complete_ByAssignedDriver_Returns200, Reassign_ByDispatcher_Returns200, Cancel_ByDispatcher_Returns200.",
+        "Accept_ByOtherDriver_Returns404 (NotEntitled no-leak, single pinned status), Assign_TwoDispatchersSameOrder_OneGets409 (StaleVersion concurrency via Version), Transition_IllegalFromStatus_Returns409 (IllegalTransition), and Cancel_CrossTenantOrder_Returns404 pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Transitions" }
+    },
+    {
+      "id": "WI-10",
+      "title": "Order by-code tracking, notes, events",
+      "goal": "Public-ish tracking by code (reduced DTO), dispatcher notes, and the chronological events feed.",
+      "depends_on": ["WI-08"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Orders/GetOrderByCode/",
+        "api/src/Taxi.Api/Features/Orders/AddNote/",
+        "api/src/Taxi.Api/Features/Orders/GetOrderEvents/",
+        "api/tests/Taxi.Api.Tests/Orders/Tracking/OrderTrackingTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#send-pattern",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET /api/v1/orders/by-code/{publicCode} returns a reduced DTO (status, driver first name, vehicle plate/color, ETA, position), authorized by a customer JWT owning the order (signed-token path deferred to assignment 05).",
+        "POST /api/v1/orders/{id}/notes writes a NoteAdded OrderEvent (event type, not a transition - no status change) (Dispatcher).",
+        "GET /api/v1/orders/{id}/events returns events chronologically (Dispatcher, AsNoTracking).",
+        "GetByCode_NonOwner_Returns404, GetByCode_CrossTenantCode_Returns404 (tenant isolation), and AddNoteValidator_EmptyText_FailsWithCode pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Tracking" }
+    },
+    {
+      "id": "WI-11",
+      "title": "Driver + vehicle endpoints + shifts",
+      "goal": "Driver list plus go-online/offline (opening/closing DriverShift), driver self-view, and vehicle CRUD.",
+      "depends_on": ["WI-05"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Drivers/ListDrivers/",
+        "api/src/Taxi.Api/Features/Drivers/GoOnline/",
+        "api/src/Taxi.Api/Features/Drivers/GoOffline/",
+        "api/src/Taxi.Api/Features/Drivers/GetMe/",
+        "api/src/Taxi.Api/Features/Drivers/DriversFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Vehicles/",
+        "api/tests/Taxi.Api.Tests/Drivers/DriverVehicleTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#routes",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/ef-core.md#asnotracking",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET /api/v1/drivers (Dispatcher); POST /drivers/me/online { vehicleId } sets Status=Free + CurrentVehicleId and opens a DriverShift; POST /drivers/me/offline sets Status=Offline and closes the open DriverShift; GET /drivers/me returns self.",
+        "Vehicles CRUD (list/get/post/put/delete) is FleetAdmin-only with create/update validators.",
+        "Going online with a cross-tenant/non-existent vehicle returns a no-leak 404.",
+        "Happy-path per action: GoOnline_ValidVehicle_OpensShiftAndSetsFree, GoOffline_ClosesOpenShift, GetMe_Driver_Returns200, ListVehicles_FleetAdmin_Returns200, GetVehicle_FleetAdmin_Returns200, CreateVehicle_FleetAdmin_Returns201, UpdateVehicle_FleetAdmin_Returns200, DeleteVehicle_FleetAdmin_Returns204.",
+        "ListDrivers_DispatcherOfFleetB_CannotSeeFleetADrivers (tenant isolation) and GetVehicle_CrossTenant_Returns404 (tenant isolation) pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Drivers" }
+    },
+    {
+      "id": "WI-12",
+      "title": "Staff CRUD endpoints",
+      "goal": "FleetAdmin manages Driver/Dispatcher users; invite creates a user with a temporary password returned once.",
+      "depends_on": ["WI-05"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Staff/",
+        "api/tests/Taxi.Api.Tests/Staff/StaffCrudTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#send-pattern",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET /api/v1/staff lists Driver/Dispatcher users of the fleet; GET /{id}, POST (invite), PUT /{id}, DELETE /{id} (deactivate) are FleetAdmin-only.",
+        "Invite creates the user with a generated temporary password whose plaintext is returned exactly once; a Driver-role user also creates the linked Driver row.",
+        "Duplicate email within a fleet returns 409; non-FleetAdmin caller returns 403.",
+        "Happy-path per action: CreateStaff_ReturnsTempPasswordOnce, ListStaff_FleetAdmin_Returns200, GetStaff_FleetAdmin_Returns200, UpdateStaff_FleetAdmin_Returns200, DeleteStaff_FleetAdmin_Returns204.",
+        "ListStaff_FleetAdminOfFleetB_CannotSeeFleetAStaff (tenant isolation), GetStaff_CrossTenant_Returns404 (tenant isolation), and CreateStaff_DuplicateEmailInFleet_Returns409 pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Staff" }
+    },
+    {
+      "id": "WI-13",
+      "title": "SignalR hub + throttled position updates",
+      "goal": "Concrete /hubs/fleet implementation with groups, JWT-via-query-string, throttled UpdatePosition, and the real IRealtimePublisher backed by the hub.",
+      "depends_on": ["WI-07", "WI-11"],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Realtime/FleetHub.cs",
+        "api/src/Taxi.Api/Realtime/SignalRRealtimePublisher.cs",
+        "api/src/Taxi.Api/Realtime/DriverPositionStore.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Realtime/FleetHubTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/api-design.md#authorization",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/logging.md#style-message-templates",
+        "rules/csharp-style.md#timeprovider",
+        "CLAUDE.md#stack-decision"
+      ],
+      "required_reads": [
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        ".claude/state/01-data-model-and-backend-core.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "FleetHub at /hubs/fleet authenticates via access_token query string; on connect dispatchers join fleet:{fleetId}:dispatch and drivers join driver:{driverId}; Subscribe(orderId) joins order:{id} only when the caller owns it.",
+        "UpdatePosition (drivers only) is throttled server-side to <= 1 per 3 s per driver, updates a ConcurrentDictionary store + Driver.LastLat/Lng/PositionAt, flushes to DB every 30 s per driver, and broadcasts DriverPositionChanged immediately.",
+        "Concrete SignalR-backed IRealtimePublisher replaces the WI-07 fake in the composition root.",
+        "Hub groups are fleet-scoped so positions never cross tenants: UpdatePosition_DriverOfFleetA_NotReceivedByFleetBDispatcher (tenant isolation) passes.",
+        "UpdatePosition_At10Hz_ThrottledToOnePer3s_ReachesDispatcherClient (AC #4, via a test SignalR client) and UpdatePosition_NonDriver_Rejected pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Realtime" }
+    },
+    {
+      "id": "WI-14",
+      "title": "Background jobs: offer-timeout + stale-position (restart-safe)",
+      "goal": "Two IHostedService jobs whose scheduling survives restarts because all state lives in the DB.",
+      "depends_on": ["WI-07", "WI-11"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Jobs/OfferTimeoutJob.cs",
+        "api/src/Taxi.Api/Infrastructure/Jobs/StalePositionJob.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Jobs/BackgroundJobTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#n-plus-one",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/logging.md#levels",
+        "rules/csharp-style.md#timeprovider",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md",
+        ".claude/state/01-data-model-and-backend-core.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "OfferTimeoutJob runs every 5 s, finds Assigned orders older than FleetSettings.OfferTimeoutSeconds without acceptance, and applies Timeout (back to New) via OrderService, notifying the dispatch group; overlapping runs time out exactly once.",
+        "StalePositionJob runs every 60 s, marks drivers with LastPositionAt older than 5 min and Status != Offline as Offline, closes the open DriverShift, and notifies.",
+        "Both jobs use a scoped TaxiDbContext per tick, TimeProvider, and IgnoreQueryFilters() for the cross-tenant system scan; per-tick exceptions are logged and swallowed so the loop survives.",
+        "OfferTimeoutJob_SurvivesRestart_StillTimesOutFromDbState (AC #5) and OfferTimeoutJob_RunsTwiceConcurrently_TimesOutExactlyOnce pass."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Jobs" }
+    },
+    {
+      "id": "WI-15",
+      "title": "Seed data, end-to-end flow, generated docs",
+      "goal": "Development seed data, the full dispatcher-to-driver end-to-end acceptance test, and generated API docs.",
+      "depends_on": ["WI-09", "WI-10", "WI-11", "WI-12", "WI-13", "WI-14"],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "docs/api.md",
+        "docs/decisions.md",
+        "DEMO.md",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/csharp-style.md#timeprovider",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#commands"
+      ],
+      "required_reads": [
+        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "DevelopmentSeeder (Development only, idempotent) creates fleet demo with 1 FleetAdmin (admin@demo.local / Demo1234!), 1 Dispatcher (dispatcher@demo.local / Demo1234!, credentials pinned for the E2E login), 3 Drivers, 3 Vehicles, 1 default Tariff (40/28/5/100), 2 Zones (KH + Kolin circles r=4 km), 3 Routes (100/110/300), and 5 sample Orders driven to their states through OrderService (never setting Status directly).",
+        "docs/api.md is generated from OpenAPI and docs/decisions.md records the implementation assumptions (1-11).",
+        "DEMO.md documents docker compose up as a manual smoke check (AC #1 compose-up path) alongside curl examples for the seeded login and the end-to-end flow.",
+        "OpenApi_Document_ListsAllExpectedEndpoints asserts the generated OpenAPI document exposes every expected route by matching an explicit expected-route list (verb + path), not a hardcoded integer count, so a dropped FeatureConfiguration is caught (AC #1 Swagger-lists-all-endpoints).",
+        "EndToEnd_DispatcherCreatesAssign_DriverAcceptArriveStartComplete_EventsRecorded (AC #2) begins with a real POST /api/v1/auth/staff/login using the seeded dispatcher credentials (not a factory-minted AuthHelpers token) and asserts one event per transition in order.",
+        "Seed_Development_CreatesDemoFleetGraph passes and is idempotent on a second run."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Seed" }
+    }
+  ],
+  "notes": "Greenfield repo; no C# exists. 15 WIs, array is topologically ordered (acyclic). Complexity scale used is XS/S/M/L (no XL) per this handoff shape. verification.filter strings already include the FullyQualifiedName~ prefix per the conductor's literal example; if the conductor template also prepends FullyQualifiedName~, normalize to avoid a double prefix. Test namespace fragments are stable and single-token per WI (Taxi.Api.Tests.<Area>). needs_library_research is true on exactly three WIs: WI-01 (FastEndpoints registration + OpenAPI grouping), WI-02 (Testcontainers/WebApplicationFactory wiring), WI-13 (SignalR JWT-in-query-string + in-test SignalR client for the throttle/delivery proof of AC #4). Eleven assumptions were resolved (see work_items_doc ## Assumptions and must be echoed into docs/decisions.md by WI-15): (1) no outbox table exists in the 15-entity list, so a transition persists order+event in one transaction and publishes via IRealtimePublisher AFTER commit; (2) state machine lives in Common/Orders/ and returns a failure result carrying an error KIND (NotEntitled -> no-leak 404, IllegalTransition -> 409, StaleVersion added by OrderService on concurrency conflict -> 409), not Domain/Orders/ + InvalidTransitionException (skill archive is superseded by docs/decisions.md but its transition table is authoritative); (3) by-code tracking is customer-JWT-only in v1, signed-token path deferred to assignment 05; (4) ITenantEntity membership is explicit - User and PushSubscription filter only non-null FleetId rows, RefreshToken and SmsCode are not tenant entities; (5) seed orders are driven through the state machine, never by setting Status; (6) the fleet_id claim name is a shared TenantClaims constant defined in WI-04 so auth WIs and tenancy middleware agree - this breaks the apparent auth<->tenancy cycle (tenancy tests forge claims directly); (7) complexity scale is XS/S/M/L with no XL; (8) password hashing is BCrypt; (9) AuditLog is provisioned in the schema but no WI writes to it until assignment 07 (audit wiring), so it is created-but-unwritten in v1; (10) by-code tracking for phone orders (CustomerUserId=null, no customer JWT) is unavailable in v1 and awaits the signed-token path in assignment 05; (11) OrderService lives in Common/Orders/ as a sanctioned #common-infrastructure exception to the no-service-classes rule (2+ consumers: WI-09 endpoints, WI-14 jobs, WI-15 seeder) - endpoints still own HandleAsync and only delegate the transactional transition. Several WIs edit the shared composition root api/src/Taxi.Api/Program.cs (WI-01 creates it; WI-04/05/06/13/14/15 register into it); to defuse the WI-13 || WI-14 parallel-edit conflict on Program.cs, each feature exposes a per-feature registration extension method (e.g. AddOrders/AddRealtime/AddJobs) that Program.cs calls, so parallel WIs touch disjoint extension files; if that convention is not adopted, the conductor must serialize WI-13 and WI-14. The state-machine skill was a zip archive; it has been extracted to .claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md and that path (not the .skill zip) is cited in required_reads for WI-07/09/14. All 6 binding ACs are mapped: AC#1->WI-01/02, AC#2->WI-15, AC#3->WI-08, AC#4->WI-13, AC#5->WI-14, AC#6->WI-15; plus the two-dispatcher concurrency 409 -> WI-09. Tenant-isolation tests (cross-tenant read -> 404 not 403) are on WI-04 (mechanism, now a [Theory] iterating every filtered tenant entity so isolation is proven for tables that ship no endpoint this UC - Route, Zone, Tariff, FleetSettings, DriverShift, AuditLog) and every tenant-touching feature WI (08, 09, 10, 11, 12), satisfying the per-tenant-table DoD."
+}

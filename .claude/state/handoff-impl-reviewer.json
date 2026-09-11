@@ -1,0 +1,18 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "WI-14",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    { "id": "F1", "severity": "minor", "file": "CLAUDE.md", "rule": null, "title": "Stale CLAUDE.md fact about TryUpdate fleetId parameter", "detail": "Claimed the parameter survived; it was removed along with the FleetHub call-site argument.", "recommendation": "Fix the line. (RESOLVED by conductor immediately after review.)" },
+    { "id": "F2", "severity": "info", "file": "api/tests/Taxi.Api.Tests/Jobs/BackgroundJobTests.cs", "rule": null, "title": "SurvivesRestart backdates AssignedAt instead of advancing the clock", "detail": "Provably equivalent; fresh factory + fresh job instance + no shared memory genuinely proves DB-driven scheduling. Declared deviation.", "recommendation": "Accepted." },
+    { "id": "F3", "severity": "info", "file": "api/src/Taxi.Api/Infrastructure/Jobs/OfferTimeoutJob.cs", "rule": null, "title": "ExecuteAsync catch path review-covered, not test-covered", "detail": "RunTickAsync pattern means the timer loop never runs in tests; catch logs LogError with exception and continues. Vacuous test correctly deleted.", "recommendation": "Accepted." },
+    { "id": "F4", "severity": "info", "file": "api/tests/Taxi.Api.Tests/Jobs/BackgroundJobTests.cs", "rule": null, "title": "Two cosmetic test renames vs work-items doc", "detail": "AC-pinned names present verbatim.", "recommendation": "Accepted." }
+  ],
+  "verification": {
+    "full_suite_result": "224/224 passed (fresh, 47 s)",
+    "build_result": "0 warnings, 0 errors; format clean",
+    "staging_clean": true
+  },
+  "summary": "Both jobs merge-ready: restart-safety genuinely proven (fresh factory + fresh instance, DB-only state), exactly-once under parallel ticks via Version token with benign retry-safe skip, per-fleet timeouts (0s-default trap avoided), stale-position follows assignment §9 literally with the mid-ride consequence documented, hosted-service interference reasoned and empirically absent, all WI-13 carry-forwards done, logging conventions fixed. One minor doc fact (fixed by conductor). blocks_merge=false."
+}

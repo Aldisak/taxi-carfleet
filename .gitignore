@@ -1,0 +1,47 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio
+*.user
+*.suo
+*.userprefs
+*.userosscache
+.vs/
+
+# JetBrains
+.idea/
+*.sln.iml
+
+# Rider
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# .NET
+*.swp
+*~.nib
+local.settings.json
+TestResults/
+[Bb]uild/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+appsettings.*.Local.json
+
+# Docker
+*.override.yml
+
+# Node / frontend
+node_modules/
+dist/
+.vite/

@@ -1,0 +1,54 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "WI-01",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "I-01",
+      "severity": "minor",
+      "file": "api/src/Taxi.Api/Properties/launchSettings.json",
+      "rule": null,
+      "title": "Undocumented file outside files_touched",
+      "detail": "launchSettings.json (23 lines) is in the staged diff but appears in neither the WI files_touched list nor the developer's files_changed / 6-deviation list. It is a harmless auto-generated dev-run profile, but it is a 7th, undocumented deviation. Content is benign (dev http/https profiles, ASPNETCORE_ENVIRONMENT=Development).",
+      "recommendation": "Either add it to the developer's deviation list with a one-line rationale, or leave as-is and note it here. No code change required."
+    },
+    {
+      "id": "I-02",
+      "severity": "minor",
+      "file": "api/src/Taxi.Api/appsettings.json",
+      "rule": "rules/logging.md#output-template",
+      "title": "Serilog reads a non-existent config section; Logging section is dead for Serilog",
+      "detail": "Program.cs calls cfg.ReadFrom.Configuration(ctx.Configuration), which binds a 'Serilog' section, but neither appsettings.json nor appsettings.Development.json defines one — they only carry a 'Logging' section (Microsoft.Extensions.Logging, unused once Serilog is the host logger). Consequence: appsettings.Development.json 'Default: Debug' has no effect and Serilog stays at its default (Information). Not an AC violation, but the Logging section is misleading config a later WI can trip on.",
+      "recommendation": "Add a 'Serilog' MinimumLevel section, or drop the ineffective Logging LogLevel overrides, so the intended dev log level is actually applied."
+    },
+    {
+      "id": "I-03",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Taxi.Api.csproj",
+      "rule": null,
+      "title": "Deviation 6 rationale is technically inaccurate (outcome fine)",
+      "detail": "The developer's deviation 6 states AspNetCore.HealthChecks.NpgSql 9.0.0 'brings a transitive Npgsql 8.0.3 alongside EF Core's Npgsql 10.0.3'. NuGet unifies transitive versions to the highest resolved (10.0.3); there is no side-by-side load. The health check runs against the unified Npgsql 10.0.3.",
+      "recommendation": "Accept the deviation; correct the note to 'NuGet unifies Npgsql to 10.0.3'."
+    },
+    {
+      "id": "I-04",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Program.cs",
+      "rule": null,
+      "title": "WI-13 SignalR query-token handling landed early",
+      "detail": "JwtBearerEvents.OnMessageReceived pulls access_token from the query string for /hubs paths — WI-13 functionality landing in WI-01. Acceptable: Program.cs is in files_touched, SignalR registration is a WI-01 AC, and the block is inert until a hub is mapped (MapHub deferred to WI-13).",
+      "recommendation": "No action. Ensure WI-13 does not duplicate this handler."
+    },
+    {
+      "id": "I-05",
+      "severity": "info",
+      "file": "api/tests/Taxi.Api.Tests/UnitTest1.cs",
+      "rule": null,
+      "title": "Placeholder test retained (deviation 3) — removal owed in WI-02",
+      "detail": "A trivial passing placeholder test is kept to sidestep the xunit.v3 zero-tests non-zero-exit behavior. Accepted as documented. It must be removed when the real WI-02 harness lands.",
+      "recommendation": "Track removal of UnitTest1.cs as part of WI-02."
+    }
+  ],
+  "summary": "WI-01 meets every acceptance criterion: build -warnaserror 0/0 (re-run), tests green (re-run). Program.cs wiring complete and rule-compliant (Send.OkAsync pattern, DontCatchExceptions, feature-configuration Swagger tagging proven). Security pass clean: committed secrets are empty strings with fail-fast guards; dev-only values scoped to Development files/compose. All 6 documented deviations accepted; two carry inaccurate rationale (I-02, I-03) and one undocumented 7th deviation found (I-01). All findings minor/info; blocks_merge=false."
+}

@@ -1,0 +1,53 @@
+{
+  "wi_id": "WI-05",
+  "status": "done",
+  "hit_max_turns": false,
+  "build_green": true,
+  "tests_green": true,
+  "tests_added": [
+    "StaffLogin_ValidCredentials_ReturnsTokens",
+    "StaffLogin_WrongPassword_Returns401",
+    "StaffLogin_UnknownFleetSlug_Returns401",
+    "Refresh_ValidToken_RotatesAndReturnsNewPair",
+    "Refresh_ReusedRevokedToken_Returns401",
+    "Logout_RevokesRefreshToken",
+    "StaffLogin_InactiveFleet_Returns401",
+    "Refresh_InactiveFleet_Returns401",
+    "Refresh_ConcurrentSameToken_OnlyOneSucceeds"
+  ],
+  "files_changed": [
+    "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
+    "api/src/Taxi.Api/Common/Auth/JwtIssuer.cs",
+    "api/src/Taxi.Api/Common/ErrorCodes.cs",
+    "api/src/Taxi.Api/Features/Auth/AuthFeatureConfiguration.cs",
+    "api/src/Taxi.Api/Features/Auth/StaffLogin/StaffLoginEndpoint.cs",
+    "api/src/Taxi.Api/Features/Auth/StaffLogin/StaffLoginRequest.cs",
+    "api/src/Taxi.Api/Features/Auth/StaffLogin/StaffLoginResponse.cs",
+    "api/src/Taxi.Api/Features/Auth/StaffLogin/StaffLoginValidator.cs",
+    "api/src/Taxi.Api/Features/Auth/StaffLogin/StaffUserDto.cs",
+    "api/src/Taxi.Api/Features/Auth/Refresh/RefreshEndpoint.cs",
+    "api/src/Taxi.Api/Features/Auth/Refresh/RefreshRequest.cs",
+    "api/src/Taxi.Api/Features/Auth/Refresh/RefreshResponse.cs",
+    "api/src/Taxi.Api/Features/Auth/Refresh/RefreshValidator.cs",
+    "api/src/Taxi.Api/Features/Auth/Logout/LogoutEndpoint.cs",
+    "api/src/Taxi.Api/Features/Auth/Logout/LogoutRequest.cs",
+    "api/src/Taxi.Api/Program.cs",
+    "api/tests/Taxi.Api.Tests/Infrastructure/AuthHelpers.cs",
+    "api/tests/Taxi.Api.Tests/Auth/Staff/StaffAuthTests.cs"
+  ],
+  "tests_passing": 33,
+  "coverage_delta": "n/a (integration tests only)",
+  "deviations": [
+    "D1: Logout_RevokesRefreshToken uses AuthHelpers.AsDispatcher() to mint the logout bearer token instead of the short-lived access token returned by the login endpoint. Reason: JwtIssuer uses FakeTimeProvider (pinned to 2026-09-10 12:00 UTC), producing a token that expires at 12:15 fake-UTC. JWT validation runs against real DateTime.UtcNow. If the test runs after 12:15 real UTC, the token would be rejected. AuthHelpers mints tokens with DateTime.UtcNow + 1 hour, making them reliably valid during test execution. This is the advisor-recommended mitigation.",
+    "D2: LogoutEndpoint has no Policies() call and no AllowAnonymous(). Any authenticated user can log out. This is intentional — no WI-05 policy was specified for logout, and inventing a StaffOnly policy would be out of scope.",
+    "D3: AuthHelpers.AsDispatcher() signature changed from (HttpClient client, Guid fleetId) to (HttpClient client, Guid fleetId, Guid? userId = null, string? fleetSlug = null). AuthHelpers.AsDriver() changed from (HttpClient client, Guid driverId) to (HttpClient client, Guid fleetId, Guid userId, string? fleetSlug = null) — the old signature only had a driverId but the JWT must carry fleet_id for tenant resolution. AuthHelpers.AsCustomer() changed from (HttpClient client, string phone) to (HttpClient client, Guid? userId = null). No existing tests used any AsDispatcher/AsDriver/AsCustomer call sites, so no test regressions.",
+    "D4: BCrypt work factor is the library default (11). This provides ~100ms hash time, appropriate for a staff login endpoint (not a hot path).",
+    "D5: MapInboundClaims = false added to JwtBearerOptions and RoleClaimType/NameClaimType set to raw claim names. This ensures Policies(RequireRole(...)) works against the raw 'role' claim name used during issuance. TenancyTests still pass since middleware reads the fleet_id claim by name (unaffected by inbound claim mapping).",
+    "D6: RefreshResponse and StaffLoginResponse are missing FleetSlug/FleetAdmin/Role fields beyond what the test asserts. Only the fields tested by the acceptance criteria are in the response. Future WIs may extend these.",
+    "D7 (round 2 — F2): RefreshEndpoint now claims atomically via ExecuteUpdateAsync WHERE RevokedAt IS NULL AND ExpiresAt > now. If the claim succeeds but a subsequent user/fleet check fails (user inactive, fleet inactive), the token is burned (revoked, then 401). This is security-positive: a stolen token cannot be reused after any attempt to refresh it even if the account is being concurrently deactivated.",
+    "D8 (round 2 — F2): Refresh_ConcurrentSameToken_OnlyOneSucceeds fired on a dev machine may serialize in the DB layer even though the HTTP requests are concurrent — if that happens both requests hit the same ExecuteUpdateAsync and only one sees affectedRows == 1. The atomic claim still lands correctly; the test was confirmed RED before the fix (both requests returned 200 under the non-atomic code) and GREEN after.",
+    "D9 (round 2 — F4): Refresh_InactiveFleet_Returns401 seeds an active fleet, logs in, then flips IsActive=false via ExecuteUpdateAsync before calling refresh. The fleet check in RefreshEndpoint selects both Slug and IsActive; null or inactive → 401. Customers (FleetId == null) skip the fleet check — only staff-owned fleet inactivity is enforced."
+  ],
+  "notes": "BCrypt work factor: default (11), ~100ms per hash on modern hardware. Refresh token scheme: 64 cryptographically random bytes, URL-safe Base64 encoded, stored as lowercase hex SHA-256 hash in RefreshToken.TokenHash. Raw token never logged or stored. JWT access token: 15 minutes, claims sub/role/fleet_id/fleet_slug/name, signed with HMAC-SHA256 using Jwt:Key from configuration. JwtIssuer.IssueAccessToken uses TimeProvider for all time values (notBefore, expires). JwtIssuer registered as scoped via AuthFeatureConfiguration.AddFeatureDependencies (auto-discovered). AuthHelpers.AsDispatcher/AsDriver mint tokens using DateTime.UtcNow (not FakeTimeProvider) with 1-hour expiry to avoid FakeTimeProvider/real-clock validation mismatch in tests. StaffLogin uses IgnoreQueryFilters() because AllowAnonymous endpoint has no JWT claim so ICurrentTenant.FleetId is null — without IgnoreQueryFilters the User query filter (FleetId == null || FleetId == tenant.FleetId) would reduce to FleetId == null, filtering out all staff rows. Refresh endpoint likewise uses IgnoreQueryFilters for user load. Round 2 fixes: F1 timing oracle — private static readonly DummyPasswordHash generated once with workFactor:11; dummy BCrypt.Verify called on fleet-null and user-null/hash-null branches before 401. F2 refresh double-spend — replaced tracked read + in-memory update + SaveChanges with ExecuteUpdateAsync atomic claim; affectedRows != 1 → 401. F3 — StaffUserDto moved to its own file. F4 — fleet lookup in StaffLoginEndpoint now filters IsActive; RefreshEndpoint loads fleet IsActive and rejects inactive. F5 — removed entire ErrorCodes.Auth nested class (was dead code).",
+  "verification_output": "dotnet build api/Taxi.sln -warnaserror: 0 warnings, 0 errors. dotnet test api/Taxi.sln: Passed: 33, Failed: 0, Skipped: 0 (30 pre-existing + 3 new from round 2: StaffLogin_InactiveFleet_Returns401, Refresh_InactiveFleet_Returns401, Refresh_ConcurrentSameToken_OnlyOneSucceeds). dotnet format api/Taxi.sln --verify-no-changes: exit 0 (clean)."
+}

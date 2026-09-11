@@ -1,0 +1,53 @@
+{
+  "wi_id": "WI-10",
+  "status": "done",
+  "hit_max_turns": false,
+  "build_green": true,
+  "tests_green": true,
+  "tests_added": [
+    "GetByCode_Owner_Returns200ReducedDto",
+    "GetByCode_NonOwner_Returns404",
+    "GetByCode_CrossTenantCode_Returns404",
+    "GetByCode_DispatcherToken_Returns403",
+    "GetByCode_UnknownCode_Returns404",
+    "AddNote_Dispatcher_WritesNoteAddedEvent",
+    "AddNoteValidator_EmptyText_FailsWithCode",
+    "AddNoteValidator_TooLongText_FailsWithCode",
+    "AddNote_CrossTenant_Returns404",
+    "GetEvents_Dispatcher_ReturnsChronological",
+    "GetEvents_CrossTenant_Returns404",
+    "GetByCode_AssignedDriverActiveStatus_ReturnsFirstNameAndPosition"
+  ],
+  "files_changed": [
+    "api/src/Taxi.Api/Common/ErrorCodes.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderByCode/GetOrderByCodeEndpoint.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderByCode/GetOrderByCodeRequest.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderByCode/TrackOrderResponse.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderByCode/DriverPositionDto.cs",
+    "api/src/Taxi.Api/Features/Orders/AddNote/AddNoteEndpoint.cs",
+    "api/src/Taxi.Api/Features/Orders/AddNote/AddNoteRequest.cs",
+    "api/src/Taxi.Api/Features/Orders/AddNote/AddNoteValidator.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderEvents/GetOrderEventsEndpoint.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderEvents/GetOrderEventsRequest.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderEvents/GetOrderEventsResponse.cs",
+    "api/src/Taxi.Api/Features/Orders/GetOrderEvents/OrderEventDto.cs",
+    "api/tests/Taxi.Api.Tests/Orders/Tracking/OrderTrackingTests.cs",
+    "CLAUDE.md"
+  ],
+  "tests_passing": 159,
+  "coverage_delta": "n/a (integration tests only)",
+  "deviations": [
+    "D1 (Tenant resolution for GetOrderByCode): Used tenant-filtered query (X-Fleet-Slug header required) + ownership check (CustomerUserId == sub), NOT IgnoreQueryFilters(). This matches WI-08's customer create/read pattern which also requires X-Fleet-Slug. Rationale: PublicCode is unique per-fleet only (index: fleet_id, public_code), so an unscoped IgnoreQueryFilters cross-fleet lookup would be ambiguous by schema. Cross-fleet tracking without fleet context is deferred to the signed-token path in assignment 05.",
+    "D2 (GetByCode requires X-Fleet-Slug): Customer JWT carries no fleet_id claim. The X-Fleet-Slug header is mandatory to resolve the tenant (same requirement as create-order for customers in WI-08). Tests set client.DefaultRequestHeaders.Add('X-Fleet-Slug', fleet.Slug) on all customer clients. Documented in endpoint Summary.",
+    "D3 (TrackOrderResponse fields): Reduced DTO exposes: publicCode, status, pickupAddress, dropoffAddress, scheduledAt, driverFirstName (first token of DisplayName), vehiclePlate, vehicleColor, etaMinutes (always null v1), position (DriverPositionDto{lat,lng} | null — only when status is Accepted/Arrived/InProgress and LastLat/LastLng non-null). Fields intentionally absent: customerPhone, customerName, all price fields (*Czk), allowedActions, order IDs beyond publicCode.",
+    "D4 (EtaMinutes always null in v1): OSRM integration is assignment 06 scope. Field is present in DTO with null value and documented in Summary as 'always null in v1'.",
+    "D5 (GetOrderEvents payload projection): Cannot project JsonDocument.RootElement.Clone() inside an EF Core LINQ-to-SQL query. Events are loaded with ToListAsync() first, then mapped to OrderEventDto in memory. JsonDocument disposal is safe — Clone() produces an independent copy that does not depend on the original document lifetime.",
+    "D6 (AddNote SaveChanges): AddNoteEndpoint calls dbContext.SaveChangesAsync directly — it does NOT use OrderService.TransitionAsync because NoteAdded is not a state-machine transition (no status change, no driver status update, no concurrency token bump). The SaveChanges guard in TaxiDbContext still fires and will enforce the FleetId on the new OrderEvent row.",
+    "D7 (GetByCode_CrossTenantCode_Returns404 test): Green on arrival — the tenant filter mechanism was already proven by WI-04. This test proves that the by-code code lookup is scoped to the fleet of the X-Fleet-Slug header, not just to the owner's fleet, and that the correct owner under the wrong fleet context also receives 404.",
+    "D8 (micro-fix pass F1): DriverPositionDto moved from TrackOrderResponse.cs into its own file DriverPositionDto.cs per architecture#one-type-per-file.",
+    "D9 (micro-fix pass F3): GetOrderEventsEndpoint now disposes the original pooled JsonDocument buffers after all clones have been taken via 'foreach (var raw in rawEvents) raw.Payload?.Dispose();'. Placed after the materialized events list is built so Clone() has already completed.",
+    "D10 (micro-fix pass F2): Added GetByCode_AssignedDriverActiveStatus_ReturnsFirstNameAndPosition test. Uses ASCII two-token name 'Tomas Horak', asserts first name present + surname absent from raw JSON, position null for Assigned status (non-active), position object with exact lat/lng for Accepted status (active). Test was green on first run — behavior was already correct (code-inspected by reviewer); discriminating signal comes from strong positive assertions (exact values, null/object ValueKind check)."
+  ],
+  "notes": "12 new tests (9 integration + 2 unit validator + 1 cross-tenant by-code isolation). Previous total (after micro-fix): 159. Micro-fix pass: F1 one-type-per-file, F2 driver+position privacy test, F3 JsonDocument disposal. Build: 0 warnings. Format: clean.",
+  "verification_output": "dotnet build api/Taxi.sln -warnaserror: 0 warnings, 0 errors. dotnet test api/Taxi.sln --filter 'FullyQualifiedName~Taxi.Api.Tests.Orders.Tracking': Passed: 12, Failed: 0. dotnet test api/Taxi.sln (full suite): Passed: 159, Failed: 0."
+}
