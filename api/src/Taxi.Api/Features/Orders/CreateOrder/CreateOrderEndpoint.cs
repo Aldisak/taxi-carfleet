@@ -258,5 +258,6 @@ internal sealed class CreateOrderEndpoint(
             order.VehicleId,
             order.CreatedAt,
             order.UpdatedAt,
-            allowedActions);
+            allowedActions,
+            order.Version);
 }

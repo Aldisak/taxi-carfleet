@@ -50,6 +50,8 @@ internal sealed class ListDriversEndpoint(TaxiDbContext dbContext)
                     d.Status,
                     d.CurrentVehicleId,
                     d.LastPositionAt,
+                    d.LastLat,
+                    d.LastLng,
                     u.DisplayName
                 })
             .ToListAsync(ct);
@@ -75,7 +77,9 @@ internal sealed class ListDriversEndpoint(TaxiDbContext dbContext)
                 d.DisplayName,
                 d.Status.ToString(),
                 d.CurrentVehicleId.HasValue ? vehiclePlates.GetValueOrDefault(d.CurrentVehicleId.Value) : null,
-                d.LastPositionAt))
+                d.LastPositionAt,
+                d.LastLat,
+                d.LastLng))
             .ToList();
 
         await Send.OkAsync(new ListDriversResponse(items), ct);

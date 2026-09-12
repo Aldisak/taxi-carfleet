@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using Taxi.Api.Infrastructure.Geo;
 
 namespace Taxi.Api.Tests.Infrastructure;
 
@@ -26,6 +27,11 @@ public class TaxiApiFactory : WebApplicationFactory<Program>
     public FakeTimeProvider FakeTime { get; } =
         new FakeTimeProvider(new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero));
 
+    /// <summary>Gets the <see cref="FakeGeoProvider"/> registered in this factory's DI container.
+    /// Tests set <see cref="FakeGeoProvider.SuggestResult"/> / <see cref="FakeGeoProvider.RouteResult"/>
+    /// before each call to control the geo upstream behaviour without real HTTP calls.</summary>
+    public FakeGeoProvider FakeGeo { get; } = new FakeGeoProvider();
+
     /// <summary>Initializes the factory with the Postgres container connection string.</summary>
     /// <param name="connectionString">Connection string from <see cref="PostgresFixture.ConnectionString"/>.</param>
     public TaxiApiFactory(string connectionString)
@@ -46,9 +52,13 @@ public class TaxiApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Seed:Enabled", "false");
 
         // Replace TimeProvider with the exposed FakeTimeProvider so tests can advance time.
+        // Replace IGeoProvider with the FakeGeoProvider so tests avoid real HTTP calls.
+        // Register both as the concrete type AND the interface so tests can resolve FakeGeoProvider directly.
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<TimeProvider>(FakeTime);
+            services.AddSingleton(FakeGeo);
+            services.AddSingleton<IGeoProvider>(sp => sp.GetRequiredService<FakeGeoProvider>());
         });
     }
 }

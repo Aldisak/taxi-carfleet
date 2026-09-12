@@ -55,7 +55,7 @@ A user belongs to exactly one fleet (except SuperAdmin). Customers are global us
 
 ### Frontend (`/web`)
 - React 18 + TypeScript + Vite, single codebase, role-based route groups: `/c/*` customer, `/d/*` driver, `/x/*` dispatcher.
-- Tailwind CSS. No component library except headless primitives if needed.
+- **styled-components** for styling (user decision 2026-09-11, replaces Tailwind — see `docs/decisions.md`). No component library except headless primitives if needed.
 - React Router 6, TanStack Query, Zustand (only for tiny cross-cutting state).
 - Maps: **Leaflet** + OpenStreetMap tiles. Routing/estimates: **OSRM** public API (`router.project-osrm.org`) behind a backend proxy so we can self-host later.
 - PWA: `vite-plugin-pwa` (Workbox). Web Push with VAPID.

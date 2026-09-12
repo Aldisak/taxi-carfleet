@@ -1,0 +1,27 @@
+{
+  "wi_id": "laneB11",
+  "title": "B11 — Playwright E2E suite (AC#1 create+assign ≤6 interactions, AC#2 realtime card move) + API harness",
+  "files_changed": [
+    "web/playwright.config.ts",
+    "web/scripts/e2e-api.mjs",
+    "web/e2e/dispatcher.spec.ts",
+    "web/e2e/helpers/apiDriver.ts",
+    "web/vitest.config.ts",
+    "web/src/shared/api/client.ts",
+    "web/src/features/board/useCreateOrder.ts",
+    "web/src/features/board/useCreateOrder.test.ts",
+    "web/src/features/board/OrderForm.test.tsx",
+    "docs/DEMO.md",
+    "docs/decisions.md",
+    ".gitignore"
+  ],
+  "tests_added": [
+    "AC1_CreateAndAssign — create order in ≤6 interactions and assign to free driver (Playwright, chromium)",
+    "AC2_RealtimeCardMove — driver accept moves card to Probíhající within 1 s via SignalR (Playwright, chromium)"
+  ],
+  "tests_passing": 2,
+  "coverage_delta": "+2 Playwright E2E tests; vitest count unchanged at 334 (42 test files)",
+  "hit_max_turns": false,
+  "notes": "B11 fully implemented. Both Playwright tests pass against the real stack (docker postgres + dotnet run Development + Vite dev). Key findings and deviations: (1) DEVIATION: spec says 'seeded drivers start Offline' but DevelopmentSeeder actually sets driver1 Status=Free with CurrentVehicleId=vehicle1 — so goOnline call is unnecessary (would 409). The apiDriver helper is tolerant of 409 on goOnline. Since driver1 is already Free/seeded, the test skips goOnline entirely and calls acceptOrder directly. (2) CONTRACT FIX: client.ts had CreateOrderResponse = { id: string } but the backend returns { order: OrderDetailDto }. Fixed CreateOrderResponse interface, updated useCreateOrder.ts to use data.order.id, and updated all 4 mock call sites in test files (useCreateOrder.test.ts, OrderForm.test.tsx). The B4 new-order highlight was silently broken against the real API before this fix — now setHighlight receives the correct orderId. (3) spec.ts file naming: WI doc specified create-assign.spec.ts + realtime.spec.ts but conductor specified dispatcher.spec.ts with test.describe.serial. Implemented as dispatcher.spec.ts with serial describe — simpler, and AC2 reuses AC1's created order ID. (4) Chromium browser version: pinned @playwright/test 1.48.2 requires chromium-1140 (not chromium-1243 that was pre-fetched). Required npx playwright install chromium to download chromium-1140. (5) vitest.config.ts updated to exclude e2e/ from vitest runs — without this, vitest picked up dispatcher.spec.ts and errored on playwright-specific APIs. (6) Interaction count for AC#1: 5 interactions (fill phone, click chip, Enter, click Přiřadit, click Jan Novák) — documented in spec header. Well within ≤6 limit. (7) AC#1 timing: 4.6s total (target <20s). AC#2 timing: SignalR latency ~38ms (target ≤1000ms, max 1500ms). Both significantly beat their targets. (8) UC-002 assumptions 1-14 echoed to docs/decisions.md per DoD #6. DEMO.md updated with npm run e2e instructions + interaction count + Lighthouse manual a11y note. (9) .gitignore updated with test-results/ and playwright-report/ exclusions; web/test-results/.last-run.json unstaged. (10) DELIBERATE OMISSION: secondary UI assertions (override pill, drawer edit, reset-password reveal, fleet-read, marker move) from AC note 'where cheap' were not automated — UI flow for AC#1 and AC#2 are the primary gate criteria and both pass.",
+  "verification_output": "npm run tsc: exit 0. npm run lint: exit 0 (0 warnings). npm run test -- --run: 334 tests passed (42 test files). npm run e2e: 2 passed (48.6s total including docker+dotnet+vite startup). AC1: 4.6s, 5 interactions, order public code YWPGH3. AC2: SignalR latency ~38ms. docker compose down: no orphan containers or API processes."
+}

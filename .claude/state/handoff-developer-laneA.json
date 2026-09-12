@@ -1,0 +1,118 @@
+{
+  "lane": "A",
+  "wi_id": "laneA",
+  "wis": {
+    "A1": {
+      "status": "done (prior session)",
+      "title": "Geo proxy: GET /geo/suggest (Photon) + GET /geo/route (OSRM)",
+      "files_changed": [
+        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestItemDto.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestValidator.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteValidator.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoSuggestItem.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoRouteResult.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/FakeGeoProvider.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs"
+      ],
+      "tests_added": 8,
+      "geo_config_keys": {
+        "suggest_base_url": "Geo:SuggestBaseUrl",
+        "route_base_url": "Geo:RouteBaseUrl"
+      },
+      "mock_strategy": "FakeGeoProvider (registered as IGeoProvider in TaxiApiFactory.ConfigureTestServices) avoids real HTTP calls. Tests set FakeGeoProvider.SuggestResult / .RouteResult before each call. FakeGeo property exposed on TaxiApiFactory.",
+      "deviations": "FastEndpoints does not use InvariantCulture for double query params on Czech locale (cs-CZ). Route coords declared as string? and parsed manually with double.Parse(..., CultureInfo.InvariantCulture). Documented in CLAUDE.md."
+    },
+    "A2": {
+      "status": "done (prior session)",
+      "title": "PATCH /orders/{id} partial edit + Order.Version exposure",
+      "files_changed": [
+        "api/src/Taxi.Api/Infrastructure/Entities/OrderEventType.cs",
+        "api/src/Taxi.Api/Features/Orders/UpdateOrder/UpdateOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/UpdateOrder/UpdateOrderRequest.cs",
+        "api/src/Taxi.Api/Features/Orders/UpdateOrder/UpdateOrderResponse.cs",
+        "api/src/Taxi.Api/Features/Orders/UpdateOrder/UpdateOrderValidator.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailMapper.cs",
+        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
+        "api/src/Taxi.Api/Realtime/OrderChangedDto.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Orders/Update/OrderUpdateTests.cs"
+      ],
+      "tests_added": 7,
+      "deviations": "None."
+    },
+    "A3": {
+      "status": "done (this session)",
+      "title": "Driver status override + AuditLog + lastLat/lastLng in GET /drivers",
+      "files_changed": [
+        "api/src/Taxi.Api/Features/Drivers/OverrideStatus/OverrideStatusEndpoint.cs",
+        "api/src/Taxi.Api/Features/Drivers/OverrideStatus/OverrideStatusRequest.cs",
+        "api/src/Taxi.Api/Features/Drivers/OverrideStatus/OverrideStatusValidator.cs",
+        "api/src/Taxi.Api/Features/Drivers/ListDrivers/DriverSummaryDto.cs",
+        "api/src/Taxi.Api/Features/Drivers/ListDrivers/ListDriversEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Drivers/OverrideStatusTests.cs"
+      ],
+      "tests_added": 6,
+      "deviations": "AuditLog Diff key names are {old, new} per work-items doc Assumption 7. ErrorCodes.DriverOverride.InvalidOverrideStatus was already added by prior session. SeedAndEndToEndTests.OpenApi_Document_ListsAllExpectedEndpoints updated to include POST /api/v1/drivers/{id}/status. A3 review fix (round 2): Override_PublishesDriverStatusChanged rewired to use fixture.Factory.WithWebHostBuilder → ConfigureTestServices replacing IRealtimePublisher with RecordingRealtimePublisher; override target changed Free→Busy so the status assertion distinguishes the new value from the old; asserts ContainSingle(c => c.DriverId == driver.Id && c.Status == DriverStatus.Busy) after 204. Proved: commenting out endpoint line 98 (DriverStatusChangedAsync call) causes the test to FAIL with 'collection is empty'.",
+      "audit_log_diff_keys": "{old, new}"
+    },
+    "A4": {
+      "status": "done (this session)",
+      "title": "POST /staff/{id}/reset-password (FleetAdminOnly)",
+      "files_changed": [
+        "api/src/Taxi.Api/Features/Staff/ResetPassword/ResetPasswordEndpoint.cs",
+        "api/src/Taxi.Api/Features/Staff/ResetPassword/ResetPasswordResponse.cs",
+        "api/tests/Taxi.Api.Tests/Staff/ResetPasswordTests.cs"
+      ],
+      "tests_added": 3,
+      "deviations": "No refresh token revocation implemented — the work-items doc (binding) does not mention revocation in A4's semantics section. The WI doc's AC says: 'BCrypt-hashed (workFactor 11), stored on user.PasswordHash, plaintext returned once'. Revocation was mentioned in the RESUME brief as 'per WI doc - verify'; the actual WI doc does not include it. Plaintext-absent-from-logs AC: happy path test now captures all log messages via an inline LogCapture ILoggerProvider (registered with WithWebHostBuilder) and asserts body.TemporaryPassword does not appear in any captured message. SeedAndEndToEndTests updated to include POST /api/v1/staff/{id}/reset-password."
+    },
+    "A5": {
+      "status": "done (this session)",
+      "title": "GET /fleet/settings (FleetAdminOnly)",
+      "files_changed": [
+        "api/src/Taxi.Api/Features/Fleet/FleetFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/GetFleetSettingsEndpoint.cs",
+        "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/GetFleetSettingsResponse.cs",
+        "api/tests/Taxi.Api.Tests/Fleet/FleetSettingsTests.cs"
+      ],
+      "tests_added": 3,
+      "deviations": "Test namespace changed from Taxi.Api.Tests.Fleet (CS0118: 'Fleet' is both entity class and namespace) and from Taxi.Api.Tests.FleetSettings (CS0118: 'FleetSettings' is also an entity) to Taxi.Api.Tests.FleetFeature — no entity named FleetFeature exists so unqualified Fleet/FleetSettings inside and outside the file still resolve to the entity types. Filter FullyQualifiedName~Taxi.Api.Tests.Fleet correctly matches Taxi.Api.Tests.FleetFeature (substring match). Test file is located in api/tests/Taxi.Api.Tests/Fleet/ folder per WI files_touched spec. SeedAndEndToEndTests updated to include GET /api/v1/fleet/settings and GET /api/v1/geo/suggest and GET /api/v1/geo/route (also added PATCH /api/v1/orders/{id} which was missing)."
+    }
+  },
+  "files_changed": [
+    "api/src/Taxi.Api/Features/Drivers/OverrideStatus/OverrideStatusEndpoint.cs",
+    "api/src/Taxi.Api/Features/Drivers/OverrideStatus/OverrideStatusRequest.cs",
+    "api/src/Taxi.Api/Features/Drivers/OverrideStatus/OverrideStatusValidator.cs",
+    "api/src/Taxi.Api/Features/Drivers/ListDrivers/DriverSummaryDto.cs",
+    "api/src/Taxi.Api/Features/Drivers/ListDrivers/ListDriversEndpoint.cs",
+    "api/src/Taxi.Api/Features/Staff/ResetPassword/ResetPasswordEndpoint.cs",
+    "api/src/Taxi.Api/Features/Staff/ResetPassword/ResetPasswordResponse.cs",
+    "api/src/Taxi.Api/Features/Fleet/FleetFeatureConfiguration.cs",
+    "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/GetFleetSettingsEndpoint.cs",
+    "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/GetFleetSettingsResponse.cs",
+    "api/tests/Taxi.Api.Tests/Drivers/OverrideStatusTests.cs",
+    "api/tests/Taxi.Api.Tests/Staff/ResetPasswordTests.cs",
+    "api/tests/Taxi.Api.Tests/Fleet/FleetSettingsTests.cs",
+    "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
+  ],
+  "tests_added": 27,
+  "tests_passing": 255,
+  "coverage_delta": "n/a",
+  "build_green": true,
+  "full_suite": "255 passed",
+  "hit_max_turns": false,
+  "notes": "Geo config keys: Geo:SuggestBaseUrl (defaults to https://photon.komoot.io/), Geo:RouteBaseUrl (defaults to https://router.project-osrm.org/). Mock strategy: FakeGeoProvider registered as IGeoProvider in TaxiApiFactory, exposed as FakeGeo property; tests set SuggestResult/RouteResult before each call. A3 AuditLog Diff keys are {old, new} per work-items doc. A4 does not revoke refresh tokens (not in binding WI doc). A5 test namespace is Taxi.Api.Tests.FleetFeature (not Taxi.Api.Tests.Fleet which caused CS0118 since Fleet is an entity class) — filter FullyQualifiedName~Taxi.Api.Tests.Fleet still matches as substring. A3 supersedes decisions.md assumption #9 (AuditLog now written for driver status override) — this should be documented in decisions.md by B11. docs/api.md was regenerated by the full dotnet test run (OpenApi_Document_GeneratesApiMarkdown test); file is unstaged per staging whitelist (only api/ and handoff). Staging: git add api/ only (parallel web/ agent owns web/). FastEndpoints double query param locale trap documented in CLAUDE.md (A1) — CLAUDE.md update is unstaged per staging whitelist. ROUND-2 FIXES: (1) A3 Override_PublishesDriverStatusChanged — was a false test (instantiated RecordingRealtimePublisher but never registered it, asserted only 204). Fixed by injecting via fixture.Factory.WithWebHostBuilder → ConfigureTestServices, overriding Free→Busy, and asserting ContainSingle on DriverStatusChangedCalls. Prove-it: commenting out DriverStatusChangedAsync in endpoint FAILS with 'collection is empty'. (2) A2 Update_NewOrder_ChangesFieldsAndWritesUpdatedEvent — already uses events.Should().HaveCount(1) (exact count). No change needed.",
+  "verification_output": "255 passed, 0 failed, 0 skipped. dotnet build -warnaserror: 0 warnings, 0 errors. dotnet format --verify-no-changes: exit 0. Round-2 re-verification: 255 passed, 0 failed. dotnet build -warnaserror: 0 warnings, 0 errors."
+}

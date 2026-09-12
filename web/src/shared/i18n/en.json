@@ -1,0 +1,327 @@
+{
+  "app": {
+    "title": "Taxi Dispatch",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "offline": "Offline – showing last known state"
+  },
+  "nav": {
+    "board": "Dispatch",
+    "orders": "Orders",
+    "settings": "Settings",
+    "logout": "Log out",
+    "mute": "Mute sound",
+    "unmute": "Unmute sound"
+  },
+  "login": {
+    "title": "Sign in",
+    "fleetSlug": "Fleet code",
+    "fleetSlugPlaceholder": "e.g. kolintaxi",
+    "email": "Email",
+    "emailPlaceholder": "your@email.com",
+    "password": "Password",
+    "submit": "Sign in",
+    "invalidCredentials": "Invalid credentials. Please try again.",
+    "networkError": "Cannot connect to server. Check your internet connection.",
+    "loading": "Signing in...",
+    "unknownError": "An unexpected error occurred. Please try again.",
+    "validation": {
+      "fleetSlugRequired": "Fleet code is required.",
+      "emailRequired": "Email is required.",
+      "emailInvalid": "Enter a valid email address.",
+      "passwordRequired": "Password is required."
+    }
+  },
+  "board": {
+    "form": {
+      "title": "New Order",
+      "validation": {
+        "phoneRequired": "Phone number is required.",
+        "phoneInvalid": "Enter a valid phone number (e.g. 777 123 456 or +420777123456).",
+        "pickupRequired": "Pickup address is required.",
+        "pickupNoCoords": "Select a pickup from the list or use a quick chip.",
+        "scheduledAtInvalid": "Enter a valid date and time.",
+        "scheduledAtPast": "Scheduled time must be in the future.",
+        "passengersMin": "Number of passengers must be at least 1."
+      },
+      "phone": "Phone",
+      "name": "Name",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "when": "When",
+      "asap": "ASAP",
+      "scheduledAt": "Scheduled time",
+      "passengers": "Passengers",
+      "note": "Note",
+      "pricePreview": "~ {{price}} CZK",
+      "distanceOnly": "{{km}} km",
+      "submit": "Create order",
+      "creating": "Creating...",
+      "pickupPlaceholder": "Enter pickup address",
+      "dropoffPlaceholder": "Enter dropoff address (optional)"
+    },
+    "columns": {
+      "orders": "Orders",
+      "drivers": "Drivers",
+      "map": "Map"
+    },
+    "mapToggle": "Toggle map",
+    "sections": {
+      "nove": "New",
+      "prirazene": "Assigned / Awaiting acceptance",
+      "probihajici": "In progress",
+      "naplanovane": "Scheduled (today / tomorrow)",
+      "dokonceneDnes": "Completed today"
+    },
+    "order": {
+      "asap": "ASAP",
+      "noDriver": "Unassigned",
+      "fixedPriceBadge": "FIXED {{price}} CZK",
+      "estimatedPrice": "~{{price}} CZK",
+      "elapsedTime": "{{sec}}s",
+      "elapsedTimeMin": "{{min}} min"
+    },
+    "actions": {
+      "assign": "Assign",
+      "reassign": "Reassign",
+      "cancel": "Cancel",
+      "detail": "Detail",
+      "confirm": "Confirm",
+      "close": "Close"
+    },
+    "cancelReasons": {
+      "title": "Cancellation reason",
+      "zákazník zrušil": "Customer cancelled",
+      "nedorazil": "No-show",
+      "omyl": "Mistake",
+      "jiný": "Other",
+      "freeTextPlaceholder": "Specify reason...",
+      "required": "Please select a cancellation reason"
+    },
+    "driverPicker": {
+      "title": "Select driver",
+      "noDrivers": "No available drivers",
+      "loading": "Loading drivers..."
+    },
+    "conflict": "The order was changed by someone else"
+  },
+  "status": {
+    "order": {
+      "New": "New",
+      "Assigned": "Assigned",
+      "Accepted": "Accepted",
+      "Arrived": "Arrived",
+      "InProgress": "In progress",
+      "Completed": "Completed",
+      "Cancelled": "Cancelled"
+    },
+    "driver": {
+      "Free": "Free",
+      "EnRoute": "En route",
+      "Busy": "Busy",
+      "Offline": "Offline"
+    }
+  },
+  "drivers": {
+    "overrideTitle": "Set status",
+    "setFree": "Free",
+    "setBusy": "Busy",
+    "setOffline": "Offline",
+    "positionAge": {
+      "unknown": "—",
+      "seconds": "{{n}}s ago",
+      "minutes": "{{n}} min ago"
+    },
+    "noOrderCode": "—",
+    "overrideError": "Failed to set status"
+  },
+  "map": {
+    "loading": "Loading map...",
+    "toggleShow": "Show map",
+    "toggleHide": "Hide map",
+    "driverPopup": "Driver: {{name}}",
+    "orderPopup": "Order: {{code}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "accessDenied": "Access denied. This section is only available to fleet administrators.",
+    "tabs": {
+      "vehicles": "Vehicles",
+      "people": "People",
+      "fleet": "Fleet"
+    },
+    "vehicles": {
+      "title": "Vehicles",
+      "add": "Add vehicle",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "confirmDeactivate": "Are you sure you want to deactivate this vehicle?",
+      "inactive": "Inactive",
+      "fields": {
+        "plate": "Plate",
+        "make": "Make",
+        "model": "Model",
+        "color": "Color",
+        "seats": "Seats",
+        "active": "Active"
+      },
+      "validation": {
+        "plateRequired": "Plate is required.",
+        "plateTooLong": "Plate must be at most 20 characters.",
+        "makeRequired": "Make is required.",
+        "modelRequired": "Model is required.",
+        "colorRequired": "Color is required.",
+        "seatsMin": "Seats must be at least 1."
+      },
+      "save": "Save",
+      "cancel": "Cancel",
+      "createSuccess": "Vehicle added.",
+      "updateSuccess": "Vehicle updated.",
+      "deactivateSuccess": "Vehicle deactivated.",
+      "loading": "Loading vehicles..."
+    },
+    "people": {
+      "title": "People",
+      "invite": "Invite",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "resetPassword": "Reset password",
+      "fields": {
+        "email": "Email",
+        "displayName": "Display name",
+        "role": "Role",
+        "phone": "Phone",
+        "isActive": "Active",
+        "lastLogin": "Last login"
+      },
+      "roles": {
+        "Driver": "Driver",
+        "Dispatcher": "Dispatcher",
+        "FleetAdmin": "Fleet admin"
+      },
+      "validation": {
+        "emailRequired": "Email is required.",
+        "emailInvalid": "Enter a valid email address.",
+        "displayNameRequired": "Display name is required.",
+        "roleRequired": "Role is required."
+      },
+      "tempPassword": {
+        "title": "Temporary password",
+        "warning": "This password will only be shown once. Copy it and share it with the user.",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "dismiss": "Close"
+      },
+      "save": "Save",
+      "cancel": "Cancel",
+      "inviteSuccess": "Invitation sent.",
+      "updateSuccess": "User updated.",
+      "deactivateSuccess": "User deactivated.",
+      "selfDeactivation": "You cannot deactivate your own account.",
+      "driverIsOnline": "The driver must go offline first.",
+      "loading": "Loading users...",
+      "noLastLogin": "Never"
+    },
+    "fleet": {
+      "title": "Fleet",
+      "name": "Fleet name",
+      "phone": "Fleet phone",
+      "offerTimeout": "Offer timeout (s)",
+      "autoDispatch": "Auto-dispatch",
+      "autoDispatchHint": "Available in v1.1",
+      "loading": "Loading settings..."
+    }
+  },
+  "search": {
+    "title": "Order Search",
+    "filters": {
+      "dateFrom": "From",
+      "dateTo": "To",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "driver": "Driver",
+      "allDrivers": "All drivers",
+      "search": "Search",
+      "searchPlaceholder": "Code, phone or name",
+      "apply": "Apply",
+      "exportCsv": "Export CSV"
+    },
+    "table": {
+      "code": "Code",
+      "created": "Created",
+      "when": "When",
+      "customer": "Customer",
+      "route": "Route",
+      "price": "Price",
+      "driver": "Driver",
+      "status": "Status",
+      "noDriver": "—",
+      "asap": "ASAP",
+      "noResults": "No results",
+      "loading": "Loading..."
+    },
+    "pagination": {
+      "page": "Page {{page}} / {{total}}",
+      "prev": "Previous",
+      "next": "Next"
+    }
+  },
+  "orders": {
+    "drawer": {
+      "title": "Order detail",
+      "close": "Close",
+      "edit": "Edit",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "conflict": "The order was changed by someone else",
+      "editableStatuses": "Editable only in New or Assigned status",
+      "fields": {
+        "pickup": "Pickup",
+        "dropoff": "Dropoff",
+        "scheduledAt": "Scheduled time",
+        "note": "Note",
+        "passengers": "Passengers"
+      }
+    },
+    "timeline": {
+      "title": "History",
+      "noEvents": "No events",
+      "actor": {
+        "System": "System",
+        "Driver": "Driver",
+        "Dispatcher": "Dispatcher",
+        "Customer": "Customer"
+      },
+      "event": {
+        "Created": "Order created",
+        "Assigned": "Assigned to driver",
+        "Accepted": "Driver accepted",
+        "Declined": "Driver declined",
+        "Timeout": "Offer timed out",
+        "Arrived": "Driver arrived",
+        "Started": "Ride started",
+        "Completed": "Ride completed",
+        "Cancelled": "Order cancelled",
+        "Reassigned": "Reassigned to another driver",
+        "PriceOverridden": "Price overridden",
+        "NoteAdded": "Note added",
+        "Updated": "Order updated"
+      }
+    },
+    "actions": {
+      "assign": "Assign",
+      "reassign": "Reassign",
+      "cancel": "Cancel",
+      "accept": "Accept",
+      "arrive": "Arrived",
+      "start": "Start ride",
+      "complete": "Complete",
+      "decline": "Decline",
+      "title": "Actions"
+    },
+    "loading": "Loading...",
+    "notFound": "Order not found"
+  }
+}

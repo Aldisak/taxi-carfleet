@@ -289,8 +289,12 @@ public sealed class FleetHubTests(PostgresFixture fixture) : IAsyncDisposable
         // Wait for SignalR to deliver
         await Task.Delay(1000, cts.Token);
 
-        // Assert
+        // Assert — received at least one event
         received.Should().HaveCountGreaterOrEqualTo(1);
+        // F1 assertion: OrderChangedDto must carry "source" field as string (e.g. "App") so web decideSound gate is reachable
+        var firstMsg = received.First();
+        firstMsg.TryGetProperty("source", out var sourceProp).Should().BeTrue("OrderChangedDto must include a 'source' property");
+        sourceProp.GetString().Should().Be("App", "the seeded order has Source=App and it must arrive as the string 'App'");
     }
 
     /// <summary>A non-owner customer subscribing to an order group must not receive OrderChanged

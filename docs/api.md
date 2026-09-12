@@ -22,10 +22,24 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
+| POST | `/drivers/{id}/status` | Override driver status | Bearer |
 | GET | `/drivers` | List drivers | Bearer |
 | POST | `/drivers/me/online` | Go online | Bearer |
 | POST | `/drivers/me/offline` | Go offline | Bearer |
 | GET | `/drivers/me` | Get my driver profile | Bearer |
+
+## Fleet
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/fleet/settings` | Get fleet settings | Bearer |
+
+## Geo
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/geo/suggest` | Address autocomplete | Bearer |
+| GET | `/geo/route` | Get route distance and duration | Bearer |
 
 ## Health
 
@@ -37,11 +51,12 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
+| PATCH | `/orders/{id}` | Partially update an order | Bearer |
+| GET | `/orders/{id}` | Get order detail | Bearer |
 | POST | `/orders/{id}/start` | Start the ride (Driver only) | Bearer |
 | POST | `/orders/{id}/reassign` | Reassign an order to a different driver | Bearer |
 | GET | `/orders` | List orders | Bearer |
 | POST | `/orders` | Create a new order | Bearer |
-| GET | `/orders/{id}` | Get order detail | Bearer |
 | GET | `/orders/{id}/events` | Get order event history | Bearer |
 | GET | `/orders/by-code/{publicCode}` | Track order by public code | Bearer |
 | POST | `/orders/{id}/decline` | Decline an assigned order (Driver only) | Bearer |
@@ -59,6 +74,7 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | PUT | `/staff/{id}` | Update staff user | Bearer |
 | GET | `/staff/{id}` | Get staff detail | Bearer |
 | DELETE | `/staff/{id}` | Deactivate staff user | Bearer |
+| POST | `/staff/{id}/reset-password` | Reset staff user password | Bearer |
 | GET | `/staff` | List staff | Bearer |
 | POST | `/staff` | Create staff user | Bearer |
 

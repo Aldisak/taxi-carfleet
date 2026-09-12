@@ -1,0 +1,40 @@
+{
+  "wi_id": "B4",
+  "title": "Orders column + card actions",
+  "files_changed": [
+    "web/src/features/board/BoardPage.tsx",
+    "web/src/features/board/OrdersColumn.tsx",
+    "web/src/features/board/OrderCard.tsx",
+    "web/src/features/board/OrderCard.test.tsx",
+    "web/src/features/board/DriverPicker.tsx",
+    "web/src/features/board/DriverPicker.test.tsx",
+    "web/src/features/board/sectionBucketing.ts",
+    "web/src/features/board/sectionBucketing.test.ts",
+    "web/src/features/board/elapsedTimer.ts",
+    "web/src/features/board/elapsedTimer.test.ts",
+    "web/src/features/board/useNewOrderHighlight.ts",
+    "web/src/features/board/useNewOrderHighlight.test.ts",
+    "web/src/features/board/driverDistanceSort.ts",
+    "web/src/features/board/driverDistanceSort.test.ts",
+    "web/src/features/board/cancelReasons.ts",
+    "web/src/features/board/useAssignOrder.ts",
+    "web/src/features/board/useReassignOrder.ts",
+    "web/src/features/board/useCancelOrder.ts",
+    "web/src/shared/api/client.ts",
+    "web/src/shared/i18n/cs.json",
+    "web/src/shared/i18n/en.json"
+  ],
+  "tests_added": [
+    "sectionBucketing.test.ts (14 tests: every status → correct section, scheduledAt today/tomorrow/dayAfter bucketing, Completed-today vs yesterday, Cancelled null)",
+    "elapsedTimer.test.ts (8 tests: getElapsedSeconds 0/60/119/120, isElapsedRed false at 0/119, true at 120/300)",
+    "driverDistanceSort.test.ts (8 tests: haversineKm 0 same-point, ~0 nearby; sortDriversByDistance free-first, distance ascending, null-position last, free-no-pos before non-free, null group free-first)",
+    "useNewOrderHighlight.test.ts (5 tests: false for non-highlight, true on set, false for different order, clears after ~3s with fake timers, still active at 2.9s)",
+    "OrderCard.test.tsx (16 tests: renders fields (code/ASAP/phone+name/pickup/dropoff/fixed-badge/estimate/status-pill), assign opens inline picker not modal, cancel blocked without reason, cancel allowed with reason, 409 shows conflict message)",
+    "DriverPicker.test.tsx (3 tests: focuses container on mount, ArrowDown+Enter selects second driver, Escape calls onClose)"
+  ],
+  "tests_passing": 114,
+  "coverage_delta": "+51 tests (was 63, now 114)",
+  "hit_max_turns": false,
+  "notes": "B4 complete. Middle column (OrdersColumn) replaces the B3 placeholder in BoardPage. Five sections: Nové / Přiřazené / Probíhající / Naplánované / Dokončené dnes (collapsed by default). Bucketing logic: New+Assigned ASAP → Nové/Přiřazené; New+Assigned with scheduledAt today or tomorrow → Naplánované; scheduledAt beyond tomorrow → excluded; Accepted+Arrived+InProgress → Probíhající; Completed today → Dokončené dnes; Completed prior days + Cancelled → not shown. Note: bucketing uses UTC calendar dates; Czech dispatcher UTC+2 boundary is a known approximation (e.g. order scheduled at 00:30 CET = 23:30 UTC prior day). Orders fetched via TanStack Query key ['orders','list',{statuses}] with 10s refetchInterval polling fallback (B6 will invalidate on SignalR events using this key prefix). OrderCard: renders publicCode, time (ASAP or scheduled HH:MM), phone·name, pickup address (ellipsized), dropoff address with → prefix, fixed-price PEVNÁ badge vs estimate ~price, status pill (theme colors from theme.ts), elapsed seconds for New orders (turns red at >=120s via isElapsedRed). Highlight: consumes B3's useNewOrderHighlightStore — CSS keyframe flash on mount when order.id matches the just-created order (3s window auto-cleared via useNewOrderHighlight). Actions: Assign (New only) → inline DriverPicker (not modal, role=listbox within card); Reassign (Assigned/Accepted/Arrived); Cancel (inline form, reason required from [zákazník zrušil/nedorazil/omyl/jiný], optional free text for jiný); Detail → navigate /x/orders/:id. Driver picker sorted via haversine (free first, has-position before null-position, ascending distance within group). DriverPicker focuses container div on mount so keyboard nav (ArrowUp/ArrowDown/Enter/Escape) is immediately accessible. OrderCard lazy-fetches order detail (queryKey: ['orders','detail',id]) when picker opens to get real pickup lat/lng for accurate distance sort; while loading, free-first ordering still applies. OrdersColumn also fetches drivers (same ['drivers'] queryKey as picker, shared cache) to build id→displayName map and pass driverName prop to each OrderCard; driver row only rendered when name resolves. 409 on any mutation → shows Czech conflict message (aria-live alert) and invalidates ['orders'] + ['orders','detail',id]. useAssignOrder and useReassignOrder use optimistic updates (onMutate cancels queries, snapshots list caches, updates status/driverId optimistically; onError restores snapshot; onSettled invalidates). API types added to client.ts: OrderSummaryDto, OrderDetailDto, ListOrdersRequest/Response, DriverSummaryDto, ListDriversResponse, getOrders(), getOrder(), postAssignOrder(), postReassignOrder(), postCancelOrder(), getDrivers(). i18n: board.sections.*, board.order.*, board.actions.*, board.cancelReasons.*, board.driverPicker.*, board.conflict, status.order.* — parity green. Deviations: (D1) OrderSummaryDto does not carry allowedActions (only OrderDetailDto does) — actions shown per status from component logic, not allowedActions.",
+  "verification_output": "npm run tsc: exit 0. npm run lint: exit 0 (0 warnings). npm run test: 114 passed (15 test files). npm run build: exit 0 (dist/assets/index-CK5yT-Vh.js 379.02 kB gzip 119.19 kB)."
+}

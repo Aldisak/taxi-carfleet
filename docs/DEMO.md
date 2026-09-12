@@ -157,6 +157,57 @@ The demo fleet is automatically seeded on first start with:
 
 Connect to `/hubs/fleet?access_token=<token>` with a WebSocket client. Dispatchers receive `OrderChanged` and `DriverStatusChanged` events. Drivers send `UpdatePosition` calls (throttled server-side to 1/3s).
 
+## 9. Playwright E2E suite (`npm run e2e`)
+
+The E2E suite runs two tests against the real API + Postgres + seed stack and proves the two core acceptance criteria of UC-002:
+
+| Test | Acceptance Criterion |
+|------|---------------------|
+| `AC1_CreateAndAssign` | Create an order in ≤6 UI interactions + assign to a free driver (AC#1) |
+| `AC2_RealtimeCardMove` | Driver accept via API moves card to "Probíhající" within 1 s (AC#2) |
+
+### Prerequisites
+
+- Docker Desktop running.
+- Node 20+ and dotnet SDK 10 (at `C:\Users\alesm\AppData\Local\Microsoft\dotnet\dotnet.exe`).
+- `cd web && npx playwright install chromium` (once, to ensure the pinned Chromium binary is present).
+
+### Run
+
+```bash
+cd web
+npm run e2e
+```
+
+The harness automatically:
+1. Tears down any previous DB volume (`docker compose down -v`) for determinism.
+2. Starts only the `db` service from `infra/docker-compose.dev.yml`.
+3. Waits for Postgres to be ready.
+4. Runs `dotnet run` (SDK 10) in Development mode — applies EF migrations and seeds the demo fleet.
+5. Starts the Vite dev server on port 5173.
+6. Runs the two Playwright tests in Chromium.
+7. Playwright automatically kills both server processes after the run.
+
+### Interaction count for AC#1
+
+The `AC1_CreateAndAssign` test uses exactly **5** scripted UI interactions (well within the ≤6 limit):
+
+1. Fill phone number in the Phone field
+2. Click quick chip "Vlakové nádraží Kolín" (fills pickup + coordinates)
+3. Press Enter to submit (ASAP is the default — no toggle needed)
+4. Click "Přiřadit" on the new order card
+5. Click "Jan Novák" (driver1) in the driver picker
+
+### Manual Lighthouse accessibility audit (AC#8 — best-effort, non-blocking)
+
+With the stack running (`npm run dev` + API + DB), open Lighthouse in Chrome DevTools against the board:
+
+```
+http://localhost:5173/x
+```
+
+Target: **a11y score ≥ 90**. This is measured manually and documented here — it is not a blocking gate in the automated pipeline.
+
 ## Notes
 
 - The `Seed:Enabled` setting defaults to `true` in Development. Set `Seed__Enabled=false` to skip seeding on subsequent starts (seeder is idempotent — it skips if the demo fleet exists).

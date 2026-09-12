@@ -104,6 +104,13 @@ The `gc-*` skills (`gc-feature`, `gc-tdd`, `gc-debug`, `gc-migrate`, `gc-review`
 
 - **TaxiApiFactory no longer sealed (WI-15)**: Changed from `sealed` to allow `E2ETaxiApiFactory` to extend it for the clock-trap workaround. `ConfigureWebHost` is overridden in the subclass with a `base.ConfigureWebHost(builder)` call first.
 
+- **FastEndpoints double query param binding is locale-sensitive (A1)**: FastEndpoints does NOT use `CultureInfo.InvariantCulture` when binding `double` properties from GET query strings. On Czech locale (cs-CZ), `50.08` (dot-decimal) fails to parse with "Value [50.08] is not valid for a [Double] property!". Pattern: declare request DTO properties as `string?` and parse manually with `double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture)` in `HandleAsync`. Add a FluentValidation rule with `.Must(s => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _))` to return a clean 400 for invalid input.
+
+- **Playwright chromium version mismatch (laneB11)**: `@playwright/test 1.48.2` requires `chromium-1140` but the pre-fetched browser was `chromium-1243`. Run `cd web && npx playwright install chromium` once to download the pinned revision. The correct binary is then at `chromium-1140/chrome-win/chrome.exe`.
+- **vitest picks up Playwright spec files (laneB11)**: Without an explicit `exclude`, vitest v3 discovers `e2e/**/*.spec.ts` and fails with "Two different versions of @playwright/test" and `TypeError: test.describe.serial is not a function`. Fix: add `exclude: ['**/node_modules/**', '**/e2e/**']` to `vitest.config.ts` `test` options.
+- **CreateOrderResponse shape mismatch (laneB11)**: `client.ts` originally typed `CreateOrderResponse` as `{ id: string }` but the API (`CreateOrderEndpoint`) returns `{ order: OrderDetailDto }`. This silently broke the B4 new-order highlight (orderId was `undefined`). The canonical fix is in `client.ts` + `useCreateOrder.ts` (use `data.order.id`).
+- **Playwright test-results are volatile (laneB11)**: `test-results/` and `playwright-report/` change on every run. Add both to `.gitignore`. Do not stage `web/test-results/.last-run.json`.
+
 ## Known gaps in the scaffold (referenced but missing)
 
 - `.claude/hooks/` — the agents' `PreToolUse` Bash-allowlist hooks (`designer-bash-allowlist.sh`, `developer-bash-allowlist.sh`, `reviewer-bash-allowlist.sh`) and the conductor's `reinject-state.sh` / `split-compound-commands.sh` do not exist; agent Bash hooks will fail until created or removed from the agent frontmatter.

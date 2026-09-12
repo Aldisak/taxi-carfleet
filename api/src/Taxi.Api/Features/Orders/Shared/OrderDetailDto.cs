@@ -1,6 +1,9 @@
 namespace Taxi.Api.Features.Orders.Shared;
 
-/// <summary>Full order detail returned by GET /orders/{id} and POST /orders (201 response).</summary>
+/// <summary>Full order detail returned by GET /orders/{id} and POST /orders (201 response).
+/// <para>Version (F-01): the optimistic concurrency token, incremented on every write.
+/// The dispatcher reads this value and sends it back on PATCH /orders/{id} so the server can
+/// detect stale edits. Also included in the OrderChanged SignalR payload.</para></summary>
 /// <param name="Id">Order primary key.</param>
 /// <param name="PublicCode">Human-readable 6-char code unique within the fleet.</param>
 /// <param name="Status">Current lifecycle status (string name).</param>
@@ -26,6 +29,7 @@ namespace Taxi.Api.Features.Orders.Shared;
 /// <param name="CreatedAt">UTC timestamp when the order was created.</param>
 /// <param name="UpdatedAt">UTC timestamp when the order was last updated.</param>
 /// <param name="AllowedActions">List of lowercase action names the caller may perform on this order.</param>
+/// <param name="Version">Optimistic concurrency token. Send back on PATCH to detect stale edits.</param>
 public record OrderDetailDto(
     Guid Id,
     string PublicCode,
@@ -51,4 +55,5 @@ public record OrderDetailDto(
     Guid? VehicleId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<string> AllowedActions);
+    IReadOnlyList<string> AllowedActions,
+    int Version);

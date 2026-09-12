@@ -1,0 +1,35 @@
+{
+  "wi_id": "B3",
+  "title": "Board layout + New order form",
+  "files_changed": [
+    "web/src/app/router.tsx",
+    "web/src/shared/api/client.ts",
+    "web/src/shared/i18n/cs.json",
+    "web/src/shared/i18n/en.json",
+    "web/src/features/board/BoardPage.tsx",
+    "web/src/features/board/OrderForm.tsx",
+    "web/src/features/board/OrderForm.test.tsx",
+    "web/src/features/board/orderFormSchema.ts",
+    "web/src/features/board/orderFormSchema.test.ts",
+    "web/src/features/board/phoneNormalization.ts",
+    "web/src/features/board/quickChips.ts",
+    "web/src/features/board/useAddressSuggest.ts",
+    "web/src/features/board/useAddressSuggest.test.ts",
+    "web/src/features/board/useCreateOrder.ts",
+    "web/src/features/board/useCreateOrder.test.ts",
+    "web/src/features/board/useRouteEstimate.ts",
+    "web/src/features/board/useRouteEstimate.test.ts"
+  ],
+  "tests_added": [
+    "src/features/board/orderFormSchema.test.ts (19 tests: normalizePhone mirror, isValidPhone, QUICK_CHIPS shape, validateOrderForm)",
+    "src/features/board/useCreateOrder.test.ts (13 tests: submit payload shape — phone normalization, field mapping, priceType Estimate/Meter, scheduledAt ISO normalization)",
+    "src/features/board/useRouteEstimate.test.ts (5 tests: estimatedPriceCzk present, null tariff, 502 silent, no coords, debounce)",
+    "src/features/board/useAddressSuggest.test.ts (3 tests: min-3-chars no-call, rapid-typing debounce fires once, items populated after debounce)",
+    "src/features/board/OrderForm.test.tsx (8 tests: fields present, submit button, quick chip fill, F2 focus, Enter validation, clear+refocus, Enter single-submit once)"
+  ],
+  "tests_passing": 63,
+  "coverage_delta": "+45 tests (was 18, now 63 — includes B1+B2 tests)",
+  "hit_max_turns": false,
+  "notes": "B3 complete. Three-column board layout (360px left / flex middle / 320px right; min-width 1280px, no h-scroll). New order form with exact field order Phone→Name→Pickup→Dropoff→When→Passengers→Note, one tab-stop each (quick chips have tabIndex=-1). F2 window-level keydown focuses Phone from anywhere. Enter key (onKeyDown with e.preventDefault() to stop native double-submit) submits from any non-textarea field. Quick chips (4 hardcoded: Kolín station, KH station, hospital, bus station) fill pickup with coords directly — no geo call. AddressInput Enter-select has e.stopPropagation() so selecting an autocomplete suggestion does NOT trigger form submission. Debounced autocomplete via useAddressSuggest → GET /geo/suggest. Live price preview via useRouteEstimate → GET /geo/route (F-03: renders estimatedPriceCzk directly; absent on 502 or null tariff). Form clears and refocuses Phone on successful submit. useNewOrderHighlightStore (zustand) stores {orderId, createdAt} after submit for B4 to render 3s highlight. Phone normalization mirrors backend PhoneNormalizer exactly (bare 9-digit → +420 prefix, E.164 passthrough, spaces/dashes stripped). PriceType matches backend enum: 'Estimate' when estimatedPriceCzk present, 'Meter' when null (was incorrectly 'Metered' — fixed against PriceType.cs). scheduledAt sent as ISO-8601 UTC string via new Date(v).toISOString() to avoid browser TZ ambiguity. Map toggle placeholder button (disabled) added to middle column header using board.mapToggle i18n key. Locales parity green (cs/en have identical board.* key sets). Deviations: (D1) Enter submit uses onKeyDown + e.preventDefault() (not native form submit) to ensure the AddressInput's suggestion selection Enter (which calls e.stopPropagation) prevents form submission, while normal field Enter submits exactly once. (D2) useRouteEstimate uses plain useState/useEffect with debounce timer, not TanStack Query's useQuery — avoids queryKey change complexity with debounced coords.",
+  "verification_output": "npm run tsc: exit 0 (no errors). npm run lint: exit 0 (0 warnings). npm run test: 63 passed (9 test files). npm run build: exit 0 (dist/assets/index-C1PCHCXz.js 348.65 kB)."
+}

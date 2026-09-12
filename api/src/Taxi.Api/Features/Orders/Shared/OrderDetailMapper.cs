@@ -38,5 +38,6 @@ internal static class OrderDetailMapper
             order.VehicleId,
             order.CreatedAt,
             order.UpdatedAt,
-            allowedActions);
+            allowedActions,
+            order.Version);
 }

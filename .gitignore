@@ -45,3 +45,7 @@ appsettings.*.Local.json
 node_modules/
 dist/
 .vite/
+
+# Playwright
+test-results/
+playwright-report/

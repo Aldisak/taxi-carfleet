@@ -37,5 +37,8 @@ public enum OrderEventType
     PriceOverridden,
 
     /// <summary>A dispatcher note was added to the order.</summary>
-    NoteAdded
+    NoteAdded,
+
+    /// <summary>Order fields were partially updated by a dispatcher (PATCH /orders/{id}).</summary>
+    Updated
 }

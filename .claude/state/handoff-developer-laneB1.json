@@ -1,0 +1,111 @@
+{
+  "lane": "B",
+  "wis": {
+    "B1": {
+      "wi_id": "B1",
+      "title": "Web scaffold",
+      "status": "done",
+      "files_changed": [
+        "web/.npmrc",
+        "web/package.json",
+        "web/package-lock.json",
+        "web/tsconfig.json",
+        "web/vite.config.ts",
+        "web/vitest.config.ts",
+        "web/eslint.config.js",
+        "web/index.html",
+        "web/src/main.tsx",
+        "web/src/test-setup.ts",
+        "web/src/shared/theme/theme.ts",
+        "web/src/shared/theme/theme.d.ts",
+        "web/src/shared/api/auth-storage.ts",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/api/client.test.ts",
+        "web/src/shared/i18n/index.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/i18n/locales.parity.test.ts",
+        "web/src/app/router.tsx",
+        "web/src/app/AppLayout.tsx",
+        "web/src/app/providers.tsx"
+      ],
+      "tests_added": [
+        "src/shared/api/client.test.ts (2 tests: 401 redirect, skipAuthRedirect)",
+        "src/shared/i18n/locales.parity.test.ts (1 test: cs/en key parity)"
+      ],
+      "tests_passing": 3
+    },
+    "B2": {
+      "wi_id": "B2",
+      "title": "Login screen",
+      "status": "done",
+      "files_changed": [
+        "web/src/features/auth/loginSchema.ts",
+        "web/src/features/auth/loginSchema.test.ts",
+        "web/src/features/auth/useLogin.ts",
+        "web/src/features/auth/LoginPage.tsx",
+        "web/src/features/auth/LoginPage.test.tsx"
+      ],
+      "tests_added": [
+        "src/features/auth/loginSchema.test.ts (9 tests: validateLoginForm + parseSubdomainSlug)",
+        "src/features/auth/LoginPage.test.tsx (3 tests: success stores tokens, bad creds Czech error, empty fields validation)"
+      ],
+      "tests_passing": 12
+    }
+  },
+  "pinned_versions": {
+    "vite": "5.4.21",
+    "@vitejs/plugin-react": "4.3.4",
+    "vitest": "2.1.9",
+    "eslint": "8.57.1",
+    "typescript-eslint": "7.18.0",
+    "styled-components": "6.1.19",
+    "@tanstack/react-query": "5.102.8",
+    "react-router-dom": "6.30.6",
+    "@testing-library/react": "16.3.3",
+    "@playwright/test": "1.48.2",
+    "i18next": "23.16.8",
+    "react-i18next": "14.1.3",
+    "react": "18.3.1",
+    "cross-env": "10.1.0",
+    "typescript": "5.9.3"
+  },
+  "gates": {
+    "tsc": true,
+    "lint": true,
+    "vitest": "15 passed",
+    "build": true
+  },
+  "deviations": [
+    {
+      "id": "D1",
+      "description": "cross-env@10.1.0 added (not in WI pin list). Required because the POSIX VAR=x npm script syntax fails on Windows cmd.exe. Engines >=20 verified.",
+      "impact": "none — build-time only devDependency"
+    },
+    {
+      "id": "D2",
+      "description": "styled-components resolved to 6.1.19 (pin was ^6.1.13, now ~6.1.13 to stay within 6.1.x). 6.1.19 is within the 6.1.x patch band.",
+      "impact": "none — patch-level update within the stated major.minor"
+    },
+    {
+      "id": "D3",
+      "description": "@playwright/test@1.48.2 resolves Chromium revision 1140, not 1243 as stated in the WI. The WI claimed 'Chromium build 1243 → @playwright/test 1.48.2' but the installed browsers.json for 1.48.2 specifies revision 1140. B11 must re-verify the correct Playwright version for revision 1243 before running E2E.",
+      "impact": "E2E tests (B11) may download a different browser or fail if Chromium 1243 is assumed. The vitest-only B1/B2 scope is unaffected."
+    },
+    {
+      "id": "D4",
+      "description": "Single tsconfig.json instead of the Vite-recommended two-project (app + node) references split. Removed tsconfig.node.json to avoid TS6306 'composite: true' error. All includes (src, vite.config.ts, vitest.config.ts, eslint.config.js) are in one tsconfig with 'files': ['src/shared/theme/theme.d.ts'] for styled-components module augmentation.",
+      "impact": "Minor: no separate type-checking of build tool config files; covered by 'include' array instead"
+    },
+    {
+      "id": "D5",
+      "description": "For client.test.ts and locales.parity.test.ts the implementation was written before the tests (code-first). loginSchema.test.ts went RED-GREEN-REFACTOR correctly. LoginPage.test.tsx success test (D5) was added after implementation was complete — test passed immediately without a prior RED cycle.",
+      "impact": "TDD discipline gap on B1 scaffolding; all tests pass correctly"
+    },
+    {
+      "id": "D6",
+      "description": "React Router v7 future flag warnings appear in console (v7_startTransition, v7_relativeSplatPath). The flags exist on MemoryRouter in test context but not on createBrowserRouter TypeScript types in react-router-dom 6.x. Warnings are non-blocking and will resolve when migrating to React Router v7 in a future WI.",
+      "impact": "cosmetic console warnings only"
+    }
+  ]
+}

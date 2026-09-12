@@ -1,574 +1,758 @@
 {
-  "uc_id": "UC-001",
-  "spec_path": "docs/specs/in-progress/001_UC_001_backend-core.md",
-  "work_items_doc": "docs/specs/in-progress/backend-core-work-items.md",
+  "uc_id": "UC-002",
+  "spec_path": "docs/specs/in-progress/002_UC_002_dispatcher-web.md",
+  "work_items_doc": "docs/specs/in-progress/dispatcher-web-work-items.md",
   "work_items": [
     {
-      "id": "WI-01",
-      "title": "Solution scaffold, Program.cs wiring, docker-compose, health checks",
-      "goal": "Stand up an empty-but-running .NET 10 FastEndpoints API with all middleware wired, dockerized Postgres for dev, and passing health endpoints.",
+      "id": "A1",
+      "lane": "api",
+      "title": "Geo proxy: GET /geo/suggest (Photon) + GET /geo/route (OSRM)",
+      "goal": "Two DispatcherOnly server-side geo proxies — address autocomplete and route distance/duration — resilient to upstream failure. Registered via GeoFeatureConfiguration.AddFeatureDependencies (typed HttpClient), so no Program.cs edit.",
       "depends_on": [],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/Taxi.sln",
-        "api/src/Taxi.Api/Taxi.Api.csproj",
-        "api/src/Taxi.Api/Program.cs",
-        "api/src/Taxi.Api/appsettings.json",
-        "api/src/Taxi.Api/Features/Health/",
-        "api/tests/Taxi.Api.Tests/Taxi.Api.Tests.csproj",
-        "infra/docker-compose.dev.yml"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/csharp-style.md#language-version",
-        "rules/csharp-style.md#file-scoped-namespaces",
-        "rules/error-handling.md#global-exception-handler",
-        "rules/logging.md#output-template",
-        "CLAUDE.md#stack-decision"
-      ],
-      "required_reads": [
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        ".claude/state/01-data-model-and-backend-core.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": true,
-      "acceptance_criteria": [
-        "Program.cs wires Serilog (console JSON), EF Core + Npgsql from ConnectionStrings__Db, FastEndpoints + validators, Problem Details / global exception handler, SignalR, health checks, OpenAPI (Development only), CORS, and FULL JWT bearer validation (signing key from Jwt__Key, issuer and audience from Jwt__Issuer/Jwt__Audience config) so forged tokens validate in WI-04 tenancy tests; only token issuance is deferred to WI-05.",
-        "appsettings.json binds every secret via env var: ConnectionStrings__Db, Jwt__Key, Sms__ApiKey, Push__VapidPublic, Push__VapidPrivate; Jwt__Issuer and Jwt__Audience are non-secret config values, not env-only secrets.",
-        "infra/docker-compose.dev.yml starts api + db (Postgres 16); a health feature slice with its FeatureConfiguration renders in Swagger.",
-        "dotnet build -warnaserror succeeds with zero warnings."
-      ],
-      "verification": { "tool": "dotnet-build" }
-    },
-    {
-      "id": "WI-02",
-      "title": "Test infrastructure: Testcontainers Postgres fixture + WebApplicationFactory",
-      "goal": "Provide the shared integration-test harness (real Postgres via Testcontainers + WebApplicationFactory) that every later WI's red-green depends on.",
-      "depends_on": ["WI-01"],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/tests/Taxi.Api.Tests/Infrastructure/PostgresFixture.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/AuthHelpers.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/HealthCheckTests.cs"
-      ],
-      "rule_citations": [
-        "rules/csharp-style.md#timeprovider",
-        "rules/naming.md#test-naming",
-        "CLAUDE.md#stack-decision"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": true,
-      "acceptance_criteria": [
-        "xUnit collection fixture starts a PostgreSqlContainer (Postgres 16) shared across the test suite.",
-        "WebApplicationFactory<Program> overrides the connection string to the container; FakeTimeProvider registration hook available per-test.",
-        "Stub auth helpers AsDispatcher/AsDriver/AsCustomer exist (real minting deferred to WI-05) so later WIs compile.",
-        "HealthCheck_ReadyEndpoint_Returns200 goes red without the harness, then green."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Infrastructure" }
-    },
-    {
-      "id": "WI-03",
-      "title": "Entities, DbContext, data conventions, initial migration + indexes",
-      "goal": "Model all 15 v1 entities (Customer = User with Role=Customer, not a 16th entity) with UUIDv7 PKs and snake_case/timestamptz/enum-as-string conventions, register DbSets, and produce the single initial migration with all required indexes.",
-      "depends_on": ["WI-01", "WI-02"],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/",
-        "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/tests/Taxi.Api.Tests/Schema/SchemaTests.cs"
-      ],
-      "rule_citations": [
-        "rules/ef-core.md#entity-naming",
-        "rules/ef-core.md#primary-keys",
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#enums-as-strings",
-        "rules/ef-core.md#date-types",
-        "rules/ef-core.md#migrations",
-        "rules/csharp-style.md#guid-primary-keys",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#migrations"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "All 15 entities (Customer = User with Role=Customer, not a 16th entity) exist one-per-file with snake_case tables/columns, UUIDv7 PKs, timestamptz timestamps, integer _czk money; no fields beyond the exhaustive assignment list.",
-        "TaxiDbContext registers a DbSet per entity; ConfigureConventions maps all enums to strings; Order.Version is a concurrency token.",
-        "Indexes created: orders(fleet_id,status), orders(fleet_id,scheduled_at), orders(fleet_id,created_at desc), orders(fleet_id,public_code) unique, order_events(order_id,at), drivers(fleet_id,status), users(phone) unique WHERE role='Customer', users(fleet_id,email) unique WHERE email IS NOT NULL, fleets(slug) unique, refresh_tokens(token_hash) lookup, sms_codes(phone) lookup, all FK columns.",
-        "Initial migration InitialSchema generated; reviewed for destructive ops.",
-        "Schema_CustomerPhone_UniqueOnlyForCustomers, Schema_OrderPublicCode_UniquePerFleet, Schema_StaffEmail_UniquePerFleet, and Schema_FleetSlug_Unique pass against Testcontainers Postgres."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Schema" }
-    },
-    {
-      "id": "WI-04",
-      "title": "Multi-tenancy: ICurrentTenant, middleware, query filters, SaveChanges guard",
-      "goal": "Enforce tenant isolation at the data layer: resolve the current fleet per request, apply global query filters, and guard writes with a SaveChanges override.",
-      "depends_on": ["WI-03"],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Common/Tenancy/ICurrentTenant.cs",
-        "api/src/Taxi.Api/Common/Tenancy/CurrentTenant.cs",
-        "api/src/Taxi.Api/Common/Tenancy/TenantClaims.cs",
-        "api/src/Taxi.Api/Common/Tenancy/TenantResolutionMiddleware.cs",
-        "api/src/Taxi.Api/Common/Tenancy/ITenantEntity.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Tenancy/TenancyTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/csharp-style.md#sealed-internal",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        ".claude/state/01-data-model-and-backend-core.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "ICurrentTenant scoped service resolves FleetId via JWT claim fleet_id, then X-Fleet-Slug header, then subdomain; TenantClaims defines the shared fleet_id claim-name constant.",
-        "Global query filters applied to the enumerated tenant entities; User and PushSubscription filter only rows with non-null FleetId (customer/superadmin rows tenant-agnostic); RefreshToken and SmsCode are not tenant entities.",
-        "SaveChanges override sets FleetId when null on added tenant entities and throws when an entity's FleetId mismatches the current tenant.",
-        "Tenancy_QueryFilter_FleetASeesOnlyFleetARows is a [Theory] iterating EVERY filtered tenant entity (Driver, Vehicle, DriverShift, Order, OrderEvent, Route, Zone, Tariff, FleetSettings, PushSubscription, User, AuditLog) so isolation is proven for tables that ship no endpoint this UC (Route, Zone, Tariff, FleetSettings, DriverShift, AuditLog), satisfying the per-tenant-table DoD; Tenancy_SaveChanges_ThrowsOnFleetIdMismatch, Tenancy_NullableFleetIdEntity_CustomerRowsVisibleAcrossTenants, and Tenancy_Resolution_PrefersJwtClaimThenHeaderThenSubdomain pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Tenancy" }
-    },
-    {
-      "id": "WI-05",
-      "title": "Staff auth: JWT issuance, policies, staff login, refresh rotation, logout",
-      "goal": "Issue and validate JWTs for staff roles, define authorization policies, and implement staff login plus refresh-token rotation and logout.",
-      "depends_on": ["WI-04"],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
-        "api/src/Taxi.Api/Common/Auth/JwtIssuer.cs",
-        "api/src/Taxi.Api/Features/Auth/StaffLogin/",
-        "api/src/Taxi.Api/Features/Auth/Refresh/",
-        "api/src/Taxi.Api/Features/Auth/Logout/",
-        "api/src/Taxi.Api/Features/Auth/AuthFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/AuthHelpers.cs",
-        "api/tests/Taxi.Api.Tests/Auth/Staff/StaffAuthTests.cs"
+        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/",
+        "api/src/Taxi.Api/Features/Geo/Route/",
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs"
       ],
       "rule_citations": [
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
         "rules/api-design.md#authorization",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#error-codes",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#common-infrastructure",
         "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/validation.md#validator-class",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/logging.md#style-message-templates",
         "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#primary-constructors",
         "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#stack-decision"
+        "rules/naming.md#error-codes",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "AuthorizationPolicies defines CustomerOnly, DriverOnly, DispatcherOnly (incl. FleetAdmin), FleetAdminOnly, SuperAdminOnly, registered in Program.cs.",
-        "JWT issuance mints access (15 min) + refresh (30 days) with claims sub, role, fleet_id (via TenantClaims), fleet_slug, name.",
-        "POST /api/v1/auth/staff/login verifies BCrypt password, returns { accessToken, refreshToken, user }, sets LastLoginAt; POST /auth/refresh rotates and revokes the old token; reuse of a revoked token returns 401; POST /auth/logout revokes.",
-        "WI-02 stub auth helpers replaced with real token minting.",
-        "StaffLogin_ValidCredentials_ReturnsTokens, StaffLogin_WrongPassword_Returns401, Refresh_ReusedRevokedToken_Returns401, and Logout_RevokesRefreshToken pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Auth.Staff" }
-    },
-    {
-      "id": "WI-06",
-      "title": "Customer SMS-code auth + ISmsSender",
-      "goal": "Phone + SMS-code login for customers with rate limiting, provisioning a customer User on first successful verify.",
-      "depends_on": ["WI-04", "WI-05"],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Sms/ISmsSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Sms/ConsoleSmsSender.cs",
-        "api/src/Taxi.Api/Features/Auth/RequestCode/",
-        "api/src/Taxi.Api/Features/Auth/VerifyCode/",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Auth/Customer/CustomerAuthTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#authorization",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#error-codes"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "POST /api/v1/auth/customer/request-code normalizes phone to E.164, persists a hashed SmsCode, and rate-limits to 3 per phone / 10 min and 1 per phone / 60 s; exceeding either limit returns 429 via Send.ErrorsAsync(429, ct).",
-        "POST /api/v1/auth/customer/verify-code verifies hash + expiry + attempts, creates User(Role=Customer) if new, returns { accessToken, refreshToken, user }; 5 wrong attempts invalidate the code.",
-        "ConsoleSmsSender logs a masked marker, never the raw code, per logging secret rules.",
-        "RequestCode_FourthWithin10Min_Returns429, RequestCode_SecondWithin60s_Returns429, VerifyCode_CorrectCode_CreatesCustomerAndReturnsTokens, and VerifyCode_FiveWrongAttempts_InvalidatesCode pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Auth.Customer" }
-    },
-    {
-      "id": "WI-07",
-      "title": "OrderStateMachine + OrderService + IRealtimePublisher abstraction",
-      "goal": "Implement the single order state machine and the transactional service that applies transitions, writes one OrderEvent, updates Driver.Status, and publishes after commit via an IRealtimePublisher abstraction.",
-      "depends_on": ["WI-04"],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Common/Orders/OrderStateMachine.cs",
-        "api/src/Taxi.Api/Common/Orders/OrderTransition.cs",
-        "api/src/Taxi.Api/Common/Orders/Actor.cs",
-        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
-        "api/src/Taxi.Api/Realtime/IRealtimePublisher.cs",
-        "api/tests/Taxi.Api.Tests/Orders/StateMachine/OrderStateMachineTests.cs",
-        "api/tests/Taxi.Api.Tests/Orders/StateMachine/OrderServiceTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#banned-patterns",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/csharp-style.md#pattern-matching",
-        "rules/csharp-style.md#timeprovider",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md",
+        "docs/specs/in-progress/002_UC_002_dispatcher-web.md",
+        ".claude/state/02-dispatcher-web.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
-        ".claude/state/01-data-model-and-backend-core.md",
         "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "OrderStateMachine.Apply returns a result carrying an error KIND on failure (NotEntitled = wrong/non-assigned actor or role not permitted; IllegalTransition = legal actor but illegal from-status or business-rule violation) with NO exceptions for illegal transitions; enforces assigned-driver check, reassign releases old driver, complete requires paymentType and overrideReason (>=5 chars) when FinalPriceCzk != FixedPriceCzk, driver no-show cancel only from Arrived and >=5 min after ArrivedAt. Apply does NOT detect concurrency; StaleVersion is added by OrderService, not the state machine.",
-        "AllowedFor(status, role, isAssignedDriver) exposes the allowed action set for DTO allowedActions.",
-        "OrderService loads with Version, applies, updates Driver.Status, saves order + event in one transaction, publishes OrderChanged only AFTER commit; on a DbUpdateConcurrencyException it returns a StaleVersion failure kind; order.Status is never set outside the state machine.",
-        "IRealtimePublisher abstraction defined (OrderChanged/DriverStatusChanged/DriverPositionChanged/NewOrderOffered) with a recording fake in tests.",
-        "One passing test per allowed transition and >=10 disallowed; OrderService_FailingSave_NoPublish and Apply_CompleteFixedPriceDifferentPriceNoReason_Fails pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.StateMachine" }
-    },
-    {
-      "id": "WI-08",
-      "title": "Order write endpoints: create, list, detail",
-      "goal": "Create an order (Dispatcher/Customer), list with filters (Dispatcher), and fetch detail with role-scoped, no-existence-leak access.",
-      "depends_on": ["WI-05", "WI-07"],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Orders/CreateOrder/",
-        "api/src/Taxi.Api/Features/Orders/ListOrders/",
-        "api/src/Taxi.Api/Features/Orders/GetOrder/",
-        "api/src/Taxi.Api/Features/Orders/OrdersFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Orders/Shared/",
-        "api/tests/Taxi.Api.Tests/Orders/Write/OrderWriteTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#n-plus-one",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "POST /api/v1/orders validates addresses have coordinates, phone E.164, scheduledAt future if present; generates a per-fleet-unique 6-char PublicCode; writes a Created OrderEvent (event type, not a transition - the order is created directly in New); allowed for Dispatcher or Customer.",
-        "GET /api/v1/orders (Dispatcher) filters status[], driverId, from, to, search and returns { items, total, page, pageSize } using AsNoTracking projections.",
-        "GET /api/v1/orders/{id} returns detail with allowedActions; Dispatcher always, Driver if assigned, Customer if owner.",
-        "CreateOrder_ValidCustomerRequest_Returns201 resolves the tenant via the X-Fleet-Slug header (a customer JWT carries no fleet_id claim, so this uniquely exercises header-based tenant resolution); GetOrder_DispatcherOfFleetB_Returns404 (tenant isolation, 404 not 403), GetOrder_DriverNotAssigned_Returns404, and CreateOrderValidator_ScheduledInPast_FailsWithCode pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Write" }
-    },
-    {
-      "id": "WI-09",
-      "title": "Order transition endpoints + concurrency",
-      "goal": "Expose every state-machine transition as a POST action endpoint, mapping OrderService failure kinds to HTTP status (NotEntitled -> no-leak 404, IllegalTransition -> 409, StaleVersion -> 409) and enforcing optimistic concurrency so two dispatchers assigning the same order yield one 409.",
-      "depends_on": ["WI-08"],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Orders/AssignOrder/",
-        "api/src/Taxi.Api/Features/Orders/ReassignOrder/",
-        "api/src/Taxi.Api/Features/Orders/AcceptOrder/",
-        "api/src/Taxi.Api/Features/Orders/DeclineOrder/",
-        "api/src/Taxi.Api/Features/Orders/ArriveOrder/",
-        "api/src/Taxi.Api/Features/Orders/StartOrder/",
-        "api/src/Taxi.Api/Features/Orders/CompleteOrder/",
-        "api/src/Taxi.Api/Features/Orders/CancelOrder/",
-        "api/tests/Taxi.Api.Tests/Orders/Transitions/OrderTransitionTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
-        "rules/validation.md#validator-class",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/csharp-style.md#guard-clauses",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md",
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "POST /api/v1/orders/{id}/assign|reassign|accept|decline|arrive|start|complete|cancel each call OrderService; the failure kind maps to a single pinned status across all 8 transition endpoints: NotEntitled -> Send.NotFoundAsync(ct) (no-leak 404, consistent with WI-08), IllegalTransition -> AddError(...) + Send.ErrorsAsync(409, ct), StaleVersion -> AddError(...) + Send.ErrorsAsync(409, ct).",
-        "Role/actor gating matches the transition table; a non-assigned driver or wrong-role actor gets a no-leak 404 (NOT 403), never a 404-or-403 ambiguity.",
-        "Complete without paymentType returns 400 (validator); fixed-price override without reason is an IllegalTransition -> 409.",
-        "Happy-path per action: Assign_ByDispatcher_Returns200AndWritesAssignedEvent, Accept_ByAssignedDriver_Returns200, Decline_ByAssignedDriver_Returns200, Arrive_ByAssignedDriver_Returns200, Start_ByAssignedDriver_Returns200, Complete_ByAssignedDriver_Returns200, Reassign_ByDispatcher_Returns200, Cancel_ByDispatcher_Returns200.",
-        "Accept_ByOtherDriver_Returns404 (NotEntitled no-leak, single pinned status), Assign_TwoDispatchersSameOrder_OneGets409 (StaleVersion concurrency via Version), Transition_IllegalFromStatus_Returns409 (IllegalTransition), and Cancel_CrossTenantOrder_Returns404 pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Transitions" }
-    },
-    {
-      "id": "WI-10",
-      "title": "Order by-code tracking, notes, events",
-      "goal": "Public-ish tracking by code (reduced DTO), dispatcher notes, and the chronological events feed.",
-      "depends_on": ["WI-08"],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Orders/GetOrderByCode/",
-        "api/src/Taxi.Api/Features/Orders/AddNote/",
-        "api/src/Taxi.Api/Features/Orders/GetOrderEvents/",
-        "api/tests/Taxi.Api.Tests/Orders/Tracking/OrderTrackingTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET /api/v1/orders/by-code/{publicCode} returns a reduced DTO (status, driver first name, vehicle plate/color, ETA, position), authorized by a customer JWT owning the order (signed-token path deferred to assignment 05).",
-        "POST /api/v1/orders/{id}/notes writes a NoteAdded OrderEvent (event type, not a transition - no status change) (Dispatcher).",
-        "GET /api/v1/orders/{id}/events returns events chronologically (Dispatcher, AsNoTracking).",
-        "GetByCode_NonOwner_Returns404, GetByCode_CrossTenantCode_Returns404 (tenant isolation), and AddNoteValidator_EmptyText_FailsWithCode pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Tracking" }
-    },
-    {
-      "id": "WI-11",
-      "title": "Driver + vehicle endpoints + shifts",
-      "goal": "Driver list plus go-online/offline (opening/closing DriverShift), driver self-view, and vehicle CRUD.",
-      "depends_on": ["WI-05"],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Drivers/ListDrivers/",
-        "api/src/Taxi.Api/Features/Drivers/GoOnline/",
-        "api/src/Taxi.Api/Features/Drivers/GoOffline/",
-        "api/src/Taxi.Api/Features/Drivers/GetMe/",
-        "api/src/Taxi.Api/Features/Drivers/DriversFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Vehicles/",
-        "api/tests/Taxi.Api.Tests/Drivers/DriverVehicleTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET /api/v1/drivers (Dispatcher); POST /drivers/me/online { vehicleId } sets Status=Free + CurrentVehicleId and opens a DriverShift; POST /drivers/me/offline sets Status=Offline and closes the open DriverShift; GET /drivers/me returns self.",
-        "Vehicles CRUD (list/get/post/put/delete) is FleetAdmin-only with create/update validators.",
-        "Going online with a cross-tenant/non-existent vehicle returns a no-leak 404.",
-        "Happy-path per action: GoOnline_ValidVehicle_OpensShiftAndSetsFree, GoOffline_ClosesOpenShift, GetMe_Driver_Returns200, ListVehicles_FleetAdmin_Returns200, GetVehicle_FleetAdmin_Returns200, CreateVehicle_FleetAdmin_Returns201, UpdateVehicle_FleetAdmin_Returns200, DeleteVehicle_FleetAdmin_Returns204.",
-        "ListDrivers_DispatcherOfFleetB_CannotSeeFleetADrivers (tenant isolation) and GetVehicle_CrossTenant_Returns404 (tenant isolation) pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Drivers" }
-    },
-    {
-      "id": "WI-12",
-      "title": "Staff CRUD endpoints",
-      "goal": "FleetAdmin manages Driver/Dispatcher users; invite creates a user with a temporary password returned once.",
-      "depends_on": ["WI-05"],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Staff/",
-        "api/tests/Taxi.Api.Tests/Staff/StaffCrudTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#send-pattern",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET /api/v1/staff lists Driver/Dispatcher users of the fleet; GET /{id}, POST (invite), PUT /{id}, DELETE /{id} (deactivate) are FleetAdmin-only.",
-        "Invite creates the user with a generated temporary password whose plaintext is returned exactly once; a Driver-role user also creates the linked Driver row.",
-        "Duplicate email within a fleet returns 409; non-FleetAdmin caller returns 403.",
-        "Happy-path per action: CreateStaff_ReturnsTempPasswordOnce, ListStaff_FleetAdmin_Returns200, GetStaff_FleetAdmin_Returns200, UpdateStaff_FleetAdmin_Returns200, DeleteStaff_FleetAdmin_Returns204.",
-        "ListStaff_FleetAdminOfFleetB_CannotSeeFleetAStaff (tenant isolation), GetStaff_CrossTenant_Returns404 (tenant isolation), and CreateStaff_DuplicateEmailInFleet_Returns409 pass."
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Staff" }
-    },
-    {
-      "id": "WI-13",
-      "title": "SignalR hub + throttled position updates",
-      "goal": "Concrete /hubs/fleet implementation with groups, JWT-via-query-string, throttled UpdatePosition, and the real IRealtimePublisher backed by the hub.",
-      "depends_on": ["WI-07", "WI-11"],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Realtime/FleetHub.cs",
-        "api/src/Taxi.Api/Realtime/SignalRRealtimePublisher.cs",
-        "api/src/Taxi.Api/Realtime/DriverPositionStore.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Realtime/FleetHubTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/api-design.md#authorization",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/logging.md#style-message-templates",
-        "rules/csharp-style.md#timeprovider",
-        "CLAUDE.md#stack-decision"
-      ],
-      "required_reads": [
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        ".claude/state/01-data-model-and-backend-core.md"
       ],
       "needs_library_research": true,
       "acceptance_criteria": [
-        "FleetHub at /hubs/fleet authenticates via access_token query string; on connect dispatchers join fleet:{fleetId}:dispatch and drivers join driver:{driverId}; Subscribe(orderId) joins order:{id} only when the caller owns it.",
-        "UpdatePosition (drivers only) is throttled server-side to <= 1 per 3 s per driver, updates a ConcurrentDictionary store + Driver.LastLat/Lng/PositionAt, flushes to DB every 30 s per driver, and broadcasts DriverPositionChanged immediately.",
-        "Concrete SignalR-backed IRealtimePublisher replaces the WI-07 fake in the composition root.",
-        "Hub groups are fleet-scoped so positions never cross tenants: UpdatePosition_DriverOfFleetA_NotReceivedByFleetBDispatcher (tenant isolation) passes.",
-        "UpdatePosition_At10Hz_ThrottledToOnePer3s_ReachesDispatcherClient (AC #4, via a test SignalR client) and UpdatePosition_NonDriver_Rejected pass."
+        "GET /api/v1/geo/suggest?q= is DispatcherOnly, returns 200 with a list of { label, lat, lng } from Photon (base URL from config Geo:SuggestBaseUrl); q shorter than 3 chars fails validation with Geo.SuggestQueryTooShort (400).",
+        "On ANY upstream failure/timeout (4s, no retries), suggest returns 200 with an EMPTY list and logs Warning with Reason=GeoUpstreamUnavailable — it never returns 5xx so the order form is never blocked (context 11).",
+        "GET /api/v1/geo/route?fromLat&fromLng&toLat&toLng is DispatcherOnly, returns 200 { distanceMeters, durationSeconds, estimatedPriceCzk } (F-03: server-priced estimate — the endpoint injects TaxiDbContext, loads the caller's fleet default enabled Tariff via AsNoTracking projection resolved by the tenant query filter, and computes estimatedPriceCzk = max(MinimumFareCzk, BaseFareCzk + PerKmCzk * distanceKm) rounded to integer CZK; distanceMeters/durationSeconds come from OSRM public, base URL from config Geo:RouteBaseUrl). estimatedPriceCzk is null when no enabled default tariff exists — keeps tariff math server-side and Dispatcher-accessible without exposing the FleetAdminOnly tariff endpoint.",
+        "On route upstream failure/timeout returns 502 with AddError(Geo.RouteUnavailable); the client renders no price (order creation still proceeds).",
+        "The typed IGeoProvider/PhotonOsrmGeoProvider HttpClient is registered inside GeoFeatureConfiguration.AddFeatureDependencies (verified auto-invoked by AddFeatureConfigurations) so Program.cs is NOT edited; tests inject a fake IGeoProvider so no network call occurs.",
+        "Suggest touches zero tenant data (no isolation test); route now reads the Tariff table (tenant-filtered) so it DOES carry a tenant-isolation test (Route_UsesCallersFleetDefaultTariff) — documented in work-items Assumption 4 (amended for F-03).",
+        "Suggest_ValidQuery_ReturnsLabelledCoords, Suggest_UpstreamThrows_Returns200EmptyList, Suggest_NonDispatcher_Returns403, SuggestValidator_QueryTooShort_FailsWithCode, Route_ValidCoords_ReturnsDistanceDurationAndServerPrice, Route_NoDefaultTariff_ReturnsNullPrice, Route_UsesCallersFleetDefaultTariff (tenant isolation), and Route_UpstreamThrows_Returns502WithCode pass."
       ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Realtime" }
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Geo"
+      }
     },
     {
-      "id": "WI-14",
-      "title": "Background jobs: offer-timeout + stale-position (restart-safe)",
-      "goal": "Two IHostedService jobs whose scheduling survives restarts because all state lives in the DB.",
-      "depends_on": ["WI-07", "WI-11"],
+      "id": "A2",
+      "lane": "api",
+      "title": "PATCH /orders/{id} partial edit (New/Assigned only, Updated event, optimistic-concurrency aware) + expose Order.Version in detail/realtime DTOs",
+      "goal": "Dispatcher-only partial edit of an order (address/coords/time/note/passengers), allowed only in New/Assigned, writing one Updated OrderEvent, client-version-aware for optimistic concurrency, publishing OrderChanged after commit. Also exposes Order.Version in the detail + realtime payloads (F-01) so the client can load a version to send back on PATCH and reconcile realtime.",
+      "depends_on": [
+        "A1"
+      ],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Jobs/OfferTimeoutJob.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/StalePositionJob.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Jobs/BackgroundJobTests.cs"
+        "api/src/Taxi.Api/Infrastructure/Entities/OrderEventType.cs",
+        "api/src/Taxi.Api/Features/Orders/UpdateOrder/",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailMapper.cs",
+        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
+        "api/src/Taxi.Api/Realtime/OrderChangedDto.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Orders/Update/OrderUpdateTests.cs"
       ],
       "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#routes",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
         "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#n-plus-one",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/logging.md#levels",
-        "rules/csharp-style.md#timeprovider",
-        "CLAUDE.md#cross-cutting-invariants"
+        "rules/ef-core.md#enums-as-strings",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "rules/naming.md#error-codes",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md",
-        ".claude/state/01-data-model-and-backend-core.md"
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "OfferTimeoutJob runs every 5 s, finds Assigned orders older than FleetSettings.OfferTimeoutSeconds without acceptance, and applies Timeout (back to New) via OrderService, notifying the dispatch group; overlapping runs time out exactly once.",
-        "StalePositionJob runs every 60 s, marks drivers with LastPositionAt older than 5 min and Status != Offline as Offline, closes the open DriverShift, and notifies.",
-        "Both jobs use a scoped TaxiDbContext per tick, TimeProvider, and IgnoreQueryFilters() for the cross-tenant system scan; per-tick exceptions are logged and swallowed so the loop survives.",
-        "OfferTimeoutJob_SurvivesRestart_StillTimesOutFromDbState (AC #5) and OfferTimeoutJob_RunsTwiceConcurrently_TimesOutExactlyOnce pass."
+        "F-01: Order.Version is projected into the frontend-visible detail + realtime payloads. Add Version (int) to OrderDetailDto (as the last positional param, XML-documented) and populate it in BOTH construction sites — OrderDetailMapper.ToDto (feeds the 8 transition endpoints) and the inline new OrderDetailDto(...) in GetOrderEndpoint. Add Version to OrderChangedDto and its From(order) projection. OrderSummaryDto stays lean (list rows do not carry version). So GET /orders/{id} returns version and the OrderChanged realtime payload carries version — this is what A2's client-version PATCH and B8's 'send the loaded version' depend on.",
+        "OrderEventType gains an Updated member (string-stored enum — no migration, mirrors the UserRole.System precedent in CLAUDE.md project facts).",
+        "PATCH /api/v1/orders/{id} is DispatcherOnly, edits pickup/dropoff (address+coords), scheduledAt, note, passengers when the order status is New or Assigned; writes exactly one Updated OrderEvent; publishes OrderChanged only after commit.",
+        "The request carries the client-loaded version; when req.Version != order.Version the endpoint returns 409 with AddError(Order.StaleVersion) BEFORE writing (client-version-aware, per Assumption 6); on a successful edit the endpoint increments order.Version before SaveChangesAsync (EF does NOT auto-increment the concurrency token — CLAUDE.md project fact) so a subsequent stale drawer is detected; a concurrent EF concurrency-token conflict on save is the 409 backstop.",
+        "Editing an order whose status is not New/Assigned returns 409 with AddError(Order.NotEditable); a not-found or cross-tenant order returns a no-leak 404; validation (e.g. dropoff address without coords) returns 400.",
+        "GetOrder_ReturnsCurrentVersion (F-01 — asserts OrderDetailDto.Version equals order.Version), Update_NewOrder_ChangesFieldsAndWritesUpdatedEvent, Update_StaleClientVersion_Returns409, Update_InProgressOrder_Returns409NotEditable, Update_CrossTenantOrder_Returns404, Update_NonDispatcher_Returns403, and UpdateOrderValidator_DropoffAddressWithoutCoords_FailsWithCode pass."
       ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Jobs" }
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Update"
+      }
     },
     {
-      "id": "WI-15",
-      "title": "Seed data, end-to-end flow, generated docs",
-      "goal": "Development seed data, the full dispatcher-to-driver end-to-end acceptance test, and generated API docs.",
-      "depends_on": ["WI-09", "WI-10", "WI-11", "WI-12", "WI-13", "WI-14"],
-      "estimated_complexity": "M",
+      "id": "A3",
+      "lane": "api",
+      "title": "Driver status override + first AuditLog write + expose lastLat/lastLng in GET /drivers",
+      "goal": "POST /drivers/{id}/status — DispatcherOnly manual override (Free/Busy/Offline) for phone-only drivers; writes the first AuditLog row, publishes DriverStatusChanged, and never touches any Order. Forced Offline mirrors the sanctioned StalePositionJob path. Also extends DriverSummaryDto + the GET /drivers projection with lastLat/lastLng (F-02) so the board has a REST source for distance-sort (B4) and initial map markers (B7).",
+      "depends_on": [
+        "A2"
+      ],
+      "estimated_complexity": "S",
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "docs/api.md",
-        "docs/decisions.md",
-        "DEMO.md",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
+        "api/src/Taxi.Api/Features/Drivers/OverrideStatus/",
+        "api/src/Taxi.Api/Features/Drivers/ListDrivers/DriverSummaryDto.cs",
+        "api/src/Taxi.Api/Features/Drivers/ListDrivers/ListDriversEndpoint.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Drivers/OverrideStatusTests.cs"
       ],
       "rule_citations": [
-        "rules/architecture.md#no-horizontal-layers",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#routes",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/validation.md#validator-class",
         "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#timeprovider",
+        "rules/naming.md#error-codes",
         "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#commands"
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/01-data-model-and-backend-core.md",
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "F-02: DriverSummaryDto gains lastLat (double?) and lastLng (double?) — additive, XML-documented — and the GET /drivers projection in ListDriversEndpoint populates them from Driver.LastLat/LastLng (both already exist on the Driver entity). lastPositionAt is ALREADY present on the DTO (verified) and is unchanged. This gives B4 distance-sort and B7 initial markers a REST source; markers with a null lastLat/lastLng render at no position until the first DriverPositionChanged event.",
+        "POST /api/v1/drivers/{id}/status is DispatcherOnly and accepts a target DriverStatus of Free, Busy, or Offline (EnRoute rejected with 400 Driver.InvalidOverrideStatus); the driver is resolved via the tenant query filter so a cross-tenant/absent driver returns a no-leak 404.",
+        "The override writes exactly one AuditLog row { Entity=Driver, Action=StatusOverride, EntityId=driverId, ActorUserId=caller, Diff=jsonb {old,new}, At=now, FleetId } — this is the first AuditLog write in the system and SUPERSEDES decisions.md assumption 9 (must be re-documented in decisions.md).",
+        "Forcing Offline mirrors StalePositionJob/GoOfflineEndpoint: Status=Offline, CurrentVehicleId=null, close the open DriverShift (EndedAt=now); the endpoint NEVER loads or mutates any Order (truthful-fallback, principle 7).",
+        "After a successful override the endpoint publishes DriverStatusChangedAsync(driverId, fleetId, newStatus, ct); it never publishes OrderChanged.",
+        "ListDrivers_ProjectsLastLatLng (F-02 — asserts a driver with a known LastLat/LastLng surfaces them in DriverSummaryDto), Override_ToBusy_SetsStatusAndWritesAuditLog (AC #5), Override_BusyDriverToOffline_ClosesShiftAndLeavesActiveOrderUntouched, Override_PublishesDriverStatusChanged, Override_CrossTenantDriver_Returns404 (tenant isolation), and Override_InvalidStatus_Returns400 pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Drivers"
+      }
+    },
+    {
+      "id": "A4",
+      "lane": "api",
+      "title": "POST /staff/{id}/reset-password (FleetAdmin, one-time plaintext)",
+      "goal": "FleetAdminOnly password reset returning a new temporary plaintext password exactly once, mirroring the CreateStaffEndpoint invite pattern; the plaintext is never logged.",
+      "depends_on": [],
+      "estimated_complexity": "S",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Staff/ResetPassword/",
+        "api/tests/Taxi.Api.Tests/Staff/ResetPasswordTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "DevelopmentSeeder (Development only, idempotent) creates fleet demo with 1 FleetAdmin (admin@demo.local / Demo1234!), 1 Dispatcher (dispatcher@demo.local / Demo1234!, credentials pinned for the E2E login), 3 Drivers, 3 Vehicles, 1 default Tariff (40/28/5/100), 2 Zones (KH + Kolin circles r=4 km), 3 Routes (100/110/300), and 5 sample Orders driven to their states through OrderService (never setting Status directly).",
-        "docs/api.md is generated from OpenAPI and docs/decisions.md records the implementation assumptions (1-11).",
-        "DEMO.md documents docker compose up as a manual smoke check (AC #1 compose-up path) alongside curl examples for the seeded login and the end-to-end flow.",
-        "OpenApi_Document_ListsAllExpectedEndpoints asserts the generated OpenAPI document exposes every expected route by matching an explicit expected-route list (verb + path), not a hardcoded integer count, so a dropped FeatureConfiguration is caught (AC #1 Swagger-lists-all-endpoints).",
-        "EndToEnd_DispatcherCreatesAssign_DriverAcceptArriveStartComplete_EventsRecorded (AC #2) begins with a real POST /api/v1/auth/staff/login using the seeded dispatcher credentials (not a factory-minted AuthHelpers token) and asserts one event per transition in order.",
-        "Seed_Development_CreatesDemoFleetGraph passes and is idempotent on a second run."
+        "POST /api/v1/staff/{id}/reset-password is FleetAdminOnly; the target staff user is resolved via the tenant query filter so a cross-tenant/absent user returns a no-leak 404.",
+        "A new temporary password is generated with the same charset/length as CreateStaffEndpoint (RandomNumberGenerator.GetString, 16 chars, unambiguous charset), BCrypt-hashed (workFactor 11), stored on user.PasswordHash, and the plaintext is returned exactly once in the response.",
+        "The plaintext password never appears in logs (at most a masked marker per rules/logging.md#what-must-not-appear-in-logs).",
+        "ResetPassword_ReturnsNewTempPasswordOnce_AndUpdatesHash (asserts the new hash verifies against the returned plaintext and the plaintext is absent from captured logs), ResetPassword_CrossTenantUser_Returns404 (tenant isolation), and ResetPassword_NonFleetAdmin_Returns403 pass."
       ],
-      "verification": { "tool": "dotnet-test", "filter": "FullyQualifiedName~Taxi.Api.Tests.Seed" }
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Staff.ResetPassword"
+      }
+    },
+    {
+      "id": "A5",
+      "lane": "api",
+      "title": "GET /fleet/settings (FleetAdmin, read-only combined DTO)",
+      "goal": "FleetAdminOnly read-only endpoint returning a combined Fleet + FleetSettings DTO so the Settings Fleet tab renders. No write endpoint (auto-dispatch / offer-timeout editing is v1.1). Last Lane A endpoint — regenerate docs/api.md after it lands.",
+      "depends_on": [],
+      "estimated_complexity": "S",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Fleet/FleetFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/",
+        "api/tests/Taxi.Api.Tests/Fleet/FleetSettingsTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET /api/v1/fleet/settings is FleetAdminOnly and returns an AsNoTracking projection combining the current tenant's Fleet (name, phone) and FleetSettings (OfferTimeoutSeconds, AutoDispatchEnabled) as a read-only DTO.",
+        "There is no write endpoint; the Fleet tab renders the auto-dispatch toggle disabled with a v1.1 hint (frontend, B10).",
+        "GetFleetSettings_FleetAdmin_ReturnsCombinedDto, GetFleetSettings_FleetAdminOfFleetB_SeesOnlyFleetBSettings (tenant isolation), and GetFleetSettings_NonFleetAdmin_Returns403 pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Fleet"
+      }
+    },
+    {
+      "id": "B1",
+      "lane": "web",
+      "title": "Frontend scaffold: Vite + TS strict + eslint flat + vitest + styled-components + router + api client + i18n",
+      "goal": "Stand up web/ — the first frontend code in the repo — with exact Node-20.0.0-safe pinned versions, strict TS, eslint flat config at --max-warnings 0, vitest, styled-components typed theme, the /x/* router group, TanStack Query, a JWT/X-Fleet-Slug/401-aware api client, and an i18next cs/en skeleton with a locale-parity test.",
+      "depends_on": [],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/package.json",
+        "web/.npmrc",
+        "web/tsconfig.json",
+        "web/vite.config.ts",
+        "web/eslint.config.js",
+        "web/vitest.config.ts",
+        "web/index.html",
+        "web/src/main.tsx",
+        "web/src/app/router.tsx",
+        "web/src/app/providers.tsx",
+        "web/src/app/AppLayout.tsx",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/api/auth-storage.ts",
+        "web/src/shared/theme/theme.ts",
+        "web/src/shared/theme/theme.d.ts",
+        "web/src/shared/i18n/index.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/i18n/locales.parity.test.ts",
+        "web/src/shared/api/client.test.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        "docs/decisions.md#2026-09-11-frontend-styling-styled-components",
+        "docs/decisions.md#2026-09-11-uc-002-frontend-quality-gate"
+      ],
+      "required_reads": [
+        "docs/specs/in-progress/002_UC_002_dispatcher-web.md",
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "package.json pins Node-20.0.0-safe versions verified via npm view engines: vite 5.4.x, @vitejs/plugin-react 4.3.4, vitest 2.1.9 + @vitest/coverage-v8 2.1.9, eslint 8.57.1 (NOT 9 — engines require ^20.9.0), typescript-eslint 7.18.0 (NOT 8 — engines require ^20.9.0), @testing-library/react 16.x + @testing-library/dom 10.x + user-event 14.x + jest-dom 6.x, styled-components 6.1.x, @microsoft/signalr 8.x, @tanstack/react-query 5.x, react-router-dom 6.x, zustand 4.x, i18next 23.x + react-i18next 14.x, leaflet 1.9.x + react-leaflet 4.x, @playwright/test pinned to the conductor's prefetched Chromium version; root engines.node >=20.0.0 and .npmrc engine-strict=true.",
+        "npm install succeeds on Node 20.0.0 with NO EBADENGINE; npm run tsc (tsc --noEmit), npm run lint (eslint --max-warnings 0), and npm run test (vitest run) all pass on the scaffold. Scripts dev/build/lint/tsc/test exist plus an e2e placeholder.",
+        "The api client (shared/api/client.ts) is a fetch wrapper reading the base URL from import.meta.env, attaching Authorization: Bearer and X-Fleet-Slug, and on a 401 clearing storage and redirecting to /x/login; client.test.ts proves the 401 path red-then-green.",
+        "styled-components ThemeProvider wraps the app with a typed DefaultTheme (theme.d.ts) and no any; the /x/* router group and QueryClientProvider + I18nextProvider are wired in app/providers.tsx.",
+        "locales.parity.test.ts asserts cs.json and en.json have identical key sets and passes; this test is the AC #7 mechanism every screen WI keeps green."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B2",
+      "lane": "web",
+      "title": "Login /x/login",
+      "goal": "Login screen: fleet slug (prefilled from subdomain, remembered in localStorage), email, password, Czech errors; on success stores tokens and redirects to /x.",
+      "depends_on": [
+        "B1"
+      ],
+      "estimated_complexity": "S",
+      "files_touched": [
+        "web/src/features/auth/LoginPage.tsx",
+        "web/src/features/auth/useLogin.ts",
+        "web/src/features/auth/loginSchema.ts",
+        "web/src/features/auth/loginSchema.test.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/api/client.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#1-login-xlogin"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Successful POST /auth/staff/login stores accessToken/refreshToken and the fleet slug, then redirects to /x.",
+        "Wrong credentials render a Czech error sentence (never JSON or a stack trace, per context 11).",
+        "The fleet slug is prefilled from the subdomain and falls back to the remembered localStorage value.",
+        "AC #7: all new strings exist in cs.json AND en.json (locales.parity.test.ts stays green).",
+        "loginSchema.test.ts (empty email/password produce Czech messages) and a testing-library interaction test (bad creds show the Czech error) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B3",
+      "lane": "web",
+      "title": "Board layout + New order form",
+      "goal": "The /x three-column shell plus the left-column New order form: exact tab order, F2 focus, Enter submit, quick chips (hardcoded coords), Photon autocomplete via geo/suggest, live price preview from the server-priced GET /geo/route (F-03 — the client renders estimatedPriceCzk directly; no client-side tariff math), clears + refocuses Phone on submit.",
+      "depends_on": [
+        "B2"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/features/board/BoardPage.tsx",
+        "web/src/features/board/OrderForm.tsx",
+        "web/src/features/board/useCreateOrder.ts",
+        "web/src/features/board/quickChips.ts",
+        "web/src/features/board/useAddressSuggest.ts",
+        "web/src/features/board/useRouteEstimate.ts",
+        "web/src/features/board/useRouteEstimate.test.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/api/client.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "The New order form has the exact field order and one tab-stop each (Phone, Name, Pickup, Dropoff, When, Passengers, Note); F2 focuses Phone from anywhere; Enter submits from any field.",
+        "Clicking a quick chip fills the pickup field with coordinates directly (no geo call); pickup/dropoff typing triggers debounced geo/suggest autocomplete.",
+        "A live price preview shows the server's estimatedPriceCzk from GET /geo/route when a route is computable (F-03 — no client-side tariff math); it is simply absent — not an error — when geo/route returns 502 OR when estimatedPriceCzk is null (no default tariff).",
+        "On submit the form clears and focus returns to Phone; the board renders at 1280x720 with no horizontal scroll (AC #6).",
+        "AC #7 parity green; useRouteEstimate.test.ts (renders estimatedPriceCzk when present; renders nothing on 502 and on null price), quick-chip fill logic, and testing-library tests for Enter-submit / F2-focus / clear-and-refocus pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B4",
+      "lane": "web",
+      "title": "Orders column + card actions",
+      "goal": "Middle column: sections (Nove/Prirazene/Probihajici/Naplanovane/Dokoncene dnes), order cards with all fields and a 2-min red timer, and Assign (inline driver picker sorted by distance, free first) / Reassign / Cancel (reason from list) / Detail actions with optimistic update and 409 reconcile.",
+      "depends_on": [
+        "B3"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/features/board/OrdersColumn.tsx",
+        "web/src/features/board/OrderCard.tsx",
+        "web/src/features/board/sectionBucketing.ts",
+        "web/src/features/board/sectionBucketing.test.ts",
+        "web/src/features/board/elapsedTimer.ts",
+        "web/src/features/board/elapsedTimer.test.ts",
+        "web/src/features/board/useNewOrderHighlight.ts",
+        "web/src/features/board/useNewOrderHighlight.test.ts",
+        "web/src/features/board/driverDistanceSort.ts",
+        "web/src/features/board/driverDistanceSort.test.ts",
+        "web/src/features/board/useAssignOrder.ts",
+        "web/src/features/board/useReassignOrder.ts",
+        "web/src/features/board/useCancelOrder.ts",
+        "web/src/features/board/cancelReasons.ts",
+        "web/src/features/board/DriverPicker.tsx",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/api/client.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px",
+        ".claude/state/02-dispatcher-web.md#behavior-rules"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Orders bucket into the correct sections; Dokoncene dnes is collapsed by default; each card shows public code, time, phone+name, pickup->dropoff (ellipsized), price (fixed as a PEVNA badge), driver name, status pill.",
+        "A New order's elapsed-since-creation timer turns red after 2 minutes.",
+        "F-05b: a newly-arrived order card (new since the last render, e.g. from an App-source OrderChanged) shows a brief highlight for ~3 seconds, then settles to normal styling.",
+        "Assign opens an INLINE driver picker (never a form-blocking modal, per context 11) sorted by distance to pickup with free drivers first; the distance comparator uses each driver's lastLat/lastLng from GET /drivers (A3, F-02) versus the order pickup coords, and drivers with a null position sort last; Reassign and Detail work; Cancel requires a reason from a short list plus optional text.",
+        "A 409 on any action shows 'Objednavku mezitim zmenil nekdo jiny' and refreshes the card (no silent overwrite).",
+        "AC #7 parity green; sectionBucketing.test.ts (every status -> right section), elapsedTimer.test.ts (120s boundary), a distance-sort comparator test (incl. null-position sorts last), a new-order-highlight test (highlight present then cleared after ~3s using fake timers), and testing-library tests (inline picker opens; cancel without reason blocked) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B5",
+      "lane": "web",
+      "title": "Drivers column + manual status override",
+      "goal": "Right column: driver rows (name, plate, Czech status pill, position age, current order code), a Nastavit stav override (Free/Busy/Offline via POST /drivers/{id}/status), and click-driver-centers-map (wired in B7).",
+      "depends_on": [
+        "B4"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/board/DriversColumn.tsx",
+        "web/src/features/board/DriverRow.tsx",
+        "web/src/features/board/positionAge.ts",
+        "web/src/features/board/positionAge.test.ts",
+        "web/src/features/board/statusPill.ts",
+        "web/src/features/board/statusPill.test.ts",
+        "web/src/features/board/useOverrideStatus.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/api/client.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Each driver row renders the Czech status pill (Volny/Na ceste/Obsazen/Offline) with the correct color and a Czech position age (pred N s / pred N min); the current order code shows when assigned.",
+        "The Nastavit stav override sets Free/Busy/Offline via POST /drivers/{id}/status (A3) and updates the pill optimistically.",
+        "AC #7 parity green; positionAge.test.ts (seconds/minutes boundaries, Czech), statusPill.test.ts (DriverStatus -> label+color), and a testing-library test (override click issues the request with the chosen status) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B6",
+      "lane": "web",
+      "title": "SignalR realtime: events, optimistic + 409 reconcile, disconnect banner, sound",
+      "goal": "Wire the @microsoft/signalr client to /hubs/fleet (JWT via access_token query string) for OrderChanged/DriverStatusChanged/DriverPositionChanged with optimistic updates + 409 reconcile, a disconnect banner with backoff reconnect + refetch, and a persisted-mute notification sound.",
+      "depends_on": [
+        "B5"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/shared/realtime/hubClient.ts",
+        "web/src/shared/realtime/useFleetHub.ts",
+        "web/src/shared/realtime/reconnectBackoff.ts",
+        "web/src/shared/realtime/reconnectBackoff.test.ts",
+        "web/src/shared/realtime/eventReducer.test.ts",
+        "web/src/features/board/DisconnectBanner.tsx",
+        "web/src/shared/sound/useNotificationSound.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#10",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#behavior-rules"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "OrderChanged moves a card between sections without a page reload; DriverStatusChanged updates driver pills; DriverPositionChanged is exposed for the map (B7). JWT is passed via the access_token query string per the hub contract (context 10).",
+        "On disconnect a yellow Czech banner 'Offline - zobrazuji posledni znamy stav' appears, server-requiring actions are disabled, and on reconnect the lists refetch; reconnection uses exponential backoff.",
+        "A short notification sound plays on a new App-source order and on a driver decline/timeout; the header mute toggle persists across reloads.",
+        "AC #7 parity green; reconnectBackoff.test.ts (capped exponential schedule), eventReducer.test.ts (OrderChanged updates the cached order; 409 triggers refetch), and a mute-persistence test pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B7",
+      "lane": "web",
+      "title": "Map: Leaflet driver markers + pickup pins + highlight",
+      "goal": "Leaflet + OSM map: driver markers (heading arrow, status colors, 1s redraw throttle), pickup pins for New/Assigned orders, pin<->card highlight, and a toggle that replaces the middle column or becomes a 4th panel at >=1600.",
+      "depends_on": [
+        "B6"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/board/MapPanel.tsx",
+        "web/src/features/board/driverMarker.ts",
+        "web/src/features/board/driverMarker.test.ts",
+        "web/src/features/board/markerThrottle.ts",
+        "web/src/features/board/markerThrottle.test.ts",
+        "web/src/features/board/useMapHighlight.ts",
+        "web/src/shared/map/leafletSetup.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Initial driver markers render from the GET /drivers lastLat/lastLng (A3, F-02); a driver with a null position is simply not placed until its first DriverPositionChanged event, and a marker tolerates a null heading (renders a neutral/non-directional icon) until the first position event supplies one. Subsequent live updates are fed by DriverPositionChanged (B6), with redraw throttled to 1s.",
+        "Pickup pins render for New/Assigned orders; clicking a pin highlights the corresponding card and clicking a card highlights the pin.",
+        "The map toggles to replace the middle column and becomes a 4th panel at viewport width >=1600.",
+        "AC #7 parity green; markerThrottle.test.ts (>=1 update/s coalesced), driverMarker.test.ts (icon by status/heading), and a highlight-mapping test pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B8",
+      "lane": "web",
+      "title": "Order drawer /x/orders/:id: edit via PATCH + Czech event timeline",
+      "goal": "A right-side drawer with fields editable in New/Assigned via PATCH /orders/{id} (sends loaded version), a Czech event timeline covering all 13 OrderEventType values (incl. Updated) with actor, and transition buttons driven by allowedActions.",
+      "depends_on": [
+        "B7"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/orders/OrderDrawer.tsx",
+        "web/src/features/orders/useUpdateOrder.ts",
+        "web/src/features/orders/eventTimeline.ts",
+        "web/src/features/orders/eventTimeline.test.ts",
+        "web/src/features/orders/EventTimeline.tsx",
+        "web/src/features/orders/transitionButtons.ts",
+        "web/src/features/orders/transitionButtons.test.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/api/client.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#3-order-detail-xordersid-opens-as-right-side-drawer-not-a-page"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "The drawer opens over the board (not a page); fields (address, time, note, passengers) are editable only in New/Assigned and PATCH sends the version loaded from GET /orders/{id} (F-01 — OrderDetailDto now carries Version, exposed by A2); a 409 shows the concurrency message and refetches.",
+        "The event timeline renders every OrderEventType including Updated in Czech with the actor; ALL 13 event-type keys exist in cs.json and en.json; the Cancelled timeline entry renders the cancel reason from the event payload (second half of binding AC #4).",
+        "Transition buttons are rendered from the order's allowedActions.",
+        "AC #7 parity green; eventTimeline.test.ts iterates all 13 OrderEventType values (catches a missing key), transitionButtons.test.ts maps allowedActions, and an edit-disabled-outside-New/Assigned test pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B9",
+      "lane": "web",
+      "title": "Search /x/orders + client-side CSV export",
+      "goal": "A filterable orders table (date range, status, driver, free text; today default), row->drawer, and a client-side CSV export of the current filter.",
+      "depends_on": [
+        "B8"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/orders/SearchPage.tsx",
+        "web/src/features/orders/useOrderSearch.ts",
+        "web/src/features/orders/orderFilters.ts",
+        "web/src/features/orders/orderFilters.test.ts",
+        "web/src/features/orders/csvExport.ts",
+        "web/src/features/orders/csvExport.test.ts",
+        "web/src/features/orders/SearchFilters.tsx",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#4-search-xorders"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "The default filter is today; date range, status, driver, and free-text filters compose into the GET /orders query.",
+        "Clicking a row opens the order drawer (B8).",
+        "CSV export produces a correct client-side file of the current filtered rows (proper escaping, header row).",
+        "AC #7 parity green; csvExport.test.ts (escaping, header, empty set) and orderFilters.test.ts (state -> params incl. status[] and date range) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B10",
+      "lane": "web",
+      "title": "Settings /x/settings: Vozidla, Lide (+ reset password), Fleet (read-only)",
+      "goal": "FleetAdmin-only settings tabs: Vozidla CRUD, Lide CRUD + reset password (A4), and a read-only Fleet tab from GET /fleet/settings (A5) with the auto-dispatch toggle disabled (v1.1 hint).",
+      "depends_on": [
+        "B9"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/settings/SettingsPage.tsx",
+        "web/src/features/settings/VehiclesTab.tsx",
+        "web/src/features/settings/PeopleTab.tsx",
+        "web/src/features/settings/FleetTab.tsx",
+        "web/src/features/settings/useVehicles.ts",
+        "web/src/features/settings/useStaff.ts",
+        "web/src/features/settings/useResetPassword.ts",
+        "web/src/features/settings/useFleetSettings.ts",
+        "web/src/features/settings/resetPassword.test.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/src/shared/api/client.ts"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/02-dispatcher-web.md#5-settings-xsettings-fleetadmin-only"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Vozidla CRUD works against the existing vehicle endpoints; Lide CRUD plus reset-password (A4) reveals the one-time temporary password exactly once.",
+        "The Fleet tab renders name/phone/offer-timeout/auto-dispatch from GET /fleet/settings (A5) read-only, with the auto-dispatch toggle disabled and a v1.1 hint.",
+        "A route guard prevents non-FleetAdmin users from reaching /x/settings.",
+        "AC #7 parity green; resetPassword.test.ts (one-time-display logic), a route-guard test, and a fleet-settings read-mapping test pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B11",
+      "lane": "web",
+      "title": "Playwright E2E (create+assign AC#1, realtime AC#2) + API-run harness",
+      "goal": "The Playwright suite proving AC #1 (create+assign <=6 interactions) and AC #2 (realtime card move on driver accept) against the real API + Postgres + seed, with a concrete compose-Postgres + dotnet-run harness. Depends on all Lane A WIs because the harness boots the shared working tree.",
+      "depends_on": [
+        "B10",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/playwright.config.ts",
+        "web/e2e/global-setup.ts",
+        "web/e2e/create-assign.spec.ts",
+        "web/e2e/realtime.spec.ts",
+        "web/e2e/helpers/apiDriver.ts",
+        "DEMO.md",
+        "docs/decisions.md",
+        "docs/api.md"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#11",
+        "00-PROJECT-CONTEXT.md#12",
+        "docs/decisions.md#2026-09-11-uc-002-frontend-quality-gate",
+        ".claude/state/02-dispatcher-web.md#acceptance-criteria"
+      ],
+      "required_reads": [
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "playwright.config.ts uses a webServer array (or globalSetup): docker compose -f infra/docker-compose.dev.yml up db, then dotnet run --project api/src/Taxi.Api --environment Development with Seed__Enabled=true against the compose Postgres, waiting on /health/ready; then Vite at http://localhost:5173 (matches the API CORS default). @playwright/test is pinned to the conductor's prefetched Chromium version.",
+        "create-assign.spec.ts: from a fresh login, create an order with phone + pickup (via a quick chip) + ASAP in <=6 UI interactions, then assign it to a free driver; scripted time excluding network < 20 s (AC #1).",
+        "realtime.spec.ts: a helper logs in as driver1@demo.local/Demo1234! via API, goes online (POST /drivers/me/online), and after the dispatcher assigns, accepts (POST /orders/{id}/accept); the card moves to Probihajici without a page reload within 1 s (AC #2).",
+        "Secondary assertions where cheap: driver override pill change (A3), drawer edit via PATCH (A2), reset-password reveal (A4), fleet-settings read (A5), map marker move on a position push (AC #3), and a viewport 1280x720 assertion that the board has no horizontal scroll (AC #6 — vitest cannot measure layout, so this is proven here).",
+        "docs/decisions.md gains the UC-002 assumptions 1-14 (per DoD #6), explicitly including: the assumption-9 supersession (AuditLog is now written by A3's driver-status override, override semantics vs decisions.md assumption #9 remains flagged), and assumption 14 (F-05a — customer name auto-fill from past orders is DEFERRED to UC-006: no backend lookup exists and none is added in this UC); docs/api.md is regenerated by running the full dotnet test after A1-A5 land.",
+        "DEMO.md documents the manual npx lighthouse accessibility run on the board (AC #8, best-effort, non-blocking) and how to boot the compose+dotnet-run harness for a manual smoke check."
+      ],
+      "verification": {
+        "tool": "playwright"
+      }
     }
   ],
-  "notes": "Greenfield repo; no C# exists. 15 WIs, array is topologically ordered (acyclic). Complexity scale used is XS/S/M/L (no XL) per this handoff shape. verification.filter strings already include the FullyQualifiedName~ prefix per the conductor's literal example; if the conductor template also prepends FullyQualifiedName~, normalize to avoid a double prefix. Test namespace fragments are stable and single-token per WI (Taxi.Api.Tests.<Area>). needs_library_research is true on exactly three WIs: WI-01 (FastEndpoints registration + OpenAPI grouping), WI-02 (Testcontainers/WebApplicationFactory wiring), WI-13 (SignalR JWT-in-query-string + in-test SignalR client for the throttle/delivery proof of AC #4). Eleven assumptions were resolved (see work_items_doc ## Assumptions and must be echoed into docs/decisions.md by WI-15): (1) no outbox table exists in the 15-entity list, so a transition persists order+event in one transaction and publishes via IRealtimePublisher AFTER commit; (2) state machine lives in Common/Orders/ and returns a failure result carrying an error KIND (NotEntitled -> no-leak 404, IllegalTransition -> 409, StaleVersion added by OrderService on concurrency conflict -> 409), not Domain/Orders/ + InvalidTransitionException (skill archive is superseded by docs/decisions.md but its transition table is authoritative); (3) by-code tracking is customer-JWT-only in v1, signed-token path deferred to assignment 05; (4) ITenantEntity membership is explicit - User and PushSubscription filter only non-null FleetId rows, RefreshToken and SmsCode are not tenant entities; (5) seed orders are driven through the state machine, never by setting Status; (6) the fleet_id claim name is a shared TenantClaims constant defined in WI-04 so auth WIs and tenancy middleware agree - this breaks the apparent auth<->tenancy cycle (tenancy tests forge claims directly); (7) complexity scale is XS/S/M/L with no XL; (8) password hashing is BCrypt; (9) AuditLog is provisioned in the schema but no WI writes to it until assignment 07 (audit wiring), so it is created-but-unwritten in v1; (10) by-code tracking for phone orders (CustomerUserId=null, no customer JWT) is unavailable in v1 and awaits the signed-token path in assignment 05; (11) OrderService lives in Common/Orders/ as a sanctioned #common-infrastructure exception to the no-service-classes rule (2+ consumers: WI-09 endpoints, WI-14 jobs, WI-15 seeder) - endpoints still own HandleAsync and only delegate the transactional transition. Several WIs edit the shared composition root api/src/Taxi.Api/Program.cs (WI-01 creates it; WI-04/05/06/13/14/15 register into it); to defuse the WI-13 || WI-14 parallel-edit conflict on Program.cs, each feature exposes a per-feature registration extension method (e.g. AddOrders/AddRealtime/AddJobs) that Program.cs calls, so parallel WIs touch disjoint extension files; if that convention is not adopted, the conductor must serialize WI-13 and WI-14. The state-machine skill was a zip archive; it has been extracted to .claude/skills/taxi-order-state-machine/extracted/taxi-order-state-machine/SKILL.md and that path (not the .skill zip) is cited in required_reads for WI-07/09/14. All 6 binding ACs are mapped: AC#1->WI-01/02, AC#2->WI-15, AC#3->WI-08, AC#4->WI-13, AC#5->WI-14, AC#6->WI-15; plus the two-dispatcher concurrency 409 -> WI-09. Tenant-isolation tests (cross-tenant read -> 404 not 403) are on WI-04 (mechanism, now a [Theory] iterating every filtered tenant entity so isolation is proven for tables that ship no endpoint this UC - Route, Zone, Tariff, FleetSettings, DriverShift, AuditLog) and every tenant-touching feature WI (08, 09, 10, 11, 12), satisfying the per-tenant-table DoD."
+  "notes": "UC-002 = 5 Lane A (api) WIs + 11 Lane B (web) WIs = 16 total. REVISION (round 2, F-01..F-05 resolved). Array is topologically ordered and acyclic. Lane A is NO LONGER fully parallel: F-04 serializes the three ErrorCodes.cs-touching WIs into a chain A1->A2->A3 (each appends its own const block to ErrorCodes.cs; the dependency edge removes the silent lost-update risk of concurrent edits to the same file). A4 and A5 keep empty depends_on and stay parallel (verified: neither touches ErrorCodes.cs -- A4 files_touched is Staff/ResetPassword + its test, A5 is Fleet feature + its test). B1..B11 form a strict chain; B11 additionally depends on A1-A5. Complexity scale XS/S/M/L (no XL) per the UC-001 handoff shape. Each WI carries a lane field (api|web). verification.tool enum extended for this UC: dotnet-test | dotnet-build | npm-lint | npm-tsc | vitest | playwright. verification.filter (dotnet-test only) keeps the FullyQualifiedName~ prefix per the UC-001 convention and uses single-token namespace fragments (Taxi.Api.Tests.<Area>); the npm-*/vitest/playwright tools take no filter (the filter charset excludes '/', so no path fragments are used). LANE INDEPENDENCE: Lane A never edits the shared composition root Program.cs — verified that Program.cs already calls AddFeatureConfigurations (Common/Features/FeatureConfigurationExtensions.cs), which reflects over every IFeatureConfiguration and invokes AddFeatureDependencies, so A1's geo HttpClient registers inside GeoFeatureConfiguration; A5's Fleet feature ships its own FleetFeatureConfiguration. Lane A shared-file edits and serialization (F-04): A1, A2, and A3 each append a distinct const block to the shared Common/ErrorCodes.cs (A1: Geo.RouteUnavailable/Geo.SuggestQueryTooShort; A2: Order.NotEditable/Order.StaleVersion; A3: Driver.InvalidOverrideStatus). Rather than rely on the developers to only-append (a discipline that fails silently -> lost update), these three WIs are SERIALIZED via depends_on A1->A2->A3 so only one edits ErrorCodes.cs at a time; the const additions are still disjoint, so each WI merely appends after the previous landed. A2 also adds OrderEventType.Updated (string enum, no migration, per the UserRole.System precedent) and, per F-01, adds Version to OrderDetailDto (both construction sites: OrderDetailMapper.ToDto feeding the 8 transition endpoints, plus the inline new OrderDetailDto(...) in GetOrderEndpoint) and to OrderChangedDto.From; OrderSummaryDto stays lean. A3 also adds, per F-02, lastLat/lastLng to DriverSummaryDto + the ListDriversEndpoint projection (Driver.LastLat/LastLng already exist; lastPositionAt was already on the DTO). A4/A5 touch neither ErrorCodes.cs nor any shared file and run parallel to the A1->A2->A3 chain. Staging discipline (autonomous, single working tree): Lane A stages api/ paths only, Lane B stages web/ paths only; neither commits. KEY DECISIONS: (geo failure) suggest 200-empty-list on upstream failure so the order form is never blocked, route 502 with Geo.RouteUnavailable; provider Photon for suggest (Nominatim 1req/s cap is hostile to autocomplete), OSRM public for route; base URLs are config keys for later self-hosting; 4s timeout no retries. (F-03 tariff source for price preview) DECISION: extend A1's GET /geo/route to return a SERVER-priced estimate { distanceMeters, durationSeconds, estimatedPriceCzk } rather than add a Dispatcher-readable tariff endpoint -- route injects TaxiDbContext, loads the caller's fleet default enabled Tariff via the tenant query filter, computes estimatedPriceCzk = max(MinimumFareCzk, BaseFareCzk + PerKmCzk*km) integer CZK, null when no default tariff. This keeps tariff math server-side and dispatcher-accessible without exposing the FleetAdminOnly tariff data. Consequence: route now reads tenant data, so Assumption 4 is amended (suggest still touches no tenant data; route gains a tenant-isolation test) and A1 gains ef-core rule citations; B3's former client-side priceEstimate.ts calc is REMOVED (client renders the server's estimatedPriceCzk; preview absent on 502 OR null price). (PATCH concurrency) client sends loaded version -> 409 Order.StaleVersion on mismatch before write, EF token backstop; non-editable status -> 409 Order.NotEditable. (override semantics) Free/Busy/Offline allowed regardless of active order (principle 7 truthful fallback); writes only the Driver row + first AuditLog row (Entity=Driver, Action=StatusOverride) + shift close on Offline (mirrors StalePositionJob write set: Status=Offline, CurrentVehicleId=null, close DriverShift); NEVER touches an Order; this SUPERSEDES decisions.md assumption 9 (AuditLog unwritten until 07) and must be re-documented in decisions.md. (settings endpoint) A5 added: GET /fleet/settings FleetAdminOnly read-only Fleet+FleetSettings DTO; no write endpoint (v1.1); quick chips stay hardcoded frontend constants. (F-01 version exposure) Order.Version exists as an int concurrency token but was projected into NO frontend-visible DTO; A2 now adds it to OrderDetailDto (GET /orders/{id}) and OrderChangedDto (realtime) so A2's client-version PATCH and B8's send-loaded-version work; summary DTO stays lean. (F-02 driver position source) GET /drivers omitted LastLat/LastLng; A3 adds them to DriverSummaryDto + projection (additive) so B4 distance-sort and B7 initial markers have a REST source; B7 markers tolerate null heading/position until the first DriverPositionChanged event. (F-05 orphan behaviors) (a) customer name auto-fill from past orders: DEFERRED to UC-006 -- no backend lookup exists and none is added here (documented as assumption 14 in decisions.md, recorded by B11); (b) new-order 3s highlight: assigned to B4 (NOT B3) because B3 creates no order cards -- OrderCard/OrdersColumn are B4-owned files, so a highlight AC on B3 would target a component that does not yet exist. (e2e harness) Playwright webServer array: compose db + dotnet run Development Seed:Enabled=true wait /health/ready, then Vite 5173; AC#2 driver helper logs in via API and must POST /drivers/me/online first (seeded drivers start Offline) then /orders/{id}/accept. B11 depends on ALL of A1-A5 not for functional reasons (the AC#1 flow makes zero geo calls — quick chips carry hardcoded coords, no dropoff -> no route call) but because the harness boots the API from the shared working tree via dotnet run, which fails to compile if any Lane A WI is mid-implementation — a build-integrity dependency. (pinned versions, Node 20.0.0 exact, verified via npm view engines) vite 5.4.x (^18||>=20 OK; vite 6 also OK but 5.4 chosen), @vitejs/plugin-react 4.3.4, vitest 2.1.9, eslint 8.57.1 (NOT 9 — engines ^20.9.0 FAILS 20.0.0), typescript-eslint 7.18.0 (NOT 8 — same failure), styled-components 6.1.x, @microsoft/signalr 8.x, @testing-library/react 16.x; root engines.node>=20.0.0 + .npmrc engine-strict=true so a bad pin fails fast. needs_library_research true on exactly A1 (Photon/OSRM response parsing + typed HttpClient via feature config), B1 (exact Node-20.0.0-safe version pins), B6 (@microsoft/signalr JS client reconnect policy + JWT-in-query-string), and B11 (Playwright webServer harness + Chromium version pin). AC MAPPING: AC#1 create+assign<=6 -> B3+B4+B11; AC#2 realtime<1s -> B6+B11; AC#3 map markers -> B7+B11; AC#4 cancel reason in timeline -> B4(reason)+B8(timeline); AC#5 override AuditLog -> A3; AC#6 1280x720 no h-scroll -> B3; AC#7 cs/en complete -> mechanized by B1 locales.parity.test.ts + enforced on every screen WI (B2-B10); AC#8 Lighthouse a11y>=90 -> B11 best-effort manual, documented in DEMO.md. Tenant-isolation tests on A2/A3/A4/A5 (cross-tenant -> 404 not 403); A1 suggest has none (no tenant data) but A1 route now reads the tenant-filtered Tariff table, so A1 gains Route_UsesCallersFleetDefaultTariff (F-03)."
 }

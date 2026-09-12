@@ -111,6 +111,9 @@ public static class ErrorCodes
 
         /// <summary>The role must be Driver, Dispatcher, or FleetAdmin.</summary>
         public const string RoleNotAllowed = "Validation.RoleNotAllowed";
+
+        /// <summary>The version field is required for optimistic concurrency on PATCH operations.</summary>
+        public const string VersionRequired = "Validation.VersionRequired";
     }
 
     /// <summary>Auth-domain error codes (not validation — used for 429 rate-limit responses).</summary>
@@ -151,6 +154,33 @@ public static class ErrorCodes
 
         /// <summary>Cannot deactivate an online driver. The driver must go offline first.</summary>
         public const string DriverIsOnline = "Staff.DriverIsOnline";
+    }
+
+    /// <summary>Geo-domain error codes.</summary>
+    public static class Geo
+    {
+        /// <summary>The route upstream is unavailable — response body carries no price.</summary>
+        public const string RouteUnavailable = "Geo.RouteUnavailable";
+
+        /// <summary>The suggest query is too short (fewer than 3 characters).</summary>
+        public const string SuggestQueryTooShort = "Geo.SuggestQueryTooShort";
+    }
+
+    /// <summary>Order-domain error codes.</summary>
+    public static class Order
+    {
+        /// <summary>The order is not in a state that allows editing (must be New or Assigned).</summary>
+        public const string NotEditable = "Order.NotEditable";
+
+        /// <summary>The client-supplied version does not match the current order version (stale read).</summary>
+        public const string StaleVersion = "Order.StaleVersion";
+    }
+
+    /// <summary>Driver-domain additional error codes.</summary>
+    public static class DriverOverride
+    {
+        /// <summary>The requested override status is not allowed (EnRoute cannot be set manually).</summary>
+        public const string InvalidOverrideStatus = "Driver.InvalidOverrideStatus";
     }
 
 }

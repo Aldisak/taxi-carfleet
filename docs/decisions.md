@@ -55,3 +55,51 @@ Eleven assumptions resolved where the spec was silent or self-contradictory. Ech
 - **Clock-trap workaround for E2E test:** `JwtIssuer` mints access tokens using the injected `FakeTimeProvider` (pinned to 2026-09-10 12:00 UTC). JwtBearer validates tokens against real wall-clock time, so minted tokens appear expired. The E2E test uses a dedicated `E2ETaxiApiFactory` that registers a `TokenValidationParameters.LifetimeValidator` delegate wired to `FakeTime`. This delegates lifetime validation to the same fake clock used for minting, so tokens are always valid during tests without advancing the clock (advancing would age seeded orders and trigger background jobs).
 - **TiebreakerSort for order events:** `GetOrderEventsEndpoint` sorts events by `At` then `Id` (UUIDv7). This ensures stable ordering when multiple events share the same timestamp (e.g., in tests where all events have the same fake timestamp).
 - **`NoOpRealtimePublisher` removed:** Superseded by `SignalRRealtimePublisher` (WI-13). The remaining usage in `OrderServiceTests` was replaced with `RecordingRealtimePublisher`.
+
+---
+
+## 2026-09-11 — Frontend styling: styled-components (replaces Tailwind)
+
+User decision at the UC-002 interview: the dispatcher web app (and all future `/web` code) uses **styled-components** instead of the Tailwind CSS named in the original context §4. Rationale: user preference for the CSS-in-JS approach. Caveat recorded: styled-components entered maintenance mode in 2025 — accepted; it remains stable and widely deployed. `00-PROJECT-CONTEXT.md` §4 updated. Everything else in the frontend stack is unchanged (React 18 + TS + Vite, React Router 6, TanStack Query, Zustand only for tiny cross-cutting state, Leaflet + OSM, i18next Czech-first, Vitest + Playwright).
+
+## 2026-09-11 — UC-002 frontend quality gate
+
+Phase 5 blocking gates for `/web`: `tsc --noEmit`, `eslint --max-warnings 0`, `vitest run`, `playwright test` (create→assign flow, AC #1, against the real API + seeded data). Backend gates (`dotnet build -warnaserror` / `dotnet test` / format) continue to apply to `/api` in the same run since UC-002 adds backend endpoints.
+
+---
+
+## 2026-09-12 — UC-002 implementation assumptions (B11, echoed from dispatcher-web-work-items.md)
+
+Fourteen assumptions resolved where `002_UC_002_dispatcher-web.md` was silent or self-contradictory. Echoed here per DoD #6.
+
+1. **Lane A touches zero shared `Program.cs`.** `AddFeatureConfigurations` in `Program.cs` auto-discovers all `IFeatureConfiguration` implementations via reflection. Lane A geo/route/override WIs register their services inside their own `FeatureConfiguration.AddFeatureDependencies` — no `Program.cs` edits. A1→A2→A3 are serialized (all append to `ErrorCodes.cs`); A4 and A5 run in parallel.
+
+2. **`geo/suggest` fails soft; `geo/route` fails hard-but-typed.** `GET /geo/suggest` returns 200 + empty list on upstream failure. `GET /geo/route` returns 502 with code `Geo.RouteUnavailable`. Client renders no price estimate and order creation still proceeds.
+
+3. **Suggest provider = Photon; route provider = OSRM public.** Base URLs are config keys (`Geo:SuggestBaseUrl`, `Geo:RouteBaseUrl`) for self-hosting.
+
+4. **Geo suggest has no tenant-isolation test; geo route does (F-03).** `GET /geo/route` loads the caller's fleet default `Tariff` (tenant-filtered) for server-side price estimation.
+
+5. **`OrderEventType.Updated` added as enum member.** String-stored — no migration needed. PATCH writes one `Updated` event.
+
+6. **PATCH concurrency is client-version-aware.** Client sends the `version` it loaded; endpoint compares before write. Mismatch → 409 `Order.StaleVersion`. Non-editable status → 409 `Order.NotEditable`.
+
+6a. **(F-01) `Order.Version` exposed in frontend-visible DTOs.** Added to `OrderDetailDto` (both `OrderDetailMapper.ToDto` and `GetOrderEndpoint`) and `OrderChangedDto`. `OrderSummaryDto` stays lean.
+
+6b. **(F-02) `GET /drivers` exposes `lastLat`/`lastLng`.** Added to `DriverSummaryDto` projection in `ListDriversEndpoint`. `lastPositionAt` was already present.
+
+7. **Driver status override supersedes decisions.md assumption #9 (AuditLog).** This UC writes the first `AuditLog` row (`Entity="Driver"`, `Action="StatusOverride"`). Override changes `Driver.Status` only — never touches `Order.Status`. This flag is intentionally retained.
+
+8. **Override semantics — truthful fallback.** Dispatcher may force Free/Busy/Offline regardless of active order. Forcing Offline mirrors `GoOfflineEndpoint`: `Status=Offline`, `CurrentVehicleId=null`, close open `DriverShift`.
+
+9. **A minimal fleet-settings read endpoint IS added (A5).** `GET /fleet/settings` (FleetAdminOnly) — combined read from `Fleet` + `FleetSettings`. No write endpoint (v1.1).
+
+10. **Pinned frontend versions for Node 20.0.0.** `eslint@8.57.1` and `typescript-eslint@7.18.0` (NOT v8/v9) due to engines `^20.9.0` constraint on newer versions. `@playwright/test@1.48.2` pinned to match the conductor's pre-fetched Chromium.
+
+11. **AC#7 (cs/en completeness) is mechanized.** `locales.parity.test.ts` vitest asserts identical key sets in cs.json and en.json on every WI.
+
+12. **AC#8 (Lighthouse a11y ≥ 90) is best-effort.** Measured manually via `npx lighthouse http://localhost:5173/x`; documented in `DEMO.md`. Non-blocking gate.
+
+13. **`docs/api.md` regenerates via full `dotnet test`.** `OpenApi_Document_GeneratesApiMarkdown` test regenerates on every suite run — not per-WI.
+
+14. **(F-05a) Customer name auto-fill from past orders DEFERRED to UC-006.** No "orders by phone" query endpoint exists; none is added here. The New order form's Name field is a plain manual input.

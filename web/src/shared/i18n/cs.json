@@ -1,0 +1,327 @@
+{
+  "app": {
+    "title": "Taxi Dispečink",
+    "loading": "Načítám...",
+    "error": "Nastala chyba",
+    "offline": "Offline – zobrazuji poslední známý stav"
+  },
+  "nav": {
+    "board": "Dispečink",
+    "orders": "Objednávky",
+    "settings": "Nastavení",
+    "logout": "Odhlásit se",
+    "mute": "Ztlumit zvuk",
+    "unmute": "Zapnout zvuk"
+  },
+  "login": {
+    "title": "Přihlášení",
+    "fleetSlug": "Kód flotily",
+    "fleetSlugPlaceholder": "např. kolintaxi",
+    "email": "E-mail",
+    "emailPlaceholder": "vas@email.cz",
+    "password": "Heslo",
+    "submit": "Přihlásit se",
+    "invalidCredentials": "Nesprávné přihlašovací údaje. Zkuste to znovu.",
+    "networkError": "Nelze se připojit k serveru. Zkontrolujte připojení k internetu.",
+    "loading": "Přihlašuji...",
+    "unknownError": "Nastala neočekávaná chyba. Zkuste to znovu.",
+    "validation": {
+      "fleetSlugRequired": "Kód flotily je povinný.",
+      "emailRequired": "E-mail je povinný.",
+      "emailInvalid": "Zadejte platnou e-mailovou adresu.",
+      "passwordRequired": "Heslo je povinné."
+    }
+  },
+  "board": {
+    "form": {
+      "title": "Nová objednávka",
+      "validation": {
+        "phoneRequired": "Telefonní číslo je povinné.",
+        "phoneInvalid": "Zadejte platné telefonní číslo (např. 777 123 456 nebo +420777123456).",
+        "pickupRequired": "Místo nástupu je povinné.",
+        "pickupNoCoords": "Vyberte místo nástupu ze seznamu nebo klikněte na rychlý výběr.",
+        "scheduledAtInvalid": "Zadejte platný datum a čas.",
+        "scheduledAtPast": "Naplánovaný čas musí být v budoucnosti.",
+        "passengersMin": "Počet cestujících musí být alespoň 1."
+      },
+      "phone": "Telefon",
+      "name": "Jméno",
+      "pickup": "Nástup",
+      "dropoff": "Cíl",
+      "when": "Kdy",
+      "asap": "Co nejdříve",
+      "scheduledAt": "Naplánovaný čas",
+      "passengers": "Cestující",
+      "note": "Poznámka",
+      "pricePreview": "~ {{price}} Kč",
+      "distanceOnly": "{{km}} km",
+      "submit": "Vytvořit objednávku",
+      "creating": "Vytváří se...",
+      "pickupPlaceholder": "Zadejte adresu nástupu",
+      "dropoffPlaceholder": "Zadejte adresu cíle (volitelné)"
+    },
+    "columns": {
+      "orders": "Objednávky",
+      "drivers": "Řidiči",
+      "map": "Mapa"
+    },
+    "mapToggle": "Přepnout mapu",
+    "sections": {
+      "nove": "Nové",
+      "prirazene": "Přiřazené / Čekají na přijetí",
+      "probihajici": "Probíhající",
+      "naplanovane": "Naplánované (dnes / zítra)",
+      "dokonceneDnes": "Dokončené dnes"
+    },
+    "order": {
+      "asap": "ASAP",
+      "noDriver": "Nepřiřazen",
+      "fixedPriceBadge": "PEVNÁ {{price}} Kč",
+      "estimatedPrice": "~{{price}} Kč",
+      "elapsedTime": "{{sec}}s",
+      "elapsedTimeMin": "{{min}} min"
+    },
+    "actions": {
+      "assign": "Přiřadit",
+      "reassign": "Přeřadit",
+      "cancel": "Zrušit",
+      "detail": "Detail",
+      "confirm": "Potvrdit",
+      "close": "Zavřít"
+    },
+    "cancelReasons": {
+      "title": "Důvod zrušení",
+      "zákazník zrušil": "Zákazník zrušil",
+      "nedorazil": "Nedorazil",
+      "omyl": "Omyl",
+      "jiný": "Jiný",
+      "freeTextPlaceholder": "Upřesněte důvod...",
+      "required": "Vyberte důvod zrušení"
+    },
+    "driverPicker": {
+      "title": "Vyberte řidiče",
+      "noDrivers": "Žádní dostupní řidiči",
+      "loading": "Načítám řidiče..."
+    },
+    "conflict": "Objednávku mezitím změnil někdo jiný"
+  },
+  "status": {
+    "order": {
+      "New": "Nová",
+      "Assigned": "Přiřazená",
+      "Accepted": "Přijatá",
+      "Arrived": "Na místě",
+      "InProgress": "Probíhá",
+      "Completed": "Dokončená",
+      "Cancelled": "Zrušená"
+    },
+    "driver": {
+      "Free": "Volný",
+      "EnRoute": "Na cestě",
+      "Busy": "Obsazen",
+      "Offline": "Offline"
+    }
+  },
+  "drivers": {
+    "overrideTitle": "Nastavit stav",
+    "setFree": "Volný",
+    "setBusy": "Obsazen",
+    "setOffline": "Offline",
+    "positionAge": {
+      "unknown": "—",
+      "seconds": "před {{n}} s",
+      "minutes": "před {{n}} min"
+    },
+    "noOrderCode": "—",
+    "overrideError": "Nastala chyba při nastavení stavu"
+  },
+  "map": {
+    "loading": "Načítám mapu...",
+    "toggleShow": "Zobrazit mapu",
+    "toggleHide": "Skrýt mapu",
+    "driverPopup": "Řidič: {{name}}",
+    "orderPopup": "Objednávka: {{code}}"
+  },
+  "settings": {
+    "title": "Nastavení",
+    "accessDenied": "Přístup odepřen. Tato sekce je dostupná pouze pro správce flotily.",
+    "tabs": {
+      "vehicles": "Vozidla",
+      "people": "Lidé",
+      "fleet": "Flotila"
+    },
+    "vehicles": {
+      "title": "Vozidla",
+      "add": "Přidat vozidlo",
+      "edit": "Upravit",
+      "deactivate": "Deaktivovat",
+      "activate": "Aktivovat",
+      "confirmDeactivate": "Opravdu chcete deaktivovat toto vozidlo?",
+      "inactive": "Neaktivní",
+      "fields": {
+        "plate": "SPZ",
+        "make": "Značka",
+        "model": "Model",
+        "color": "Barva",
+        "seats": "Počet míst",
+        "active": "Aktivní"
+      },
+      "validation": {
+        "plateRequired": "SPZ je povinná.",
+        "plateTooLong": "SPZ může mít nejvýše 20 znaků.",
+        "makeRequired": "Značka je povinná.",
+        "modelRequired": "Model je povinný.",
+        "colorRequired": "Barva je povinná.",
+        "seatsMin": "Počet míst musí být alespoň 1."
+      },
+      "save": "Uložit",
+      "cancel": "Zrušit",
+      "createSuccess": "Vozidlo bylo přidáno.",
+      "updateSuccess": "Vozidlo bylo aktualizováno.",
+      "deactivateSuccess": "Vozidlo bylo deaktivováno.",
+      "loading": "Načítám vozidla..."
+    },
+    "people": {
+      "title": "Lidé",
+      "invite": "Pozvat",
+      "edit": "Upravit",
+      "deactivate": "Deaktivovat",
+      "resetPassword": "Resetovat heslo",
+      "fields": {
+        "email": "E-mail",
+        "displayName": "Zobrazované jméno",
+        "role": "Role",
+        "phone": "Telefon",
+        "isActive": "Aktivní",
+        "lastLogin": "Poslední přihlášení"
+      },
+      "roles": {
+        "Driver": "Řidič",
+        "Dispatcher": "Dispečer",
+        "FleetAdmin": "Správce flotily"
+      },
+      "validation": {
+        "emailRequired": "E-mail je povinný.",
+        "emailInvalid": "Zadejte platnou e-mailovou adresu.",
+        "displayNameRequired": "Jméno je povinné.",
+        "roleRequired": "Role je povinná."
+      },
+      "tempPassword": {
+        "title": "Dočasné heslo",
+        "warning": "Toto heslo se zobrazí pouze jednou. Zkopírujte ho a předejte uživateli.",
+        "copy": "Kopírovat",
+        "copied": "Zkopírováno!",
+        "dismiss": "Zavřít"
+      },
+      "save": "Uložit",
+      "cancel": "Zrušit",
+      "inviteSuccess": "Pozvánka byla odeslána.",
+      "updateSuccess": "Uživatel byl aktualizován.",
+      "deactivateSuccess": "Uživatel byl deaktivován.",
+      "selfDeactivation": "Nemůžete deaktivovat vlastní účet.",
+      "driverIsOnline": "Řidič musí nejprve jít offline.",
+      "loading": "Načítám uživatele...",
+      "noLastLogin": "Nikdy"
+    },
+    "fleet": {
+      "title": "Flotila",
+      "name": "Název flotily",
+      "phone": "Telefon flotily",
+      "offerTimeout": "Časový limit nabídky (s)",
+      "autoDispatch": "Automatické přidělování",
+      "autoDispatchHint": "Dostupné ve verzi 1.1",
+      "loading": "Načítám nastavení..."
+    }
+  },
+  "search": {
+    "title": "Vyhledávání objednávek",
+    "filters": {
+      "dateFrom": "Od",
+      "dateTo": "Do",
+      "status": "Stav",
+      "allStatuses": "Všechny stavy",
+      "driver": "Řidič",
+      "allDrivers": "Všichni řidiči",
+      "search": "Hledat",
+      "searchPlaceholder": "Kód, telefon nebo jméno",
+      "apply": "Použít",
+      "exportCsv": "Exportovat CSV"
+    },
+    "table": {
+      "code": "Kód",
+      "created": "Vytvořeno",
+      "when": "Kdy",
+      "customer": "Zákazník",
+      "route": "Trasa",
+      "price": "Cena",
+      "driver": "Řidič",
+      "status": "Stav",
+      "noDriver": "—",
+      "asap": "ASAP",
+      "noResults": "Žádné výsledky",
+      "loading": "Načítám..."
+    },
+    "pagination": {
+      "page": "Strana {{page}} / {{total}}",
+      "prev": "Předchozí",
+      "next": "Další"
+    }
+  },
+  "orders": {
+    "drawer": {
+      "title": "Detail objednávky",
+      "close": "Zavřít",
+      "edit": "Upravit",
+      "save": "Uložit",
+      "saving": "Ukládám...",
+      "cancel": "Zrušit",
+      "conflict": "Objednávku mezitím změnil někdo jiný",
+      "editableStatuses": "Upravitelné pouze ve stavu Nová nebo Přiřazená",
+      "fields": {
+        "pickup": "Nástup",
+        "dropoff": "Cíl",
+        "scheduledAt": "Plánovaný čas",
+        "note": "Poznámka",
+        "passengers": "Cestující"
+      }
+    },
+    "timeline": {
+      "title": "Historie",
+      "noEvents": "Žádné události",
+      "actor": {
+        "System": "Systém",
+        "Driver": "Řidič",
+        "Dispatcher": "Dispečer",
+        "Customer": "Zákazník"
+      },
+      "event": {
+        "Created": "Objednávka vytvořena",
+        "Assigned": "Přiřazena řidiči",
+        "Accepted": "Řidič přijal",
+        "Declined": "Řidič odmítl",
+        "Timeout": "Vypršel čas nabídky",
+        "Arrived": "Řidič dorazil",
+        "Started": "Jízda zahájena",
+        "Completed": "Jízda dokončena",
+        "Cancelled": "Objednávka zrušena",
+        "Reassigned": "Přeřazena jinému řidiči",
+        "PriceOverridden": "Cena upravena",
+        "NoteAdded": "Přidána poznámka",
+        "Updated": "Objednávka upravena"
+      }
+    },
+    "actions": {
+      "assign": "Přiřadit",
+      "reassign": "Přeřadit",
+      "cancel": "Zrušit",
+      "accept": "Přijmout",
+      "arrive": "Na místě",
+      "start": "Zahájit jízdu",
+      "complete": "Dokončit",
+      "decline": "Odmítnout",
+      "title": "Akce"
+    },
+    "loading": "Načítám...",
+    "notFound": "Objednávka nebyla nalezena"
+  }
+}

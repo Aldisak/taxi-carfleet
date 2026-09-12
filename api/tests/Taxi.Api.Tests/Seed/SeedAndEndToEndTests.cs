@@ -398,6 +398,7 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "POST /api/v1/orders",
             "GET /api/v1/orders",
             "GET /api/v1/orders/{id}",
+            "PATCH /api/v1/orders/{id}",
             // Orders — tracking / notes / events
             "GET /api/v1/orders/by-code/{publicCode}",
             "POST /api/v1/orders/{id}/notes",
@@ -416,6 +417,7 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "GET /api/v1/drivers/me",
             "POST /api/v1/drivers/me/online",
             "POST /api/v1/drivers/me/offline",
+            "POST /api/v1/drivers/{id}/status",
             // Vehicles
             "GET /api/v1/vehicles",
             "GET /api/v1/vehicles/{id}",
@@ -428,6 +430,12 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "POST /api/v1/staff",
             "PUT /api/v1/staff/{id}",
             "DELETE /api/v1/staff/{id}",
+            "POST /api/v1/staff/{id}/reset-password",
+            // Fleet
+            "GET /api/v1/fleet/settings",
+            // Geo
+            "GET /api/v1/geo/suggest",
+            "GET /api/v1/geo/route",
             // Health / welcome
             "GET /api/v1/welcome",
         };
