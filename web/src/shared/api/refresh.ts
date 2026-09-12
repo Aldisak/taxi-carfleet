@@ -38,6 +38,16 @@ export function isSilentRefreshEnabled(): boolean {
 }
 
 /**
+ * The configured redirect target for a terminal auth failure, or null if silent
+ * refresh is not enabled. Role-aware: '/d/login' for drivers, '/c/login' for
+ * customers, etc. client.ts's double-401 branch reads this so it redirects to the
+ * caller's login rather than a hardcoded path (F2).
+ */
+export function getFailureRedirectPath(): string | null {
+  return failureRedirectPath
+}
+
+/**
  * Perform a silent refresh using the stored refresh token.
  * Returns true on success, false on failure (storage already cleared).
  *

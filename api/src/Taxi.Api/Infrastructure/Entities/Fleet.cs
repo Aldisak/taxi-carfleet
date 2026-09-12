@@ -21,6 +21,9 @@ public class Fleet
     /// <summary>IANA time zone identifier. Defaults to Europe/Prague.</summary>
     public string TimeZone { get; set; } = "Europe/Prague";
 
+    /// <summary>Optional brand primary color as a #RRGGBB hex string. Null falls back to the client theme token.</summary>
+    public string? PrimaryColorHex { get; set; }
+
     /// <summary>Whether the fleet is currently active.</summary>
     public bool IsActive { get; set; }
 

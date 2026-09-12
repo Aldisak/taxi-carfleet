@@ -13,6 +13,7 @@ using Taxi.Api.Common;
 using Taxi.Api.Common.Features;
 using Taxi.Api.Common.Orders;
 using Taxi.Api.Common.Tenancy;
+using Taxi.Api.Common.Tracking;
 using Taxi.Api.Infrastructure;
 using Taxi.Api.Infrastructure.Jobs;
 using Taxi.Api.Infrastructure.Seed;
@@ -165,6 +166,12 @@ try
 
     // ── TimeProvider ──────────────────────────────────────────────────────────
     builder.Services.AddSingleton(TimeProvider.System);
+
+    // ── Tracking token (customer SMS link) ──────────────────────────────────
+    // Dev HMAC key lives in appsettings.Development.json; prod key wiring deferred to assignment 08.
+    builder.Services.Configure<TrackingOptions>(
+        builder.Configuration.GetSection(TrackingOptions.SectionName));
+    builder.Services.AddSingleton<TrackingTokenService>();
 
     // ── Development seeder ────────────────────────────────────────────────────
     // Always registered in Development so tests can resolve and call it directly.

@@ -64,14 +64,15 @@ public sealed class GeoProxyTests(PostgresFixture fixture)
         body!.Items.Should().BeEmpty();
     }
 
-    /// <summary>A non-dispatcher caller receives 403 Forbidden.</summary>
+    /// <summary>A driver caller receives 403 Forbidden. After A-geo-suggest, suggest is
+    /// CustomerOrStaff (Customer + Dispatcher + FleetAdmin); drivers remain excluded.</summary>
     [Fact]
     public async Task Suggest_NonDispatcher_Returns403()
     {
         var ct = TestContext.Current.CancellationToken;
 
         var client = fixture.Factory.CreateClient();
-        client.AsCustomer();
+        client.AsDriver(Guid.CreateVersion7(), Guid.CreateVersion7());
 
         var resp = await client.GetAsync("/api/v1/geo/suggest?q=Prague", ct);
 

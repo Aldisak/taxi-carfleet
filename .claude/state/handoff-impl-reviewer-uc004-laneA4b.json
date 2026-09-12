@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA4b (AC#1 fixes)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "A4b-N1",
+      "severity": "nit",
+      "file": "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/CommonRouteDto.cs",
+      "rule": "rules/csharp-style.md#records-for-dtos",
+      "title": "DTO is public (not internal) — acceptable",
+      "detail": "CommonRouteDto is declared public. This matches the codebase's existing response-DTO posture (records are the frontend JSON contract) and is consistent with ListCommonRoutesResponse. Not a violation; noted only because the rule prefers internal for non-contract types.",
+      "recommendation": "No action. DTOs that form the HTTP contract are legitimately public."
+    },
+    {
+      "id": "A4b-N2",
+      "severity": "nit",
+      "file": "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
+      "rule": "N/A (out of laneA4b scope)",
+      "title": "Handoff text says geo/suggest stays CustomerOnly; actual policy is CustomerOrStaff",
+      "detail": "The laneA4b handoff narrative says geo/suggest stays 'CustomerOnly'. The staged SuggestEndpoint uses Policies(nameof(AuthorizationPolicies.CustomerOrStaff)). This is a sibling-lane file, not a laneA4b deliverable, and the security point that matters for this review holds: geo/suggest is NOT AllowAnonymous. The wording mismatch is a handoff-note inaccuracy only.",
+      "recommendation": "No action for laneA4b. Verified geo/suggest and pricing/quote remain authenticated (not anonymous)."
+    }
+  ],
+  "summary": "APPROVED, blocks_merge=false. Both AC#1 blocker fixes are correct and security-safe. (1) routes/common is now AllowAnonymous and fleet-safe: ICurrentTenant injected; a 'FleetId is null -> 404' guard runs BEFORE any query; the Route entity is ITenantEntity and TaxiDbContext line 95 applies HasQueryFilter(e => e.FleetId == currentTenant.FleetId), which scopes the read for anonymous callers regardless of auth state (fleet resolved by TenantResolutionMiddleware from X-Fleet-Slug/subdomain). Tenant isolation test CommonRoutes_CrossTenant_ReturnsOwnFleetOnly seeds fleet A + fleet B routes and, via the anonymous client carrying fleet A's slug, asserts FleetBRoute is NOT returned -- a genuine A-vs-B unreachability assertion. CommonRoutes_NoFleetResolved_Returns404 protects the guard against regression. geo/suggest (CustomerOrStaff) and pricing/quote (CustomerOnly) were NOT flipped to anonymous -- confirmed. (2) No over-exposure: CommonRouteDto additive fields carry only public price-list data (route name as pickup/dropoff address, coords, zone GUIDs) -- no PII, no cross-fleet or internal fields. DropoffAddress is set only when both dropoff coords are non-null, so the downstream CreateOrder validator's 'dropoff address => dropoff coords' rule is not violated; covered by CommonRoutes_PointToPointNoDropoffCoords_OmitsDropoffAddress_StillValid and CommonRoutes_PointToPointFields_SatisfyCreateOrderValidator (TestValidate proves IsValid). (3) Migrations: laneA4b added NONE. The two staged migrations (AddFleetPrimaryColor, AddOrderRating) and the only model-snapshot deltas (PrimaryColorHex on Fleet, RatingComment/RatingStars on Order) belong to sibling UC-004 lanes; no Route column or Route snapshot change exists. (4) Rules pass: DontCatchExceptions() present, _featureConfiguration field present, Send.NotFoundAsync for the 404 guard, AsNoTracking() on the read, XML docs on endpoint + every record param (no CS1573), Europe/Prague valid-now filter preserved (static PragueZone, injected TimeProvider, day-bit + window logic intact). Two nits only, neither blocking. Did not run tests (329 green reported; web agent concurrent)."
+}

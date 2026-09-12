@@ -57,10 +57,13 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | GET | `/orders/{id}` | Get order detail | Bearer |
 | POST | `/orders/{id}/start` | Start the ride (Driver only) | Bearer |
 | POST | `/orders/{id}/reassign` | Reassign an order to a different driver | Bearer |
+| POST | `/orders/{id}/rating` | Rate a completed order (Customer only, once) | Bearer |
 | GET | `/orders` | List orders | Bearer |
 | POST | `/orders` | Create a new order | Bearer |
+| GET | `/orders/mine` | List my orders (Customer only) | Bearer |
 | GET | `/orders/{id}/events` | Get order event history | Bearer |
 | GET | `/orders/by-code/{publicCode}` | Track order by public code | Bearer |
+| GET | `/orders/mine/active` | Get my active order (Customer only) | Bearer |
 | POST | `/orders/{id}/decline` | Decline an assigned order (Driver only) | Bearer |
 | POST | `/orders/{id}/complete` | Complete the ride (Driver only) | Bearer |
 | POST | `/orders/{id}/cancel` | Cancel an order | Bearer |
@@ -68,6 +71,25 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | POST | `/orders/{id}/arrive` | Signal driver arrival at pickup (Driver only) | Bearer |
 | POST | `/orders/{id}/notes` | Add a note to an order | Bearer |
 | POST | `/orders/{id}/accept` | Accept an assigned order (Driver only) | Bearer |
+
+## Pricing
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/pricing/quote` | Get a price quote (Customer only) | Bearer |
+
+## Public
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/public/track/{code}` | Track an order via the public SMS link | Anonymous |
+| GET | `/public/fleet` | Get public fleet branding | Anonymous |
+
+## Routes
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/routes/common` | List common routes (anonymous, fleet-scoped) | Anonymous |
 
 ## Staff
 

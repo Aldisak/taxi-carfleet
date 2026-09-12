@@ -1,0 +1,36 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB4b (B-home+B-route-order)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "MEDIUM",
+      "file": "web/src/features/customer/order/PassengerStepper.tsx, web/src/features/customer/order/WhenPicker.tsx",
+      "rule": "rules/web-accessibility.md#a11y-gate, rules/web-testing.md#a11y-assertion",
+      "title": "New interactive components ship without their own vitest-axe component test",
+      "detail": "PassengerStepper (decrement/increment buttons) and WhenPicker (Hned/Na cas toggle with aria-pressed + a datetime-local input) are new interactive components but have NO colocated .test file. They are only covered transitively by RouteOrderPage's page-level axe assertion. The a11y gate requires EVERY new interactive component to ship a vitest-axe assertion in its own component test; the order/ folder contains only RouteOrderPage.test.tsx, orderForm.test.ts, whenRules.test.ts. FixedPriceBadge is display-only so needs no axe. Does not block merge (page-level axe does exercise both, and both use correct semantics: native buttons, aria-pressed, aria-labelledby group, aria-label on the datetime input), but the dedicated per-component coverage the rule mandates is missing.",
+      "recommendation": "Add PassengerStepper.test.tsx and WhenPicker.test.tsx each with a render + axe(container) assertion (and a basic interaction: clamp at 1/4 for the stepper, toggle mode + bounded min/max for the picker)."
+    },
+    {
+      "id": "F-02",
+      "severity": "LOW",
+      "file": "web/src/features/customer/order/WhenPicker.tsx",
+      "rule": "accurate-doc-comments (rules/csharp-style.md#xml-documentation web analogue)",
+      "title": "Stale module name in doc comment",
+      "detail": "The WhenPicker component doc comment (line ~63) says 'enforced by the pure whenPicker.ts module', but the pure module was renamed to whenRules.ts to avoid the Windows case-collision with WhenPicker.tsx. The import/code is correct; only the comment is stale.",
+      "recommendation": "Update the comment to reference whenRules.ts."
+    },
+    {
+      "id": "F-03",
+      "severity": "LOW",
+      "file": "web/src/features/customer/order/useCreateOrder.ts",
+      "rule": "B-route-order AC#3 / handoff note",
+      "title": "Navigation uses order.publicCode, not trackingCode, for the tracking URL",
+      "detail": "B-route-order AC#3 mentions navigating to /c/t/{code} 'using data.order.id / trackingCode'. RouteOrderPage navigates via created.publicCode only; trackingCode/trackingToken are surfaced by useCreateOrder but not used in the URL. Honest, documented decision: the customer is authed post-create so authed tracking resolves via publicCode without the HMAC token (and A-track may not be merged). Not a defect for B-route-order; the logged-out SMS link path is B-tracking's concern and the fields are already threaded through.",
+      "recommendation": "No action for this WI. When A-track merges and B-tracking lands, confirm the logged-out path uses trackingCode + token."
+    }
+  ],
+  "summary": "blocks_merge=false. laneB4b (B-home + B-route-order + folded F1/F2 fixes) is clean against the WI acceptance criteria and the cited web rules. ONE MEDIUM finding (PassengerStepper + WhenPicker lack their own vitest-axe component tests per the a11y gate; only transitively covered by RouteOrderPage's page axe) and two LOW findings; none block merge. F2 (role-aware double-401 redirect): client.ts's _isRetry branch now uses getFailureRedirectPath() ?? '/d/login'; dispatcher never enables silent refresh so it never reaches that branch (keeps /x/login via its own fallthrough), driver sets /d/login, customer sets /c/login. All three paths have regression tests in client-driver-refresh.test.ts incl. the new customer->/c/login case. Driver/dispatcher NOT regressed. F1 (phone everywhere): CallButton never returns null -- falls back to authStorage.getFleetPhone() (durable 'fleet.phone' key NOT wiped by clear()), else a VISIBLE disabled button with an i18n aria-label; useFleetBranding persists the phone in its queryFn wrapper. VERIFIED the offline path: OfflineGate renders <CallButton phone={fleet?.phone}/> inside a role=alert banner, and CustomerLayout renders <CallButton phone={fleet?.phone}/> in the header on every /c screen -- so on an offline cold start where fleet is undefined the number still comes from the durable key (or a visible disabled affordance), satisfying B-pwa AC#3. B-home: RouteCard (name + formatCzk cs-CZ integer CZK, tap->/c/order/route/:id with route in nav state), Vlastni adresa->/c/order/new, homeContent.ts pure decision (activeOrder banner replaces routes / routes / empty-hidden). Self-verified grep: NO Leaflet import in home/order/shell (only a doc-comment mention in CustomerHomePage) -- B-home AC#3 met. B-route-order: PointToPoint locked + note, Zone/ZoneToZone placeholder, WhenPicker Hned/Na cas with whenRules.ts pure +20min..+7d validation, passengers clamped 1..4, big fixed price, inline CustomerLoginStep that swaps only the submit button (page never unmounts -> form state survives), create via postCreateOrder unwrapping { order }, navigate by publicCode. A test proves passengers:2 survives the phone->code login and reaches the create payload. The two cross-lane blockers are honestly flagged, not faked: (a) useCommonRoutes/useMyActiveOrder gated on hasToken with a loud comment to loosen when A-common-routes goes AllowAnonymous -- real and correctly deferred; (b) buildRouteOrderRequest sends pickupAddress=route.name + 0/0 placeholder coords with a loud comment -- a real B-e2e blocker deferred to Lane A, NOT silently worked around (unit tests are vitest-mocked and do not hit the validator). Rules: i18n cs/en parity green (451/451, no diff), formal 'vy' tone, no cross-(top-level-)feature imports, touch targets >= min via theme tokens, axe on CallButton/RouteCard/ActiveOrderBanner/RouteOrderPage, Windows case-collision avoided (whenRules.ts not a colliding whenPicker.ts), client.ts extended not forked. Tests NOT re-run per task directive (728 reported green; concurrent backend lane)."
+}

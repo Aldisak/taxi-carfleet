@@ -1,6 +1,6 @@
 import { authStorage } from './auth-storage'
 import { idbAuthStore } from './idbAuthStore'
-import { isSilentRefreshEnabled, silentRefresh } from './refresh'
+import { getFailureRedirectPath, isSilentRefreshEnabled, silentRefresh } from './refresh'
 
 /** Typed error envelope matching the backend ValidationFailureExceptionHandler shape. */
 export interface ApiError {
@@ -75,12 +75,14 @@ export async function apiRequest<T>(
       return new Promise(() => undefined)
     }
 
-    // Driver flow — retry itself got 401: clear both stores and redirect to driver login.
+    // Silent-refresh flow — retry itself got 401: clear both stores and redirect to the
+    // caller's login. Role-aware via getFailureRedirectPath() (F2: previously hardcoded
+    // /d/login, which bounced a customer whose refresh failed to the DRIVER login).
     // Must check BEFORE the dispatcher fallthrough so IDB is always cleaned up.
     if (_isRetry && isSilentRefreshEnabled()) {
       authStorage.clear()
       await idbAuthStore.clear()
-      window.location.href = '/d/login'
+      window.location.href = getFailureRedirectPath() ?? '/d/login'
       return new Promise(() => undefined)
     }
 
@@ -145,6 +147,72 @@ export function postStaffLogin(req: StaffLoginRequest): Promise<StaffLoginRespon
 }
 
 // ---------------------------------------------------------------------------
+// Public endpoints (AllowAnonymous — fleet resolved from X-Fleet-Slug)
+// ---------------------------------------------------------------------------
+
+/** Reduced public fleet branding DTO from GET public/fleet (AllowAnonymous). */
+export interface PublicFleetResponse {
+  name: string
+  phone: string
+  /** Brand primary color as #RRGGBB, or null to fall back to the default theme token. */
+  primaryColorHex: string | null
+  currency: string
+  timeZone: string
+}
+
+/**
+ * GET public/fleet — branding for the customer PWA before login.
+ * AllowAnonymous; the fleet is resolved server-side from the X-Fleet-Slug header
+ * (client.ts attaches it from authStorage), so the slug MUST be persisted first (F-05).
+ */
+export function getPublicFleet(): Promise<PublicFleetResponse> {
+  return apiRequest<PublicFleetResponse>('/public/fleet')
+}
+
+// ---------------------------------------------------------------------------
+// Customer phone-code auth (AllowAnonymous — X-Fleet-Slug from authStorage)
+// ---------------------------------------------------------------------------
+
+export interface CustomerUserDto {
+  id: string
+  phone: string
+  displayName: string
+  role: string
+}
+
+export interface VerifyCustomerCodeResponse {
+  accessToken: string
+  refreshToken: string
+  user: CustomerUserDto
+}
+
+/**
+ * POST auth/customer/request-code — send a 6-digit SMS OTP to the phone.
+ * skipAuthRedirect: a 429 rate-limit must render as a form message, never a redirect.
+ */
+export function requestCustomerCode(phone: string): Promise<void> {
+  return apiRequest<void>('/auth/customer/request-code', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+    skipAuthRedirect: true,
+  })
+}
+
+/**
+ * POST auth/customer/verify-code — verify the OTP and return customer tokens.
+ * skipAuthRedirect is MANDATORY: a wrong code returns 401, and without this flag
+ * client.ts would clear storage / redirect (to /x/login or via silent refresh),
+ * destroying the "Kód nesouhlasí" error path. The 401 surfaces as an ApiResponseError.
+ */
+export function verifyCustomerCode(phone: string, code: string): Promise<VerifyCustomerCodeResponse> {
+  return apiRequest<VerifyCustomerCodeResponse>('/auth/customer/verify-code', {
+    method: 'POST',
+    body: JSON.stringify({ phone, code }),
+    skipAuthRedirect: true,
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Geo endpoints
 // ---------------------------------------------------------------------------
 
@@ -187,6 +255,221 @@ export function getGeoRoute(req: GeoRouteRequest): Promise<GeoRouteResponse> {
 }
 
 // ---------------------------------------------------------------------------
+// Pricing quote (CustomerOnly)
+// ---------------------------------------------------------------------------
+
+/**
+ * A price quote from GET /pricing/quote. Either a Fixed price (a matching route rule) or
+ * an Estimate RANGE (tariff ±10%, rounded to 10 CZK) — the backend guarantees it is NEVER
+ * a single exact estimate (AC #4: estimateLow < estimateHigh).
+ */
+export interface PriceQuoteResponse {
+  /** "Fixed" when a route rule matched, else "Estimate". */
+  priceType: 'Fixed' | 'Estimate'
+  /** Integer CZK fixed price when priceType is Fixed; null otherwise. */
+  fixedPriceCzk: number | null
+  /** Lower bound of the estimate range when priceType is Estimate; null otherwise. */
+  estimateLowCzk: number | null
+  /** Upper bound of the estimate range when priceType is Estimate; null otherwise. */
+  estimateHighCzk: number | null
+}
+
+/** Query params for GET /pricing/quote. Dropoff is optional (omit → a wide estimate). */
+export interface PriceQuoteRequest {
+  fromLat: number
+  fromLng: number
+  toLat?: number | null
+  toLng?: number | null
+}
+
+/**
+ * GET /pricing/quote — a Fixed price or an Estimate range for a prospective order.
+ * CustomerOnly; coords are sent as invariant-format strings (the backend parses them as
+ * invariant doubles to dodge the cs-CZ locale double-binding trap). Throws
+ * ApiResponseError(502) when the upstream route is unavailable — the caller surfaces the
+ * "Cenu nelze spočítat, zavolejte nám" message.
+ */
+export function getPriceQuote(req: PriceQuoteRequest): Promise<PriceQuoteResponse> {
+  const params = new URLSearchParams({
+    fromLat: String(req.fromLat),
+    fromLng: String(req.fromLng),
+  })
+  if (req.toLat != null && req.toLng != null) {
+    params.set('toLat', String(req.toLat))
+    params.set('toLng', String(req.toLng))
+  }
+  return apiRequest<PriceQuoteResponse>(`/pricing/quote?${params}`)
+}
+
+// ---------------------------------------------------------------------------
+// Customer routes + my-orders (CustomerOnly — X-Fleet-Slug + customer JWT)
+// ---------------------------------------------------------------------------
+
+/** Route type discriminator (matches the backend RouteType enum). */
+export type RouteType = 'PointToPoint' | 'Zone' | 'ZoneToZone'
+
+/**
+ * A valid-now common route card (GET routes/common). Integer CZK price.
+ *
+ * laneA4b enriched the DTO: PointToPoint routes now carry real pickup/dropoff addresses
+ * and coordinates (populated from the route) so a logged-out visitor can create an order
+ * without geocoding (AC#1). Zone/ZoneToZone routes leave the coords null and expose the
+ * zone references instead (the customer enters the in-zone address; coords come from
+ * geocoding pre-06). All of these are optional because Zone-based routes omit them.
+ */
+export interface CommonRouteDto {
+  id: string
+  name: string
+  type: RouteType
+  priceCzk: number
+  /** Pickup address (PointToPoint = the route name); null/absent for Zone-based routes. */
+  pickupAddress?: string | null
+  /** Pickup latitude (PointToPoint); null/absent for Zone-based routes. */
+  pickupLat?: number | null
+  /** Pickup longitude (PointToPoint); null/absent for Zone-based routes. */
+  pickupLng?: number | null
+  /** Dropoff address (PointToPoint, only when both dropoff coords exist); null otherwise. */
+  dropoffAddress?: string | null
+  /** Dropoff latitude (PointToPoint); null when not applicable. */
+  dropoffLat?: number | null
+  /** Dropoff longitude (PointToPoint); null when not applicable. */
+  dropoffLng?: number | null
+  /** Origin zone id (Zone / ZoneToZone); null for PointToPoint. */
+  fromZoneId?: string | null
+  /** Destination zone id (ZoneToZone); null otherwise. */
+  toZoneId?: string | null
+}
+
+/**
+ * Real A-common-routes contract (backend ListCommonRoutesResponse): rows are wrapped in a
+ * named `{ routes: CommonRouteDto[] }` envelope, NOT the `{ items }` list convention.
+ * Confirmed against docs/api.md + the ListCommonRoutes endpoint. The earlier `{ items }`
+ * assumption produced an empty Home for logged-out visitors (laneB4f AC#1 blocker).
+ */
+export interface ListCommonRoutesResponse {
+  routes: CommonRouteDto[]
+}
+
+/**
+ * GET routes/common?validNow=true — the Home common-route cards (A-common-routes).
+ * AllowAnonymous + tenant-scoped (X-Fleet-Slug); returns only routes valid at the current
+ * Prague time. Unwraps the `{ routes }` envelope and returns the array directly.
+ */
+export async function getCommonRoutes(): Promise<CommonRouteDto[]> {
+  const data = await apiRequest<ListCommonRoutesResponse>('/routes/common?validNow=true')
+  return data.routes
+}
+
+/** Driver's last known position on a tracking DTO. */
+export interface TrackPositionDto {
+  lat: number
+  lng: number
+}
+
+/**
+ * Reduced tracking DTO shared by the authed (GET orders/by-code/{code}) and public
+ * (GET public/track/{code}) paths. Deliberately minimal: no phone, no customer id,
+ * no order id. EtaMinutes is always null pre-06 (OSRM deferred to assignment 06), so the
+ * status headline omits "~min" until then. DisplayPriceCzk is present only on the public
+ * payload; the authed path reads the price from the full order detail (getOrder).
+ */
+export interface TrackDto {
+  publicCode: string
+  status: string
+  pickupAddress: string
+  dropoffAddress: string | null
+  scheduledAt: string | null
+  driverFirstName: string | null
+  vehiclePlate: string | null
+  vehicleColor: string | null
+  position: TrackPositionDto | null
+  /** Minutes until pickup. Always null pre-06 (OSRM ETA deferred). */
+  etaMinutes?: number | null
+  /** Display price in CZK (public payload only); null when unknown. */
+  displayPriceCzk?: number | null
+}
+
+/**
+ * GET orders/by-code/{publicCode} — the AUTHED customer tracking DTO (CustomerOnly,
+ * owner-only, X-Fleet-Slug from authStorage). Returns the reduced TrackDto; a 404 means
+ * the order is unknown or the caller does not own it (no-leak). The order id is NOT in this
+ * payload — the authed page resolves the id via getMyActiveOrder for SignalR Subscribe.
+ */
+export function getOrderByCode(publicCode: string): Promise<TrackDto> {
+  return apiRequest<TrackDto>(`/orders/by-code/${encodeURIComponent(publicCode)}`)
+}
+
+/**
+ * GET public/track/{code}?k={token} — the LOGGED-OUT (AllowAnonymous) tracking DTO for the
+ * SMS link. The fleet is resolved from X-Fleet-Slug; the signed token binds the link to the
+ * order + expiry. Returns the reduced TrackDto (with displayPriceCzk). A bad/missing/expired/
+ * tampered token returns 410 Tracking.LinkExpired (ApiResponseError 410 — the caller shows
+ * "Odkaz vypršel" + the call button); an unknown code returns 404. AllowAnonymous never 401s,
+ * so it does not trigger the silent-refresh redirect.
+ */
+export function getPublicTrack(code: string, token: string): Promise<TrackDto> {
+  const params = new URLSearchParams({ k: token })
+  return apiRequest<TrackDto>(`/public/track/${encodeURIComponent(code)}?${params}`, {
+    skipAuthRedirect: true,
+  })
+}
+
+/** The caller's single active (non-terminal) order for the Home sticky banner. */
+export interface MyActiveOrderDto {
+  id: string
+  publicCode: string
+  status: string
+}
+
+/**
+ * GET orders/mine/active — the caller's single non-terminal order, or null on 204
+ * (A-my-orders). CustomerOnly + own-rows + tenant-safe. Returns null when the customer
+ * has no active order so Home shows the routes block instead of the banner.
+ */
+export async function getMyActiveOrder(): Promise<MyActiveOrderDto | null> {
+  const res = await apiRequest<MyActiveOrderDto | undefined>('/orders/mine/active')
+  return res ?? null
+}
+
+/**
+ * One row of the customer's order history (GET orders/mine, A-my-orders). Matches the backend
+ * MyOrderListItemDto. Prices are integer CZK; timestamps are UTC ISO strings (render in
+ * Europe/Prague). RatingStars is non-null once the order has been rated — B-rating uses it both
+ * to resolve the order id (by publicCode) and to detect the already-rated state.
+ */
+export interface MyOrderHistoryItemDto {
+  id: string
+  publicCode: string
+  status: string
+  pickupAddress: string
+  dropoffAddress: string | null
+  priceType: string
+  fixedPriceCzk: number | null
+  finalPriceCzk: number | null
+  ratingStars: number | null
+  createdAt: string
+  completedAt: string | null
+}
+
+/** Standard paged list envelope for the customer's order history. */
+export interface MyOrderHistoryResponse {
+  items: MyOrderHistoryItemDto[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+/**
+ * GET orders/mine?page=&pageSize= — the customer's own order history, newest first
+ * (A-my-orders, CustomerOnly, own-rows, tenant-safe). Paged { items, total, page, pageSize }.
+ * Feeds B-history and supplies B-rating's order-id + already-rated lookup.
+ */
+export function getMyOrderHistory(page = 1, pageSize = 20): Promise<MyOrderHistoryResponse> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  return apiRequest<MyOrderHistoryResponse>(`/orders/mine?${params}`)
+}
+
+// ---------------------------------------------------------------------------
 // Orders endpoints
 // ---------------------------------------------------------------------------
 
@@ -212,6 +495,16 @@ export interface CreateOrderRequest {
 
 export interface CreateOrderResponse {
   order: OrderDetailDto
+  /**
+   * Tracking code for the logged-out SMS link, added by A-track (customer create only).
+   * Optional so the type compiles whether or not A-track has merged; the customer is
+   * authed post-create, so authed tracking works via order.publicCode without it.
+   */
+  trackingCode?: string
+  /** HMAC tracking token for the logged-out link (A-track). Optional pre-merge. */
+  trackingToken?: string
+  /** Full tracking URL path /c/t/{code}?k={token} (A-track). Optional pre-merge. */
+  trackingUrlPath?: string
 }
 
 export function postCreateOrder(req: CreateOrderRequest): Promise<CreateOrderResponse> {
@@ -304,6 +597,12 @@ export interface OrderDetailDto {
   updatedAt: string
   allowedActions: string[]
   version: number
+  /** Customer star rating (1..5); null until rated (A-rating). */
+  ratingStars?: number | null
+  /** Optional customer rating comment; null unless provided (A-rating). */
+  ratingComment?: string | null
+  /** ISO timestamp when the customer rated the order; null until rated (A-rating). */
+  ratedAt?: string | null
 }
 
 export interface TransitionOrderResponse {
@@ -338,6 +637,25 @@ export function postCancelOrder(orderId: string, reason: string): Promise<Transi
   return apiRequest<TransitionOrderResponse>(`/orders/${orderId}/cancel`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
+  })
+}
+
+/** Body of POST orders/{id}/rating (A-rating). Stars 1..5; optional comment (max 500). */
+export interface RateOrderRequest {
+  stars: number
+  comment?: string | null
+}
+
+/**
+ * POST orders/{id}/rating — the owning customer rates their completed order once (A-rating,
+ * CustomerOnly, owner-only). Returns 204 No Content on success. A 409 Order.AlreadyRated means
+ * the order was already rated (the caller treats this as the already-rated state, not a crash);
+ * a 409 Order.NotCompleted means it is not completed yet.
+ */
+export function rateOrder(orderId: string, req: RateOrderRequest): Promise<void> {
+  return apiRequest<void>(`/orders/${orderId}/rating`, {
+    method: 'POST',
+    body: JSON.stringify(req),
   })
 }
 

@@ -18,10 +18,14 @@ namespace Taxi.Api.Features.Orders.CreateOrder;
 internal sealed class CreateOrderEndpoint(
     TaxiDbContext dbContext,
     ICurrentTenant currentTenant,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    Taxi.Api.Common.Tracking.TrackingTokenService trackingTokenService)
     : Endpoint<CreateOrderRequest, CreateOrderResponse>
 {
     private const int MaxPublicCodeRetries = 5;
+
+    /// <summary>Lifetime of a freshly minted customer tracking link.</summary>
+    private static readonly TimeSpan TrackingTokenLifetime = TimeSpan.FromHours(24);
 
     private readonly OrdersFeatureConfiguration _featureConfiguration = new();
 
@@ -219,9 +223,20 @@ internal sealed class CreateOrderEndpoint(
 
         var detail = ToDetailDto(order, allowedActions);
 
+        // Customer orders get a signed tracking link for the SMS path (minted now; SMS send deferred to 05).
+        string? trackingCode = null;
+        string? trackingToken = null;
+        string? trackingUrlPath = null;
+        if (isCustomer)
+        {
+            trackingCode = order.PublicCode;
+            trackingToken = trackingTokenService.Mint(order.Id, now + TrackingTokenLifetime);
+            trackingUrlPath = $"/c/t/{trackingCode}?k={trackingToken}";
+        }
+
         await Send.CreatedAtAsync<GetOrderEndpoint>(
             new { id = order.Id },
-            new CreateOrderResponse(detail),
+            new CreateOrderResponse(detail, trackingCode, trackingToken, trackingUrlPath),
             generateAbsoluteUrl: false,
             cancellation: ct);
     }

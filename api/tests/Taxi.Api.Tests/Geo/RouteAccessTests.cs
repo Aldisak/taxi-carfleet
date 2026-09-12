@@ -63,9 +63,9 @@ public sealed class RouteAccessTests(PostgresFixture fixture)
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    // ── Suggest endpoint (still DispatcherOnly) ──────────────────────────────
+    // ── Suggest endpoint (CustomerOrStaff after A-geo-suggest; drivers excluded) ──
 
-    /// <summary>A Driver caller receives 403 from geo/suggest (suggest remains DispatcherOnly).</summary>
+    /// <summary>A Driver caller receives 403 from geo/suggest (CustomerOrStaff excludes drivers).</summary>
     [Fact]
     public async Task Suggest_Driver_Returns403()
     {

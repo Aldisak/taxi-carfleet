@@ -30,6 +30,9 @@ namespace Taxi.Api.Features.Orders.Shared;
 /// <param name="UpdatedAt">UTC timestamp when the order was last updated.</param>
 /// <param name="AllowedActions">List of lowercase action names the caller may perform on this order.</param>
 /// <param name="Version">Optimistic concurrency token. Send back on PATCH to detect stale edits.</param>
+/// <param name="RatingStars">Customer star rating (1..5). Null until the order is rated.</param>
+/// <param name="RatingComment">Optional customer rating comment. Null unless provided.</param>
+/// <param name="RatedAt">UTC timestamp when the customer rated the order. Null until rated.</param>
 public record OrderDetailDto(
     Guid Id,
     string PublicCode,
@@ -56,4 +59,7 @@ public record OrderDetailDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyList<string> AllowedActions,
-    int Version);
+    int Version,
+    int? RatingStars = null,
+    string? RatingComment = null,
+    DateTimeOffset? RatedAt = null);

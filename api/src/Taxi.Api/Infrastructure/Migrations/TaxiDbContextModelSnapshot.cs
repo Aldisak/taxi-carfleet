@@ -211,6 +211,11 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("phone");
 
+                    b.Property<string>("PrimaryColorHex")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("primary_color_hex");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -453,6 +458,19 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasMaxLength(6)
                         .HasColumnType("character varying(6)")
                         .HasColumnName("public_code");
+
+                    b.Property<DateTimeOffset?>("RatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rated_at");
+
+                    b.Property<string>("RatingComment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("rating_comment");
+
+                    b.Property<int?>("RatingStars")
+                        .HasColumnType("integer")
+                        .HasColumnName("rating_stars");
 
                     b.Property<Guid?>("RouteId")
                         .HasColumnType("uuid")

@@ -19,6 +19,7 @@ internal sealed class FleetConfiguration : IEntityTypeConfiguration<Fleet>
         builder.Property(x => x.Phone).IsRequired().HasMaxLength(20);
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
         builder.Property(x => x.TimeZone).IsRequired().HasMaxLength(100);
+        builder.Property(x => x.PrimaryColorHex).HasMaxLength(7);
 
         builder.HasIndex(x => x.Slug).IsUnique();
     }

@@ -1,0 +1,36 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB4e (B-rating+B-history)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "B4e-1",
+      "severity": "LOW",
+      "file": "web/src/features/customer/tracking/RatingForm.tsx",
+      "rule": "rules/web-accessibility.md#keyboard-focus",
+      "title": "Order-not-on-page-1 leaves a form that looks submittable but silently cannot submit (no user-visible reason)",
+      "detail": "When a Completed order is not in page-1 of GET orders/mine (customer with many newer orders opening an old completed-order URL directly), useRateOrder resolves orderId=null and existingStars=null, so resolveRatingView returns {kind:'form'}. The form renders fully (stars + comment + submit button) but canSubmit gates on orderId!=null and submit() guards `if (orderId==null) return`, so the button stays disabled forever with no explanation. Functionally SAFE per the task's concern: no crash, no wrong-order rating, no dead enabled button. Gap is UX only: an interactive form whose submit never enables, and no message. Realistic flows (live completion, history tap) always hit page 1, so edge case. Acceptable as-is.",
+      "recommendation": "Optional: when orderId==null after the query settles, render a neutral note instead of the live form, or paginate the lookup. Not merge-blocking."
+    },
+    {
+      "id": "B4e-2",
+      "severity": "LOW",
+      "file": "web/src/features/customer/tracking/useRateOrder.ts",
+      "rule": "rules/web-realtime.md#cache-patch-not-refetch",
+      "title": "Successful rating invalidates (not patches) the mine-list cache",
+      "detail": "On a 204 success useRateOrder invalidateQueries(['orders','mine','list']) + (['orders','detail',orderId]). Coherent with useMyOrderHistory which reads the same ['orders','mine','list',1] key, so history refetches and shows the new ratingStars — no stale rating state (task point 4 satisfied). The realtime rule prefers setQueryData patching for entities already in cache; the rated row IS in cache and could be patched. Minor: a rating submit is a rare user-initiated action, not a high-frequency realtime event, so a single invalidation is fine and the rule's refetch-storm concern does not apply.",
+      "recommendation": "Optional: setQueryData on ['orders','mine','list',1] to patch the rated row's ratingStars. Not merge-blocking."
+    },
+    {
+      "id": "B4e-3",
+      "severity": "LOW",
+      "file": "web/src/features/customer/history/CustomerHistoryPage.tsx",
+      "rule": "rules/web-realtime.md#last-known-state",
+      "title": "Offline banner uses role=status where the DisconnectBanner precedent uses role=alert",
+      "detail": "CustomerHistoryPage's offline banner is <p role=\"status\"> while web-realtime.md#last-known-state cites the features/board/DisconnectBanner.tsx precedent as role=\"alert\". role=status (polite) is defensible for a persistent, non-critical offline state on a read-only history screen (reads keep working from cache; nothing is lost), and is arguably better UX than an assertive alert that interrupts. Consistency-only note.",
+      "recommendation": "Optional: align with the DisconnectBanner role=alert precedent, or leave as role=status (defensible). Not merge-blocking."
+    }
+  ],
+  "summary": "laneB4e (B-rating + B-history) is well-scoped, convention-clean, and does NOT block merge. Source AND the three key test files were read (RatingForm.test.tsx, CustomerHistoryPage.test.tsx, useRateOrder.test.ts) — tests were not taken on faith. VERIFIED: (1) Once-per-order — resolveRatingView (pure, tested) shows read-only thanks when existingStars!=null (already rated from orders/mine), on local 204 success, AND on a 409 race (converges on thanks, errorKey null, no crash). Tests ASSERT outcomes, not mere no-throw: already-rated asserts the submit button is not.toBeInTheDocument() (form never renders); 409 asserts the thanks text + errorKey===null; non-409 asserts view stays form + submitFailed. (2) id-from-code — order id + already-rated resolved from GET orders/mine matched on publicCode; canSubmit AND submit() both gate on orderId!=null, so the not-on-page-1 edge degrades SAFELY (disabled button + early-return guard, no wrong-order POST, no crash) — see B4e-1. (3) ratingSlot wiring additive only: TrackingPage passes <RatingForm> to StatusHeadline.ratingSlot ONLY when mode==='authed' && descriptor.showRating (Completed); logged-out/public keeps default seam text; no tracking-screen structural refactor. (4) StarPicker uses native radios in a fieldset/legend radiogroup, visually-hidden-but-focusable, >=48px labels, :focus-within ring, count-only aria-label (confirmed by getByRole('radio',{name:/4/}) in tests — no /5/ ambiguity); read-only mode renders aria-hidden glyphs. AXE GAP CHECKED AND CLEAR: RatingForm's axe test renders the FORM state (radios present, awaited before axe) so interactive StarPicker a11y IS covered (no standalone StarPicker.test, covered transitively); CustomerHistoryPage's axe test renders a NON-EMPTY list. (5) B-history — read-only list from orders/mine (unwraps {items,...}), token-gated, row Link -> /c/t/{publicCode} read-only, separate (non-nested) Objednat-znovu button -> navigate('/c/order/new',{state:{reorder}}); CustomOrderPage reads location.state.reorder and prefills addresses only (no invented coords; existing coord gate still guards submit; test asserts both address inputs prefilled via probe). Date Europe/Prague, price cs-CZ CZK (final->fixed->'—'), offline role=status banner + last-known rows, empty state. /x and /d routes untouched. (6) Query-key coherence — useRateOrder and useMyOrderHistory share ['orders','mine','list',1]; rating success invalidates the ['orders','mine','list'] prefix -> history reflects new rating, no stale state (see B4e-2). (7) Rules — i18n cs/en parity confirmed for all customer.rating.* / customer.history.* keys (formal 'vy', e.g. 'Ohodnoťte', 'Zkuste to prosím'); star aria-label non-pluralized/count-only; no forbidden cross-feature imports (CustomOrderPage -> ../history/reorder is a sibling within the customer feature, consistent with existing order->login and tracking->shell patterns); Windows case-collision avoided (ratingRules.ts/historyRules.ts, no .tsx twins); client.ts extended (rateOrder, getMyOrderHistory, MyOrderHistoryItemDto/Response, RateOrderRequest, OrderDetailDto rating fields) not forked; no tsconfig.tsbuildinfo/dist/test-results staged; ApiResponseError carries .status so the 409 branch is correct. Three LOW (non-blocking) nits only."
+}

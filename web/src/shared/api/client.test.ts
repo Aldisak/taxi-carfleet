@@ -86,3 +86,56 @@ describe('apiRequest — 401 handling', () => {
     expect(window.location.href).not.toBe('/x/login')
   })
 })
+
+describe('getCommonRoutes — envelope unwrap (laneB4f AC#1 regression)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  // REGRESSION: the real A-common-routes backend returns a NAMED `{ routes: [...] }`
+  // envelope (ListCommonRoutesResponse), NOT the `{ items }` list convention. The client
+  // previously typed `{ items }` and read `.items`, yielding `[]` on the real payload ->
+  // a logged-out Home with zero route cards -> AC#1 (three-tap common route) impossible.
+  // This tests the client mapping against the REAL shape (mocked fetch), so a future
+  // regression to `.items` fails here rather than only in e2e.
+  it('unwraps a { routes: [...] } payload to the route array', async () => {
+    const realPayload = {
+      routes: [
+        { id: 'r1', name: 'Nádraží → Centrum', type: 'PointToPoint', priceCzk: 110 },
+        { id: 'r2', name: 'Letiště → Centrum', type: 'PointToPoint', priceCzk: 450 },
+      ],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue(realPayload),
+    }))
+
+    const { getCommonRoutes } = await import('./client')
+    const routes = await getCommonRoutes()
+
+    expect(Array.isArray(routes)).toBe(true)
+    expect(routes).toHaveLength(2)
+    expect(routes[0]!.id).toBe('r1')
+    expect(routes[0]!.name).toBe('Nádraží → Centrum')
+    expect(routes[1]!.priceCzk).toBe(450)
+  })
+
+  it('returns an empty array when the backend sends { routes: [] }', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue({ routes: [] }),
+    }))
+
+    const { getCommonRoutes } = await import('./client')
+    const routes = await getCommonRoutes()
+
+    expect(routes).toEqual([])
+  })
+})

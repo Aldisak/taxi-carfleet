@@ -1,0 +1,45 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB4a (B-pwa+B-login)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "file": "web/src/features/customer/shell/CallButton.tsx",
+      "rule": "B-pwa AC#3 (CallButton on every /c screen; OfflineGate shows message + number); rules/web-realtime.md#last-known-state",
+      "title": "Zavolat button + offline-banner number vanish when fleet phone is unknown",
+      "detail": "CallButton returns null whenever phone is falsy (L38). fleet.phone is undefined in three real states: (1) branding still loading on every cold start; (2) GET public/fleet failed — useFleetBranding sets retry:false, so data stays undefined for the whole session until a refocus/remount refetch; (3) a cold OFFLINE launch with an empty in-memory TanStack cache (only the slug is persisted to localStorage; the fleet phone is never cached). In all three the header Zavolat renders nothing AND OfflineGate's inner CallButton renders nothing — so the offline banner shows the Czech title + 'orderingDisabled' text but NO phone number. This breaks the offline phone-fallback promise precisely when it matters most (the AC requires the banner to show the number, and the button to be present on every screen).",
+      "recommendation": "Persist the fleet phone (and name) to localStorage alongside the slug when GET public/fleet first succeeds, and have useFleetBranding/CallButton fall back to that last-known value while data is undefined. At minimum add retry>=1 (or refetchOnReconnect) to the branding query so a transient failure self-heals, and ensure OfflineGate always has a number to show. Non-blocking for laneB4a because a warm cache covers the returning-user path, but should be fixed before the offline-gate claim is demoed."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "file": "web/src/shared/api/client.ts",
+      "rule": "VERIFY#4; rules/web-architecture.md#api-client (shared client not forked)",
+      "title": "client.ts double-401 retry branch hardcodes /d/login, ignoring the configured /c/login",
+      "detail": "At L80-85 the `_isRetry && isSilentRefreshEnabled()` branch redirects to the literal '/d/login' regardless of role. The customer flow enables silent refresh via enableSilentRefresh('/c/login') (CustomerLayout L68, useCustomerLogin L123). Trace: on a 401 without skipAuthRedirect, client.ts calls silentRefresh(); if refresh SUCCEEDS but the retried request again 401s, it falls into this branch and bounces a logged-in customer to the DRIVER login instead of /c/login. Confirmed cross-flow bug. However, it is UNREACHABLE by customers in THIS batch: the only laneB4a customer calls through apiRequest are getPublicFleet (anonymous) and requestCustomerCode/verifyCustomerCode (both skipAuthRedirect:true) — none hit the authed-401 path. It becomes reachable the moment B-home/B-route-order add authenticated customer reads (getMyActiveOrder, createOrder, etc.).",
+      "recommendation": "Route the double-401 terminal redirect through the module-configured failureRedirectPath (the same source refresh.ts uses) instead of the literal '/d/login'. Non-blocking for laneB4a; MUST be fixed before the authenticated customer WIs (B-home and later) merge."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "file": "web/src/features/customer/login/CustomerLoginStep.test.tsx",
+      "rule": "rules/web-testing.md#a11y-assertion; VERIFY#5",
+      "title": "axe assertion covers only the phone step; CodeInput is never mounted under axe",
+      "detail": "The only axe test (L97-106) renders the default phone step, so CodeInput (the other new interactive component named in the review scope) is never exercised by axe. CodeInput uses a proper <label htmlFor=\"customer-code\"> so the risk is low, but the a11y gate does not actually cover it.",
+      "recommendation": "Add an axe assertion that renders the code step (e.g. advance past sendCode or render with step forced to 'code') so CodeInput's a11y is verified."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "file": "web/src/shared/i18n/cs.json",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "title": "customer.login.verifying key is defined but unused",
+      "detail": "cs/en both define customer.login.verifying, but the code step auto-submits with no submit button, so the key is never rendered. Parity is intact (present in both locales); harmless dead key.",
+      "recommendation": "Remove the unused key, or wire a verifying indicator on the code step. No action required for merge."
+    }
+  ],
+  "summary": "blocks_merge=false. B-pwa + B-login are solid and match the ACs: F-05 slug resolution+persist is correct on BOTH CustomerLayout and CustomerLoginPage (ensureFleetSlug runs in a useState initializer during render, before useFleetBranding's query effect), and no public/auth call path can fire before the slug is persisted (getPublicFleet is the only anonymous call; the customer auth calls are user-triggered). B-login uses skipAuthRedirect:true on requestCustomerCode + verifyCustomerCode, so a 401 wrong-code / 429 rate-limit surfaces as a Czech form error without clearing storage or redirecting — CustomerLoginStep.test.tsx L62-77 proves the wrong-code path keeps form state and does not call onAuthenticated. Tokens stored via authStorage + idbAuthStore with silent refresh enabled; inline-login surface (useCustomerLogin({onAuthenticated}) + CustomerLoginStep never self-navigate) is genuinely reusable by the order WIs. /c routes are lazy, /x and /d are untouched, vite.config.ts needed no change, Home/shell carry no Leaflet. i18n cs/en parity is exact and formal 'vy'; no cross-feature imports; touch targets 48/64px; client.ts extended not forked; no new module singletons (refresh.ts globals pre-existing). Four findings, none blocking: F1 (major) CallButton/offline-banner phone vanishes when fleet phone is unknown (loading / retry:false failure / cold-offline) — breaks the 'always-present number' AC, fix by persisting/caching the phone; F2 (major, known-edge) client.ts double-401 retry hardcodes /d/login — unreachable by customers in this batch but MUST be fixed before authed customer WIs; F3 (minor) axe does not cover CodeInput; F4 (info) unused i18n key."
+}

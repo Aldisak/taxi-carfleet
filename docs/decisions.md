@@ -134,3 +134,73 @@ Echoed per UC-003 Definition-of-Done #6. These resolve where the driver-PWA spec
 5. **Two Playwright projects, one harness.** A second `mobile-driver` project (Pixel 5, `geolocation` granted) with `testMatch: /driver\.spec\.ts/` is added alongside the existing Desktop `chromium` project, which gains `testIgnore: /driver\.spec\.ts/` so `dispatcher.spec.ts` stays desktop-only. Both projects reuse the single `webServer` array unchanged. `chromium` is listed first so the dispatcher flows run before the driver flows over the shared seeded DB.
 
 6. **`docs/api.md` regenerates via the full `dotnet test`** (the `OpenApi_Document_GeneratesApiMarkdown` test), not hand-edited in this WI.
+
+---
+
+## 2026-09-12 — UC-004 customer-PWA implementation assumptions (DoD #6)
+
+Echoed per UC-004 Definition-of-Done #6. These resolve where the customer-PWA spec was silent or
+where a half is intentionally out of scope pre-05/06.
+
+1. **`routes/common` was made `AllowAnonymous` (AC#1 needs it), alongside the Anonymous `public/fleet`
+   + `public/track`.** The Home common-route cards come from `GET routes/common?validNow=true`. For a
+   logged-out visitor to order in ≤3 taps *before* any login (AC#1), this read-only listing is
+   `AllowAnonymous` (verified in `ListCommonRoutesEndpoint.Configure`), with the fleet resolved by
+   `TenantResolutionMiddleware` from `X-Fleet-Slug`/subdomain — the EF global query filter auto-scopes
+   the read (no cross-fleet leak), and no fleet resolved → 404. This mirrors the branding endpoint
+   `GET public/fleet` and the SMS tracking endpoint `GET public/track/{code}?k=`. `geo/suggest` and
+   `pricing/quote` stay CustomerOnly — only this listing + the two `public/*` endpoints are public.
+   On localhost the slug resolves to `demo`, so the seeded "Nádraží → Centrum" card is visible to the
+   logged-out AC#1 flow.
+
+2. **Tracking-token scheme = HMAC, validation-time expiry.** A-track's `TrackingTokenService` mints
+   `Base64Url(HMACSHA256(Tracking:HmacKey, "{orderId}:{expUnixSeconds}"))`. A token is accepted when
+   the signature verifies AND `now < exp` AND (if the order is Completed) `now < CompletedAt + 2h` —
+   the "2h after completion" rule is a **validation-time** check, not a mint-time expiry (completion
+   is unknown at mint). A bad/missing/expired/tampered token or an orderId-mismatch → **410
+   Tracking.LinkExpired**; an unknown code → 404 (no leak). The customer create-order response carries
+   `trackingCode`/`trackingToken`/`trackingUrlPath` so the E2E builds valid+tampered links without
+   SMS. The dev `Tracking:HmacKey` is a seeded default and **must be set per-environment in
+   production** (flagged for assignment 08 infra).
+
+3. **Pricing is an estimate RANGE until assignment 06.** `GET pricing/quote` (CustomerOnly) returns
+   a **fixed** price on a route match, else an **estimate band** = tariff price ±10 % rounded to
+   10 CZK — never a single exact estimate (AC #4). Real route-matching geometry / OSRM distance is
+   assignment 06; pre-06 the band derives from the default Tariff. The client renders Estimates as
+   "Odhad {low}–{high} Kč" (proven in `priceQuote.test.ts`; the E2E asserts the UI shows two numbers,
+   never one).
+
+4. **Push SENDING deferred to assignment 05.** The tracking screen's push-subscription prompt asks
+   only for the browser **permission** (client-side); there is no server-side Web Push send in this
+   UC. The backend push-subscription store + VAPID pipeline is assignment 05 (notifications) scope.
+
+5. **ETA-minute count deferred to assignment 06.** `TrackDto.etaMinutes` is always null pre-06 (OSRM
+   ETA is assignment 06), so the Assigned/Accepted headline is "Řidič {name} je na cestě" (no
+   "~{eta} min"). The B-e2e AC#2 assertion targets the headline **state change**, not a minute number.
+
+6. **Reverse-geocode is a client stub.** `IGeoProvider` has `SuggestAsync` + `RouteAsync` only; there
+   is no reverse-geocode. "Použít moji polohu" drops a GPS pin labeled "Moje poloha (GPS)" (no street
+   name) with a map-drag fallback. A backend reverse-geocode is deferred to 06.
+
+7. **Additive schema.** `Fleet.PrimaryColorHex` (nullable `#RRGGBB`) was added (Fleet had no color
+   column) with migration `AddFleetPrimaryColor`; null → the client theme-token fallback.
+   `Order.RatingStars/RatingComment/RatedAt` were added with migration `AddOrderRating` (sequenced
+   after `AddFleetPrimaryColor`). `common-routes-valid-now` is built from the **existing** Route
+   entity (Name/Type/PriceCzk/ValidDays bitmask/ValidFromTime/ValidToTime/IsEnabled/DeletedAt), not a
+   stub; full route/zone *management* stays in assignment 06. An `orders/mine` history listing (paged
+   `{ items, total, page, pageSize }`) + `orders/mine/active` were added under one `Orders.Mine` test
+   namespace.
+
+8. **Three Playwright projects, one harness.** A `mobile-customer` project (Pixel 5,
+   `testMatch: /customer\.spec\.ts/`) is added alongside `chromium` (dispatcher,
+   `testIgnore: [/driver\.spec\.ts/, /customer\.spec\.ts/]`) and `mobile-driver` (driver). All three
+   reuse the single `webServer` array unchanged. Tap-count for AC#1 is asserted as the **real** 2
+   taps the app produces (see DEMO.md §14 for the "3-tap" reconciliation).
+
+9. **AC#2 car-marker is asserted as RENDERED at a sent position, not a two-point move.** A single
+   driver `UpdatePosition` over SignalR (the accepted driver) renders the marker; a deterministic
+   second move is flaky (server throttles ≤1/3 s; initial marker null), so movement is not
+   synthesized. Documented honestly in DEMO.md §14.
+
+10. **`docs/api.md` regenerates via the full `dotnet test`** (the OpenAPI document test), not
+    hand-edited in this WI.

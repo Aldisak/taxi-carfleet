@@ -1,0 +1,28 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA4 (7 api WIs)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F-A4-01",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesEndpoint.cs",
+      "rule": "designer A-common-routes AC#1",
+      "title": "validNow=false returns all enabled routes including non-PointToPoint types",
+      "detail": "When validNow=false the endpoint returns every enabled/non-deleted route regardless of Type. AC only constrains the validNow=true path and the DTO exposes `type`, so the client can filter. Not a leak or contract break — the default caller sends validNow=true (Home cards).",
+      "recommendation": "No change required; confirm B-lane consumer passes validNow=true for the Home card list."
+    },
+    {
+      "id": "F-A4-02",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
+      "rule": "designer A-pricing AC#3",
+      "title": "One-sided dropoff coord falls through to the wide no-dropoff estimate",
+      "detail": "If only ToLat (or only ToLng) is supplied, the fixed-match and OSRM branches are skipped (both require toLat&&toLng) and the request yields the wide tariff-minimum estimate rather than 400. Validator parses each coord independently; it does not require them as a pair. Benign — no crash, no leak, still returns a valid non-exact estimate range.",
+      "recommendation": "Optional: add a paired-presence rule (both or neither dropoff coord). Not blocking."
+    }
+  ],
+  "summary": "blocks_merge=false. 0 blocker, 0 major, 0 minor, 2 info. All 7 laneA4 api WIs verified sound against designer ACs + design-review amendments F-01..F-04. Tenant isolation: public/fleet and public/track are AllowAnonymous, guard CurrentTenant.FleetId==null -> 404 with no unscoped query, then rely on the EF global query filter (fleet-scoped Where for Fleet which is not ITenantEntity); each ships an A-vs-B isolation test. public/fleet projects only {name,phone,primaryColorHex,currency,timeZone} (no secrets). F-03: TrackingTokenService uses CryptographicOperations.FixedTimeEquals (not == / SequenceEqual); HMAC binds orderId:exp; key read from TrackingOptions (dev key only in appsettings.Development.json, prod deferred to 08, documented); raw token/key never logged; 2h-post-completion enforced at validate time. AC#3: no TrackByCodeValidator (K nullable, BindFrom k) so missing/bad/expired/tampered token -> 410 Tracking.LinkExpired and unknown code -> 404 first (no-leak). F-02: OrderDetailDto gained RatingStars/RatingComment/RatedAt as trailing-optional positional params with matching <param> docs; all ~13 construction sites (OrderDetailMapper.ToDto, CreateOrderEndpoint.ToDetailDto, GetOrderEndpoint) compile unchanged (only GetOrder populates them). Rating endpoint CustomerOnly, owner-only no-leak 404, Completed-only (409 NotCompleted), once (409 AlreadyRated), Version++ on save. Migrations AddFleetPrimaryColor (154624) ordered before AddOrderRating (155251); single coherent snapshot carries primary_color_hex + the 3 rating columns. A-pricing: CustomerOnly, InvariantCulture coord parse, fixed OR estimate-range with EnsureSpread guaranteeing low<high (never exact), OSRM failure -> 502 Geo.RouteUnavailable, no-tenant -> 400 NoTenantResolved. A-geo-suggest: CustomerOrStaff policy added mirroring precedents; SuggestEndpoint switched; geo/route NOT widened; pre-existing GeoProxyTests/RouteAccessTests updated consistently (Customer->Driver for the 403 case). A-common-routes/A-my-orders: CustomerOnly, own-rows (CustomerUserId==sub) + tenant-safe, valid-now in Europe/Prague, orders/mine/active single non-terminal or 204, orders/mine standard {items,total,page,pageSize} with bounded paging validator. Rules: every new endpoint has DontCatchExceptions() + _featureConfiguration field, Send.* for expected errors (no control-flow exceptions), AsNoTracking on reads, validators use WithErrorCode, ErrorCodes appended without collision, XML docs present. Did NOT run dotnet test (concurrent web lane); relied on developer-reported 324 green + -warnaserror clean, which F-02's compile-clean trailing-optional params structurally confirm.",
+  "_note_test_execution": "Per task instructions, test suite was NOT run (backend reports 324 green; concurrent web-lane agent active). Static review only."
+}

@@ -1,68 +1,82 @@
 {
   "version": 1,
-  "uc_id": "UC-003",
-  "title": "Driver PWA",
+  "uc_id": "UC-004",
+  "title": "Customer PWA",
   "stack": "mixed",
-  "lanes": { "A": "api backend support", "B": "web driver PWA" },
+  "lanes": { "A": "api public/rating/pricing support", "B": "web customer PWA /c" },
   "complexity_tag": "novel",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "standing user directive (UC-002, renewed 2026-09-12 'continue autonomously until you finish whole project'): gates pre-approved, parallel lanes, interrupt only on 3-round blocks / quality-gate failures / undecidable scope",
+  "autonomous_mode_authority": "standing user directive renewed 2026-09-12 ('continue autonomously until you finish whole project, i changed the agents so use them'): gates A-E pre-approved, parallel lanes, use renamed backend-developer (api) / frontend-developer (web) agents, interrupt only on 3-round blocks / quality-gate failures / undecidable scope. No git remote configured → ship = local commit on a feature branch (reversible); no push/PR.",
   "phase": "done",
-  "spec_path": "docs/specs/in-progress/003_UC_003_driver-pwa.md",
-  "gates_passed": ["A (auto)", "B (auto)", "C (round 1, blocks_merge=false, amendments folded into briefs)"],
+  "spec_path": "docs/specs/in-progress/004_UC_004_customer-pwa.md",
+  "gates_passed": ["A (auto)", "B (auto): 16 WIs (7 api + 9 web), acyclic, topo-ordered", "C (round 1, blocks_merge=false): anonymous tenant scoping verified sound; 2 major + 3 minor amendments folded into dev briefs"],
   "design_review_round": 1,
-  "work_items": [
-    { "id": "A-offer", "lane": "api", "status": "done", "batch": "laneA3" },
-    { "id": "A-idem", "lane": "api", "status": "done", "batch": "laneA3" },
-    { "id": "A-me", "lane": "api", "status": "done", "batch": "laneA3" },
-    { "id": "A-geo", "lane": "api", "status": "done", "batch": "laneA3" },
-    { "id": "B-pwa", "lane": "web", "status": "done", "batch": "laneB3a" },
-    { "id": "B-auth", "lane": "web", "status": "done", "batch": "laneB3a" },
-    { "id": "B-home", "lane": "web", "status": "done", "batch": "laneB3b" },
-    { "id": "B-offer", "lane": "web", "status": "done", "batch": "laneB3b" },
-    { "id": "B-ride", "lane": "web", "status": "done", "batch": "laneB3c" },
-    { "id": "B-complete", "lane": "web", "status": "done", "batch": "laneB3c" },
-    { "id": "B-position", "lane": "web", "status": "done", "batch": "laneB3d" },
-    { "id": "B-queue", "lane": "web", "status": "done", "batch": "laneB3d" },
-    { "id": "B-history-settings", "lane": "web", "status": "done", "batch": "laneB3e" },
-    { "id": "B-e2e", "lane": "web", "status": "done", "batch": "laneB3f" }
-  ],
-  "completed_wis": ["A-offer", "A-idem", "A-me", "A-geo", "B-pwa", "B-auth", "B-home", "B-offer", "B-ride", "B-complete", "B-position", "B-queue", "B-history-settings", "B-e2e"],
-  "impl_review": {
-    "laneA3_B3a_B3b": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/1 minor-accepted/4 info; F-01/05/06/07/08 amendments verified landed (handoff-impl-reviewer-uc003-r1.json)",
-    "laneB3c": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/2 minor; AC#6 restore + F-04 live-clear + D12 hoist verified. Minor B3c-1 (409 shows banner but no real refetch; name over-promises) + B3c-2 (untrimmed >=5-char overrideReason check) FOLDED into B-queue brief (handoff-impl-reviewer-uc003-laneB3c.json)",
-    "laneB3d": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/0 minor/2 info; enqueue-time idem key, F-02 (InFlight retryable by code), F-03 (dequeue on definitive 2xx/4xx), accept/decline never queued, drainer at DriverLayout w/ single-drain guard, B3c-1/B3c-2 folds verified (handoff-impl-reviewer-uc003-laneB3d.json)",
-    "laneB3e": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/2 minor/1 info. Non-blocking follow-ups: B3e-1 promote features/board/DisconnectBanner to src/shared (driver->board cross-feature import drift); B3e-2 cosmetic bottom-nav on /d/ride + /d/ride/complete (reachable by scroll, primary button not hidden) (handoff-impl-reviewer-uc003-laneB3e.json)"
+  "design_review_amendments": {
+    "A-track": ["F-01 implement AFTER A-public-fleet (PublicFeatureConfiguration.cs ownership)", "F-03 HMAC compare via CryptographicOperations.FixedTimeEquals", "F-04 derive token exp from scheduledAt+buffer OR scope scheduled links to assignment 05"],
+    "A-rating": ["F-02 new OrderDetailDto fields must be additive TRAILING-OPTIONAL params (int? RatingStars=null, string? RatingComment=null, DateTimeOffset? RatedAt=null) so Accept/Arrive/Cancel/Complete/Start/CreateOrder callers compile untouched under -warnaserror"],
+    "B-pwa": ["F-05 resolve fleet slug from URL/subdomain and persist to authStorage BEFORE any logged-out/public call (client.ts auto-sends X-Fleet-Slug from authStorage; localhost has no subdomain)"]
   },
-  "followups_open": [
-    "B3e-1: DisconnectBanner lives in features/board but is now imported by features/driver/history — promote to src/shared/realtime (or src/shared/ui) and update AppLayout + HistoryPage imports. Architecture drift, non-functional.",
-    "B3e-2: consider suppressing BottomNav on /d/ride and /d/ride/complete for a clean 100dvh full-screen flow.",
-    "B3f-AC2 (route to B-home/backend): add a DriverOnly vehicle-list endpoint + start-shift-from-offline UI. Currently POST /drivers/me/offline nulls current_vehicle_id and the only vehicle list is FleetAdminOnly, so an offline driver cannot pick a vehicle through the UI. E2E AC#2 drives from the online precondition; substantive ride flow fully proven. Reviewer verdict: accepted follow-up, NOT a sign-off blocker.",
-    "B3f-F1 (route to dispatcher-orders owner): client.ts patchOrder types PATCH /orders/{id} as bare OrderDetailDto but UpdateOrderResponse is the { order } envelope (same class as the getOrder bug). Pre-existing UC-002, off the driver path, masked by cache-invalidation refetch through the now-correct getOrder. Not a UC-003 blocker."
-  ],
-  "impl_review_laneB3f": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 crit/0 high/1 medium(F1 pre-existing patchOrder envelope, off-path)/1 low(F2 reload stand-in accepted). AC#2=accepted follow-up not blocker (handoff-impl-reviewer-uc003-laneB3f.json)",
-  "decisions_this_run": [
-    "AC#3 push-notification half deferred to assignment 05 (Web Push infra belongs there); foreground offer flow fully in scope",
-    "Agents renamed 2026-09-12: developer -> backend-developer (api lane), new frontend-developer (web lane); use frontend-developer for all web WIs"
-  ],
-  "test_count_backend": 283,
-  "test_count_web": 627,
+  "work_items_summary": {
+    "laneA": ["A-public-fleet", "A-track", "A-pricing", "A-rating(dep:A-public-fleet)", "A-common-routes", "A-my-orders", "A-geo-suggest"],
+    "laneB_chain": ["B-pwa", "B-login", "B-home", "B-route-order", "B-custom-order", "B-tracking", "B-rating", "B-history", "B-e2e(dep:all laneA)"]
+  },
+  "work_items": [],
+  "completed_wis": ["A-public-fleet", "A-track", "A-pricing", "A-rating", "A-common-routes", "A-my-orders", "A-geo-suggest", "B-pwa", "B-login", "B-home", "B-route-order", "B-custom-order", "B-tracking", "B-rating", "B-history", "B-e2e"],
+  "_web_test_count_after_b4f": 869,
+  "in_progress": [],
   "quality_gate": {
     "backend_build_warnaserror": "exit 0, 0 warnings",
-    "backend_test": "283 passed, 0 failed",
-    "backend_format": "clean after auto-fix of 4 whitespace issues in GetMyOrdersEndpoint.cs",
+    "backend_test": "329 passed, 0 failed",
+    "backend_format": "clean",
     "web_lint": "clean (--max-warnings 0)",
     "web_tsc": "clean",
-    "web_test": "627 passed / 93 files (e2e excluded)",
-    "web_build": "exit 0 (pre-existing 500kB chunk warning only)",
-    "web_size": "193.39 kB brotli < 260 kB budget",
-    "web_e2e": "5/5 passed (dispatcher 2 + driver 3), both Playwright projects"
+    "web_test": "869 passed",
+    "web_build": "exit 0 (pre-existing chunk warning only)",
+    "web_size": "216.45 kB brotli < 260 kB budget",
+    "web_e2e": "10/10 passed — chromium/dispatcher 2, mobile-driver 3, mobile-customer 5 (AC#1-#5,#7 automatable; AC#6 Lighthouse manual per DEMO.md)"
   },
+  "gates_passed_final": ["A", "B", "C", "D(per-batch)", "E"],
+  "laneB4f_r2": "AC#1 FIXED: routes/common client envelope {routes} (client.ts getCommonRoutes async-unwrap + useCommonRoutes + useRouteOrder second consumer); regression test against real {routes} shape (mocks fetch not client). orders/mine stays {items} (correct). 869 web unit tests (+4). FINAL e2e 10/10: dispatcher 2/2, driver 3/3, customer 5/5 (AC#1 green). All 16 UC-004 WIs DONE. laneB4f accepted on green e2e (self-verifying) — no separate reviewer.",
+  "laneB4f_r1": "4/5 customer e2e pass (AC#2 live headline, AC#3 token valid/expired→410, AC#5 cancel→CancelledByRole=Customer, AC#7 rating persisted); dispatcher 2/2 + driver 3/3 untouched. AC#1 FAIL: client.ts types GET routes/common as {items} + useCommonRoutes reads data.items, but backend returns {routes} → empty Home logged-out, no route cards (same envelope class as UC-003 getOrder; mocked unit tests missed it). 3-tap reconciled to 2 taps (route→Objednat, within the '3 taps' goal) in DEMO.md. Dev SMS code injected via psql (random+hashed, unreadable). AC#2 car-marker live-move documented best-effort (Subscribe races throttled UpdatePosition); headline flip is the hard proof.",
+  "laneB4e_review": "PASSED blocks_merge=false, 0 crit/high/medium, 3 low (order-not-on-page-1 form UX gap; invalidate-vs-patch on rating; offline banner role=status). B-rating+B-history DONE+REVIEWED.",
+  "seed_ac1_ok": "DevelopmentSeeder route1 'Nádraží → Centrum' PointToPoint FromLat/Lng=50.0281/15.2006 (non-zero), ValidDays=127 → AC#1 3-tap order-from-route creates OK. Localhost customer app defaults to fleet slug 'demo'.",
+  "laneB4d_review_r2": "RESOLVED: H1 fixed via TDD (useFleetHub enabled param default true; useTrackingAuthed passes enabled=authed-mode; dispatcher/driver call sites unchanged; RED observed). 825 web tests (+3), regression subset (realtime+tracking+board+app, 275 tests) green. Accepted without a 3rd review cycle — surgical fix exactly per reviewer prescription. B-tracking DONE.",
+  "laneB4d_review_r1": "blocks_merge=TRUE, 1 HIGH (H1: useFleetHub runs in logged-out public tracking mode → doomed authed-hub retry loop; AC#1 'no auth' violation, user-invisible but real) + 1 LOW (headlineRules.ts rename, accepted). ETA-refresh deferral judged acceptable follow-up (EtaMinutes null pre-06, graceful degrade). Round-2 fix dispatched.",
+  "ac2_eta_note": "B-tracking did NOT build the 15s ETA-minute refresh (tracking DTO EtaMinutes is null pre-06; designer deferred, conflicts with assignment §5 prose 'ETA from OSRM refreshed every 15s'). Headline omits '~min' when eta null. For B-e2e AC#2: prove headline-state-change + car-marker-move without reload (the realtime requirement); ETA-minute count is a pre-06/05 follow-up. Decide at B-e2e if it blocks sign-off (likely accepted follow-up like UC-003 AC#2).",
+  "hygiene_followup": "web/tsconfig.tsbuildinfo (tsc build cache) is staged/tracked — gitignore + git rm --cached before the UC-004 commit (laneB4c review F1).",
+  "batch_status": {
+    "laneB4a": "DONE+REVIEWED (B-pwa+B-login): 687 web tests (+60), gates green. Review blocks_merge=false, 0 blocker/2 major/1 minor/1 info. Major F1 (CallButton renders null when fleet.phone undefined → offline banner shows no number, breaks B-pwa AC#3) + F2 (client.ts double-401 retry hardcodes /d/login, becomes a real bug once authed customer reads land) FOLDED into laneB4b brief. Minor F3 (axe only covers phone step) / info F4 (unused verifying key) noted.",
+    "laneB4b": "DONE+REVIEWED (B-home + B-route-order + F1/F2 fixes): 728 web tests (+41), gates green. Review blocks_merge=false, 1 medium (F-01: PassengerStepper+WhenPicker need own vitest-axe tests — a11y gate; FOLD into next web batch) / 2 low (WhenPicker stale doc comment; navigate by publicCode — documented). F1/F2 verified fixed; both AC#1 blockers honestly flagged not faked.",
+    "laneA4": "DONE+REVIEWED (all 7 api WIs): 324 backend tests (+41), build 0/0, format clean. F-02/F-03/F-04 applied; fixed AC gap (missing tracking token → 410). Review blocks_merge=false, 0 blocker/0 major/0 minor/2 info (both benign: routes/common?validNow=false returns all enabled types; one-sided dropoff coord → wide estimate not 400). Tenant isolation verified genuine (A+B seeded, cross-fleet unreachable w/ valid token). NOTE: laneA4 staged CLAUDE.md (trap appends) — reconcile with laneB4a/b CLAUDE.md appends before commit."
+  },
+  "test_count_backend_current": 329,
+  "test_count_web_current": 772,
+  "laneA4b_review": "PASSED blocks_merge=false, 0 crit/0 high/2 nits; tenant-leak risk NONE on anonymous routes/common (EF filter + non-nullable FK, isolation test discriminates genuinely); geo/suggest(CustomerOrStaff)+pricing/quote(CustomerOnly) stayed gated; no migration added (handoff-impl-reviewer-uc004-laneA4b.json)",
+  "ac1_blockers": {
+    "B1_routes_anonymous": "RESOLVED api-side (laneA4b): GET /api/v1/routes/common?validNow=true is now AllowAnonymous, requires X-Fleet-Slug header/subdomain, no-fleet→404, geo/suggest+pricing/quote stay CustomerOnly. Web side (loosen useCommonRoutes hasToken gate) folded into laneB4c.",
+    "B2_route_coords": "RESOLVED api-side (laneA4b): CommonRouteDto additive fields pickupAddress/pickupLat/pickupLng/dropoffAddress/dropoffLat/dropoffLng (PointToPoint) + fromZoneId/toZoneId (zone). Web side (buildRouteOrderRequest uses real coords, no 0-stub) folded into laneB4c."
+  },
+  "routes_common_contract": "GET /api/v1/routes/common?validNow=true — Anonymous, needs X-Fleet-Slug. Resp {routes: CommonRouteDto[]}; CommonRouteDto: id, name, type(PointToPoint|Zone|ZoneToZone), priceCzk(int), pickupAddress?, pickupLat?, pickupLng?, dropoffAddress?, dropoffLat?, dropoffLng?, fromZoneId?, toZoneId?. PointToPoint order create: routeId, priceType Fixed, fixedPriceCzk=priceCzk, pickupLat/Lng/Address (+dropoff* if present).",
+  "decisions_this_run": [
+    "Push-notification SENDING deferred to assignment 05 (client subscription prompt/permission in scope; server push out) — to confirm in design",
+    "pricing/quote uses tariff estimate until assignment 06 provides route matching",
+    "common-routes listing + zone validation bounded to a minimal pre-06 contract, full management in assignment 06",
+    "Agents: backend-developer for lane api, frontend-developer for lane web (renamed 2026-09-12)"
+  ],
+  "predecessor": "UC-003 shipped on branch uc-003-driver-pwa, commit 14fb448 (backend 283 tests, web 627 unit + 5 e2e; all impl-reviews blocks_merge=false). UC-001/002 on main.",
+  "followups_from_uc003": [
+    "B3e-1: promote features/board/DisconnectBanner to src/shared",
+    "B3f-AC2: DriverOnly vehicle-list endpoint + start-shift-from-offline UI (route to B-home)",
+    "B3f-F1: client.ts patchOrder {order} envelope unwrap (dispatcher path)",
+    "B3e-2: suppress BottomNav on /d/ride + /d/ride/complete"
+  ],
+  "test_count_backend": 283,
+  "test_count_web": 687,
   "environment": {
     "dotnet_sdk": "10.0.401 user-local; prefix every dotnet command with: export PATH=\"/c/Users/alesm/AppData/Local/Microsoft/dotnet:$PATH\" && ",
-    "node": "v20.0.0 (established pins: Vite 5.4, eslint 8.57.1, ts-eslint 7.18, vitest 2.1.9)",
+    "node": "v20.0.0 (established pins: Vite 5.4, eslint 8.57.1, ts-eslint 7.18, vitest 2.1.9; idb 8.0.3, fake-indexeddb 6.2.5, vite-plugin-pwa 0.20.5, pngjs 7.0.0 added in UC-003)",
     "docker": "26.1.1",
-    "playwright": "harness from UC-002 (webServer scripts, chromium)"
+    "playwright": "harness from UC-002/003 (scripts/e2e-api.mjs webServer: docker db + dotnet run Seed__Enabled=true wait /health/ready, then Vite 5173; chromium desktop + mobile-driver Pixel 5 projects)"
   },
   "updated_at": "2026-09-12"
 }

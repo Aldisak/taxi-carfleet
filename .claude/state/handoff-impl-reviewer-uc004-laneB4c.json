@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB4c (B-custom-order + AC#1 recon + F-01)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "file": "web/tsconfig.tsbuildinfo",
+      "rule": "rules/web-performance.md (build artifacts should be gitignored)",
+      "title": "Build artifact staged",
+      "detail": "web/tsconfig.tsbuildinfo (the tsc incremental build cache) is in the staged set. It is volatile and churns on every build. It is NOT a laneB4c source file (not in the handoff files_changed) and may be a prior-batch staging artifact carried along.",
+      "recommendation": "Add web/tsconfig.tsbuildinfo to .gitignore and unstage it; do not commit the tsc build cache."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "file": "web/src/features/customer/order/CustomOrderPage.tsx:149-151",
+      "rule": "rules/web-react-style.md (type safety / consistency)",
+      "title": "Custom-order create omits a price hint field",
+      "detail": "CustomOrderPage builds the CreateOrderRequest inline with priceType:'Estimate' and no estimatedPriceCzk, while the route path uses orderForm.ts buildRouteOrderRequest. This is correct for custom orders (the server re-prices), and the backend accepts a null estimate; noted only as a consistency observation, not a defect.",
+      "recommendation": "Optional: if the server wants the last-seen estimate echoed, thread quote.view into estimatedPriceCzk; otherwise leave as-is."
+    }
+  ],
+  "summary": "laneB4c static review PASS — blocks_merge=false. All 6 VERIFY targets confirmed against the staged web/ files. (1) AC#1 recon#1: useCommonRoutes.ts no longer token-gated (no enabled:hasToken); useMyActiveOrder.ts stays enabled:hasToken; CustomerHomePage.test.tsx proves logged-out routes render AND the active-order query is NOT called. (2) AC#1 recon#2: buildRouteOrderRequest sends real pickupAddress/Lat/Lng from CommonRouteDto, dropoff emitted all-or-nothing (both coords present), no 0-stub on the exercised PointToPoint path; the ?? 0 fallback only guards the never-reached Zone path (isAddressLocked gates Objednat). (3) AC#4: priceQuote.ts is a structured discriminated union; interpretQuote widens a degenerate equal band by +20 CZK so an estimate is never a single exact number; priceQuote.test.ts asserts highCzk>lowCzk; malformed->unknown (no point price); PriceRangeBadge renders Fixed as 'pevná' and Estimate as a RANGE via i18n. No code path renders a single exact estimate. (4) B-custom-order: AddressAutocomplete debounced geo/suggest auth-gated (useSuggest gates on token + >=3 chars + 300ms debounce); GPS 'Použít moji polohu' pin stub with label + permission-denied message, no reverse geocode; PickupMap Leaflet LAZY (React.lazy -> PickupMapInner default export; leaflet/react-leaflet imports isolated to PickupMapInner.tsx — code-split claim plausible); optional dropoff; inline CustomerLoginStep preserves form state (page owns all useState, only swaps the submit button); offline disables ordering via useOnlineStatus; navigates to /c/t/{publicCode}; quote 502 -> 'quoteUnavailable' message. (5) F-01: WhenPicker.test.tsx and PassengerStepper.test.tsx each have a vitest-axe assertion via the configured helper; WhenPicker.tsx doc reference fixed to whenRules.ts. (6) Rules: i18n keys present in cs.json+en.json (parity enforced by locales.parity.test.ts, green); no cross-feature imports observed (customer imports only from shared/ and within features/customer); touch targets use theme.touchTargets.min/primary; money via formatCzk (Intl cs-CZ) at render; client.ts extended (CommonRouteDto enriched, getGeoSuggest/getPriceQuote additive) not forked; the only module singleton (SignalR hub) untouched. Axe tests use the configured '../../../shared/test/axe' helper (jsdom color-contrast trap avoided). Two LOW notes only: a staged tsc build cache (out of lane) and a cosmetic consistency observation on the custom-order price field. Tests NOT re-run per instruction (772 web tests reported green; a web agent runs concurrently)."
+}

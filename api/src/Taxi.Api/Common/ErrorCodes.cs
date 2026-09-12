@@ -117,6 +117,12 @@ public static class ErrorCodes
 
         /// <summary>The date value is not a valid yyyy-MM-dd date.</summary>
         public const string InvalidDateFormat = "Validation.InvalidDateFormat";
+
+        /// <summary>The rating star count must be between 1 and 5.</summary>
+        public const string RatingStarsRange = "Validation.RatingStarsRange";
+
+        /// <summary>The rating comment must not exceed 500 characters.</summary>
+        public const string RatingCommentTooLong = "Validation.RatingCommentTooLong";
     }
 
     /// <summary>Auth-domain error codes (not validation — used for 429 rate-limit responses).</summary>
@@ -177,6 +183,12 @@ public static class ErrorCodes
 
         /// <summary>The client-supplied version does not match the current order version (stale read).</summary>
         public const string StaleVersion = "Order.StaleVersion";
+
+        /// <summary>The order is not Completed — it cannot be rated yet.</summary>
+        public const string NotCompleted = "Order.NotCompleted";
+
+        /// <summary>The order has already been rated — rating is allowed once.</summary>
+        public const string AlreadyRated = "Order.AlreadyRated";
     }
 
     /// <summary>Driver-domain additional error codes.</summary>
@@ -184,6 +196,13 @@ public static class ErrorCodes
     {
         /// <summary>The requested override status is not allowed (EnRoute cannot be set manually).</summary>
         public const string InvalidOverrideStatus = "Driver.InvalidOverrideStatus";
+    }
+
+    /// <summary>Public tracking-link error codes.</summary>
+    public static class Tracking
+    {
+        /// <summary>The tracking link is invalid, expired, tampered, or past the post-completion window (HTTP 410).</summary>
+        public const string LinkExpired = "Tracking.LinkExpired";
     }
 
     /// <summary>Idempotency error codes for driver transition deduplication.</summary>

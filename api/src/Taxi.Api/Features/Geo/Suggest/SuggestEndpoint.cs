@@ -22,7 +22,7 @@ internal sealed class SuggestEndpoint(IGeoProvider geoProvider, ILogger<SuggestE
             .WithName(nameof(SuggestEndpoint))
             .WithTag(_featureConfiguration));
         DontCatchExceptions();
-        Policies(nameof(AuthorizationPolicies.DispatcherOnly));
+        Policies(nameof(AuthorizationPolicies.CustomerOrStaff));
 
         Summary(s =>
         {
@@ -31,7 +31,7 @@ internal sealed class SuggestEndpoint(IGeoProvider geoProvider, ILogger<SuggestE
             s.Responses[StatusCodes.Status200OK] = "List of address suggestions (may be empty).";
             s.Responses[StatusCodes.Status400BadRequest] = "Query too short (fewer than 3 characters).";
             s.Responses[StatusCodes.Status401Unauthorized] = "Not authenticated.";
-            s.Responses[StatusCodes.Status403Forbidden] = "Not a dispatcher.";
+            s.Responses[StatusCodes.Status403Forbidden] = "Not a customer, dispatcher, or fleet admin.";
         });
     }
 

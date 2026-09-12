@@ -361,3 +361,44 @@ describe('useFleetHub — F4: cold-start retry on initial start() failure', () =
     expect(calledKeys).toContain(JSON.stringify(['drivers']))
   })
 })
+
+describe('useFleetHub — enabled gate', () => {
+  it('does NOT build or start the connection when enabled=false (public/none tracking mode)', async () => {
+    const fakeConn = makeFakeConnection()
+    const createHubConnection = vi.fn(() => fakeConn)
+
+    vi.doMock('./hubClient', () => ({ createHubConnection }))
+
+    const { useFleetHub } = await import('./useFleetHub')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderHook(() => useFleetHub(false), { wrapper: wrapper(queryClient) })
+
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 0))
+    })
+
+    // No doomed authed /hubs/fleet connect loop on a logged-out public tracker.
+    expect(createHubConnection).not.toHaveBeenCalled()
+    expect(fakeConn.start).not.toHaveBeenCalled()
+  })
+
+  it('builds and starts the connection when enabled defaults to true (dispatcher/driver/authed)', async () => {
+    const fakeConn = makeFakeConnection()
+    const createHubConnection = vi.fn(() => fakeConn)
+
+    vi.doMock('./hubClient', () => ({ createHubConnection }))
+
+    const { useFleetHub } = await import('./useFleetHub')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    renderHook(() => useFleetHub(), { wrapper: wrapper(queryClient) })
+
+    await act(async () => {
+      await new Promise(r => setTimeout(r, 0))
+    })
+
+    expect(createHubConnection).toHaveBeenCalledTimes(1)
+    expect(fakeConn.start).toHaveBeenCalled()
+  })
+})

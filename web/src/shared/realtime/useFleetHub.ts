@@ -115,15 +115,24 @@ export function setMuted(muted: boolean): void {
 /**
  * Primary hook: connects to /hubs/fleet and wires event handlers to TanStack cache.
  * Call this once from a top-level component (e.g. BoardPage or Providers).
+ *
+ * @param enabled When false, the hook never builds or starts a connection (but still
+ *   obeys the rules of hooks — callers always call it). Defaults to true so the
+ *   dispatcher board and driver layout callers are unaffected. The customer public/none
+ *   tracking mode passes false: /hubs/fleet is [Authorize], so a logged-out tracker has
+ *   no token and would otherwise enter a doomed cold-start connect loop
+ *   (rules/web-realtime.md#single-hub-singleton).
  */
-export function useFleetHub() {
+export function useFleetHub(enabled: boolean = true) {
   const queryClient = useQueryClient()
   const updatePosition = usePositionStore(s => s.updatePosition)
   // Per-order version tracking for stale-event detection
   const versionMapRef = useRef<Map<string, CachedOrderVersion>>(new Map())
 
   useEffect(() => {
-    if (hubInstance) return  // already started
+    // Skip STARTING a new connection when disabled — never tear down a shared singleton
+    // others depend on (the cleanup below is intentionally a no-op either way).
+    if (!enabled || hubInstance) return  // disabled, or already started
 
     const connection = createHubConnection(() => authStorage.getAccessToken())
     hubInstance = connection
@@ -158,8 +167,25 @@ export function useFleetHub() {
         }
       }
 
-      // Invalidate detail cache for this order so the drawer refetches
-      void queryClient.invalidateQueries({ queryKey: ['orders', 'detail', payload.id] })
+      // Detail cache: patch in place FIRST for an instant status/driver update (cache-patch-not-
+      // refetch, rules/web-realtime.md — the customer tracking headline and the dispatcher drawer
+      // flip immediately without a blank), THEN invalidate so any active consumer refetches the
+      // authoritative full detail. The OrderChanged payload carries only status/driverId/version —
+      // price (finalPriceCzk on completion) and note are NOT in it, so the invalidate is what keeps
+      // the dispatcher drawer's price/note correct. invalidate only refetches queries that are
+      // currently observed; an unobserved cache keeps the optimistic patch for its next read.
+      const detailKey = ['orders', 'detail', payload.id] as const
+      queryClient.setQueryData<OrderDetailDto>(detailKey, old =>
+        old
+          ? {
+              ...old,
+              status: normalizeOrderStatus(payload.status),
+              driverId: payload.driverId,
+              version: payload.version,
+            }
+          : old,
+      )
+      void queryClient.invalidateQueries({ queryKey: detailKey })
 
       // Notify driver ride screen so it can detect order reassignment (F-04 live-clear).
       window.dispatchEvent(new CustomEvent('driver:orderChanged', { detail: payload }))
@@ -246,5 +272,5 @@ export function useFleetHub() {
       // Do NOT stop the connection on unmount — it's a singleton for the session.
       // The connection is only cleaned up on explicit logout / window close.
     }
-  }, [queryClient, updatePosition])
+  }, [enabled, queryClient, updatePosition])
 }

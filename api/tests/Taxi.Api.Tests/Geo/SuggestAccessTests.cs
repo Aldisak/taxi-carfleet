@@ -1,0 +1,79 @@
+using System.Net;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Taxi.Api.Infrastructure.Geo;
+using Taxi.Api.Tests.Infrastructure;
+
+namespace Taxi.Api.Tests.Geo;
+
+/// <summary>Access-control tests for geo/suggest after A-geo-suggest widened it to the
+/// CustomerOrStaff policy, and confirmation that geo/route is NOT widened to customers.</summary>
+[Collection(TestCollections.Database)]
+public sealed class SuggestAccessTests(PostgresFixture fixture)
+{
+    private const string SuggestUrl = "/api/v1/geo/suggest?q=Prague";
+
+    private const string RouteUrl =
+        "/api/v1/geo/route?fromLat=50.08&fromLng=14.43&toLat=50.09&toLng=14.44";
+
+    private void SetupFakeSuggest()
+    {
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoProvider>();
+        fake.Reset();
+        fake.SuggestResult = [new GeoSuggestItem("Prague, CZ", 50.08, 14.43)];
+    }
+
+    /// <summary>A Customer caller now receives 200 from geo/suggest.</summary>
+    [Fact]
+    public async Task Suggest_Customer_Returns200()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupFakeSuggest();
+
+        var client = fixture.Factory.CreateClient();
+        client.AsCustomer();
+
+        var resp = await client.GetAsync(SuggestUrl, ct);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    /// <summary>A Dispatcher caller still receives 200 from geo/suggest (regression).</summary>
+    [Fact]
+    public async Task Suggest_Dispatcher_StillReturns200()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        SetupFakeSuggest();
+
+        var client = fixture.Factory.CreateClient();
+        client.AsDispatcher(Guid.CreateVersion7());
+
+        var resp = await client.GetAsync(SuggestUrl, ct);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    /// <summary>A Driver caller receives 403 from geo/suggest (drivers excluded from CustomerOrStaff).</summary>
+    [Fact]
+    public async Task Suggest_Driver_Returns403()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var client = fixture.Factory.CreateClient();
+        client.AsDriver(Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        var resp = await client.GetAsync(SuggestUrl, ct);
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    /// <summary>A Customer caller receives 403 from geo/route (route is NOT widened).</summary>
+    [Fact]
+    public async Task Route_Customer_Returns403()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var client = fixture.Factory.CreateClient();
+        client.AsCustomer();
+
+        var resp = await client.GetAsync(RouteUrl, ct);
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+}

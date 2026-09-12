@@ -1,123 +1,23 @@
 {
-  "uc_id": "UC-003",
-  "spec_path": "docs/specs/in-progress/003_UC_003_driver-pwa.md",
-  "work_items_doc": "docs/specs/in-progress/driver-pwa-work-items.md",
+  "uc_id": "UC-004",
+  "spec_path": "docs/specs/in-progress/004_UC_004_customer-pwa.md",
+  "work_items_doc": "docs/specs/in-progress/customer-pwa-work-items.md",
   "work_items": [
     {
-      "id": "A-offer",
+      "id": "A-public-fleet",
       "lane": "api",
-      "title": "Publish NewOrderOffered on Assign + Reassign (after commit, expiresAt = AssignedAt + OfferTimeoutSeconds)",
-      "goal": "OrderService.TransitionAsync publishes NewOrderOffered(orderDto, expiresAt) to the offered driver on both Assign and Reassign, after commit alongside OrderChanged. expiresAt = order.AssignedAt + fleet OfferTimeoutSeconds (default 45) — the identical value OfferTimeoutJob reads, so the driver countdown and the server timeout are the same instant. Corrects the stale IRealtimePublisher XML comment.",
+      "title": "GET public/fleet (AllowAnonymous, fleet from X-Fleet-Slug/subdomain) + Fleet.PrimaryColorHex column + migration",
+      "goal": "An AllowAnonymous branding endpoint returning the resolved fleet's public fields. TenantResolutionMiddleware resolves the fleet from X-Fleet-Slug header/subdomain for anonymous requests too (it is gated on IsAuthenticated only for the JWT branch, verified), so the EF global query filter auto-scopes the read and there is no cross-fleet leak. Adds a nullable PrimaryColorHex (#RRGGBB) column to Fleet + migration because Fleet has Name/Phone but no color column (verified).",
       "depends_on": [],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
-        "api/src/Taxi.Api/Realtime/IRealtimePublisher.cs",
-        "api/tests/Taxi.Api.Tests/Orders/Offer/OfferPublishTests.cs"
-      ],
-      "rule_citations": [
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/architecture.md#common-infrastructure",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#pattern-matching",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#style-message-templates",
-        "CLAUDE.md#project-specific-facts",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/03-driver-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "After the post-commit OrderChangedAsync in OrderService.TransitionAsync, when transition is Assign or Reassign AND order.DriverId is non-null, the service loads OfferTimeoutSeconds for order.FleetId via the (int?)-cast subquery with ?? 45 fallback (the mandatory pattern documented in CLAUDE.md for OfferTimeoutJob — without the (int?) cast a fleet with no FleetSettings row silently gets 0 s), computes expiresAt = order.AssignedAt.Value.AddSeconds(timeout), and calls publisher.NewOrderOfferedAsync(order, order.DriverId.Value, expiresAt, ct).",
-        "expiresAt on both Assign and Reassign equals AssignedAt + timeout; ApplyAssign and ApplyReassign both set AssignedAt = now (verified OrderStateMachine.cs 130/226), so a reassigned order gets a fresh, consistent window and never times out early in OfferTimeoutJob.",
-        "No NewOrderOffered publish occurs for any transition other than Assign/Reassign, and none when DriverId is null.",
-        "The IRealtimePublisher.NewOrderOfferedAsync XML doc comment that claims 'OrderService does NOT call this' is corrected to reflect that OrderService now publishes it on Assign/Reassign.",
-        "Assign_PublishesNewOrderOffered_WithDriverAndExpiresAt, Reassign_PublishesNewOrderOffered_ToNewDriver_WithRefreshedExpiresAt, Assign_ExpiresAt_EqualsAssignedAtPlusFleetTimeout, Assign_NoFleetSettingsRow_UsesDefault45, and Accept_DoesNotPublishNewOrderOffered pass (RecordingRealtimePublisher records the call)."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Offer"
-      }
-    },
-    {
-      "id": "A-idem",
-      "lane": "api",
-      "title": "X-Idempotency-Key on driver transitions + IdempotencyRecord entity + AddIdempotencyRecords migration",
-      "goal": "Optional X-Idempotency-Key header on the six driver transitions (accept/decline/arrive/start/complete/cancel). Same key within 24h replays the stored status+body without re-executing; concurrent duplicate executes once via a unique-index (UserId,Key) claim. Implemented as an endpoint-level helper in Common/Idempotency (no FastEndpoints pre/post-processor precedent exists). IdempotencyRecord is NOT a tenant entity (UserId-scoped, mirrors RefreshToken/SmsCode).",
-      "depends_on": [
-        "A-offer"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/IdempotencyRecord.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/IdempotencyRecordConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetEndpoint.cs",
+        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetResponse.cs",
+        "api/src/Taxi.Api/Features/Public/PublicFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Fleet.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/FleetConfiguration.cs",
         "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/src/Taxi.Api/Common/Idempotency/IdempotencyHelper.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/src/Taxi.Api/Features/Orders/AcceptOrder/AcceptOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/DeclineOrder/DeclineOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/ArriveOrder/ArriveOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/StartOrder/StartOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/CompleteOrder/CompleteOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/CancelOrder/CancelOrderEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Orders/Idempotency/IdempotencyTests.cs"
-      ],
-      "rule_citations": [
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#migrations",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#one-type-per-file",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#migrations",
-        "CLAUDE.md#project-specific-facts",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/03-driver-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "IdempotencyRecord entity: Id (Guid PK), UserId (Guid), Key (string, max 200), RequestHash (string, SHA-256 hex of method+path+body), ResponseStatus (int?), ResponseBody (JsonDocument? mapped .HasColumnType(\"jsonb\") per the OrderEvent.Payload precedent), CreatedAt (DateTimeOffset). It is NOT ITenantEntity and gets NO global query filter (UserId-scoped, mirrors decisions.md assumption 4 for RefreshToken/SmsCode); DbSet<IdempotencyRecord> registered on TaxiDbContext. Configuration adds a unique index on (UserId, Key). Migration AddIdempotencyRecords added with dotnet ef --output-dir Infrastructure/Migrations (CLAUDE.md).",
-        "No X-Idempotency-Key header -> the endpoint executes the transition normally and writes no record.",
-        "Header present -> IdempotencyHelper computes RequestHash and INSERTs a claim row (ResponseStatus/ResponseBody null) with SaveChanges BEFORE executing; on success it owns the lock, executes the transition, captures status+body, UPDATEs the row, then Sends.",
-        "Unique-index violation on the claim INSERT (PostgresException SqlState 23505 via the .ThrowAsync/.Which pattern in CLAUDE.md) -> load the existing row: (a) stored response present -> replay stored ResponseStatus+ResponseBody verbatim, no re-execution; (b) response null and CreatedAt within 60 s -> 409 Idempotency.InFlight (retryable); (c) response null and CreatedAt older than 60 s (crash between claim and store) -> take over, re-execute, store, Send; (d) RequestHash differs -> 409 Idempotency.KeyReused.",
-        "Only 2xx and expected terminal 4xx/409 responses are stored; a 5xx (infra failure) is never stored so a retry re-executes. Key longer than 200 chars -> 400 Idempotency.KeyTooLong.",
-        "Opportunistic purge DELETE WHERE CreatedAt < now - 24h runs on the claim path (bounded, no new job); 24 h replay window.",
-        "Replay_SameKeyWithinWindow_ReturnsStoredResponse_NoReExecution, Concurrent_DuplicateKey_ExecutesOnce_LoserGets409InFlight, OrphanedClaim_OlderThan60s_IsTakenOverAndReExecuted, SameKey_DifferentRequestHash_Returns409KeyReused, NoHeader_ExecutesNormally_WritesNoRecord, FiveHundred_IsNotStored_RetryReExecutes, IdempotencyRecords_TenantGuardBypassed_NoQueryFilter, and KeyTooLong_Returns400 pass (integration, real Postgres)."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Idempotency"
-      }
-    },
-    {
-      "id": "A-me",
-      "lane": "api",
-      "title": "GET drivers/me/summary + GET drivers/me/orders (DriverOnly, own-rows, tenant-safe) + ActiveOrderId on drivers/me",
-      "goal": "Two DriverOnly, driver-scoped, tenant-safe AsNoTracking projection endpoints: summary (rides count, per-payment-type CZK totals, hours online from shifts incl. open shift) for Home chips, and orders (own completed+active rides for the day) for the History list. Also adds ActiveOrderId (additive) to GET drivers/me so B-ride's AC #6 restore has an authoritative source.",
-      "depends_on": [],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Drivers/GetMySummary/",
-        "api/src/Taxi.Api/Features/Drivers/GetMyOrders/",
-        "api/src/Taxi.Api/Features/Drivers/GetMe/GetMeEndpoint.cs",
-        "api/src/Taxi.Api/Features/Drivers/GetMe/GetMeResponse.cs",
-        "api/tests/Taxi.Api.Tests/Drivers/MeSummary/DriverMeSummaryTests.cs"
+        "api/tests/Taxi.Api.Tests/Public/PublicFleetTests.cs"
       ],
       "rule_citations": [
         "rules/api-design.md#endpoint-pattern",
@@ -129,47 +29,325 @@
         "rules/architecture.md#feature-configuration",
         "rules/ef-core.md#asnotracking",
         "rules/ef-core.md#projections",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#date-types",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
+        "rules/ef-core.md#migrations",
         "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
         "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "rules/naming.md#migrations",
         "rules/error-handling.md#send-for-expected-errors",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "GET /drivers/me/summary?date= is DriverOnly, resolves the driver via the sub claim (as GetMeEndpoint does), and returns an AsNoTracking projection { ridesCount, cashTotalCzk, cardTotalCzk, invoiceTotalCzk, hoursOnline } scoped to own rows (DriverId == myDriverId). ridesCount = own Completed orders in the day window; totals sum FinalPriceCzk grouped by PaymentType (integer CZK); hoursOnline sums overlapping DriverShift durations (EndedAt ?? now) - StartedAt clamped to the window, including the open shift.",
-        "GET /drivers/me/orders?date= is DriverOnly, own-rows, and returns a read-only list DTO { id, publicCode, status, pickupAddress, dropoffAddress, priceType, finalPriceCzk, paymentType, completedAt } of the driver's own completed AND active rides for the day.",
-        "The date query param is bound as string? and parsed with DateOnly.TryParseExact(\"yyyy-MM-dd\", InvariantCulture) to avoid the FastEndpoints locale binding landmine (CLAUDE.md); absent/invalid date -> today (Europe/Prague) interpreted as a UTC [start,end) window. Invalid date format -> 400 via validator.",
-        "GET /drivers/me gains ActiveOrderId (Guid?, additive, XML-documented) = the driver's non-terminal order id (Assigned/Accepted/Arrived/InProgress) or null; existing GetMeResponse fields unchanged.",
-        "Both summary and orders are tenant-safe via the query filter and never leak another driver's or another fleet's rows.",
-        "Summary_CountsOwnCompletedRides_AndTotalsPerPaymentType, Summary_HoursOnline_IncludesOpenShift, Summary_DriverB_CannotSeeDriverAsRides (driver isolation), Summary_CrossTenant_ReturnsOwnFleetOnly (tenant isolation), Orders_ListsOwnCompletedAndActiveRidesForDate, GetMe_ReturnsActiveOrderId_WhenRideInProgress, and Summary_InvalidDate_Returns400 pass."
+        "GET public/fleet is AllowAnonymous() with a Summary documenting why it is public (branding for the customer PWA before login). It relies on TenantResolutionMiddleware resolving the fleet from the X-Fleet-Slug header or subdomain on an anonymous request (verified: the middleware gates only its JWT-claim branch on IsAuthenticated; branches 2 and 3 run for anonymous requests and it is registered before UseAuthorization).",
+        "When currentTenant.FleetId is null (unknown/missing slug) the endpoint returns 404 via Send.NotFoundAsync (no unscoped query). Otherwise it projects the resolved fleet (AsNoTracking, query-filter-scoped) to { name, phone, primaryColorHex, currency, timeZone }.",
+        "Fleet gains a nullable string PrimaryColorHex (#RRGGBB). A migration AddFleetPrimaryColor is added with dotnet ef --output-dir Infrastructure/Migrations (CLAUDE.md). This migration is sequenced BEFORE A-rating's AddOrderRating so the model snapshot applies cleanly (the one hard Lane-A ordering constraint).",
+        "PublicFleet_KnownSlug_ReturnsBranding, PublicFleet_UnknownSlug_Returns404, PublicFleet_NoSlug_Returns404, and PublicFleet_FleetASlug_NeverReturnsFleetBData (tenant isolation) pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Drivers.MeSummary"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Public"
       }
     },
     {
-      "id": "A-geo",
+      "id": "A-track",
       "lane": "api",
-      "title": "Widen GET geo/route to DispatcherOrDriver policy",
-      "goal": "Drivers can call GET geo/route for distance/ETA to pickup. Adds a DispatcherOrDriver policy constant (Dispatcher OR FleetAdmin OR Driver) following the existing DispatcherOrCustomer triple-role precedent, and switches RouteEndpoint from DispatcherOnly to DispatcherOrDriver. Suggest stays DispatcherOnly. Only toucher of AuthorizationPolicies.cs (parallel-safe).",
+      "title": "TrackingTokenService (HMAC mint/validate) + GET public/track/{code}?k= (AllowAnonymous) + create-order response tracking fields",
+      "goal": "The logged-out SMS tracking link. A Common/Tracking/TrackingTokenService mints/validates Base64Url(HMACSHA256(key, orderId:exp)); GET public/track/{code}?k= is AllowAnonymous, resolves the fleet from the slug, validates the token plus the 'valid until 2h after completion' rule, and returns the reduced TrackOrderResponse. FleetHub is [Authorize] (verified) so the logged-out path cannot use SignalR; the client polls this endpoint. Mint must live somewhere now even though SMS is deferred to 05, so the customer create-order response is extended with trackingCode/trackingToken/trackingUrlPath for the E2E.",
+      "depends_on": [],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Common/Tracking/TrackingTokenService.cs",
+        "api/src/Taxi.Api/Common/Tracking/TrackingOptions.cs",
+        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeEndpoint.cs",
+        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeRequest.cs",
+        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeResponse.cs",
+        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeValidator.cs",
+        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderResponse.cs",
+        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderEndpoint.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Public/PublicTrackTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#feature-configuration",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "TrackingTokenService (internal, InternalsVisibleTo the test project) mints token = Base64Url(HMACSHA256(Tracking:HmacKey, \"{orderId}:{expUnixSeconds}\")) and validates: the signature verifies against the configured key AND now < exp AND (if the order is Completed) now < CompletedAt + 2h. The '2h after completion' rule is a validation-time check (completion is unknown at mint), NOT a mint-time expiry. The key is bound via TrackingOptions from config (Tracking:HmacKey) and the raw token is never logged (rules/logging.md).",
+        "GET public/track/{code}?k= is AllowAnonymous(), resolves the fleet from the slug/subdomain via the middleware, loads the order by PublicCode within the fleet query-filter scope, confirms the token's embedded orderId matches the loaded order, and returns the existing TrackOrderResponse shape extended with priceType and a display price (no phone, no customer id).",
+        "A bad, missing, expired, or tampered token, or a token whose orderId does not match the code, returns 410 Tracking.LinkExpired via AddError(...) + Send.ErrorsAsync(410, ct); an unknown code within the resolved fleet returns 404 (no-leak); no resolvable slug returns 404.",
+        "The customer path of CreateOrderEndpoint mints a tracking token (exp = now + 24h) and the CreateOrderResponse gains trackingCode, trackingToken, and trackingUrlPath (/c/t/{code}?k={token}). The existing { order } envelope is preserved (these are additive sibling fields). Dispatcher create is unaffected.",
+        "Track_ValidToken_ReturnsReducedDto, Track_ExpiredToken_Returns410, Track_TamperedToken_Returns410, Track_CompletedOver2h_Returns410, Track_CompletedUnder2h_ReturnsDto, Track_FleetASlug_WithFleetBCode_Returns404 (tenant isolation), CreateOrder_Customer_ReturnsTrackingCodeAndToken, and TrackingTokenService_RoundTrips_MintThenValidate pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Public"
+      }
+    },
+    {
+      "id": "A-pricing",
+      "lane": "api",
+      "title": "GET pricing/quote (CustomerOnly) returning a fixed price or an estimate RANGE",
+      "goal": "A CustomerOnly quote endpoint that wraps IGeoProvider + the fleet default Tariff server-side and returns a fixed price (route match) or an estimate RANGE (tariff price plus/minus 10 percent, rounded to 10 CZK). Never a single exact estimate (AC #4). This wraps geo/route server-side so no customer-facing geo/route widening is needed (only geo/suggest, A-geo-suggest). Pre-06 contract documented for Lane B.",
+      "depends_on": [],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteRequest.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteResponse.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteValidator.cs",
+        "api/src/Taxi.Api/Features/Pricing/PricingFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#banned-patterns",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#expression-bodied",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET pricing/quote is CustomerOnly and tenant-scoped. Coordinate query params are bound as string? and parsed with double.Parse(..., NumberStyles.Float, CultureInfo.InvariantCulture) exactly as RouteEndpoint does (the FastEndpoints double query-binding locale landmine, CLAUDE.md); the validator uses double.TryParse(InvariantCulture) to return a clean 400 for bad input.",
+        "When an enabled, non-deleted, valid-now PointToPoint Route exists whose from/to coords are within a small radius of the request, the response is { priceType: \"Fixed\", fixedPriceCzk } with that route's PriceCzk. Otherwise the endpoint calls IGeoProvider.RouteAsync, prices from the default Tariff as Max(MinimumFareCzk, round(BaseFareCzk + PerKmCzk*km)), and returns { priceType: \"Estimate\", estimateLowCzk, estimateHighCzk } where low/high = price minus/plus 10 percent rounded to 10 CZK. estimateLow is strictly less than estimateHigh — a single exact estimate is never returned (AC #4).",
+        "A missing dropoff returns an Estimate with a wide band derived from the tariff minimum. An OSRM/upstream failure returns 502 Geo.RouteUnavailable (reuse the existing code) via the try/catch + Send.ErrorsAsync(502) pattern from RouteEndpoint; no tenant resolved returns 400.",
+        "Quote_RouteMatch_ReturnsFixed, Quote_NoRoute_ReturnsEstimateRange_NeverExact, Quote_EstimateBand_IsTariffPricePlusMinus10RoundedTo10, Quote_NoDropoff_ReturnsWideEstimate, Quote_InvalidCoords_Returns400, Quote_CrossTenant_UsesCallerFleetTariffOnly (tenant isolation), and Quote_OsrmDown_Returns502 pass (FakeGeoProvider precedent)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Pricing"
+      }
+    },
+    {
+      "id": "A-rating",
+      "lane": "api",
+      "title": "Order rating columns + migration + POST orders/{id}/rating (CustomerOnly, once) + dispatcher order-detail display",
+      "goal": "Customer rates a completed order once. Adds RatingStars/RatingComment/RatedAt to Order + migration; POST orders/{id}/rating is CustomerOnly, owner-only, Completed-only, once. The dispatcher order-detail (OrderDetailDto/GetOrderEndpoint) gains the three additive fields as a sub-task (AC #7), not a separate WI. Depends on A-public-fleet to serialize the TaxiDbContextModelSnapshot.cs regeneration (two migrations cannot be generated in parallel — the second would clobber the first's snapshot; the conductor serializes only via depends_on) and to serialize the ErrorCodes.cs append.",
+      "depends_on": [
+        "A-public-fleet"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Migrations/",
+        "api/src/Taxi.Api/Features/Orders/RateOrder/RateOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/RateOrder/RateOrderRequest.cs",
+        "api/src/Taxi.Api/Features/Orders/RateOrder/RateOrderValidator.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
+        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Orders/Rating/OrderRatingTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#migrations",
+        "rules/ef-core.md#date-types",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "rules/naming.md#migrations",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Order gains RatingStars (int?), RatingComment (string?, max 500), RatedAt (DateTimeOffset?). A migration AddOrderRating is added with dotnet ef --output-dir Infrastructure/Migrations. This migration runs AFTER A-public-fleet's AddFleetPrimaryColor so the model snapshot rebases cleanly (the one hard Lane-A ordering constraint).",
+        "POST orders/{id}/rating is CustomerOnly and owner-only (CustomerUserId == sub, no-leak 404 otherwise). The order must be Completed (else 409 Order.NotCompleted) and not already rated (RatedAt == null, else 409 Order.AlreadyRated). On success it sets RatingStars, RatingComment, RatedAt = timeProvider.GetUtcNow(). The request DTO uses plain properties (NOT C# required) with a validator enforcing stars in 1..5 and comment length <= 500 (the required-STJ-trap from CLAUDE.md).",
+        "The dispatcher order-detail OrderDetailDto and GetOrderEndpoint projection gain additive ratingStars/ratingComment/ratedAt fields (AC #7); existing fields and callers are unchanged.",
+        "Rate_CompletedOwnOrder_StoresRating, Rate_Twice_Returns409AlreadyRated, Rate_NotCompleted_Returns409, Rate_NotOwner_Returns404, Rate_StarsOutOfRange_Returns400, Rate_CrossTenant_Returns404 (tenant isolation), and DispatcherOrderDetail_AfterRating_IncludesStars (AC #7) pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Rating"
+      }
+    },
+    {
+      "id": "A-common-routes",
+      "lane": "api",
+      "title": "GET routes/common?validNow= (CustomerOnly, tenant-safe, valid-now filter on the existing Route entity)",
+      "goal": "The Home common-route cards. A CustomerOnly, tenant-scoped read that filters the existing Route entity by valid-now (Europe/Prague time/day). Built from existing Route data (Name/Type/PriceCzk/ValidDays bitmask/ValidFromTime/ValidToTime/IsEnabled/DeletedAt, verified) — not a stub. Sole owner of the Routes test area; does NOT touch ErrorCodes.cs (no new error codes), so it is fully parallel-safe.",
+      "depends_on": [],
+      "estimated_complexity": "S",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesRequest.cs",
+        "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesResponse.cs",
+        "api/src/Taxi.Api/Features/Routes/RoutesFeatureConfiguration.cs",
+        "api/tests/Taxi.Api.Tests/Routes/CommonRoutesTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#n-plus-one",
+        "rules/ef-core.md#date-types",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET routes/common?validNow=true is CustomerOnly, tenant-scoped, AsNoTracking. It returns enabled (IsEnabled), non-soft-deleted (DeletedAt == null) routes whose ValidDays bit matches the current Europe/Prague weekday AND whose ValidFromTime..ValidToTime window (null = all-day) contains the current Europe/Prague time, projected to { id, name, type, priceCzk } ordered by Priority descending. Valid-now is computed by converting timeProvider.GetUtcNow() to Europe/Prague (CLAUDE.md time conventions).",
+        "The listing is tenant-safe via the query filter; another fleet's routes never appear.",
+        "CommonRoutes_ReturnsOnlyValidNowEnabled, CommonRoutes_OutOfWindow_Excluded, CommonRoutes_Deleted_Excluded, and CommonRoutes_CrossTenant_ReturnsOwnFleetOnly (tenant isolation) pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Routes"
+      }
+    },
+    {
+      "id": "A-my-orders",
+      "lane": "api",
+      "title": "GET orders/mine/active + GET orders/mine (CustomerOnly, own-rows, tenant-safe) under one Orders.Mine test area",
+      "goal": "Two CustomerOnly, own-rows, tenant-safe reads: orders/mine/active returns the caller's single non-terminal order for the Home sticky banner; orders/mine is a paged history listing (standard { items, total, page, pageSize } shape) for B-history. Both endpoints and all their tests live under the single Orders.Mine namespace so the single-token dotnet-test filter covers every named test (the one-feature-folder / single-filter rule). Built from existing Order data.",
+      "depends_on": [],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Orders/GetMyActiveOrder/GetMyActiveOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/GetMyActiveOrder/GetMyActiveOrderResponse.cs",
+        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersRequest.cs",
+        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersResponse.cs",
+        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersValidator.cs",
+        "api/tests/Taxi.Api.Tests/Orders/Mine/MyOrdersTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#n-plus-one",
+        "rules/ef-core.md#date-types",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#common-rules",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET orders/mine/active is CustomerOnly and returns the caller's single non-terminal order (status in New/Assigned/Accepted/Arrived/InProgress, CustomerUserId == sub) as { id, publicCode, status }, or 204 No Content when the caller has none.",
+        "GET orders/mine?page=&pageSize= is CustomerOnly and returns the caller's own orders as the standard { items, total, page, pageSize } list shape (00-PROJECT-CONTEXT.md §9), AsNoTracking, projected to a read DTO with date, addresses/route, price, and status; it feeds B-history. A validator bounds page/pageSize.",
+        "Both endpoints are own-rows via CustomerUserId and tenant-safe via the query filter; another customer's or another fleet's rows never appear. Both endpoints' test classes live in namespace Taxi.Api.Tests.Orders.Mine so the filter FullyQualifiedName~Taxi.Api.Tests.Orders.Mine runs every named test.",
+        "MyActiveOrder_ReturnsNonTerminal, MyActiveOrder_NoneActive_Returns204, MyActiveOrder_OtherCustomer_NotReturned, MyOrders_ListsOwnOrdersPaged, MyOrders_OtherCustomer_NotReturned, and MyOrders_CrossTenant_ReturnsOwnFleetOnly (tenant isolation for both endpoints) pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Mine"
+      }
+    },
+    {
+      "id": "A-geo-suggest",
+      "lane": "api",
+      "title": "Widen GET geo/suggest to a CustomerOrStaff policy",
+      "goal": "Customers can call geo/suggest for pickup autocomplete in the custom-order screen. geo/suggest is DispatcherOnly today (verified) so a customer gets 403. Adds a CustomerOrStaff policy (Customer + Dispatcher + FleetAdmin) and switches SuggestEndpoint to it. geo/route is NOT widened (pricing/quote wraps it server-side). Sole toucher of AuthorizationPolicies.cs (parallel-safe).",
       "depends_on": [],
       "estimated_complexity": "S",
       "files_touched": [
         "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Geo/RouteAccessTests.cs"
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Geo/SuggestAccessTests.cs"
       ],
       "rule_citations": [
         "rules/api-design.md#authorization",
@@ -180,14 +358,14 @@
         "CLAUDE.md#cross-cutting-invariants"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "AuthorizationPolicies gains a DispatcherOrDriver constant, and RegisterPolicies adds AddPolicy(DispatcherOrDriver, p => p.RequireAuthenticatedUser().RequireRole(nameof(UserRole.Dispatcher), nameof(UserRole.FleetAdmin), nameof(UserRole.Driver))), mirroring the DispatcherOrCustomer precedent.",
-        "RouteEndpoint.Configure() uses Policies(nameof(AuthorizationPolicies.DispatcherOrDriver)); geo/suggest is NOT widened and remains DispatcherOnly.",
-        "Route_Driver_Returns200, Route_Dispatcher_StillReturns200 (regression), Route_Customer_Returns403, and Suggest_Driver_Returns403 pass."
+        "AuthorizationPolicies gains a CustomerOrStaff constant, and RegisterPolicies adds AddPolicy(CustomerOrStaff, p => p.RequireAuthenticatedUser().RequireRole(nameof(UserRole.Customer), nameof(UserRole.Dispatcher), nameof(UserRole.FleetAdmin))), mirroring the existing DispatcherOrCustomer / DispatcherOrDriver precedents.",
+        "SuggestEndpoint.Configure() uses Policies(nameof(AuthorizationPolicies.CustomerOrStaff)); geo/route is NOT widened and remains DispatcherOrDriver.",
+        "Suggest_Customer_Returns200, Suggest_Dispatcher_StillReturns200 (regression), Suggest_Driver_Returns403, and Route_Customer_Returns403 (route not widened) pass."
       ],
       "verification": {
         "tool": "dotnet-test",
@@ -197,20 +375,20 @@
     {
       "id": "B-pwa",
       "lane": "web",
-      "title": "PWA foundation: vite-plugin-pwa + manifest + icons + app-shell SW + install banner + permission priming",
-      "goal": "Installable /d PWA. Pins vite-plugin-pwa@0.20.5 (Node-20 + vite-5 safe). Manifest 'Taxi Rieic' + icons (pngjs-generated, no sharp), app-shell-only Workbox precache that never caches /api or /hubs, custom beforeinstallprompt banner, location+notification priming. Must NOT break /x or the dispatcher E2E (devOptions.enabled false so the SW never registers under npm run dev).",
+      "title": "/c PWA shell + lazy route group + fleet branding + Zavolat button + offline gate",
+      "goal": "The /c/* lazy route group + CustomerLayout; fleet branding from GET public/fleet applied as a theme override; the always-present Zavolat (tel:) button; the offline gate (cached routes + Zavolat, ordering disabled with the Czech message). Extends the existing /d vite-plugin-pwa config with the /c manifest/shell without breaking /x or /d. Home never imports Leaflet (slow-3G budget).",
       "depends_on": [],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/package.json",
         "web/vite.config.ts",
-        "web/scripts/gen-icons.mjs",
-        "web/public/",
         "web/src/app/router.tsx",
-        "web/src/features/driver/pwa/InstallBanner.tsx",
-        "web/src/features/driver/pwa/usePwaInstall.ts",
-        "web/src/features/driver/pwa/usePwaInstall.test.ts",
-        "web/src/features/driver/pwa/PermissionPriming.tsx",
+        "web/src/features/customer/shell/CustomerLayout.tsx",
+        "web/src/features/customer/shell/CallButton.tsx",
+        "web/src/features/customer/shell/CallButton.test.tsx",
+        "web/src/features/customer/shell/OfflineGate.tsx",
+        "web/src/features/customer/shell/useFleetBranding.ts",
+        "web/src/features/customer/shell/useFleetBranding.test.ts",
+        "web/src/shared/api/client.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
@@ -218,44 +396,55 @@
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#1-login-dlogin",
-        "docs/decisions.md#2026-09-11-frontend-styling-styled-components"
+        ".claude/state/04-customer-pwa.md#entry-points",
+        "rules/web-architecture.md#route-groups",
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#api-client",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-performance.md#bundle-budget",
+        "rules/web-testing.md#a11y-assertion"
       ],
       "required_reads": [
-        "docs/specs/in-progress/003_UC_003_driver-pwa.md",
-        ".claude/state/03-driver-pwa.md",
+        "docs/specs/in-progress/004_UC_004_customer-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/specs/done/driver-pwa-work-items.md",
         "docs/decisions.md"
       ],
       "needs_library_research": true,
       "acceptance_criteria": [
-        "package.json adds vite-plugin-pwa@0.20.5 (engines node >=16, peer vite ^5 — verified compatible with the existing vite@^5.4.8 and Node 20.0.0 under engine-strict) and a devDependency pngjs@7.0.0; @vite-pwa/assets-generator is NOT used because it wraps sharp whose engines (>=20.9.0) fail the Node 20.0.0 exact pin under engine-strict.",
-        "web/scripts/gen-icons.mjs is a one-off Node/pngjs script rendering a flat-colour taxi glyph to 192x192, 512x512, a 512 maskable icon, and a splash; the resulting PNGs are committed under web/public/ and referenced by the manifest (name 'Taxi Rieic', short_name, theme_color, background_color, display standalone, portrait orientation).",
-        "VitePWA is configured with registerType 'prompt', devOptions.enabled false (SW NEVER registers under npm run dev — the tool Playwright boots — so the existing dispatcher E2E is untouched), Workbox precache of the built app shell only, navigateFallbackDenylist set, and NO runtime caching matching ^/api or ^/hubs (the SW never intercepts API/SignalR traffic).",
-        "A custom install banner uses the captured beforeinstallprompt event (with a manual iOS 'Pridat na plochu' hint fallback); permission-priming screens explain location and notifications in one Czech sentence each.",
-        "The /d route group + DriverLayout are added to router.tsx without modifying any /x route; npm run tsc, npm run lint (--max-warnings 0), and npm run test pass; usePwaInstall.test.ts (captures beforeinstallprompt, exposes install trigger, hides after appinstalled) and locales.parity.test.ts pass."
+        "router.tsx gains a lazy-loaded /c/* route group (React.lazy) + CustomerLayout without modifying any /x or /d route. vite.config.ts extends the existing manifest/precache for the /c scope if needed; devOptions.enabled stays false (SW never registers under npm run dev, which Playwright boots) and no runtime cache matches ^/api or ^/hubs — /x and /d E2E untouched.",
+        "getPublicFleet is added to client.ts (sends the X-Fleet-Slug header) and typed to { name, phone, primaryColorHex, currency, timeZone }. useFleetBranding maps the response to a styled-components theme override; a null primaryColorHex falls back to the theme token.",
+        "CallButton renders a tel: link to the fleet phone, is >= 48 px, has an i18n'd aria-label, and appears on every /c screen via CustomerLayout. OfflineGate disables ordering while offline and shows 'Jste offline - zavolejte nam' plus the number; reads keep working from the TanStack cache.",
+        "The Home/shell chunks do not import Leaflet; npm run size passes after build. npm run tsc, npm run lint (--max-warnings 0), and npm run test pass.",
+        "AC #8 parity green; useFleetBranding.test.ts (response -> theme override; null color -> fallback), CallButton.test.tsx (tel: href + no axe violations via the configured helper), and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-auth",
+      "id": "B-login",
       "lane": "web",
-      "title": "Driver login /d/login + silent refresh (single-flight) + IndexedDB refresh token + role landing",
-      "goal": "/d/login reusing POST /auth/staff/login with role-based landing (Driver -> /d, else /x). 'Zustat prihlasen' persists the refresh token to IndexedDB. Silent refresh (proactive timer at exp-2min + single-flight 401-retry) added ADDITIVELY to the shared client.ts so a driver is never logged out mid-shift; /x keeps its current clear+redirect path (guarded).",
+      "title": "/c/login inline phone + 6-digit code step (reuse customer SMS login + silent refresh)",
+      "goal": "Inline phone (+420) -> auth/customer/request-code -> 6-digit auto-submit auth/customer/verify-code, resend after 60 s, plain-Czech errors, token storage via the existing auth-storage + IndexedDB refresh infra; never re-ask on the device unless refresh fails. Embeddable in the order flow without losing form state.",
       "depends_on": [
         "B-pwa"
       ],
-      "estimated_complexity": "L",
+      "estimated_complexity": "M",
       "files_touched": [
-        "web/src/features/driver/auth/DriverLoginPage.tsx",
-        "web/src/features/driver/auth/useDriverLogin.ts",
+        "web/src/features/customer/login/CustomerLoginStep.tsx",
+        "web/src/features/customer/login/PhoneInput.tsx",
+        "web/src/features/customer/login/CodeInput.tsx",
+        "web/src/features/customer/login/useCustomerLogin.ts",
+        "web/src/features/customer/login/useCustomerLogin.test.ts",
+        "web/src/features/customer/login/resendTimer.ts",
+        "web/src/features/customer/login/resendTimer.test.ts",
         "web/src/shared/api/client.ts",
-        "web/src/shared/api/refresh.ts",
-        "web/src/shared/api/refresh.test.ts",
-        "web/src/shared/api/idbAuthStore.ts",
-        "web/src/shared/api/idbAuthStore.test.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
@@ -263,18 +452,24 @@
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#1-login-dlogin"
+        ".claude/state/04-customer-pwa.md#4-login-step-inline-clogin-when-standalone",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-testing.md#timers-and-async",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#network-mocking"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "/d/login reuses POST /auth/staff/login (fleet slug + email + password, Czech errors, never JSON/stack trace); on success a Driver role lands on /d and any other role lands on /x.",
-        "When 'Zustat prihlasen' is checked the refresh token is persisted to IndexedDB (survives tab kill and phone restart) via idbAuthStore; the access token stays where UC-002 keeps it.",
-        "Silent refresh is added additively to client.ts: a proactive timer fires at exp-2min; a 401 triggers exactly ONE shared refresh via a module-level single-flight mutex (two concurrent 401s -> one /auth/refresh call, because refresh rotates tokens and concurrent refreshes would mutually invalidate and log the driver out — the exact failure the spec forbids), then the original request is retried once; only a failed refresh clears storage and routes to /d/login. The existing /x clear+redirect behaviour is unchanged (guarded).",
-        "AC #8 (cs/en) parity green; refresh.test.ts proves two concurrent 401s cause exactly one refresh (single-flight) and the proactive timer fires once, idbAuthStore.test.ts (persist/restore/clear via fake-indexeddb) passes, and a testing-library test (bad creds -> Czech error; driver role -> /d) passes."
+        "requestCustomerCode and verifyCustomerCode are added to client.ts (POST auth/customer/request-code and auth/customer/verify-code, both with the X-Fleet-Slug header). The phone is normalized to +420; the 6-digit code auto-submits; resend is disabled for 60 s (resendTimer.ts pure module, fake-timer tested).",
+        "On verify success the customer tokens are stored via the existing authStorage + idbAuthStore (reuse, do not fork); the refresh path is the existing single-flight refresh.ts. Errors are plain Czech ('Kod nesouhlasi, zkuste to znovu', 429 -> 'Pockejte chvili...') and never JSON or a stack trace.",
+        "CustomerLoginStep is inline/embeddable: the parent order screen passes a continuation so the form state is preserved across the login step (the order is not lost).",
+        "AC #8 parity green; resendTimer.test.ts (fake timers: resend enabled only after 60 s), useCustomerLogin.test.ts (request -> verify -> token stored; 401 -> Czech error; client mocked per rules/web-testing.md#network-mocking), and a component axe assertion pass."
       ],
       "verification": {
         "tool": "vitest"
@@ -283,121 +478,73 @@
     {
       "id": "B-home",
       "lane": "web",
-      "title": "Home /d: status button state machine + vehicle selector + connection dot + summary chips",
-      "goal": "Giant status button (Offline -> 'Zacit smenu' requires vehicle + location permission -> POST /drivers/me/online; Free -> 'Ukoncit smenu' + 'Cekam na objednavku'), vehicle selector shown only when offline, SignalR connection dot, today summary chips (rides, cash total, card total, hours online) from GET /drivers/me/summary.",
+      "title": "Home /c: common-route cards + Vlastni adresa + active-order sticky banner",
+      "goal": "Home renders common-route cards from GET routes/common?validNow=true (one tap -> Confirm preselected), a 'Vlastni adresa' button -> Custom order, and a sticky active-order banner from GET orders/mine/active that replaces the routes block when an order is active. Routes block hidden when none. No Leaflet import.",
       "depends_on": [
-        "B-auth"
+        "B-login"
       ],
       "estimated_complexity": "M",
       "files_touched": [
-        "web/src/features/driver/home/DriverHomePage.tsx",
-        "web/src/features/driver/home/StatusButton.tsx",
-        "web/src/features/driver/home/VehicleSelector.tsx",
-        "web/src/features/driver/home/ConnectionDot.tsx",
-        "web/src/features/driver/home/useDriverMe.ts",
-        "web/src/features/driver/home/useGoOnline.ts",
-        "web/src/features/driver/home/useGoOffline.ts",
-        "web/src/features/driver/home/useMySummary.ts",
-        "web/src/features/driver/home/homeState.ts",
-        "web/src/features/driver/home/homeState.test.ts",
+        "web/src/features/customer/home/CustomerHomePage.tsx",
+        "web/src/features/customer/home/RouteCard.tsx",
+        "web/src/features/customer/home/ActiveOrderBanner.tsx",
+        "web/src/features/customer/home/useCommonRoutes.ts",
+        "web/src/features/customer/home/useMyActiveOrder.ts",
+        "web/src/features/customer/home/homeContent.ts",
+        "web/src/features/customer/home/homeContent.test.ts",
+        "web/src/shared/api/client.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#6",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#2-home-d"
+        ".claude/state/04-customer-pwa.md#1-home-c",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-performance.md#query-keys",
+        "rules/web-testing.md#a11y-assertion"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "The status button maps driver status to label/colour/action: Offline -> green 'Zacit smenu' calling POST /drivers/me/online, enabled only when a vehicle is selected AND location permission is granted; Free -> grey secondary 'Ukoncit smenu' with 'Cekam na objednavku' text.",
-        "The vehicle selector is shown only when offline; the connection dot reflects the SignalR hub state (green/yellow/red).",
-        "Today summary chips (rides, cash total, card total, hours online) render from GET /drivers/me/summary (A-me); offline shows last known values plus a banner.",
-        "go-online 409 (already online) reconciles; go-online 404 (invalid vehicle) shows a Czech message.",
-        "AC #8 parity green; homeState.test.ts (status -> button label/colour/action; go-online disabled without vehicle or permission) and a testing-library test (chip render from summary; connection dot colour) pass."
+        "getCommonRoutes and getMyActiveOrder are added to client.ts (hierarchical query keys ['routes','common'] and ['orders','mine','active']). RouteCard shows name + price formatted with Intl.NumberFormat('cs-CZ'), is >= 48 px, and on tap navigates to /c/order/route/:routeId. 'Vlastni adresa' navigates to /c/order/new.",
+        "homeContent.ts is a pure module that decides banner-vs-routes: when orders/mine/active returns an order, ActiveOrderBanner ('Mate aktivni objednavku {code} - sledovat' -> /c/t/{code}) replaces the routes block; when no routes are valid-now, the routes block is hidden; otherwise the cards render.",
+        "The Home chunk does not import Leaflet (slow-3G budget, AC #6). Offline shows cached routes + the B-pwa offline gate.",
+        "AC #8 parity green; homeContent.test.ts (active order -> banner replaces routes; empty routes -> block hidden; 204 active -> show routes), a RouteCard render + axe assertion, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-offer",
+      "id": "B-route-order",
       "lane": "web",
-      "title": "Full-screen offer takeover: sound/vibration/countdown/double-tap guard + NewOrderOffered handler",
-      "goal": "On NewOrderOffered (existing single /hubs/fleet connection, positional (dto, expiresAt)) a full-screen takeover: repeating loud sound + vibration respecting per-driver 'Tichy rezim' (default OFF), large pickup, distance/ETA via geo/route (A-geo), price badge (PEVNA green / Odhad grey / Taxametr), countdown ring to expiresAt, Prijmout (64px) / Odmitnout with reason, double-tap guard (single request), expiry auto-dismiss. Accept/decline are live-only.",
+      "title": "Confirm route order /c/order/route/:routeId (route-type-driven, When, passengers, inline login, create)",
+      "goal": "Route-type-driven confirm (PointToPoint locked pickup/dropoff + optional note; Zone/ZoneToZone placeholder pre-06), When Hned/Na cas (+20 min..+7 days), passengers 1-4, big fixed price, Objednat -> inline login if needed (form state preserved) -> POST orders -> Tracking. client.ts createOrder unwraps the { order } envelope (data.order.id).",
       "depends_on": [
         "B-home"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/src/features/driver/offer/OfferTakeover.tsx",
-        "web/src/features/driver/offer/CountdownRing.tsx",
-        "web/src/features/driver/offer/PriceBadge.tsx",
-        "web/src/features/driver/offer/DeclineReasons.tsx",
-        "web/src/features/driver/offer/useOfferSound.ts",
-        "web/src/features/driver/offer/useOfferAccept.ts",
-        "web/src/features/driver/offer/useOfferDecline.ts",
-        "web/src/features/driver/offer/offerCountdown.ts",
-        "web/src/features/driver/offer/offerCountdown.test.ts",
-        "web/src/features/driver/offer/priceBadge.ts",
-        "web/src/features/driver/offer/priceBadge.test.ts",
-        "web/src/shared/realtime/useFleetHub.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#10",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#3-order-offer-full-screen-takeover"
-      ],
-      "required_reads": [
-        ".claude/state/03-driver-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "The existing NewOrderOffered no-op handler in useFleetHub.ts is extended to render the full-screen takeover from the positional (dto, expiresAt) payload on the single /hubs/fleet connection (the driver auto-joins driver:{driverId}; there is no separate /hubs/driver).",
-        "Repeating loud sound + vibration play until answered or expired, feature-detected and no-op in tests, and are suppressed when the per-driver 'Tichy rezim' setting is on (default OFF).",
-        "The screen shows large pickup, distance/ETA from GET /geo/route (A-geo), a price badge (PEVNA green / Odhad grey / Taxametr), and a countdown ring driven by expiresAt; when the countdown reaches zero the offer auto-dismisses.",
-        "Prijmout is a 64px button issuing POST /orders/{id}/accept; a double-tap issues only ONE request (double-tap guard). Odmitnout requires selecting a reason (Daleko / Mam pauzu / Jiny duvod) -> POST /orders/{id}/decline. When offline, accept/decline are blocked with 'Bez pripojeni, zkuste znovu' (never queued).",
-        "AC #8 parity green; offerCountdown.test.ts (fake timers: ring value from expiresAt, auto-dismiss at 0), priceBadge.test.ts (Fixed/Estimate/Meter -> label+colour), and testing-library tests (double-tap -> one request; decline blocked without a reason) pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-ride",
-      "lane": "web",
-      "title": "Active ride /d/ride: status button + 5-min no-show timer + nav handoff + map strip + state restore",
-      "goal": "Status-driven big button (Accepted: 'Navigovat' + 'Jsem na miste'; Arrived: 'Zahajit jizdu' + 'Zakaznik neprisel' enabled only after a 5-min timer; InProgress: 'Navigovat k cili' + 'Ukoncit jizdu'), tap-to-call phone, collapsible Leaflet map strip, and state restore from IndexedDB + reconcile with GET /drivers/me (ActiveOrderId, A-me) + GET /orders/{id} on load (AC #6).",
-      "depends_on": [
-        "B-offer"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/src/features/driver/ride/DriverRidePage.tsx",
-        "web/src/features/driver/ride/RideButton.tsx",
-        "web/src/features/driver/ride/NoShowTimer.tsx",
-        "web/src/features/driver/ride/NavHandoff.tsx",
-        "web/src/features/driver/ride/RideMapStrip.tsx",
-        "web/src/features/driver/ride/useActiveOrder.ts",
-        "web/src/features/driver/ride/useRideTransition.ts",
-        "web/src/features/driver/ride/rideButtonState.ts",
-        "web/src/features/driver/ride/rideButtonState.test.ts",
-        "web/src/features/driver/ride/noShowTimer.ts",
-        "web/src/features/driver/ride/noShowTimer.test.ts",
-        "web/src/features/driver/ride/navLinks.ts",
-        "web/src/features/driver/ride/navLinks.test.ts",
-        "web/src/features/driver/ride/useRideRestore.ts",
-        "web/src/features/driver/ride/useRideRestore.test.ts",
+        "web/src/features/customer/order/RouteOrderPage.tsx",
+        "web/src/features/customer/order/WhenPicker.tsx",
+        "web/src/features/customer/order/PassengerStepper.tsx",
+        "web/src/features/customer/order/FixedPriceBadge.tsx",
+        "web/src/features/customer/order/useRouteOrder.ts",
+        "web/src/features/customer/order/useCreateOrder.ts",
+        "web/src/features/customer/order/orderForm.ts",
+        "web/src/features/customer/order/orderForm.test.ts",
+        "web/src/features/customer/order/whenPicker.ts",
+        "web/src/features/customer/order/whenPicker.test.ts",
+        "web/src/shared/api/client.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
@@ -406,176 +553,163 @@
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#8",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#4-active-ride-dride"
+        ".claude/state/04-customer-pwa.md#2-confirm-route-order-corderrouterouteid",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#api-client",
+        "rules/web-realtime.md#offline-ux",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-testing.md#timers-and-async",
+        "rules/web-testing.md#a11y-assertion"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "The big button maps order status to actions: Accepted -> 'Navigovat' (nav handoff) + 'Jsem na miste' (arrive); Arrived -> 'Zahajit jizdu' (start) + secondary 'Zakaznik neprisel' (no-show cancel) enabled ONLY after a visible 5-min timer; InProgress -> 'Navigovat k cili' (if dropoff known) + 'Ukoncit jizdu' (to complete).",
-        "Customer phone is tap-to-call; a collapsible Leaflet map strip shows own position + pickup/dropoff pins; nav handoff opens Google Maps / Mapy.cz / Waze via geo: and universal links per the settings preference.",
-        "On load the ride state is restored from IndexedDB then reconciled: GET /drivers/me (ActiveOrderId, A-me) is authoritative; if ActiveOrderId is set, GET /orders/{id} supplies the current status (AC #6). If IndexedDB is empty but ActiveOrderId is set, the ride is rebuilt from the server; if the server reports a terminal status, the ride is cleared and the driver returns Home.",
-        "arrive/start transitions are issued through the offline queue (B-queue); a transition 409 refetches the order.",
-        "AC #8 parity green; rideButtonState.test.ts (status -> button set), noShowTimer.test.ts (fake timers: disabled < 5 min, enabled >= 5 min), navLinks.test.ts (link per nav-app preference + platform), and useRideRestore.test.ts (IndexedDB + ActiveOrderId reconcile precedence) pass."
+        "createOrder is added to client.ts and unwraps the { order: OrderDetailDto } envelope returning data.order.id (the carried UC-003 client.ts lesson) plus the trackingCode/trackingToken from A-track's extended response. A CreateOrderRequest is built from the route (routeId, priceType=Fixed, fixedPriceCzk, locked pickup/dropoff for PointToPoint + optional note). Zone/ZoneToZone pickup inputs are placeholders pre-06.",
+        "whenPicker.ts (pure) enforces Hned (default) or Na cas between now+20 min and now+7 days; orderForm.ts clamps passengers to 1..4; FixedPriceBadge shows the big fixed price formatted cs-CZ.",
+        "On Objednat, if no customer token is present the inline CustomerLoginStep (B-login) runs with the form state preserved (continuation), then the order is created and the app navigates to /c/t/{code} using data.order.id / trackingCode.",
+        "Creating an order is blocked (never queued) while offline with a Czech message (rules/web-realtime.md#offline-ux, spec §11 - order create is not retry-safe); a create 400 (no tenant / past scheduledAt) shows a plain Czech message.",
+        "AC #8 parity green; orderForm.test.ts (PointToPoint locked addresses; passengers clamp 1..4), whenPicker.test.ts (fake timers: min +20 min, max +7 days boundaries), and a component render + axe (inline login preserves form state) pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-complete",
+      "id": "B-custom-order",
       "lane": "web",
-      "title": "Complete /d/ride/complete: fixed-locked + override reason, keypad, payment toggles",
-      "goal": "Fixed price -> locked prefilled + 'Zmenit cenu' reveal with mandatory >=5-char reason sent as overrideReason; Estimate/Meter -> big numeric keypad prefilled with estimate; payment toggles Hotove/Kartou/Faktura; 'Dokoncit' -> POST /orders/{id}/complete; success -> Home with a 2s 'Hotovo' confirmation.",
+      "title": "Custom order /c/order/new (suggest autocomplete + GPS pin + map drag + price RANGE preview)",
+      "goal": "Pickup autocomplete (geo/suggest) + 'Pouzit moji polohu' (GPS pin, no reverse geocode) + map-pin drag fallback; optional dropoff; price preview from pricing/quote rendered as a RANGE for estimates (never exact, AC #4); When/passengers/note; Objednat as in B-route-order. Leaflet lazy-loaded.",
       "depends_on": [
-        "B-ride"
+        "B-route-order"
       ],
-      "estimated_complexity": "M",
+      "estimated_complexity": "L",
       "files_touched": [
-        "web/src/features/driver/complete/CompletePage.tsx",
-        "web/src/features/driver/complete/NumericKeypad.tsx",
-        "web/src/features/driver/complete/PaymentToggles.tsx",
-        "web/src/features/driver/complete/useCompleteRide.ts",
-        "web/src/features/driver/complete/completeForm.ts",
-        "web/src/features/driver/complete/completeForm.test.ts",
-        "web/src/features/driver/complete/overrideReason.ts",
-        "web/src/features/driver/complete/overrideReason.test.ts",
+        "web/src/features/customer/order/CustomOrderPage.tsx",
+        "web/src/features/customer/order/AddressAutocomplete.tsx",
+        "web/src/features/customer/order/PickupMap.tsx",
+        "web/src/features/customer/order/PriceRangeBadge.tsx",
+        "web/src/features/customer/order/useSuggest.ts",
+        "web/src/features/customer/order/usePriceQuote.ts",
+        "web/src/features/customer/order/priceQuote.ts",
+        "web/src/features/customer/order/priceQuote.test.ts",
+        "web/src/shared/api/client.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#6",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#5-complete-ride-dridecomplete"
+        ".claude/state/04-customer-pwa.md#3-custom-order-cordernew",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#api-client",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#network-mocking"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "For a Fixed-price order the price is prefilled and locked; 'Zmenit cenu' reveals an input requiring a >=5-char reason, sent as overrideReason on POST /orders/{id}/complete only when the price actually changed.",
-        "For Estimate/Meter a big numeric keypad is prefilled with the estimate; the final value is sent as FinalPriceCzk (integer CZK).",
-        "Payment type is three big toggles Hotove/Kartou/Faktura mapping to PaymentType; a payment type must be chosen before completing.",
-        "'Dokoncit' completes via the offline queue (B-queue); success returns Home with a 2s 'Hotovo' confirmation; a complete 409 refetches.",
-        "AC #8 parity green; completeForm.test.ts (Fixed locked vs keypad; payment required) and overrideReason.test.ts (>=5-char rule; overrideReason present only when price changed) pass."
+        "geoSuggest and pricingQuote are added to client.ts. AddressAutocomplete debounces and queries geo/suggest for >= 3 chars; 'Pouzit moji polohu' drops a GPS pin labeled 'Moje poloha (GPS)' from navigator.geolocation (NO reverse geocode - documented client stub); the map-pin drag fallback sets coords. The screen works without location permission (autocomplete + drag still function).",
+        "priceQuote.ts (pure) formats the pricing/quote response: Fixed -> 'Cena {n} Kc - pevna'; Estimate -> 'Odhad {low}-{high} Kc'. A test asserts an Estimate NEVER renders a single number (AC #4). PriceRangeBadge renders it.",
+        "PickupMap (Leaflet) is React.lazy so Leaflet loads only in this chunk (code-splitting, slow-3G budget); Objednat reuses the B-route-order create + inline-login path.",
+        "suggest upstream empty (200 empty) shows 'Zadne navrhy'; quote 502 shows 'Cenu nelze spocitat, zavolejte nam'.",
+        "AC #8 parity green; priceQuote.test.ts (Fixed -> pevna; Estimate -> low-high, never a single number), an AddressAutocomplete debounce + axe assertion, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-position",
+      "id": "B-tracking",
       "lane": "web",
-      "title": "Background position reporting: watchPosition -> UpdatePosition throttle (3s/25m) + wake lock + 60s banner",
-      "goal": "While online, watchPosition (high accuracy) -> hub UpdatePosition every 3s OR when moved > 25m (client throttle; server also throttles), heading+speed included; Wake Lock on ride screens (feature-detected); red 'Poloha se neodesila' banner + single vibration when nothing sent for 60s; degradation notes measured to docs/driver-pwa-limits.md.",
+      "title": "Tracking /c/t/:code (two modes: SignalR authed / public-track poll logged-out) + cancel + push prompt",
+      "goal": "Large human status headline per state; car marker + pickup pin. Authed customer -> the single /hubs/fleet Subscribe(orderId) (live headline + marker, cache-patch, stale-event guard). Logged-out link -> GET public/track poll every 10 s (FleetHub is [Authorize], verified). Collapsed details; 'Zrusit objednavku' (New/Assigned/Accepted, confirm dialog, post-Accepted hint) -> POST orders/{id}/cancel with reason text + JWT; push-subscription prompt after first order (client permission only).",
       "depends_on": [
-        "B-complete"
+        "B-custom-order"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/src/features/driver/position/usePositionReporting.ts",
-        "web/src/features/driver/position/usePositionReporting.test.ts",
-        "web/src/features/driver/position/positionThrottle.ts",
-        "web/src/features/driver/position/positionThrottle.test.ts",
-        "web/src/features/driver/position/useWakeLock.ts",
-        "web/src/features/driver/position/StalePositionBanner.tsx",
+        "web/src/features/customer/tracking/TrackingPage.tsx",
+        "web/src/features/customer/tracking/StatusHeadline.tsx",
+        "web/src/features/customer/tracking/TrackingMap.tsx",
+        "web/src/features/customer/tracking/CancelDialog.tsx",
+        "web/src/features/customer/tracking/PushPrompt.tsx",
+        "web/src/features/customer/tracking/useTrackingAuthed.ts",
+        "web/src/features/customer/tracking/useTrackingPublic.ts",
+        "web/src/features/customer/tracking/useCancelOrder.ts",
+        "web/src/features/customer/tracking/statusHeadline.ts",
+        "web/src/features/customer/tracking/statusHeadline.test.ts",
+        "web/src/features/customer/tracking/trackingMode.ts",
+        "web/src/features/customer/tracking/trackingMode.test.ts",
+        "web/src/features/customer/tracking/useTrackingPublic.test.ts",
+        "web/src/shared/api/client.ts",
         "web/src/shared/realtime/useFleetHub.ts",
         "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "docs/driver-pwa-limits.md"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#10",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#position-reporting"
-      ],
-      "required_reads": [
-        ".claude/state/03-driver-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "While the driver is online, navigator.geolocation.watchPosition (enableHighAccuracy) drives hub UpdatePosition(lat,lng,heading,speed) on the existing /hubs/fleet connection at most every 3s OR when moved > 25m, whichever first; heading and speed are forwarded.",
-        "Wake Lock is acquired on ride screens and is feature-detected (no-op where navigator.wakeLock is undefined).",
-        "If nothing was sent for 60s while online, a red 'Poloha se neodesila' banner shows and the phone vibrates once; docs/driver-pwa-limits.md records measured Android Chrome / iOS Safari background behaviour.",
-        "Vitest strategy: fake timers + mocked navigator.geolocation.watchPosition (injected fake position stream) + a spy on the hub invoke; Wake Lock no-ops when unavailable.",
-        "AC #8 parity green; positionThrottle.test.ts (3s tick; 25m displacement triggers early; both boundaries) and usePositionReporting.test.ts (mocked geolocation -> throttled invoke calls; 60s no-send -> banner state + one vibrate) pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-queue",
-      "lane": "web",
-      "title": "Offline transition queue: IndexedDB (idb), ordered replay, idempotency keys, exactly-once",
-      "goal": "IndexedDB queue for arrive/start/complete/no-show-cancel with X-Idempotency-Key generated at ENQUEUE time (the exactly-once linchpin), ordered FIFO replay on reconnect, 'ceka na odeslani' indicators, exactly-once via server idempotency (A-idem). Accept/decline are never queued. App-level queue via idb, explicitly NOT workbox-background-sync (keeps it fake-indexeddb-testable and working with the SW disabled in E2E).",
-      "depends_on": [
-        "B-position"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/package.json",
-        "web/src/features/driver/queue/transitionQueue.ts",
-        "web/src/features/driver/queue/transitionQueue.test.ts",
-        "web/src/features/driver/queue/useTransitionQueue.ts",
-        "web/src/features/driver/queue/queueReplay.ts",
-        "web/src/features/driver/queue/queueReplay.test.ts",
-        "web/src/features/driver/queue/PendingBadge.tsx",
-        "web/src/features/driver/ride/useRideTransition.ts",
-        "web/src/features/driver/complete/useCompleteRide.ts",
-        "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#8",
+        "00-PROJECT-CONTEXT.md#10",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#offline--reliability"
+        ".claude/state/04-customer-pwa.md#5-tracking-ctcode",
+        "rules/web-realtime.md#single-hub-singleton",
+        "rules/web-realtime.md#cache-patch-not-refetch",
+        "rules/web-realtime.md#stale-event-guard",
+        "rules/web-realtime.md#last-known-state",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-accessibility.md#keyboard-focus",
+        "rules/web-testing.md#timers-and-async",
+        "rules/web-testing.md#a11y-assertion"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/specs/in-progress/driver-pwa-work-items.md"
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
-      "needs_library_research": true,
+      "needs_library_research": false,
       "acceptance_criteria": [
-        "package.json adds idb@8.0.3 (pure JS, no engine restriction) and a devDependency fake-indexeddb@6.2.5 (engines >=18, satisfied by Node 20.0.0); the queue is an app-level IndexedDB store via idb, explicitly NOT workbox-background-sync.",
-        "arrive/start/complete/no-show-cancel are queued when offline (or always routed through the queue) with an X-Idempotency-Key minted at ENQUEUE time and preserved across every retry (the exactly-once linchpin); accept/decline are never queued.",
-        "On reconnect the queue replays in FIFO order; each queued item shows a 'ceka na odeslani' indicator; a replay 409 (Idempotency.KeyReused or a state 409) drops that order's queued items and reconciles from GET /orders/{id}; a network error keeps items queued for the next reconnect.",
-        "Exactly-once holds: a duplicate replay with the same key gets the server's stored response (A-idem) and the item is dropped.",
-        "AC #8 parity green; transitionQueue.test.ts (enqueue/persist/restore across reload via fake-indexeddb; key minted once at enqueue and preserved) and queueReplay.test.ts (FIFO order; retry keeps the same key; 409 drops+reconciles) pass."
+        "trackingMode.ts (pure) selects authed-vs-public from stored customer-token presence. Authed mode reuses the existing /hubs/fleet module-level singleton in useFleetHub.ts (NEVER a second connection), calls Subscribe(orderId), patches the ['orders','track',id]/detail cache in place on OrderChanged with a version stale-event guard (drops version <= cached), and moves the marker on DriverPositionChanged (AC #2). Public mode (logged-out /c/t/:code?k=) polls getPublicTrack every 10 s (FleetHub is [Authorize] so SignalR is unavailable logged-out) - no second connection, no auth.",
+        "statusHeadline.ts (pure) maps status -> one-line Czech headline: New 'Hledame ridice...', Assigned/Accepted 'Ridic {name} prijede za ~{eta} min' (eta omitted when the track DTO EtaMinutes is null, pre-06), Arrived 'Ridic je na miste' + plate/color, InProgress 'Jedete', Completed 'Hotovo - {price} Kc' + rating trigger, Cancelled customer-friendly reason + Zavolat.",
+        "getPublicTrack and cancelOrder are added to client.ts. 'Zrusit objednavku' is shown only in New/Assigned/Accepted via a confirm dialog with at most two buttons that traps focus and closes on Escape (rules/web-accessibility.md#keyboard-focus); after Accepted it shows the hint 'Ridic uz jede, prosime zruste jen v nutnem pripade'. Cancel POSTs orders/{id}/cancel with { reason: <czech text> } and the customer JWT (the server records CancelledByRole=Customer).",
+        "An expired public token (410 Tracking.LinkExpired) shows 'Odkaz vyprsel' + the call button (AC #3); a cancel 409 shows 'Objednavku uz nelze zrusit'; SignalR down in authed mode falls back to the last cache + offline banner, never a blank screen (rules/web-realtime.md#last-known-state). TrackingMap (Leaflet) is React.lazy. The push-subscription prompt (permission only, no server push) appears after the first order.",
+        "AC #8 parity green; statusHeadline.test.ts (each status -> headline; Cancelled shows reason+call; Completed shows price+rating), trackingMode.test.ts (token present -> authed/SignalR; absent -> public/poll), useTrackingPublic.test.ts (fake timers: 10 s poll; 410 -> expired state), a component axe assertion, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-history-settings",
+      "id": "B-rating",
       "lane": "web",
-      "title": "History /d/history + Settings /d/settings (nav app, silent mode, logout, version, Diagnostika)",
-      "goal": "History (read-only, today default, previous days selectable, list + per-payment totals) from GET /drivers/me/orders + /summary (A-me); Settings (nav-app preference, silent mode, logout, app version, Diagnostika: location/push permission states, last position sent, SignalR state).",
+      "title": "Rating on Tracking after Completed (1-5 stars + optional comment, once)",
+      "goal": "A keyboard-accessible 1-5 star control + optional comment -> POST orders/{id}/rating, once; shown on the Completed tracking view. On 409 AlreadyRated the stored rating is shown read-only.",
       "depends_on": [
-        "B-queue"
+        "B-tracking"
       ],
       "estimated_complexity": "M",
       "files_touched": [
-        "web/src/features/driver/history/HistoryPage.tsx",
-        "web/src/features/driver/history/useMyOrders.ts",
-        "web/src/features/driver/history/historyTotals.ts",
-        "web/src/features/driver/history/historyTotals.test.ts",
-        "web/src/features/driver/settings/DriverSettingsPage.tsx",
-        "web/src/features/driver/settings/NavAppPreference.tsx",
-        "web/src/features/driver/settings/SilentModeToggle.tsx",
-        "web/src/features/driver/settings/Diagnostika.tsx",
-        "web/src/features/driver/settings/useDriverSettings.ts",
-        "web/src/features/driver/settings/useDriverSettings.test.ts",
+        "web/src/features/customer/tracking/RatingForm.tsx",
+        "web/src/features/customer/tracking/StarPicker.tsx",
+        "web/src/features/customer/tracking/useRateOrder.ts",
+        "web/src/features/customer/tracking/ratingForm.ts",
+        "web/src/features/customer/tracking/ratingForm.test.ts",
+        "web/src/shared/api/client.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
@@ -583,19 +717,69 @@
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/03-driver-pwa.md#6-history-dhistory",
-        ".claude/state/03-driver-pwa.md#7-settings-dsettings"
+        ".claude/state/04-customer-pwa.md#6-rating-on-tracking-after-completed",
+        "rules/web-architecture.md#api-client",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#keyboard-focus",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-testing.md#a11y-assertion"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "History is read-only: today by default with previous days selectable; renders the ride list from GET /drivers/me/orders and totals per payment type; offline shows last known + a banner.",
-        "Settings persists nav-app preference and silent mode (consumed by B-offer sound and B-ride nav handoff); shows app version; logout clears storage + IndexedDB and routes to /d/login.",
-        "Diagnostika shows location permission state, push permission state, last position sent (from B-position), and SignalR connection state, in a form a driver can read aloud to the dispatcher.",
-        "AC #8 parity green; historyTotals.test.ts (totals per payment type; empty day) and useDriverSettings.test.ts (persist/restore nav-app + silent mode) pass."
+        "rateOrder is added to client.ts (POST orders/{id}/rating). StarPicker is a keyboard-accessible 1-5 control (aria-labelled buttons, >= 48 px) and the comment is optional (<= 500 chars). On success the form hides and 'Dekujeme za hodnoceni' shows.",
+        "ratingForm.ts (pure) enforces stars >= 1 before submit and comment <= 500. A 409 Order.AlreadyRated renders the stored rating read-only (once-only); offline disables submit with a message.",
+        "AC #8 parity green; ratingForm.test.ts (stars required; comment optional <= 500), a StarPicker keyboard + axe assertion, and locales.parity.test.ts pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B-history",
+      "lane": "web",
+      "title": "History /c/history (read-only tracking + Objednat znovu)",
+      "goal": "Past orders (date, addresses/route, price, status) from GET orders/mine (A-my-orders); tap -> read-only Tracking; 'Objednat znovu' copies addresses into the Custom order draft.",
+      "depends_on": [
+        "B-rating"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/customer/history/CustomerHistoryPage.tsx",
+        "web/src/features/customer/history/HistoryRow.tsx",
+        "web/src/features/customer/history/useMyOrderHistory.ts",
+        "web/src/features/customer/history/reorder.ts",
+        "web/src/features/customer/history/reorder.test.ts",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#6",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/04-customer-pwa.md#7-history-chistory",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-testing.md#a11y-assertion"
+      ],
+      "required_reads": [
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "getMyOrderHistory is added to client.ts (GET orders/mine, the standard { items, total, page, pageSize } list from A-my-orders). HistoryRow shows the date formatted in Europe/Prague, the route/addresses, the price in cs-CZ CZK, and a status pill; tapping a row navigates to /c/t/{code} in read-only mode.",
+        "'Objednat znovu' uses reorder.ts (pure) to copy the row's pickup/dropoff into the Custom-order draft and navigates to /c/order/new prefilled.",
+        "Offline shows last known + a banner; an empty list shows 'Zatim zadne jizdy'.",
+        "AC #8 parity green; reorder.test.ts (copies pickup/dropoff into the custom-order draft), a HistoryRow render + axe assertion, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
@@ -604,20 +788,23 @@
     {
       "id": "B-e2e",
       "lane": "web",
-      "title": "Playwright driver specs (mobile viewport): AC#2 full flow, AC#4 decline->New, AC#5 offline queue + decisions/docs",
-      "goal": "Mobile-viewport Playwright specs proving AC #2 (start shift -> offer via dispatcher API assign -> accept -> arrive -> start -> complete fixed -> home totals), AC #4 (decline -> order returns to New), and AC #5 (context.setOffline during 'Jsem na miste' -> queued -> delivered exactly once). Reuses the UC-002 harness by adding a mobile Playwright project (leaves Desktop Chrome/dispatcher.spec.ts intact). Records the AC #3 push deferral + UC-003 assumptions in docs/decisions.md; docs/api.md regenerated by the full dotnet test.",
+      "title": "Playwright customer specs (mobile viewport): AC#1 3-tap order, AC#2 live tracking, AC#3 valid/expired link, AC#5 cancel + decisions/docs",
+      "goal": "Mobile-viewport Playwright specs proving AC #1 (3-tap common-route -> phone+code -> Tracking 'Hledame ridice...'), AC #2 (dispatcher assign + driver accept via API -> headline updates + marker moves, no reload), AC #3 (valid vs expired tracking link), AC #5 (cancel in Accepted -> Cancelled CancelledByRole=Customer, driver returns Home). Adds a customer mobile Playwright project (leaves Desktop Chrome + driver project intact). Records the push-sending deferral + pre-06 stubs in docs/decisions.md; docs/api.md regenerated by the full dotnet test.",
       "depends_on": [
-        "B-history-settings",
-        "A-offer",
-        "A-idem",
-        "A-me",
-        "A-geo"
+        "B-history",
+        "A-public-fleet",
+        "A-track",
+        "A-pricing",
+        "A-rating",
+        "A-common-routes",
+        "A-my-orders",
+        "A-geo-suggest"
       ],
       "estimated_complexity": "L",
       "files_touched": [
         "web/playwright.config.ts",
-        "web/e2e/driver.spec.ts",
-        "web/e2e/helpers/apiDriver.ts",
+        "web/e2e/customer.spec.ts",
+        "web/e2e/helpers/apiCustomer.ts",
         "DEMO.md",
         "docs/decisions.md",
         "docs/api.md"
@@ -626,27 +813,30 @@
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#11",
         "00-PROJECT-CONTEXT.md#12",
-        ".claude/state/03-driver-pwa.md#acceptance-criteria",
-        "docs/decisions.md#2026-09-11-uc-002-frontend-quality-gate"
+        ".claude/state/04-customer-pwa.md#acceptance-criteria",
+        "rules/web-testing.md#e2e-conventions",
+        "rules/web-testing.md#red-green-refactor",
+        "docs/specs/done/driver-pwa-work-items.md"
       ],
       "required_reads": [
-        ".claude/state/03-driver-pwa.md",
+        ".claude/state/04-customer-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/specs/done/driver-pwa-work-items.md",
         "docs/decisions.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "playwright.config.ts gains a second project (mobile device e.g. Pixel 5) whose testMatch is scoped to driver.spec.ts; the existing Desktop Chrome project and dispatcher.spec.ts are untouched, and the webServer harness (scripts/e2e-api.mjs: docker db + dotnet run Development Seed__Enabled=true wait /health/ready, then Vite 5173) is reused.",
-        "Driver_FullFlow_StartShiftToCompleteFixed_ShowsTotals (AC #2): mobile login as a seeded driver -> select vehicle -> start shift -> dispatcher assigns via API -> offer appears in the foreground within 2 s -> accept -> arrive -> start -> complete with fixed price -> Home shows 1 ride and correct totals.",
-        "AC #1 (installability) is verified manually and documented in DEMO.md against a production build (npm run build && npx vite preview -> Chrome DevTools Application panel or Lighthouse PWA category, incl. the maskable-icon check). It is manual because devOptions.enabled:false means the SW and manifest never activate under npm run dev (what the harness boots), so E2E cannot observe them; this is the one binding AC with no automated home and the manual step is its assigned verification.",
-        "Driver_Decline_ReturnsOrderToNew (AC #4): decline requires a reason and the order returns to New (dispatcher-visible) within 1 s.",
-        "Driver_OfflineArrive_QueuedThenDeliveredExactlyOnce (AC #5): context.setOffline(true) around 'Jsem na miste' queues the action ('ceka na odeslani'), and setOffline(false) delivers it exactly once (a single server-side transition, proven via the X-Idempotency-Key and A-idem).",
-        "docs/decisions.md is updated (DoD #6) with the AC #3 push-notification-half deferral to assignment 05 and the UC-003 assumptions echo; docs/api.md is regenerated by the full dotnet test (OpenApi_Document_GeneratesApiMarkdown); DEMO.md documents the manual push test steps and how to boot the harness."
+        "playwright.config.ts gains a customer mobile project (e.g. Pixel 5) whose testMatch is scoped to customer.spec.ts; the existing Desktop Chrome project and the UC-003 driver project are untouched, and the webServer harness (docker db + dotnet run Development Seed__Enabled wait /health/ready, then Vite) is reused. The E2E clock-trap workaround (E2ETaxiApiFactory LifetimeValidator, CLAUDE.md) applies to app-minted customer JWTs.",
+        "Customer_ThreeTapCommonRoute_ToTracking (AC #1): a fresh visitor taps a common route -> Objednat -> enters phone + the dev code read from the ConsoleSmsSender output -> lands on Tracking with 'Hledame ridice...'; exactly 3 taps before the phone step.",
+        "Customer_LiveHeadlineAndMarker_OnAssignAccept (AC #2): a dispatcher assigns and a driver accepts via the API helper -> the Tracking headline updates to the Accepted state and the car marker moves on DriverPositionChanged, with no reload.",
+        "Customer_PublicTrackingLink_ValidVsExpired (AC #3): opening /c/t/{code}?k={validToken} logged-out works; an expired token shows 'Odkaz vyprsel' + the call button. The valid and expired tokens are constructed from A-track's create-order response (no SMS needed).",
+        "Customer_CancelInAccepted_ReasonCustomer_DriverReturnsHome (AC #5): cancelling in Accepted shows the hint, and on confirm the order is Cancelled with CancelledByRole=Customer (asserted via API) and the driver app/state returns Home; rating is stored and visible in dispatcher order detail (AC #7, asserted via API). AC #4 estimate-range is proven in vitest priceQuote.test.ts (the E2E asserts the UI shows two numbers, never one). AC #6 Lighthouse (Perf >= 85, PWA installable, A11y >= 90) is manual against a production build (npm run build + vite preview), documented in DEMO.md.",
+        "docs/decisions.md is updated (DoD #6) with: push-SENDING deferred to assignment 05 (client prompt in scope); pricing/quote uses the tariff estimate until assignment 06 provides route matching; reverse-geocode is a client stub; Fleet.PrimaryColorHex added; common-routes-valid-now built from the existing Route entity; orders/mine history listing added. docs/api.md is regenerated by the full dotnet test (OpenApi document test); DEMO.md documents the manual Lighthouse + tracking-link steps and how to boot the harness."
       ],
       "verification": {
         "tool": "playwright"
       }
     }
   ],
-  "notes": "UC-003 = 4 Lane A (api) WIs + 10 Lane B (web) WIs = 14 total. Array is topologically ordered and acyclic. Schema shape matches the UC-002 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum: dotnet-test | dotnet-build | npm-lint | npm-tsc | vitest | playwright; verification.filter (dotnet-test only) uses single-token FullyQualifiedName~Taxi.Api.Tests.<Area> fragments (the filter charset excludes '/', so vitest/playwright/npm-* tools carry no filter). LANE A is NOT fully parallel: A-offer->A-idem are serialized because they share Common/Orders/OrderService.cs, the six transition endpoints, and Common/ErrorCodes.cs (A-offer edits OrderService's post-commit publish + corrects the IRealtimePublisher XML comment; A-idem then adds the endpoint-level idempotency helper call to the six endpoints and appends the Idempotency.* block to ErrorCodes.cs). A-me and A-geo have empty depends_on and run in parallel with the A-offer->A-idem chain and each other (disjoint files: A-me = new Features/Drivers/GetMySummary + GetMyOrders slices + additive ActiveOrderId on GetMe; A-geo = sole toucher of AuthorizationPolicies.cs + RouteEndpoint.cs). LANE B is a strict chain B-pwa->B-auth->B-home->B-offer->B-ride->B-complete->B-position->B-queue->B-history-settings->B-e2e; B-e2e ADDITIONALLY depends on all of A-offer/A-idem/A-me/A-geo for build-integrity (the Playwright harness boots the API from the shared working tree via dotnet run, which fails to compile if any Lane A WI is mid-implementation) — the vitest-only B WIs need no cross-lane edges because their API calls are mocked. Staging discipline (autonomous single tree): Lane A stages api/ only, Lane B stages web/ only (plus docs/ from B-e2e); neither commits. KEY DECISIONS: (offer expiry consistency) ApplyAssign AND ApplyReassign both set AssignedAt=now (verified OrderStateMachine.cs 130/226), and OfferTimeoutJob expires from AssignedAt+OfferTimeoutSeconds, so A-offer computes expiresAt=AssignedAt+timeout — same instant for job and driver countdown, reassign refreshes the window, no early-timeout bug; NOT a fresh GetUtcNow(). OfferTimeoutSeconds loaded with the mandatory (int?)-cast + ??45 fallback (CLAUDE.md). (idempotency hook) endpoint-level helper in Common/Idempotency — zero FastEndpoints pre/post-processor precedent exists and a post-processor cannot cleanly capture the serialized body; six call sites. IdempotencyRecord is NOT ITenantEntity (UserId-scoped, mirrors RefreshToken/SmsCode / decisions.md assumption 4) so no query filter and no SaveChanges tenant guard. Claim-then-execute four branches: (1) unique-index (UserId,Key) INSERT committed before execution = the lock; (2) stored response -> replay verbatim; (3) in-flight (<60s, null response) -> 409 Idempotency.InFlight retryable; (4) orphaned claim (>=60s, null response, crash between claim and store) -> take over + re-execute (without branch 4 one 500 permanently bricks a queued transition and AC#5 fails in the field). RequestHash mismatch -> 409 Idempotency.KeyReused. Store only 2xx + expected 4xx/409; never 5xx (retryable). Purge opportunistic DELETE <now-24h on the claim path. Header optional (drivers always send, dispatchers never). (A-me date binding) date bound as string? + DateOnly.TryParseExact InvariantCulture (FastEndpoints locale landmine), Europe/Prague calendar day -> UTC window; GetMe gains ActiveOrderId (additive) as the restore source B-ride AC#6 needs (GetMeResponse had no active-order id); isolation tests cover driver B vs driver A AND cross-tenant. (A-geo) new DispatcherOrDriver policy (Dispatcher+FleetAdmin+Driver) per the DispatcherOrCustomer precedent; suggest stays DispatcherOnly. (B-pwa SW scope) vite-plugin-pwa@0.20.5 pinned (Node>=16, vite ^5 peer — verified vs vite@^5.4.8 + Node 20.0.0); @vite-pwa/assets-generator BANNED because it wraps sharp whose engines >=20.9.0 FAIL Node 20.0.0 under engine-strict (verified npm view sharp engines) — icons generated by a one-off pngjs@7.0.0 (>=14.19.0) script and committed to web/public. SW must not break /x or the dispatcher E2E: devOptions.enabled:false (SW never registers under npm run dev, which Playwright boots) + Workbox precache app shell only + navigateFallbackDenylist + no runtime cache for ^/api or ^/hubs; registerType 'prompt'. (B-auth silent refresh) single-flight refresh mutex is MANDATORY — /auth/refresh rotates tokens so two concurrent 401-triggered refreshes mutually invalidate and log the driver out mid-shift (the exact failure the spec forbids); proactive timer at exp-2min, 401->one shared refresh->retry once->else logout; ADDITIVE to shared client.ts, /x keeps its clear+redirect (guarded); refresh token in IndexedDB on 'Zustat prihlasen'; role landing Driver->/d else /x. (B-queue exactly-once) idempotency key minted at ENQUEUE time (not send) is the linchpin; app-level IndexedDB via idb@8.0.3, NOT workbox-background-sync (keeps it fake-indexeddb@6.2.5-testable and working with SW disabled in E2E); replay 409 -> drop that order's items + reconcile from server. (single hub) confirmed one /hubs/fleet — driver auto-joins driver:{driverId}; B-offer extends the existing NewOrderOffered no-op handler ((dto,expiresAt) positional); B-position invokes UpdatePosition(lat,lng,heading,speed) on the same connection; there is NO separate /hubs/driver. (B-e2e) second Playwright project (mobile Pixel 5) with testMatch scoped to driver.spec.ts; AC #3 push half deferred to 05 recorded in decisions.md; docs/api.md regenerated by full dotnet test. needs_library_research true on exactly B-pwa (vite-plugin-pwa/workbox + sharp avoidance) and B-queue (idb + fake-indexeddb Node-20 compat + workbox-background-sync avoidance). AC MAPPING: AC#1 installability -> B-pwa + B-e2e signals; AC#2 full flow -> B-home/B-offer/B-ride/B-complete + B-e2e; AC#3 foreground <=2s offer -> B-offer + B-e2e (push half DEFERRED to 05); AC#4 decline->New -> B-offer + B-e2e; AC#5 offline queue exactly-once -> A-idem + B-queue + B-e2e; AC#6 restore mid-ride -> A-me(ActiveOrderId) + B-ride; AC#7 touch targets -> every /d screen WI (>=48px, primary >=64px); AC#8 cs/en -> mechanized by locales.parity.test.ts on every screen WI. NOTE: no .claude/schemas/work-items.v1.json file exists in this repo (a known scaffold gap per CLAUDE.md); this handoff matches the UC-002 handoff-designer.json shape, which is the operative 'UC-002 schema' the conductor consumes."
+  "notes": "UC-004 = 7 Lane A (api) WIs + 9 Lane B (web) WIs = 16 total. Array is topologically ordered and acyclic. Schema shape matches the UC-003 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum: dotnet-test | dotnet-build | npm-lint | npm-tsc | vitest | npm-build | playwright; verification.filter (dotnet-test only) uses single-token FullyQualifiedName~Taxi.Api.Tests.<Area> fragments (charset excludes '/', so vitest/playwright tools carry no filter). NO .claude/schemas/work-items.v1.json file exists (known scaffold gap per CLAUDE.md); this matches the operative UC-002/UC-003 handoff-designer.json shape the conductor consumes. PUBLIC-ENDPOINT / TENANT APPROACH (the novel backend risk, resolved against source): TenantResolutionMiddleware (Common/Tenancy/TenantResolutionMiddleware.cs) resolves the fleet per request: (1) JWT fleet_id claim [gated on IsAuthenticated], (2) X-Fleet-Slug header -> DB slug lookup, (3) first subdomain label -> DB slug lookup. Branches 2/3 run for ANONYMOUS requests too, and the middleware is registered after UseAuthentication + before UseAuthorization (WI-04 fact), so it fires for AllowAnonymous endpoints. An AllowAnonymous public/* endpoint therefore gets a correctly-scoped CurrentTenant.FleetId and the EF global query filter (e.FleetId == currentTenant.FleetId) auto-scopes every read -> fleet-safe by construction, no manual fleet-id plumbing, no cross-fleet leak. GetOrderByCodeEndpoint already relies on this pattern (verified). Every public WI ships an isolation test (fleet A slug + fleet B code/token -> 404). PRE-06 STUBS (documented for Lane B stability): (pricing/quote) CustomerOnly, wraps IGeoProvider.RouteAsync + default Tariff SERVER-SIDE, returns { priceType Fixed|Estimate, fixedPriceCzk? , estimateLowCzk?, estimateHighCzk? } with the estimate band = tariff price +/-10% rounded to 10 (assignment rule) - NEVER a single exact estimate (AC #4); this wraps geo/route server-side so geo/route is NOT widened (only geo/suggest). (common routes) NOT a stub - the Route entity already has Name/Type/PriceCzk/ValidDays(Mon=1 bitmask)/ValidFromTime/ValidToTime/IsEnabled/DeletedAt (verified), so GET routes/common?validNow= (A-common-routes) is a real valid-now listing computed in Europe/Prague; full route/zone MANAGEMENT stays in assignment 06. (reverse geocode) IGeoProvider has SuggestAsync + RouteAsync only (verified) - no reverse-geocode; 'Pouzit moji polohu' is a CLIENT stub (GPS pin labeled 'Moje poloha (GPS)', no street name) + map-drag fallback; building a backend reverse-geocode is deferred to 06. (primary color) Fleet has no color column (verified) -> A-public-fleet adds nullable PrimaryColorHex + migration (additive, Fleet has no query filter); null -> client theme fallback. 'flags' out of scope pre-06. (order history) no customer order-history endpoint exists -> GET orders/mine (standard list shape) is built in A-my-orders alongside orders/mine/active under one Orders.Mine test namespace. THE THREE 'REUSE' GAPS THE ADVISOR FLAGGED, all resolved against source: (1) geo/suggest is DispatcherOnly (verified) so a customer gets 403 -> A-geo-suggest widens it to a new CustomerOrStaff policy (mirror of UC-003 A-geo; sole toucher of AuthorizationPolicies.cs). (2) FleetHub is [Authorize] (verified line 38) so the logged-out SMS tracking link CANNOT use SignalR -> B-tracking is explicitly two-mode: authed customer -> /hubs/fleet Subscribe(orderId) (live, cache-patch, stale-guard, AC#2); logged-out -> GET public/track poll every 10s (AC#3). (3) the tracking token needs a mint home now even though SMS is deferred to 05 -> A-track adds Common/Tracking/TrackingTokenService (InternalsVisibleTo test) AND extends the customer create-order response with trackingCode/trackingToken/trackingUrlPath so the E2E builds valid+expired links without SMS; 'valid until 2h after completion' is a VALIDATION-time rule (signature verifies AND now<exp AND (if Completed) now<CompletedAt+2h), never a mint-time expiry. ALREADY-PRESENT BACKEND (verified, no new WI): customer phone-code login (auth/customer/request-code + verify-code, AllowAnonymous) reused by B-login; customer order create (CreateOrderEndpoint is DispatcherOrCustomer, sets Source=App/CustomerUserId, response envelope { order: OrderDetailDto } -> client unwraps data.order.id, the UC-003 lesson); customer cancel (OrderStateMachine.ApplyCancel allows Customer in New/Assigned/Accepted, owner-only, sets CancelledByRole=actor.Role -> AC#5 asserts CancelledByRole==Customer, NOT a literal reason string since CancelReason is a free-form string, verified; IdempotencyHelper already wraps CancelOrderEndpoint so cancel inherits exactly-once); SignalR Subscribe(orderId) customer path (FleetHub.Subscribe uses IgnoreQueryFilters + o.CustomerUserId==sub, tenant-safe by construction, verified). A-idem/IdempotencyRecord already landed in UC-003 (verified). Rating POST is NOT idempotency-keyed (a customer taps once, online; not retry-queued). LANE A PARALLELISM (7 WIs): A-public-fleet, A-track, A-pricing, A-common-routes, A-my-orders, A-geo-suggest are independent EXCEPT for two shared-writer edges expressed via depends_on (the conductor serializes ONLY via depends_on): (edge 1, migrations) A-rating depends_on A-public-fleet because both regenerate TaxiDbContextModelSnapshot.cs - dotnet ef rewrites the snapshot against the current model, so generated in parallel the second migration would clobber the first's column; A-public-fleet's AddFleetPrimaryColor runs first, then A-rating's AddOrderRating rebases. This also serializes their two ErrorCodes.cs appends (A-rating appends Order.AlreadyRated/Order.NotCompleted). (ErrorCodes.cs) the remaining appenders are A-track (Tracking.*) and A-pricing (Pricing.* if any) - distinct nested blocks that merge cleanly; if the conductor cannot guarantee append-safety on the same file it should serialize A-track->A-pricing on ErrorCodes.cs, but no depends_on edge is forced because the blocks are disjoint and A-track/A-pricing are otherwise independent. A-common-routes adds no error codes (parallel-safe); A-my-orders adds no error codes (parallel-safe). AuthorizationPolicies.cs sole writer is A-geo-suggest; CreateOrderResponse.cs + CreateOrderEndpoint.cs sole writer is A-track. A-common-routes owns the Routes test area; A-my-orders owns the Orders.Mine test area (both endpoints' tests under one namespace so the single-token filter covers every named test - the one-feature-folder / single-filter rule). LANE B strict chain B-pwa->B-login->B-home->B-route-order->B-custom-order->B-tracking->B-rating->B-history->B-e2e (serializes shared cs.json/en.json + client.ts edits); useFleetHub.ts touched only by B-tracking; router.tsx /c group lands in B-pwa. B-e2e ADDITIONALLY depends on all seven Lane A WIs for build-integrity (the Playwright harness boots the API from the shared working tree via dotnet run, which fails to compile if any Lane A WI is mid-implementation); the vitest-only B WIs mock the api client so they need no cross-lane edges. STAGING: Lane A stages api/ only, Lane B stages web/ only (plus docs/ from B-e2e); neither commits. needs_library_research true on exactly B-pwa (vite-plugin-pwa /c manifest scope sharing the /d SW; the /d PWA mechanics already exist). AC MAPPING: AC#1 3-tap -> B-home/B-route-order/B-login + B-e2e; AC#2 live tracking -> B-tracking(SignalR) + B-e2e; AC#3 public link valid/expired -> A-track + B-tracking(poll) + B-e2e; AC#4 estimate range -> A-pricing + B-custom-order(priceQuote.test); AC#5 customer cancel -> existing cancel + B-tracking + B-e2e (CancelledByRole assertion); AC#6 Lighthouse -> manual DEMO.md (B-e2e); AC#7 rating visible to dispatcher -> A-rating (columns+endpoint+dispatcher-detail sub-task) + B-rating + B-e2e. UNDECIDABLE-SCOPE NOTES (proceeded with best judgment): tracking 'flags' in public/fleet (spec §1) left out of scope pre-06; ETA refresh every 15s on the authed tracking headline is deferred because TrackOrderResponse.EtaMinutes is null pre-06 (OSRM ETA is assignment 06) - the headline omits '~min' when null; the HMAC tracking secret (Tracking:HmacKey) dev default is seeded and MUST be set per-env in production (noted for assignment 08 infra)."
 }

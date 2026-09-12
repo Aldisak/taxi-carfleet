@@ -403,6 +403,10 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "GET /api/v1/orders/by-code/{publicCode}",
             "POST /api/v1/orders/{id}/notes",
             "GET /api/v1/orders/{id}/events",
+            // Orders — customer self-service (UC-004)
+            "GET /api/v1/orders/mine",
+            "GET /api/v1/orders/mine/active",
+            "POST /api/v1/orders/{id}/rating",
             // Orders — transitions
             "POST /api/v1/orders/{id}/assign",
             "POST /api/v1/orders/{id}/reassign",
@@ -438,6 +442,13 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             // Geo
             "GET /api/v1/geo/suggest",
             "GET /api/v1/geo/route",
+            // Pricing (UC-004)
+            "GET /api/v1/pricing/quote",
+            // Routes (UC-004)
+            "GET /api/v1/routes/common",
+            // Public (UC-004, anonymous)
+            "GET /api/v1/public/fleet",
+            "GET /api/v1/public/track/{code}",
             // Health / welcome
             "GET /api/v1/welcome",
         };

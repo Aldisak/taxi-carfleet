@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from './AppLayout'
 import { DriverLayout } from './DriverLayout'
@@ -12,6 +13,34 @@ import { DriverRidePage } from '../features/driver/ride/DriverRidePage'
 import { CompletePage } from '../features/driver/complete/CompletePage'
 import { HistoryPage } from '../features/driver/history/HistoryPage'
 import { DriverSettingsPage } from '../features/driver/settings/DriverSettingsPage'
+
+// ── Customer /c (lazy-loaded chunk — no /x or /d code ships to customers) ──────
+const CustomerLayout = lazy(() =>
+  import('../features/customer/shell/CustomerLayout').then(m => ({ default: m.CustomerLayout })),
+)
+const CustomerHomePage = lazy(() =>
+  import('../features/customer/home/CustomerHomePage').then(m => ({ default: m.CustomerHomePage })),
+)
+const CustomerLoginPage = lazy(() =>
+  import('../features/customer/login/CustomerLoginPage').then(m => ({ default: m.CustomerLoginPage })),
+)
+const RouteOrderPage = lazy(() =>
+  import('../features/customer/order/RouteOrderPage').then(m => ({ default: m.RouteOrderPage })),
+)
+const CustomOrderPage = lazy(() =>
+  import('../features/customer/order/CustomOrderPage').then(m => ({ default: m.CustomOrderPage })),
+)
+const TrackingPage = lazy(() =>
+  import('../features/customer/tracking/TrackingPage').then(m => ({ default: m.TrackingPage })),
+)
+const CustomerHistoryPage = lazy(() =>
+  import('../features/customer/history/CustomerHistoryPage').then(m => ({ default: m.CustomerHistoryPage })),
+)
+
+/** Suspense boundary for the lazy customer chunk. */
+function lazyCustomer(node: ReactNode): ReactNode {
+  return <Suspense fallback={null}>{node}</Suspense>
+}
 
 export const router = createBrowserRouter([
   // ── Dispatcher /x ──────────────────────────────────────────────────────────
@@ -51,6 +80,26 @@ export const router = createBrowserRouter([
       { path: 'ride/complete', element: <CompletePage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'settings', element: <DriverSettingsPage /> },
+    ],
+  },
+
+  // ── Customer /c ──────────────────────────────────────────────────────────────
+  {
+    path: '/c/login',
+    element: lazyCustomer(<CustomerLoginPage />),
+  },
+  {
+    path: '/c',
+    element: lazyCustomer(<CustomerLayout />),
+    children: [
+      { path: '', element: lazyCustomer(<CustomerHomePage />) },
+      { path: 'order/route/:routeId', element: lazyCustomer(<RouteOrderPage />) },
+      { path: 'order/new', element: lazyCustomer(<CustomOrderPage />) },
+      // Tracking is nested under CustomerLayout so the shell CallButton + slug persistence apply.
+      // The logged-out public link hits only AllowAnonymous endpoints (public/track → 410/404,
+      // never 401), so CustomerLayout's silent-refresh-on-401 never redirects it to /c/login.
+      { path: 't/:code', element: lazyCustomer(<TrackingPage />) },
+      { path: 'history', element: lazyCustomer(<CustomerHistoryPage />) },
     ],
   },
 

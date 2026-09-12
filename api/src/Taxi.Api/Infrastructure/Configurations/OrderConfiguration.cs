@@ -26,6 +26,8 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(x => x.Version).IsConcurrencyToken();
 
+        builder.Property(x => x.RatingComment).HasMaxLength(500);
+
         // FK indexes
         builder.HasIndex(x => x.FleetId);
         builder.HasIndex(x => x.CustomerUserId);

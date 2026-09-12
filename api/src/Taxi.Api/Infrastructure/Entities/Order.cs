@@ -118,4 +118,13 @@ public class Order : ITenantEntity
 
     /// <summary>Optimistic concurrency token. Incremented on every write by the caller.</summary>
     public int Version { get; set; }
+
+    /// <summary>Customer star rating (1..5). Null until the customer rates a completed order.</summary>
+    public int? RatingStars { get; set; }
+
+    /// <summary>Optional free-text rating comment (max 500). Null unless provided.</summary>
+    public string? RatingComment { get; set; }
+
+    /// <summary>UTC timestamp when the customer rated the order. Null until rated.</summary>
+    public DateTimeOffset? RatedAt { get; set; }
 }

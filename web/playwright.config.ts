@@ -36,9 +36,10 @@ export default defineConfig({
   projects: [
     {
       // Desktop dispatcher project — dispatcher.spec.ts only (runs first, serially).
+      // Ignore BOTH the driver and the customer mobile specs so they never double-run here.
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /driver\.spec\.ts/,
+      testIgnore: [/driver\.spec\.ts/, /customer\.spec\.ts/],
     },
     {
       // Mobile driver PWA project — driver.spec.ts only, Pixel 5 viewport.
@@ -51,6 +52,18 @@ export default defineConfig({
         geolocation: { latitude: 50.0281, longitude: 15.2006 },
       },
       testMatch: /driver\.spec\.ts/,
+    },
+    {
+      // Mobile customer PWA project (UC-004 B-e2e) — customer.spec.ts only, Pixel 5 viewport.
+      // geolocation permission + a seed coordinate so the custom-order "use my location" path and
+      // any map interaction do not hit a denied prompt. Reuses the single shared webServer harness.
+      name: 'mobile-customer',
+      use: {
+        ...devices['Pixel 5'],
+        permissions: ['geolocation'],
+        geolocation: { latitude: 50.0281, longitude: 15.2006 },
+      },
+      testMatch: /customer\.spec\.ts/,
     },
   ],
 

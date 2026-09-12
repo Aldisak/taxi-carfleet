@@ -1,0 +1,24 @@
+{
+  "wi_id": "laneB4f-r2",
+  "title": "AC#1 routes/common envelope fix + customer e2e 5/5",
+  "files_changed": [
+    "web/src/shared/api/client.ts",
+    "web/src/features/customer/home/useCommonRoutes.ts",
+    "web/src/features/customer/order/useRouteOrder.ts",
+    "web/src/features/customer/home/CustomerHomePage.test.tsx",
+    "web/src/shared/api/client.test.ts",
+    "web/src/features/customer/order/useRouteOrder.test.tsx"
+  ],
+  "tests_added": [
+    "client.test.ts :: getCommonRoutes unwraps a { routes: [...] } payload to the route array (mocked fetch against the REAL shape) — PASS",
+    "client.test.ts :: getCommonRoutes returns [] when backend sends { routes: [] } — PASS",
+    "useRouteOrder.test.tsx :: resolves the tapped route from the array-shaped query cache (cache-fallback branch) — PASS",
+    "useRouteOrder.test.tsx :: returns null route when cache is empty — PASS"
+  ],
+  "e2e_result": "10 passed / 0 failed (1.0m). chromium (dispatcher) 2/2 PASS; mobile-driver 3/3 PASS; mobile-customer 5/5 PASS — Customer_ThreeTapCommonRoute_ToTracking (AC#1) now GREEN (2.5s), plus AC#2 live headline+marker, AC#3 public tracking valid/expired, AC#5 cancel-in-Accepted, AC#7 rating-after-completed all still PASS. No regression.",
+  "unit_tests_passing": 869,
+  "hit_max_turns": false,
+  "notes": "ROOT CAUSE (web-client contract mismatch, NOT api): GET /routes/common returns the named envelope { routes: CommonRouteDto[] } (backend ListCommonRoutesResponse(Routes) — confirmed in docs/api.md and api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesResponse.cs). client.ts typed it as { items } and getCommonRoutes returned the whole object; useCommonRoutes read data.items -> always [] -> logged-out Home rendered zero route cards -> AC#1 impossible. Same envelope-class bug as the UC-003 getOrder {order} miss; mocked unit tests hid it because the mock returned the wrong { items } shape too. FIX: (1) client.ts ListCommonRoutesResponse now { routes }, getCommonRoutes is async and unwraps -> returns CommonRouteDto[] directly. (2) useCommonRoutes now returns data ?? [] (no .items). (3) CommonRouteDto fields unchanged (laneA4b: id,name,type,priceCzk + optional pickup/dropoff addr+coords + fromZoneId/toZoneId). SECOND CONSUMER FIXED (same root cause, would have broken the confirm-screen cache fallback): useRouteOrder.ts read queryClient.getQueryData<ListCommonRoutesResponse>(['routes','common']) then cached?.items.find(...) — the cache now holds a CommonRouteDto[], so changed to getQueryData<CommonRouteDto[]> + cached?.find(...). RouteOrderPage.test uses nav-state (location.state.route), not the cache, so the primary 3-tap happy path was never broken by this — but a soft-refresh cache fallback was, hence the added useRouteOrder regression test. REGRESSION TESTS: the client test mocks fetch (NOT the whole client) and asserts getCommonRoutes maps the REAL { routes } payload to the array — this is the coverage that was missing and would have caught the original bug. ENVELOPE AUDIT (other client responses typed { items }): ListMyOrdersResponse (orders/mine, GetMyOrderHistory) backend is genuinely { Items, Total, Page, PageSize } — client { items,total,page,pageSize } is CORRECT, left as-is. All other .items consumers in web/src (ListVehicles, ListDrivers, ListOrders/search, useSuggest, useAddressSuggest, board columns) are the standard list-convention { items } endpoints and are correct. routes/common was the sole outlier and is now fixed. STAGED: git add web/ only; web/tsconfig.tsbuildinfo explicitly excluded; no test-results/ or playwright-report/ staged (both gitignored). NEVER committed.",
+  "verification_output": "web/: `npm run tsc` clean; `npm run lint` (--max-warnings 0) clean; `npm run test -- --run` = 139 files / 869 tests passing (was 865/867; +4 new regression tests across 2 files; +1 test file). Playwright `npm run e2e` (bg + polled, exit 0): 10 passed / 0 failed in 1.0m — chromium 2/2, mobile-driver 3/3, mobile-customer 5/5 incl. Customer_ThreeTapCommonRoute_ToTracking (AC#1) 2.5s GREEN.",
+  "blocked_on": null
+}

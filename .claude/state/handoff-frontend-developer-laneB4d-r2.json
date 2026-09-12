@@ -1,0 +1,18 @@
+{
+  "wi_id": "laneB4d-r2",
+  "title": "B-tracking H1 fix: gate hub to authed mode",
+  "files_changed": [
+    "web/src/shared/realtime/useFleetHub.ts",
+    "web/src/shared/realtime/useFleetHub.test.ts",
+    "web/src/features/customer/tracking/useTrackingAuthed.ts",
+    "web/src/features/customer/tracking/useTrackingAuthed.test.ts"
+  ],
+  "tests_added": [
+    "useFleetHub.test.ts 'enabled gate' (2): useFleetHub(false) does NOT call createHubConnection nor connection.start (public/none mode); useFleetHub() defaults to true and DOES build+start (dispatcher/driver/authed)",
+    "useTrackingAuthed.test.ts (1): enables the hub only for a non-empty code — useFleetHub called with true for 'ABC123', with false for '' (mode wiring proof end-to-end)"
+  ],
+  "tests_passing": 825,
+  "hit_max_turns": false,
+  "notes": "enabled param default true; dispatcher/driver unaffected; RED test for public-mode-no-hub. H1 FIX: added `enabled: boolean = true` param to useFleetHub; the connect/cold-start effect now early-returns on `if (!enabled || hubInstance) return` and `enabled` is in the dep array — it never builds createHubConnection nor calls attemptStart() when disabled, so no doomed null-token /hubs/fleet cold-start retry loop on a logged-out public tracker. Cleanup stays a no-op (never tears down the shared singleton others use). In useTrackingAuthed.ts the existing `const enabled = code.length > 0` was moved above the hook call and passed as `useFleetHub(enabled)` — TrackingPage already passes an empty code to useTrackingAuthed in public/none mode (line 199: `mode === 'authed' ? code : ''`), so enabled is false exactly in public/none. DISPATCHER (AppLayout.tsx:84) + DRIVER (DriverLayout.tsx:67) call useFleetHub() with no arg -> default true -> byte-for-behavior unchanged; call sites NOT modified. RED observed first: both new negative assertions failed before the impl (arg ignored -> connection still built). GREEN after. Regression surface run explicitly (realtime+tracking+board+app = 36 files/275 tests green) then full suite. TDD red-green-refactor, web-realtime.md#single-hub-singleton honored (still exactly one connection, now only when a consumer is actually authed). No new packages, i18n untouched, no api/** touched, tsconfig.tsbuildinfo NOT staged.",
+  "verification_output": "RED (before impl): useFleetHub.test.ts 'does NOT build... when enabled=false' FAILED + useTrackingAuthed.test.ts 'enables the hub only for a non-empty code' FAILED (10 passed / 2 failed). GREEN gate: tsc clean (--noEmit). lint clean (eslint --max-warnings 0). vitest full suite: Test Files 131 passed (131), Tests 825 passed (825) [822 -> +3]. Regression subset realtime+tracking+board+app: 36 files / 275 tests passed. build OK (PWA 27 precache entries). size 213.77 kB brotlied (limit 260 kB). Staged web/ only; web/tsconfig.tsbuildinfo confirmed NOT in index (git diff --cached --name-only empty for it)."
+}
