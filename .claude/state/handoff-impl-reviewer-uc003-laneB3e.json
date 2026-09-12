@@ -1,0 +1,36 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB3e (B-history-settings)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "B3e-1",
+      "severity": "minor",
+      "file": "web/src/features/driver/history/HistoryPage.tsx",
+      "rule": "web-architecture.md#feature-folders (No cross-feature imports); web-realtime.md#last-known-state",
+      "title": "Cross-feature import of DisconnectBanner from features/board/",
+      "detail": "HistoryPage imports DisconnectBanner from '../../board/DisconnectBanner'. DisconnectBanner lives in features/board/ and is now consumed by two features (app/AppLayout for dispatcher + this driver feature). web-architecture forbids driver -> board imports; code needed by 2+ features should be promoted to src/shared/. Functionally correct (the established last-known-state pattern), so non-blocking.",
+      "recommendation": "Promote DisconnectBanner to src/shared/realtime/ (or src/shared/ui) and update both AppLayout and HistoryPage imports. Out of B3e's file scope to move board's file; track as follow-up. Until then it is an observed architecture drift, not a functional defect."
+    },
+    {
+      "id": "B3e-2",
+      "severity": "minor",
+      "file": "web/src/app/DriverLayout.tsx",
+      "rule": "web-accessibility.md#touch-targets; web-performance/web-react-style (layout); D9 handoff note",
+      "title": "Persistent BottomNav + Content overflow:auto apply to /d/ride and /d/ride/complete",
+      "detail": "B3e adds a non-fixed flex BottomNav and wraps the Outlet in Content(flex:1, overflow:auto) inside Shell(min-height:100dvh). History/Settings pages use min-height:100% (fit Content) and render correctly. Ride/complete pages use min-height:100dvh on their own root (built to own the viewport before the nav existed), so inside Content they make the Shell grow taller than the viewport: the page scrolls and the nav sits just below the fold. Verified the two session-wide components above Content (DriverPositionReporter -> StalePositionBanner, DriverQueueBar) both render null in the normal idle ride state, so the ride's own primary big button stays within the 100dvh viewport; the nav is reachable by scroll. Cosmetic, not an off-screen primary action. A stale-position or queue banner (abnormal states) adds ~40px, pushing the nav further below fold but still not hiding the ride button.",
+      "recommendation": "Consider suppressing BottomNav on 'ride' and 'ride/complete' routes (a DriverLayout-scoped change) so those full-screen flows keep a clean 100dvh without a scroll tail. Low priority; current behavior is usable and all 627 tests pass."
+    },
+    {
+      "id": "B3e-3",
+      "severity": "info",
+      "file": "web/src/features/driver/settings/NavAppPreference.tsx",
+      "rule": "web-accessibility.md#keyboard-focus",
+      "title": "radiogroup/radio on buttons without roving tabindex or arrow-key navigation",
+      "detail": "NavAppPreference uses role=radiogroup with role=radio buttons and aria-checked. Each option is a real <button>, so each is Tab/Enter/Space reachable and axe does not flag it. A strict ARIA radiogroup would use roving tabindex + arrow keys, but the native button fallback is fully operable. No action required.",
+      "recommendation": "Optional: keep as-is (operable) or switch to native radio inputs if strict radiogroup semantics are desired later."
+    }
+  ],
+  "summary": "laneB3e (B-history-settings) passes review. All four acceptance criteria met. (1) History /d/history is read-only: today default via todayPragueIso, previous days selectable with max=today, renders from GET /drivers/me/orders through useMyOrders (TanStack Query, hierarchical key ['driver','orders',date], unwraps {orders} envelope via select). historyTotals.computeHistoryTotals counts and sums ONLY status==='Completed' rides, skips active rides (continue), defaults null finalPriceCzk via ?? 0 (no NaN), empty day -> all-zero totals. Money is integer CZK formatted at render via Intl.NumberFormat('cs-CZ') + ' Kč'; no float math. Offline uses the SignalR-keyed DisconnectBanner (last-known + banner), not navigator.onLine. (2) Settings /d/settings REUSE the existing driverSettings.ts keys: useDriverSettings is a thin useState+write-through over getSilentMode/setSilentMode and getNavAppPreference/setNavAppPreference with NO new localStorage keys, so B-offer sound (getSilentMode) and B-ride nav (getNavAppPreference) stay in sync. Logout clears authStorage + idbAuthStore + transitionQueue + idbRideStore and routes /d/login while intentionally keeping preference keys. Diagnostika feature-detects Notification and navigator.permissions (jsdom-safe, unknown fallback) and shows location/push permission, last position sent (from B-position useOwnPositionStore), and SignalR state. (3) No server state mirrored into Zustand/module globals; useMyOrders is the single TanStack cache. (4) Routes added only under /d; /x untouched; bottom nav landmark has aria-label via driver.nav.label. (5) i18n cs/en parity green (0 mismatches; all connection/permission/payment/unknown/never/active keys present in both); axe assertions present in all five new component test files; touch targets >=48px (options, toggle row) and logout >=64px primary. Three non-blocking findings: one cross-feature import (DisconnectBanner, should be promoted to shared), one cosmetic nav-layout note on ride/complete (nav reachable by scroll, primary button not hidden in normal state), one informational a11y note on radiogroup keyboard semantics. blocks_merge = false."
+}

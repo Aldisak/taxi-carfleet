@@ -40,7 +40,7 @@ Frontend (`/web`, React + Vite, once it exists): `eslint --max-warnings 0`, Vite
 `/conductor <feature>` (`.claude/skills/conductor/SKILL.md`) orchestrates UC → design → implement → review with user-approval gates:
 
 - State lives in `.claude/state/pipeline.json`; specs in `docs/specs/{todo,in-progress,done}/`.
-- Agents: `designer` → `design-reviewer` → `developer` (TDD, stages changes, **never commits**) → `impl-reviewer`. Each writes `.claude/state/handoff-<agent>.json`; only the conductor writes `pipeline.json`.
+- Agents: `designer` → `design-reviewer` → `backend-developer` / `frontend-developer` (routed by each WI's `lane: "api" | "web"`; TDD, stage changes, **never commit**) → `impl-reviewer`. Each writes `.claude/state/handoff-<agent>.json`; only the conductor writes `pipeline.json`. (Historical `handoff-developer-*.json` files predate the 2026-09-12 rename.)
 - Only the conductor gates commit/PR; nothing commits without explicit user confirmation.
 
 The `gc-*` skills (`gc-feature`, `gc-tdd`, `gc-debug`, `gc-migrate`, `gc-review`) are standalone .NET workflows usable outside the pipeline.
@@ -111,9 +111,23 @@ The `gc-*` skills (`gc-feature`, `gc-tdd`, `gc-debug`, `gc-migrate`, `gc-review`
 - **CreateOrderResponse shape mismatch (laneB11)**: `client.ts` originally typed `CreateOrderResponse` as `{ id: string }` but the API (`CreateOrderEndpoint`) returns `{ order: OrderDetailDto }`. This silently broke the B4 new-order highlight (orderId was `undefined`). The canonical fix is in `client.ts` + `useCreateOrder.ts` (use `data.order.id`).
 - **Playwright test-results are volatile (laneB11)**: `test-results/` and `playwright-report/` change on every run. Add both to `.gitignore`. Do not stage `web/test-results/.last-run.json`.
 
+- **vitest-axe in jsdom needs the configured helper (2026-09-12)**: raw `axe()` from `vitest-axe` runs the `color-contrast` rule, which calls `HTMLCanvasElement.getContext` — unimplemented in jsdom, producing a noisy stderr error on every a11y test. Always import `axe` from `src/shared/test/axe.ts` (a `configureAxe` wrapper with `color-contrast` disabled). Matchers are wired in `src/test-setup.ts`; assertion types come from `src/vitest-axe.d.ts` (the generic `Assertion<T>` param there needs an eslint-disable for `no-unused-vars`).
+- **size-limit must stay on the v11 line (2026-09-12)**: `size-limit@12+`/`13` require Node ≥22.18, incompatible with the repo's Node 20.0.0 pin. Use `size-limit@^11.2.0` + `@size-limit/file@^11.2.0` (engines `^18 || >=20`). `npm run size` measures `dist/assets/*.js` (brotli) against the `"size-limit"` budget in `web/package.json` and needs a fresh `npm run build` first.
+- **web/src/vite-env.d.ts was missing (2026-09-12)**: the project scaffold never had the standard Vite client-types reference, so any use of `import.meta.env` fails tsc with TS2339. The file now exists (`/// <reference types="vite/client" />`) — don't delete it.
+
+- **zustand object-selectors loop at runtime, invisible to mocked tests (laneB3c)**: `useSomeStore(s => ({ a: s.a, b: s.b }))` returns a fresh object every render → zustand re-renders → infinite loop in a mounted component. Unit tests that `vi.mock` the store wholesale never exercise this, so it passes tests but crashes the real screen. Always use atomic one-field selectors (`const a = useStore(s => s.a)`), matching the `DriverHomePage`/`useOfferStore` precedent. Found in the partial `useRideRestore`/`useRideTransition` and fixed.
+
+- **NoShowTimer.tsx vs noShowTimer.ts case collision (laneB3c)**: the designer's files_touched named `NoShowTimer.tsx` alongside the pure `noShowTimer.ts`; on Windows these differ only in case → TS1261 (the documented priceBadge trap). Resolution: no `NoShowTimer.tsx` — the ticking 5-min timer is `noShowTimer.ts` (pure) + `useActiveOrder.ts` (ticks once/sec) and the no-show button is folded into `RideButton.tsx`. Before creating any `PascalCase.tsx`, check for an existing `camelCase.ts` of the same stem.
+
+- **Leaflet must stay out of the eager /d ride chunk (laneB3c)**: `RideMapStrip` uses `React.lazy(() => import('./RideMapInner'))` and is collapsed by default; `RideMapInner.tsx` is the ONLY leaflet/react-leaflet importer under `features/driver/` and builds to its own chunk (~1.6 kB). Do not statically `import 'leaflet'` anywhere in the ride eager path. In jsdom tests, mock `./RideMapInner` (no layout engine) — never mount a real `MapContainer`.
+
+- **AC#6 restore precedence — server over IDB (laneB3c)**: the active-ride restore reconciles with `GET /drivers/me.activeOrderId` as the authority; IndexedDB is only for instant paint + the local `arrivedAt`. A restore that returns early when IDB is empty (never calling the server) VIOLATES AC#6 "rebuild from the server". `reconcileActiveRide` always fetches `/drivers/me` first.
+
+- **Driver route toast is consumed in DriverHomePage via useRouteToast (laneB3c)**: F-04 (`driver.ride.reassigned`) and B-complete (`driver.complete.successOverlay`) both navigate `'/d'` with `{ state: { toast: '<i18n key>' } }`. `useRouteToast` reads `location.state.toast`, shows it 2 s, then clears the history state (so refresh/back doesn't replay). Any new "return Home with a message" flow must pass a toast key this way and add the key to both locales.
+
 ## Known gaps in the scaffold (referenced but missing)
 
-- `.claude/hooks/` — the agents' `PreToolUse` Bash-allowlist hooks (`designer-bash-allowlist.sh`, `developer-bash-allowlist.sh`, `reviewer-bash-allowlist.sh`) and the conductor's `reinject-state.sh` / `split-compound-commands.sh` do not exist; agent Bash hooks will fail until created or removed from the agent frontmatter.
+- `.claude/hooks/` — the agents' `PreToolUse` Bash-allowlist hooks (`designer-bash-allowlist.sh`, `backend-developer-bash-allowlist.sh`, `frontend-developer-bash-allowlist.sh`, `reviewer-bash-allowlist.sh`) and the conductor's `reinject-state.sh` / `split-compound-commands.sh` do not exist; agent Bash hooks will fail until created or removed from the agent frontmatter.
 - `.claude/schemas/` — `pipeline-state.v1.json`, `spec.v1.json`, and the work-items schema referenced by the conductor and `rules/schema-review.md` do not exist.
 - Agent frontmatter names MCP servers (`cwm-roslyn-navigator`, `serena`, `context7`, `microsoft-docs`) and skills (`architecture-advisor`, `vertical-slice`, `security-scan`, `superpowers:*`) not configured in this repo.
 - `.claude/assignement/` is empty (note the folder-name typo); the actual assignments live in `.claude/state/`.

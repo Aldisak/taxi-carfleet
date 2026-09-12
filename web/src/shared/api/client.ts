@@ -1,4 +1,6 @@
 import { authStorage } from './auth-storage'
+import { idbAuthStore } from './idbAuthStore'
+import { isSilentRefreshEnabled, silentRefresh } from './refresh'
 
 /** Typed error envelope matching the backend ValidationFailureExceptionHandler shape. */
 export interface ApiError {
@@ -24,6 +26,11 @@ interface RequestOptions extends RequestInit {
    * Use this on the login endpoint itself so credential errors render as form errors.
    */
   skipAuthRedirect?: boolean
+  /**
+   * Internal flag: true when this call is the retry after a silent refresh.
+   * Prevents infinite recursion — a retried 401 does not trigger another refresh.
+   */
+  _isRetry?: boolean
 }
 
 const BASE_URL = (import.meta as ImportMeta & { env: { VITE_API_BASE_URL?: string } }).env
@@ -33,7 +40,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { skipAuthRedirect = false, ...fetchOptions } = options
+  const { skipAuthRedirect = false, _isRetry = false, ...fetchOptions } = options
 
   const headers = new Headers(fetchOptions.headers)
 
@@ -57,6 +64,27 @@ export async function apiRequest<T>(
   })
 
   if (response.status === 401 && !skipAuthRedirect) {
+    // Driver flow: attempt silent refresh and retry once
+    if (!_isRetry && isSilentRefreshEnabled()) {
+      const refreshed = await silentRefresh()
+      if (refreshed) {
+        // Retry the original request with the new access token
+        return apiRequest<T>(path, { ...options, _isRetry: true })
+      }
+      // silentRefresh already cleared storage and redirected to /d/login
+      return new Promise(() => undefined)
+    }
+
+    // Driver flow — retry itself got 401: clear both stores and redirect to driver login.
+    // Must check BEFORE the dispatcher fallthrough so IDB is always cleaned up.
+    if (_isRetry && isSilentRefreshEnabled()) {
+      authStorage.clear()
+      await idbAuthStore.clear()
+      window.location.href = '/d/login'
+      return new Promise(() => undefined)
+    }
+
+    // Dispatcher flow (unchanged): clear storage and redirect to /x/login
     authStorage.clear()
     window.location.href = '/x/login'
     // Return a never-resolved promise — navigation is underway
@@ -282,8 +310,14 @@ export interface TransitionOrderResponse {
   order: OrderDetailDto
 }
 
-export function getOrder(orderId: string): Promise<OrderDetailDto> {
-  return apiRequest<OrderDetailDto>(`/orders/${orderId}`)
+export async function getOrder(orderId: string): Promise<OrderDetailDto> {
+  // GET /orders/{id} returns the { order: OrderDetailDto } envelope (GetOrderResponse) —
+  // unwrap it here so every caller receives a bare OrderDetailDto. Surfaced by the UC-003
+  // driver E2E: without the unwrap, useRideRestore stored { order: {...} } and the ride
+  // screen rendered blank fields + no action button (mirrors the CreateOrderResponse {order}
+  // envelope fix in laneB11).
+  const res = await apiRequest<{ order: OrderDetailDto }>(`/orders/${orderId}`)
+  return res.order
 }
 
 export function postAssignOrder(orderId: string, driverId: string): Promise<TransitionOrderResponse> {
@@ -502,6 +536,151 @@ export function deleteStaff(staffId: string): Promise<void> {
 export function postResetPassword(staffId: string): Promise<ResetPasswordResponse> {
   return apiRequest<ResetPasswordResponse>(`/staff/${staffId}/reset-password`, {
     method: 'POST',
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Driver self-service endpoints (DriverOnly)
+// ---------------------------------------------------------------------------
+
+/** Response DTO for GET /drivers/me. */
+export interface GetDriverMeResponse {
+  driverId: string
+  displayName: string
+  /** 'Offline' | 'Free' | 'Busy' | 'EnRoute' */
+  status: string
+  currentVehicleId: string | null
+  currentVehiclePlate: string | null
+  lastPositionAt: string | null
+  currentShiftId: string | null
+  currentShiftStartedAt: string | null
+  /** Non-terminal order id (Assigned/Accepted/Arrived/InProgress), or null. */
+  activeOrderId: string | null
+}
+
+/** GET /drivers/me — driver's own profile and current shift info. */
+export function getDriverMe(): Promise<GetDriverMeResponse> {
+  return apiRequest<GetDriverMeResponse>('/drivers/me')
+}
+
+/** POST /drivers/me/online — go online with a vehicle. Returns 204 No Content. */
+export function postGoOnline(vehicleId: string): Promise<void> {
+  return apiRequest<void>('/drivers/me/online', {
+    method: 'POST',
+    body: JSON.stringify({ vehicleId }),
+  })
+}
+
+/** POST /drivers/me/offline — go offline (end shift). Returns 204 No Content. */
+export function postGoOffline(): Promise<void> {
+  return apiRequest<void>('/drivers/me/offline', {
+    method: 'POST',
+  })
+}
+
+/** Response DTO for GET /drivers/me/summary. */
+export interface GetDriverMySummaryResponse {
+  ridesCount: number
+  cashTotalCzk: number
+  cardTotalCzk: number
+  invoiceTotalCzk: number
+  hoursOnline: number
+}
+
+/** GET /drivers/me/summary?date=YYYY-MM-DD — today's summary chips. */
+export function getDriverMySummary(date?: string): Promise<GetDriverMySummaryResponse> {
+  const params = date ? `?date=${encodeURIComponent(date)}` : ''
+  return apiRequest<GetDriverMySummaryResponse>(`/drivers/me/summary${params}`)
+}
+
+/** A single ride in the driver's own orders list (GET /drivers/me/orders). */
+export interface MyOrder {
+  id: string
+  publicCode: string
+  /** 'Assigned' | 'Accepted' | 'Arrived' | 'InProgress' | 'Completed' | ... */
+  status: string
+  pickupAddress: string
+  dropoffAddress: string | null
+  /** 'Fixed' | 'Estimate' | 'Meter' */
+  priceType: string
+  /** Integer CZK; null for active (not-yet-completed) rides. */
+  finalPriceCzk: number | null
+  /** 'Cash' | 'Card' | 'Invoice'; null for active rides. */
+  paymentType: string | null
+  /** ISO UTC timestamp; null for active rides. */
+  completedAt: string | null
+}
+
+/** Response DTO for GET /drivers/me/orders. */
+export interface GetDriverMyOrdersResponse {
+  orders: MyOrder[]
+}
+
+/**
+ * GET /drivers/me/orders?date=YYYY-MM-DD — the driver's own completed AND active rides for a day.
+ * Returns a wrapped object ({ orders: [...] }) per GetMyOrdersResponse; read data.orders.
+ */
+export function getDriverMyOrders(date?: string): Promise<GetDriverMyOrdersResponse> {
+  const params = date ? `?date=${encodeURIComponent(date)}` : ''
+  return apiRequest<GetDriverMyOrdersResponse>(`/drivers/me/orders${params}`)
+}
+
+/** POST /orders/{id}/accept — driver accepts an offered order. Returns 204 or order detail. */
+export function postAcceptOrder(orderId: string): Promise<void> {
+  return apiRequest<void>(`/orders/${orderId}/accept`, {
+    method: 'POST',
+  })
+}
+
+/** POST /orders/{id}/decline — driver declines an offered order. Returns 204. */
+export function postDeclineOrder(orderId: string, reason: string): Promise<void> {
+  return apiRequest<void>(`/orders/${orderId}/decline`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  })
+}
+
+/** POST /orders/{id}/arrive — driver has arrived at pickup. Returns updated order detail. */
+export function postArriveOrder(orderId: string, idempotencyKey: string): Promise<TransitionOrderResponse> {
+  return apiRequest<TransitionOrderResponse>(`/orders/${orderId}/arrive`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey },
+  })
+}
+
+/** POST /orders/{id}/start — driver starts the ride. Returns updated order detail. */
+export function postStartOrder(orderId: string, idempotencyKey: string): Promise<TransitionOrderResponse> {
+  return apiRequest<TransitionOrderResponse>(`/orders/${orderId}/start`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey },
+  })
+}
+
+export interface CompleteOrderRequest {
+  finalPriceCzk: number
+  paymentType: string
+  overrideReason?: string
+}
+
+/** POST /orders/{id}/complete — completes the ride with final price and payment. Returns updated order detail. */
+export function postCompleteOrder(
+  orderId: string,
+  req: CompleteOrderRequest,
+  idempotencyKey: string,
+): Promise<TransitionOrderResponse> {
+  return apiRequest<TransitionOrderResponse>(`/orders/${orderId}/complete`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(req),
+  })
+}
+
+/** POST /orders/{id}/cancel — driver cancels (e.g. no-show). Reason 'no-show' enforced server-side after ≥5 min. */
+export function postDriverCancelOrder(orderId: string, reason: string, idempotencyKey: string): Promise<TransitionOrderResponse> {
+  return apiRequest<TransitionOrderResponse>(`/orders/${orderId}/cancel`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ reason }),
   })
 }
 

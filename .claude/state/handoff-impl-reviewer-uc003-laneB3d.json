@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB3d (B-position+B-queue)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "B3d-I1",
+      "severity": "info",
+      "file": "web/src/features/driver/queue/transitionQueue.ts",
+      "rule": "web-architecture.md#banned-patterns (no new module-level singletons)",
+      "title": "WI-mandated module-level IndexedDB handle + count listeners",
+      "detail": "transitionQueue.ts holds module-level mutable state (dbPromise, countListeners) and queueReplay.ts holds a module-level drainChain promise. These are not the banned kind of singleton: they hold client-only pending actions whose single source of truth is IndexedDB (no mirrored server state), and the WI explicitly mandates 'an app-level IndexedDB store via idb'. Recorded only for traceability.",
+      "recommendation": "No change. Accept as the documented, WI-required exception. If a future reviewer flags it, point to B-queue AC: 'app-level IndexedDB store via idb'."
+    },
+    {
+      "id": "B3d-I2",
+      "severity": "info",
+      "file": "web/src/shared/i18n/cs.json",
+      "rule": "web-react-style.md#i18n-czech-first",
+      "title": "Orphaned key driver.complete.offlineHint retained",
+      "detail": "Per handoff D15, CompletePage's old 'offline' branch is replaced by 'queued', leaving driver.complete.offlineHint unused. Key-set parity (locales.parity.test.ts) still passes because the key exists in both cs.json and en.json. No functional impact.",
+      "recommendation": "Optional cleanup: remove the unused offlineHint key from both locale files in a later tidy-up. Not blocking."
+    }
+  ],
+  "summary": "PASS. B3d (B-position + B-queue) staged web changes are correct on every load-bearing point. (1) Exactly-once linchpin: X-Idempotency-Key is minted exactly once in transitionQueue.enqueue (crypto.randomUUID), persisted in the idb record, and reused via item.idempotencyKey on every drain attempt and replay — structural, not merely tested; transitionQueue.test.ts asserts the key survives a reset()+reopen ('reload'). (2) F-02: classifyReplayOutcome branches on err.body.errors[0].code === 'Idempotency.InFlight' (code, not bare 409 status); the server (IdempotencyHelper.WriteErrorResponseAsync / ErrorCodes.Idempotency.InFlight) emits exactly that string in errors[].code. (3) F-03 disposition: keep only on network error / 5xx / InFlight-409; dequeue on 2xx; reconcile (drop order's items + GET /orders/{id}) on every other definitive 4xx incl. 404/terminal-409/KeyReused/400 — matches the classifier table. (4) accept/decline are never queued: QueuedAction type excludes them and useOfferAccept/useOfferDecline call postAcceptOrder/postDeclineOrder directly. (5) B3c-1 fold-in: a transition 409 does a real drop+reconcile via getOrder; DriverRidePage renamed staleNote->reconciledNote and the misleading 'B-queue will reroute' comment is gone. (6) B3c-2 fold-in: validateCompleteForm trims overrideReason before the >=5 length check (5 spaces now fail), with a test. (7) Single hub: invokeHub reuses the /hubs/fleet singleton and resolves false (never a 2nd HubConnection) when not Connected; positionThrottle is pure, >=3s OR strict >25m, first send always true; 60s-no-send -> banner + single vibrate (arm-once vibratedRef), clock advances only on successful invoke. (8) Reconnect drainer (useQueueReplayOnReconnect) lives in DriverQueueBar mounted in DriverLayout — survives sub-route unmounts, not on DriverRidePage; drainQueue serializes concurrent drains via a chained promise. (9) i18n cs/en parity holds for new keys (driver.position.stale, driver.queue.pending, driver.complete.queuedOverlay); PendingBadge/StalePositionBanner are display-only with role=status/alert + aria-live and carry axe tests; no cross-feature imports (queue/ride/complete are sub-areas of the driver feature). No api/** touched by this session. 2 info findings (WI-mandated module construct; one orphaned but parity-safe i18n key), neither blocking."
+}

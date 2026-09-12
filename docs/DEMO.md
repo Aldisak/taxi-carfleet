@@ -213,3 +213,76 @@ Target: **a11y score ≥ 90**. This is measured manually and documented here —
 - The `Seed:Enabled` setting defaults to `true` in Development. Set `Seed__Enabled=false` to skip seeding on subsequent starts (seeder is idempotent — it skips if the demo fleet exists).
 - Swagger UI is only available in `Development` environment.
 - JWT access tokens expire in 15 minutes; use `/auth/refresh` with the refresh token to rotate.
+
+---
+
+# UC-003 — Driver PWA (`/d`)
+
+The driver PWA is a mobile-first React client served at the `/d/*` route group of the same Vite app. Login with a seeded driver (`driver1@demo.local` … `driver3@demo.local`, all `Demo1234!`).
+
+## 10. Driver PWA Playwright E2E suite (`npm run e2e`, mobile project)
+
+The E2E config has **two** Playwright projects that share the one `webServer` harness (docker db + `dotnet run` + Vite):
+
+| Project | Spec | Viewport |
+|---------|------|----------|
+| `chromium` | `dispatcher.spec.ts` (UC-002) | Desktop Chrome |
+| `mobile-driver` | `driver.spec.ts` (UC-003) | Pixel 5 (geolocation granted) |
+
+The `chromium` project runs first (`testIgnore: /driver\.spec\.ts/`); the `mobile-driver` project runs the driver flows (`testMatch: /driver\.spec\.ts/`). `npm run e2e` runs both.
+
+### Driver specs (UC-003)
+
+| Test | Acceptance Criterion | Proof |
+|------|---------------------|-------|
+| `Driver_FullFlow_StartShiftToCompleteFixed_ShowsTotals` | AC#2 (+ AC#3 foreground half) | offer takeover appears ≤2 s after assign → Přijmout → Jsem na místě → Zahájit jízdu → Ukončit jízdu → complete with the locked fixed price → Home shows 1 ride and the cash total equals the fixed price |
+| `Driver_Decline_ReturnsOrderToNew` | AC#4 | Odmítnout requires a reason; after decline the order returns to `New` (dispatcher-visible) and its driver is cleared |
+| `Driver_OfflineArrive_QueuedThenDeliveredExactlyOnce` | AC#5 | `context.setOffline(true)` around "Jsem na místě" shows "čeká na odeslání"; `setOffline(false)` replays it and the server records **exactly one** `Arrived` event (via `X-Idempotency-Key` + server idempotency, A-idem) |
+
+Seeded driver used by the specs: **driver2 / Petr Svoboda** (zero completed rides at seed time → a clean totals baseline; driver1 is consumed by the dispatcher spec).
+
+### Known limitation surfaced by AC#2 (start-shift from Offline)
+
+The specs drive the AC#2 flow from the **online** precondition (driver2 kept Free via the API), not by clicking "Začít směnu". Reason: the home vehicle selector is built **only** from `GET /drivers/me`'s `currentVehicleId`, and `POST /drivers/me/offline` nulls that field — there is no driver-facing vehicle-list endpoint. So an offline driver cannot pick a vehicle to start a shift through the UI. The substantive heart of AC#2 (offer → accept → arrive → start → complete → totals) is proven end-to-end through the real UI; only the select-vehicle / start-shift precondition is set up via the API. This is a B-home gap, tracked in the B-e2e handoff `blocked_on`.
+
+## 11. AC#1 — PWA installability (MANUAL)
+
+Installability cannot be verified by the Playwright harness: `VitePWA` is configured with `devOptions.enabled: false`, so the service worker and Web App Manifest **never activate under `npm run dev`** (what the harness boots). Verify against a production build:
+
+```bash
+cd web
+npm run build
+npx vite preview          # serves the built app (with SW + manifest) on http://localhost:4173
+```
+
+Then in Chrome:
+
+1. Open `http://localhost:4173/d`.
+2. DevTools → **Application** panel:
+   - **Manifest**: name "Taxi Řidič", `display: standalone`, `theme_color` / `background_color` set, portrait orientation.
+   - **Icons**: 192×192, 512×512, and a **maskable** 512 icon present (check the maskable icon renders inside the safe zone).
+   - **Service Workers**: one registered, app-shell precache only; confirm `/api` and `/hubs` requests are **not** intercepted (Network tab → they go to the network, not the SW).
+3. Run **Lighthouse → PWA category** against `/d`: the "Installable" audit and maskable-icon audit should pass. Record the score here per DoD.
+4. Use the address-bar install affordance (or the in-app install banner) to add the app to the home screen; confirm it launches standalone.
+
+## 12. AC#3 — Push notifications (MANUAL; server half DEFERRED to assignment 05)
+
+The **foreground** half of AC#3 (offer takeover within 2 s while the app is open) is covered automatically by `Driver_FullFlow_…` above. The **background push** half (Web Push so an offer wakes a backgrounded/closed PWA) is **deferred to assignment 05** — the backend push-subscription + VAPID send pipeline is not in this UC (see `docs/decisions.md`). Manual check of the foreground behaviour:
+
+1. Boot the harness (section 9) or run `npm run dev` + API + DB.
+2. Open `/d` on a phone (or the Pixel 5 device toolbar), log in as a driver, and ensure the connection dot is green.
+3. From a dispatcher session (or `curl`), create + assign an order to that driver.
+4. The full-screen offer takeover should appear within ~2 s with sound/vibration (subject to the per-driver "Tichý režim" setting) while the app is in the foreground.
+
+Background delivery (app closed / screen off) will be demoable after assignment 05 lands the push pipeline.
+
+## 13. Booting the harness for manual driver testing
+
+Same harness as the E2E suite (section 9):
+
+```bash
+cd web
+node scripts/e2e-api.mjs     # docker db + dotnet run (Development, Seed__Enabled=true) on :5249
+# in another shell:
+npm run dev                  # Vite on :5173  → open http://localhost:5173/d/login
+```

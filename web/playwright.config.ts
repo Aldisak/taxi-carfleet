@@ -35,8 +35,22 @@ export default defineConfig({
 
   projects: [
     {
+      // Desktop dispatcher project — dispatcher.spec.ts only (runs first, serially).
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /driver\.spec\.ts/,
+    },
+    {
+      // Mobile driver PWA project — driver.spec.ts only, Pixel 5 viewport.
+      // geolocation permission + a seed coordinate so the home location check and
+      // position reporting do not hit a denied path.
+      name: 'mobile-driver',
+      use: {
+        ...devices['Pixel 5'],
+        permissions: ['geolocation'],
+        geolocation: { latitude: 50.0281, longitude: 15.2006 },
+      },
+      testMatch: /driver\.spec\.ts/,
     },
   ],
 

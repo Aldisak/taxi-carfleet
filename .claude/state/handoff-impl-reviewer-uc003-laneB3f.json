@@ -1,0 +1,28 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB3f (B-e2e)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "file": "web/src/shared/api/client.ts:357-363",
+      "rule": "rules/web-architecture.md#api-client",
+      "title": "patchOrder does NOT unwrap the { order } envelope — confirmed shape mismatch (pre-existing, not introduced by laneB3f)",
+      "detail": "Verified against primary source: api/.../UpdateOrder/UpdateOrderResponse.cs is `record UpdateOrderResponse(OrderDetailDto Order)` and UpdateOrderEndpoint returns `Send.OkAsync(new UpdateOrderResponse(...))`, so PATCH /orders/{id} emits { order: {...} }. But client.ts patchOrder types and returns it as a bare OrderDetailDto — the SAME envelope bug that laneB3f fixed in getOrder(). Consumer useUpdateOrder.ts line 37 passes the wrong-shaped value to onSuccess(order). The bug is currently MASKED because useUpdateOrder also invalidateQueries(['orders','detail',orderId]) (line 35), forcing a refetch through the now-correct getOrder, which self-heals the drawer display — so any code reading fields directly off the onSuccess payload would get undefined. Pre-existing from UC-002 (dispatcher edit path), NOT introduced by this WI and NOT on the driver E2E path, so not a laneB3f merge blocker; flagged as observed-not-introduced.",
+      "recommendation": "Unwrap .order in patchOrder (mirror the getOrder fix) and return res.order; route to the dispatcher/B-orders owner as a small follow-up."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "file": "web/e2e/driver.spec.ts:238",
+      "rule": "spec#non-functional-requirements (AC#5)",
+      "title": "AC#5 reconnect is a page.reload() stand-in, not a true WS-drop reconnect — legitimate",
+      "detail": "Playwright context.setOffline does not drop the already-open SignalR WebSocket, so the hub never transitions out of connected and useQueueReplayOnReconnect never fires in-session. The spec uses page.reload() to force a cold hub connect that drains the IndexedDB queue on 'connected'. This is a faithful, legitimate stand-in: exactly-once is genuinely proven — the offline tap never reached the server (asserted: status still Accepted while offline), the order then advances to exactly one Arrived event (counted via GET /orders/{id}/events), and the replay carries the enqueue-time X-Idempotency-Key (B-queue) + server idempotency (A-idem). Residual: the window-'online'/WS-keepalive reconnect path a real blip would take is not exercised by E2E (covered by unit tests). Acceptable for this UC.",
+      "recommendation": "Accept. Optionally track B-queue's 'no window online-event drain trigger' robustness note (handoff) as a follow-up; not required for UC-003."
+    }
+  ],
+  "summary": "B-e2e (laneB3f) is a clean, well-scoped E2E + docs change; no blocking findings. VERIFIED INDEPENDENTLY (not trusting handoff): (1) playwright.config.ts splits projects with NO double-run — chromium gains testIgnore:/driver.spec.ts/, a new mobile-driver (Pixel 5, geolocation granted) project gets testMatch:/driver.spec.ts/, webServer array reused, disjoint test sets, serial, chromium first. (2) getOrder() unwrap of the { order } envelope is correct for ALL 4 consumers (OrderCard:233, OrderDrawer:420, useRideRestore:46, useTransitionQueue.reconcileOrder:67) — each reads a bare DTO; a genuine cross-WI B-ride bug fix mirroring the laneB11 CreateOrderResponse precedent. (3) The other client.ts additions (silent-refresh 401 retry, driver self-service endpoints) are cumulative UC-003 driver-frontend staged in the same batch and consumed by driver home/offer/ride features — NOT introduced by laneB3f, not scope creep. (4) The 3 specs genuinely cover AC#2 (offer->accept->arrive->start->complete-fixed->Home totals), AC#4 (decline w/ reason -> New, driverId null), AC#5 (offline queue badge + server still Accepted -> drain -> exactly ONE Arrived event). (5) decisions.md is a pure append (zero deletions); DEMO.md documents AC#1 installability (§11 manual/prod-build) and AC#3 push deferral to assignment 05 (§12). One confirmed pre-existing MEDIUM (patchOrder envelope, observed-not-introduced, masked by cache invalidation) and one LOW advisory (AC#5 reload stand-in, legitimate). These are E2E tests (not src), so the C# / web-src convention checklist largely does not apply; web-architecture api-client + web-testing conventions are satisfied.",
+  "ac2_verdict": "ACCEPTED FOLLOW-UP — does NOT block UC-003 sign-off. The gap is now VERIFIED against primary source (not just the developer's word): GoOfflineEndpoint.cs:79 sets driver.CurrentVehicleId = null, and the only vehicle-list endpoint (ListVehicles) is gated FleetAdminOnly (no DriverOnly vehicle list exists), so an offline driver genuinely cannot pick a vehicle to start a shift through the UI. The substantive heart of AC#2 (offer -> accept -> arrive -> start -> complete with locked fixed price -> Home shows 1 ride + correct cash total) is fully proven end-to-end through the real driver UI; only the vehicle-pick/start-shift PRECONDITION is backend-gapped. The developer correctly refused to DB-fabricate an unreachable Offline-with-vehicle state and instead drove from the online precondition (driver2 kept Free via go-online API), asserting the precondition empirically in beforeAll. Documented in DEMO.md §10 and decisions.md UC-003 assumption 3. Recommendation: sign off UC-003 and open a B-home follow-up ticket to add a DriverOnly vehicle-list endpoint + start-shift-from-offline UI so AC#2 can later run as the full canonical flow."
+}

@@ -1,23 +1,123 @@
 {
-  "uc_id": "UC-002",
-  "spec_path": "docs/specs/in-progress/002_UC_002_dispatcher-web.md",
-  "work_items_doc": "docs/specs/in-progress/dispatcher-web-work-items.md",
+  "uc_id": "UC-003",
+  "spec_path": "docs/specs/in-progress/003_UC_003_driver-pwa.md",
+  "work_items_doc": "docs/specs/in-progress/driver-pwa-work-items.md",
   "work_items": [
     {
-      "id": "A1",
+      "id": "A-offer",
       "lane": "api",
-      "title": "Geo proxy: GET /geo/suggest (Photon) + GET /geo/route (OSRM)",
-      "goal": "Two DispatcherOnly server-side geo proxies — address autocomplete and route distance/duration — resilient to upstream failure. Registered via GeoFeatureConfiguration.AddFeatureDependencies (typed HttpClient), so no Program.cs edit.",
+      "title": "Publish NewOrderOffered on Assign + Reassign (after commit, expiresAt = AssignedAt + OfferTimeoutSeconds)",
+      "goal": "OrderService.TransitionAsync publishes NewOrderOffered(orderDto, expiresAt) to the offered driver on both Assign and Reassign, after commit alongside OrderChanged. expiresAt = order.AssignedAt + fleet OfferTimeoutSeconds (default 45) — the identical value OfferTimeoutJob reads, so the driver countdown and the server timeout are the same instant. Corrects the stale IRealtimePublisher XML comment.",
       "depends_on": [],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/",
-        "api/src/Taxi.Api/Features/Geo/Route/",
-        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
+        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
+        "api/src/Taxi.Api/Realtime/IRealtimePublisher.cs",
+        "api/tests/Taxi.Api.Tests/Orders/Offer/OfferPublishTests.cs"
+      ],
+      "rule_citations": [
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/architecture.md#common-infrastructure",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#pattern-matching",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#style-message-templates",
+        "CLAUDE.md#project-specific-facts",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "After the post-commit OrderChangedAsync in OrderService.TransitionAsync, when transition is Assign or Reassign AND order.DriverId is non-null, the service loads OfferTimeoutSeconds for order.FleetId via the (int?)-cast subquery with ?? 45 fallback (the mandatory pattern documented in CLAUDE.md for OfferTimeoutJob — without the (int?) cast a fleet with no FleetSettings row silently gets 0 s), computes expiresAt = order.AssignedAt.Value.AddSeconds(timeout), and calls publisher.NewOrderOfferedAsync(order, order.DriverId.Value, expiresAt, ct).",
+        "expiresAt on both Assign and Reassign equals AssignedAt + timeout; ApplyAssign and ApplyReassign both set AssignedAt = now (verified OrderStateMachine.cs 130/226), so a reassigned order gets a fresh, consistent window and never times out early in OfferTimeoutJob.",
+        "No NewOrderOffered publish occurs for any transition other than Assign/Reassign, and none when DriverId is null.",
+        "The IRealtimePublisher.NewOrderOfferedAsync XML doc comment that claims 'OrderService does NOT call this' is corrected to reflect that OrderService now publishes it on Assign/Reassign.",
+        "Assign_PublishesNewOrderOffered_WithDriverAndExpiresAt, Reassign_PublishesNewOrderOffered_ToNewDriver_WithRefreshedExpiresAt, Assign_ExpiresAt_EqualsAssignedAtPlusFleetTimeout, Assign_NoFleetSettingsRow_UsesDefault45, and Accept_DoesNotPublishNewOrderOffered pass (RecordingRealtimePublisher records the call)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Offer"
+      }
+    },
+    {
+      "id": "A-idem",
+      "lane": "api",
+      "title": "X-Idempotency-Key on driver transitions + IdempotencyRecord entity + AddIdempotencyRecords migration",
+      "goal": "Optional X-Idempotency-Key header on the six driver transitions (accept/decline/arrive/start/complete/cancel). Same key within 24h replays the stored status+body without re-executing; concurrent duplicate executes once via a unique-index (UserId,Key) claim. Implemented as an endpoint-level helper in Common/Idempotency (no FastEndpoints pre/post-processor precedent exists). IdempotencyRecord is NOT a tenant entity (UserId-scoped, mirrors RefreshToken/SmsCode).",
+      "depends_on": [
+        "A-offer"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Entities/IdempotencyRecord.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/IdempotencyRecordConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Infrastructure/Migrations/",
+        "api/src/Taxi.Api/Common/Idempotency/IdempotencyHelper.cs",
         "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs"
+        "api/src/Taxi.Api/Features/Orders/AcceptOrder/AcceptOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/DeclineOrder/DeclineOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/ArriveOrder/ArriveOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/StartOrder/StartOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/CompleteOrder/CompleteOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/CancelOrder/CancelOrderEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Orders/Idempotency/IdempotencyTests.cs"
+      ],
+      "rule_citations": [
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#indexes",
+        "rules/ef-core.md#migrations",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#one-type-per-file",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "rules/naming.md#migrations",
+        "CLAUDE.md#project-specific-facts",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "IdempotencyRecord entity: Id (Guid PK), UserId (Guid), Key (string, max 200), RequestHash (string, SHA-256 hex of method+path+body), ResponseStatus (int?), ResponseBody (JsonDocument? mapped .HasColumnType(\"jsonb\") per the OrderEvent.Payload precedent), CreatedAt (DateTimeOffset). It is NOT ITenantEntity and gets NO global query filter (UserId-scoped, mirrors decisions.md assumption 4 for RefreshToken/SmsCode); DbSet<IdempotencyRecord> registered on TaxiDbContext. Configuration adds a unique index on (UserId, Key). Migration AddIdempotencyRecords added with dotnet ef --output-dir Infrastructure/Migrations (CLAUDE.md).",
+        "No X-Idempotency-Key header -> the endpoint executes the transition normally and writes no record.",
+        "Header present -> IdempotencyHelper computes RequestHash and INSERTs a claim row (ResponseStatus/ResponseBody null) with SaveChanges BEFORE executing; on success it owns the lock, executes the transition, captures status+body, UPDATEs the row, then Sends.",
+        "Unique-index violation on the claim INSERT (PostgresException SqlState 23505 via the .ThrowAsync/.Which pattern in CLAUDE.md) -> load the existing row: (a) stored response present -> replay stored ResponseStatus+ResponseBody verbatim, no re-execution; (b) response null and CreatedAt within 60 s -> 409 Idempotency.InFlight (retryable); (c) response null and CreatedAt older than 60 s (crash between claim and store) -> take over, re-execute, store, Send; (d) RequestHash differs -> 409 Idempotency.KeyReused.",
+        "Only 2xx and expected terminal 4xx/409 responses are stored; a 5xx (infra failure) is never stored so a retry re-executes. Key longer than 200 chars -> 400 Idempotency.KeyTooLong.",
+        "Opportunistic purge DELETE WHERE CreatedAt < now - 24h runs on the claim path (bounded, no new job); 24 h replay window.",
+        "Replay_SameKeyWithinWindow_ReturnsStoredResponse_NoReExecution, Concurrent_DuplicateKey_ExecutesOnce_LoserGets409InFlight, OrphanedClaim_OlderThan60s_IsTakenOverAndReExecuted, SameKey_DifferentRequestHash_Returns409KeyReused, NoHeader_ExecutesNormally_WritesNoRecord, FiveHundred_IsNotStored_RetryReExecutes, IdempotencyRecords_TenantGuardBypassed_NoQueryFilter, and KeyTooLong_Returns400 pass (integration, real Postgres)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Idempotency"
+      }
+    },
+    {
+      "id": "A-me",
+      "lane": "api",
+      "title": "GET drivers/me/summary + GET drivers/me/orders (DriverOnly, own-rows, tenant-safe) + ActiveOrderId on drivers/me",
+      "goal": "Two DriverOnly, driver-scoped, tenant-safe AsNoTracking projection endpoints: summary (rides count, per-payment-type CZK totals, hours online from shifts incl. open shift) for Home chips, and orders (own completed+active rides for the day) for the History list. Also adds ActiveOrderId (additive) to GET drivers/me so B-ride's AC #6 restore has an authoritative source.",
+      "depends_on": [],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Drivers/GetMySummary/",
+        "api/src/Taxi.Api/Features/Drivers/GetMyOrders/",
+        "api/src/Taxi.Api/Features/Drivers/GetMe/GetMeEndpoint.cs",
+        "api/src/Taxi.Api/Features/Drivers/GetMe/GetMeResponse.cs",
+        "api/tests/Taxi.Api.Tests/Drivers/MeSummary/DriverMeSummaryTests.cs"
       ],
       "rule_citations": [
         "rules/api-design.md#endpoint-pattern",
@@ -27,35 +127,67 @@
         "rules/api-design.md#dont-catch-exceptions",
         "rules/architecture.md#vertical-slice-layout",
         "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#common-infrastructure",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/validation.md#validator-class",
-        "rules/ef-core.md#dbcontext-injection",
         "rules/ef-core.md#asnotracking",
         "rules/ef-core.md#projections",
-        "rules/logging.md#style-message-templates",
+        "rules/ef-core.md#n-plus-one",
+        "rules/ef-core.md#date-types",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
         "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#primary-constructors",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "rules/naming.md#error-codes",
+        "rules/error-handling.md#send-for-expected-errors",
+        "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        "docs/specs/in-progress/002_UC_002_dispatcher-web.md",
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
-      "needs_library_research": true,
+      "needs_library_research": false,
       "acceptance_criteria": [
-        "GET /api/v1/geo/suggest?q= is DispatcherOnly, returns 200 with a list of { label, lat, lng } from Photon (base URL from config Geo:SuggestBaseUrl); q shorter than 3 chars fails validation with Geo.SuggestQueryTooShort (400).",
-        "On ANY upstream failure/timeout (4s, no retries), suggest returns 200 with an EMPTY list and logs Warning with Reason=GeoUpstreamUnavailable — it never returns 5xx so the order form is never blocked (context 11).",
-        "GET /api/v1/geo/route?fromLat&fromLng&toLat&toLng is DispatcherOnly, returns 200 { distanceMeters, durationSeconds, estimatedPriceCzk } (F-03: server-priced estimate — the endpoint injects TaxiDbContext, loads the caller's fleet default enabled Tariff via AsNoTracking projection resolved by the tenant query filter, and computes estimatedPriceCzk = max(MinimumFareCzk, BaseFareCzk + PerKmCzk * distanceKm) rounded to integer CZK; distanceMeters/durationSeconds come from OSRM public, base URL from config Geo:RouteBaseUrl). estimatedPriceCzk is null when no enabled default tariff exists — keeps tariff math server-side and Dispatcher-accessible without exposing the FleetAdminOnly tariff endpoint.",
-        "On route upstream failure/timeout returns 502 with AddError(Geo.RouteUnavailable); the client renders no price (order creation still proceeds).",
-        "The typed IGeoProvider/PhotonOsrmGeoProvider HttpClient is registered inside GeoFeatureConfiguration.AddFeatureDependencies (verified auto-invoked by AddFeatureConfigurations) so Program.cs is NOT edited; tests inject a fake IGeoProvider so no network call occurs.",
-        "Suggest touches zero tenant data (no isolation test); route now reads the Tariff table (tenant-filtered) so it DOES carry a tenant-isolation test (Route_UsesCallersFleetDefaultTariff) — documented in work-items Assumption 4 (amended for F-03).",
-        "Suggest_ValidQuery_ReturnsLabelledCoords, Suggest_UpstreamThrows_Returns200EmptyList, Suggest_NonDispatcher_Returns403, SuggestValidator_QueryTooShort_FailsWithCode, Route_ValidCoords_ReturnsDistanceDurationAndServerPrice, Route_NoDefaultTariff_ReturnsNullPrice, Route_UsesCallersFleetDefaultTariff (tenant isolation), and Route_UpstreamThrows_Returns502WithCode pass."
+        "GET /drivers/me/summary?date= is DriverOnly, resolves the driver via the sub claim (as GetMeEndpoint does), and returns an AsNoTracking projection { ridesCount, cashTotalCzk, cardTotalCzk, invoiceTotalCzk, hoursOnline } scoped to own rows (DriverId == myDriverId). ridesCount = own Completed orders in the day window; totals sum FinalPriceCzk grouped by PaymentType (integer CZK); hoursOnline sums overlapping DriverShift durations (EndedAt ?? now) - StartedAt clamped to the window, including the open shift.",
+        "GET /drivers/me/orders?date= is DriverOnly, own-rows, and returns a read-only list DTO { id, publicCode, status, pickupAddress, dropoffAddress, priceType, finalPriceCzk, paymentType, completedAt } of the driver's own completed AND active rides for the day.",
+        "The date query param is bound as string? and parsed with DateOnly.TryParseExact(\"yyyy-MM-dd\", InvariantCulture) to avoid the FastEndpoints locale binding landmine (CLAUDE.md); absent/invalid date -> today (Europe/Prague) interpreted as a UTC [start,end) window. Invalid date format -> 400 via validator.",
+        "GET /drivers/me gains ActiveOrderId (Guid?, additive, XML-documented) = the driver's non-terminal order id (Assigned/Accepted/Arrived/InProgress) or null; existing GetMeResponse fields unchanged.",
+        "Both summary and orders are tenant-safe via the query filter and never leak another driver's or another fleet's rows.",
+        "Summary_CountsOwnCompletedRides_AndTotalsPerPaymentType, Summary_HoursOnline_IncludesOpenShift, Summary_DriverB_CannotSeeDriverAsRides (driver isolation), Summary_CrossTenant_ReturnsOwnFleetOnly (tenant isolation), Orders_ListsOwnCompletedAndActiveRidesForDate, GetMe_ReturnsActiveOrderId_WhenRideInProgress, and Summary_InvalidDate_Returns400 pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Drivers.MeSummary"
+      }
+    },
+    {
+      "id": "A-geo",
+      "lane": "api",
+      "title": "Widen GET geo/route to DispatcherOrDriver policy",
+      "goal": "Drivers can call GET geo/route for distance/ETA to pickup. Adds a DispatcherOrDriver policy constant (Dispatcher OR FleetAdmin OR Driver) following the existing DispatcherOrCustomer triple-role precedent, and switches RouteEndpoint from DispatcherOnly to DispatcherOrDriver. Suggest stays DispatcherOnly. Only toucher of AuthorizationPolicies.cs (parallel-safe).",
+      "depends_on": [],
+      "estimated_complexity": "S",
+      "files_touched": [
+        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Geo/RouteAccessTests.cs"
+      ],
+      "rule_citations": [
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#cross-cutting-invariants"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "AuthorizationPolicies gains a DispatcherOrDriver constant, and RegisterPolicies adds AddPolicy(DispatcherOrDriver, p => p.RequireAuthenticatedUser().RequireRole(nameof(UserRole.Dispatcher), nameof(UserRole.FleetAdmin), nameof(UserRole.Driver))), mirroring the DispatcherOrCustomer precedent.",
+        "RouteEndpoint.Configure() uses Policies(nameof(AuthorizationPolicies.DispatcherOrDriver)); geo/suggest is NOT widened and remains DispatcherOnly.",
+        "Route_Driver_Returns200, Route_Dispatcher_StillReturns200 (regression), Route_Customer_Returns403, and Suggest_Driver_Returns403 pass."
       ],
       "verification": {
         "tool": "dotnet-test",
@@ -63,454 +195,158 @@
       }
     },
     {
-      "id": "A2",
-      "lane": "api",
-      "title": "PATCH /orders/{id} partial edit (New/Assigned only, Updated event, optimistic-concurrency aware) + expose Order.Version in detail/realtime DTOs",
-      "goal": "Dispatcher-only partial edit of an order (address/coords/time/note/passengers), allowed only in New/Assigned, writing one Updated OrderEvent, client-version-aware for optimistic concurrency, publishing OrderChanged after commit. Also exposes Order.Version in the detail + realtime payloads (F-01) so the client can load a version to send back on PATCH and reconcile realtime.",
-      "depends_on": [
-        "A1"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/OrderEventType.cs",
-        "api/src/Taxi.Api/Features/Orders/UpdateOrder/",
-        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
-        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailMapper.cs",
-        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
-        "api/src/Taxi.Api/Realtime/OrderChangedDto.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Orders/Update/OrderUpdateTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#enums-as-strings",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "rules/naming.md#error-codes",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "F-01: Order.Version is projected into the frontend-visible detail + realtime payloads. Add Version (int) to OrderDetailDto (as the last positional param, XML-documented) and populate it in BOTH construction sites — OrderDetailMapper.ToDto (feeds the 8 transition endpoints) and the inline new OrderDetailDto(...) in GetOrderEndpoint. Add Version to OrderChangedDto and its From(order) projection. OrderSummaryDto stays lean (list rows do not carry version). So GET /orders/{id} returns version and the OrderChanged realtime payload carries version — this is what A2's client-version PATCH and B8's 'send the loaded version' depend on.",
-        "OrderEventType gains an Updated member (string-stored enum — no migration, mirrors the UserRole.System precedent in CLAUDE.md project facts).",
-        "PATCH /api/v1/orders/{id} is DispatcherOnly, edits pickup/dropoff (address+coords), scheduledAt, note, passengers when the order status is New or Assigned; writes exactly one Updated OrderEvent; publishes OrderChanged only after commit.",
-        "The request carries the client-loaded version; when req.Version != order.Version the endpoint returns 409 with AddError(Order.StaleVersion) BEFORE writing (client-version-aware, per Assumption 6); on a successful edit the endpoint increments order.Version before SaveChangesAsync (EF does NOT auto-increment the concurrency token — CLAUDE.md project fact) so a subsequent stale drawer is detected; a concurrent EF concurrency-token conflict on save is the 409 backstop.",
-        "Editing an order whose status is not New/Assigned returns 409 with AddError(Order.NotEditable); a not-found or cross-tenant order returns a no-leak 404; validation (e.g. dropoff address without coords) returns 400.",
-        "GetOrder_ReturnsCurrentVersion (F-01 — asserts OrderDetailDto.Version equals order.Version), Update_NewOrder_ChangesFieldsAndWritesUpdatedEvent, Update_StaleClientVersion_Returns409, Update_InProgressOrder_Returns409NotEditable, Update_CrossTenantOrder_Returns404, Update_NonDispatcher_Returns403, and UpdateOrderValidator_DropoffAddressWithoutCoords_FailsWithCode pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Update"
-      }
-    },
-    {
-      "id": "A3",
-      "lane": "api",
-      "title": "Driver status override + first AuditLog write + expose lastLat/lastLng in GET /drivers",
-      "goal": "POST /drivers/{id}/status — DispatcherOnly manual override (Free/Busy/Offline) for phone-only drivers; writes the first AuditLog row, publishes DriverStatusChanged, and never touches any Order. Forced Offline mirrors the sanctioned StalePositionJob path. Also extends DriverSummaryDto + the GET /drivers projection with lastLat/lastLng (F-02) so the board has a REST source for distance-sort (B4) and initial map markers (B7).",
-      "depends_on": [
-        "A2"
-      ],
-      "estimated_complexity": "S",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Drivers/OverrideStatus/",
-        "api/src/Taxi.Api/Features/Drivers/ListDrivers/DriverSummaryDto.cs",
-        "api/src/Taxi.Api/Features/Drivers/ListDrivers/ListDriversEndpoint.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Drivers/OverrideStatusTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/validation.md#validator-class",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#timeprovider",
-        "rules/naming.md#error-codes",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "F-02: DriverSummaryDto gains lastLat (double?) and lastLng (double?) — additive, XML-documented — and the GET /drivers projection in ListDriversEndpoint populates them from Driver.LastLat/LastLng (both already exist on the Driver entity). lastPositionAt is ALREADY present on the DTO (verified) and is unchanged. This gives B4 distance-sort and B7 initial markers a REST source; markers with a null lastLat/lastLng render at no position until the first DriverPositionChanged event.",
-        "POST /api/v1/drivers/{id}/status is DispatcherOnly and accepts a target DriverStatus of Free, Busy, or Offline (EnRoute rejected with 400 Driver.InvalidOverrideStatus); the driver is resolved via the tenant query filter so a cross-tenant/absent driver returns a no-leak 404.",
-        "The override writes exactly one AuditLog row { Entity=Driver, Action=StatusOverride, EntityId=driverId, ActorUserId=caller, Diff=jsonb {old,new}, At=now, FleetId } — this is the first AuditLog write in the system and SUPERSEDES decisions.md assumption 9 (must be re-documented in decisions.md).",
-        "Forcing Offline mirrors StalePositionJob/GoOfflineEndpoint: Status=Offline, CurrentVehicleId=null, close the open DriverShift (EndedAt=now); the endpoint NEVER loads or mutates any Order (truthful-fallback, principle 7).",
-        "After a successful override the endpoint publishes DriverStatusChangedAsync(driverId, fleetId, newStatus, ct); it never publishes OrderChanged.",
-        "ListDrivers_ProjectsLastLatLng (F-02 — asserts a driver with a known LastLat/LastLng surfaces them in DriverSummaryDto), Override_ToBusy_SetsStatusAndWritesAuditLog (AC #5), Override_BusyDriverToOffline_ClosesShiftAndLeavesActiveOrderUntouched, Override_PublishesDriverStatusChanged, Override_CrossTenantDriver_Returns404 (tenant isolation), and Override_InvalidStatus_Returns400 pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Drivers"
-      }
-    },
-    {
-      "id": "A4",
-      "lane": "api",
-      "title": "POST /staff/{id}/reset-password (FleetAdmin, one-time plaintext)",
-      "goal": "FleetAdminOnly password reset returning a new temporary plaintext password exactly once, mirroring the CreateStaffEndpoint invite pattern; the plaintext is never logged.",
-      "depends_on": [],
-      "estimated_complexity": "S",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Staff/ResetPassword/",
-        "api/tests/Taxi.Api.Tests/Staff/ResetPasswordTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "POST /api/v1/staff/{id}/reset-password is FleetAdminOnly; the target staff user is resolved via the tenant query filter so a cross-tenant/absent user returns a no-leak 404.",
-        "A new temporary password is generated with the same charset/length as CreateStaffEndpoint (RandomNumberGenerator.GetString, 16 chars, unambiguous charset), BCrypt-hashed (workFactor 11), stored on user.PasswordHash, and the plaintext is returned exactly once in the response.",
-        "The plaintext password never appears in logs (at most a masked marker per rules/logging.md#what-must-not-appear-in-logs).",
-        "ResetPassword_ReturnsNewTempPasswordOnce_AndUpdatesHash (asserts the new hash verifies against the returned plaintext and the plaintext is absent from captured logs), ResetPassword_CrossTenantUser_Returns404 (tenant isolation), and ResetPassword_NonFleetAdmin_Returns403 pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Staff.ResetPassword"
-      }
-    },
-    {
-      "id": "A5",
-      "lane": "api",
-      "title": "GET /fleet/settings (FleetAdmin, read-only combined DTO)",
-      "goal": "FleetAdminOnly read-only endpoint returning a combined Fleet + FleetSettings DTO so the Settings Fleet tab renders. No write endpoint (auto-dispatch / offer-timeout editing is v1.1). Last Lane A endpoint — regenerate docs/api.md after it lands.",
-      "depends_on": [],
-      "estimated_complexity": "S",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Fleet/FleetFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/",
-        "api/tests/Taxi.Api.Tests/Fleet/FleetSettingsTests.cs"
-      ],
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET /api/v1/fleet/settings is FleetAdminOnly and returns an AsNoTracking projection combining the current tenant's Fleet (name, phone) and FleetSettings (OfferTimeoutSeconds, AutoDispatchEnabled) as a read-only DTO.",
-        "There is no write endpoint; the Fleet tab renders the auto-dispatch toggle disabled with a v1.1 hint (frontend, B10).",
-        "GetFleetSettings_FleetAdmin_ReturnsCombinedDto, GetFleetSettings_FleetAdminOfFleetB_SeesOnlyFleetBSettings (tenant isolation), and GetFleetSettings_NonFleetAdmin_Returns403 pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Fleet"
-      }
-    },
-    {
-      "id": "B1",
+      "id": "B-pwa",
       "lane": "web",
-      "title": "Frontend scaffold: Vite + TS strict + eslint flat + vitest + styled-components + router + api client + i18n",
-      "goal": "Stand up web/ — the first frontend code in the repo — with exact Node-20.0.0-safe pinned versions, strict TS, eslint flat config at --max-warnings 0, vitest, styled-components typed theme, the /x/* router group, TanStack Query, a JWT/X-Fleet-Slug/401-aware api client, and an i18next cs/en skeleton with a locale-parity test.",
+      "title": "PWA foundation: vite-plugin-pwa + manifest + icons + app-shell SW + install banner + permission priming",
+      "goal": "Installable /d PWA. Pins vite-plugin-pwa@0.20.5 (Node-20 + vite-5 safe). Manifest 'Taxi Rieic' + icons (pngjs-generated, no sharp), app-shell-only Workbox precache that never caches /api or /hubs, custom beforeinstallprompt banner, location+notification priming. Must NOT break /x or the dispatcher E2E (devOptions.enabled false so the SW never registers under npm run dev).",
       "depends_on": [],
       "estimated_complexity": "L",
       "files_touched": [
         "web/package.json",
-        "web/.npmrc",
-        "web/tsconfig.json",
         "web/vite.config.ts",
-        "web/eslint.config.js",
-        "web/vitest.config.ts",
-        "web/index.html",
-        "web/src/main.tsx",
+        "web/scripts/gen-icons.mjs",
+        "web/public/",
         "web/src/app/router.tsx",
-        "web/src/app/providers.tsx",
-        "web/src/app/AppLayout.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/api/auth-storage.ts",
-        "web/src/shared/theme/theme.ts",
-        "web/src/shared/theme/theme.d.ts",
-        "web/src/shared/i18n/index.ts",
+        "web/src/features/driver/pwa/InstallBanner.tsx",
+        "web/src/features/driver/pwa/usePwaInstall.ts",
+        "web/src/features/driver/pwa/usePwaInstall.test.ts",
+        "web/src/features/driver/pwa/PermissionPriming.tsx",
         "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/i18n/locales.parity.test.ts",
-        "web/src/shared/api/client.test.ts"
+        "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        "docs/decisions.md#2026-09-11-frontend-styling-styled-components",
-        "docs/decisions.md#2026-09-11-uc-002-frontend-quality-gate"
+        ".claude/state/03-driver-pwa.md#1-login-dlogin",
+        "docs/decisions.md#2026-09-11-frontend-styling-styled-components"
       ],
       "required_reads": [
-        "docs/specs/in-progress/002_UC_002_dispatcher-web.md",
-        ".claude/state/02-dispatcher-web.md",
+        "docs/specs/in-progress/003_UC_003_driver-pwa.md",
+        ".claude/state/03-driver-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
         "docs/decisions.md"
       ],
       "needs_library_research": true,
       "acceptance_criteria": [
-        "package.json pins Node-20.0.0-safe versions verified via npm view engines: vite 5.4.x, @vitejs/plugin-react 4.3.4, vitest 2.1.9 + @vitest/coverage-v8 2.1.9, eslint 8.57.1 (NOT 9 — engines require ^20.9.0), typescript-eslint 7.18.0 (NOT 8 — engines require ^20.9.0), @testing-library/react 16.x + @testing-library/dom 10.x + user-event 14.x + jest-dom 6.x, styled-components 6.1.x, @microsoft/signalr 8.x, @tanstack/react-query 5.x, react-router-dom 6.x, zustand 4.x, i18next 23.x + react-i18next 14.x, leaflet 1.9.x + react-leaflet 4.x, @playwright/test pinned to the conductor's prefetched Chromium version; root engines.node >=20.0.0 and .npmrc engine-strict=true.",
-        "npm install succeeds on Node 20.0.0 with NO EBADENGINE; npm run tsc (tsc --noEmit), npm run lint (eslint --max-warnings 0), and npm run test (vitest run) all pass on the scaffold. Scripts dev/build/lint/tsc/test exist plus an e2e placeholder.",
-        "The api client (shared/api/client.ts) is a fetch wrapper reading the base URL from import.meta.env, attaching Authorization: Bearer and X-Fleet-Slug, and on a 401 clearing storage and redirecting to /x/login; client.test.ts proves the 401 path red-then-green.",
-        "styled-components ThemeProvider wraps the app with a typed DefaultTheme (theme.d.ts) and no any; the /x/* router group and QueryClientProvider + I18nextProvider are wired in app/providers.tsx.",
-        "locales.parity.test.ts asserts cs.json and en.json have identical key sets and passes; this test is the AC #7 mechanism every screen WI keeps green."
+        "package.json adds vite-plugin-pwa@0.20.5 (engines node >=16, peer vite ^5 — verified compatible with the existing vite@^5.4.8 and Node 20.0.0 under engine-strict) and a devDependency pngjs@7.0.0; @vite-pwa/assets-generator is NOT used because it wraps sharp whose engines (>=20.9.0) fail the Node 20.0.0 exact pin under engine-strict.",
+        "web/scripts/gen-icons.mjs is a one-off Node/pngjs script rendering a flat-colour taxi glyph to 192x192, 512x512, a 512 maskable icon, and a splash; the resulting PNGs are committed under web/public/ and referenced by the manifest (name 'Taxi Rieic', short_name, theme_color, background_color, display standalone, portrait orientation).",
+        "VitePWA is configured with registerType 'prompt', devOptions.enabled false (SW NEVER registers under npm run dev — the tool Playwright boots — so the existing dispatcher E2E is untouched), Workbox precache of the built app shell only, navigateFallbackDenylist set, and NO runtime caching matching ^/api or ^/hubs (the SW never intercepts API/SignalR traffic).",
+        "A custom install banner uses the captured beforeinstallprompt event (with a manual iOS 'Pridat na plochu' hint fallback); permission-priming screens explain location and notifications in one Czech sentence each.",
+        "The /d route group + DriverLayout are added to router.tsx without modifying any /x route; npm run tsc, npm run lint (--max-warnings 0), and npm run test pass; usePwaInstall.test.ts (captures beforeinstallprompt, exposes install trigger, hides after appinstalled) and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B2",
+      "id": "B-auth",
       "lane": "web",
-      "title": "Login /x/login",
-      "goal": "Login screen: fleet slug (prefilled from subdomain, remembered in localStorage), email, password, Czech errors; on success stores tokens and redirects to /x.",
+      "title": "Driver login /d/login + silent refresh (single-flight) + IndexedDB refresh token + role landing",
+      "goal": "/d/login reusing POST /auth/staff/login with role-based landing (Driver -> /d, else /x). 'Zustat prihlasen' persists the refresh token to IndexedDB. Silent refresh (proactive timer at exp-2min + single-flight 401-retry) added ADDITIVELY to the shared client.ts so a driver is never logged out mid-shift; /x keeps its current clear+redirect path (guarded).",
       "depends_on": [
-        "B1"
-      ],
-      "estimated_complexity": "S",
-      "files_touched": [
-        "web/src/features/auth/LoginPage.tsx",
-        "web/src/features/auth/useLogin.ts",
-        "web/src/features/auth/loginSchema.ts",
-        "web/src/features/auth/loginSchema.test.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/api/client.ts"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#1-login-xlogin"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "Successful POST /auth/staff/login stores accessToken/refreshToken and the fleet slug, then redirects to /x.",
-        "Wrong credentials render a Czech error sentence (never JSON or a stack trace, per context 11).",
-        "The fleet slug is prefilled from the subdomain and falls back to the remembered localStorage value.",
-        "AC #7: all new strings exist in cs.json AND en.json (locales.parity.test.ts stays green).",
-        "loginSchema.test.ts (empty email/password produce Czech messages) and a testing-library interaction test (bad creds show the Czech error) pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B3",
-      "lane": "web",
-      "title": "Board layout + New order form",
-      "goal": "The /x three-column shell plus the left-column New order form: exact tab order, F2 focus, Enter submit, quick chips (hardcoded coords), Photon autocomplete via geo/suggest, live price preview from the server-priced GET /geo/route (F-03 — the client renders estimatedPriceCzk directly; no client-side tariff math), clears + refocuses Phone on submit.",
-      "depends_on": [
-        "B2"
+        "B-pwa"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/src/features/board/BoardPage.tsx",
-        "web/src/features/board/OrderForm.tsx",
-        "web/src/features/board/useCreateOrder.ts",
-        "web/src/features/board/quickChips.ts",
-        "web/src/features/board/useAddressSuggest.ts",
-        "web/src/features/board/useRouteEstimate.ts",
-        "web/src/features/board/useRouteEstimate.test.ts",
+        "web/src/features/driver/auth/DriverLoginPage.tsx",
+        "web/src/features/driver/auth/useDriverLogin.ts",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/api/refresh.ts",
+        "web/src/shared/api/refresh.test.ts",
+        "web/src/shared/api/idbAuthStore.ts",
+        "web/src/shared/api/idbAuthStore.test.ts",
         "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/api/client.ts"
+        "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px"
+        ".claude/state/03-driver-pwa.md#1-login-dlogin"
       ],
       "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/03-driver-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "The New order form has the exact field order and one tab-stop each (Phone, Name, Pickup, Dropoff, When, Passengers, Note); F2 focuses Phone from anywhere; Enter submits from any field.",
-        "Clicking a quick chip fills the pickup field with coordinates directly (no geo call); pickup/dropoff typing triggers debounced geo/suggest autocomplete.",
-        "A live price preview shows the server's estimatedPriceCzk from GET /geo/route when a route is computable (F-03 — no client-side tariff math); it is simply absent — not an error — when geo/route returns 502 OR when estimatedPriceCzk is null (no default tariff).",
-        "On submit the form clears and focus returns to Phone; the board renders at 1280x720 with no horizontal scroll (AC #6).",
-        "AC #7 parity green; useRouteEstimate.test.ts (renders estimatedPriceCzk when present; renders nothing on 502 and on null price), quick-chip fill logic, and testing-library tests for Enter-submit / F2-focus / clear-and-refocus pass."
+        "/d/login reuses POST /auth/staff/login (fleet slug + email + password, Czech errors, never JSON/stack trace); on success a Driver role lands on /d and any other role lands on /x.",
+        "When 'Zustat prihlasen' is checked the refresh token is persisted to IndexedDB (survives tab kill and phone restart) via idbAuthStore; the access token stays where UC-002 keeps it.",
+        "Silent refresh is added additively to client.ts: a proactive timer fires at exp-2min; a 401 triggers exactly ONE shared refresh via a module-level single-flight mutex (two concurrent 401s -> one /auth/refresh call, because refresh rotates tokens and concurrent refreshes would mutually invalidate and log the driver out — the exact failure the spec forbids), then the original request is retried once; only a failed refresh clears storage and routes to /d/login. The existing /x clear+redirect behaviour is unchanged (guarded).",
+        "AC #8 (cs/en) parity green; refresh.test.ts proves two concurrent 401s cause exactly one refresh (single-flight) and the proactive timer fires once, idbAuthStore.test.ts (persist/restore/clear via fake-indexeddb) passes, and a testing-library test (bad creds -> Czech error; driver role -> /d) passes."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B4",
+      "id": "B-home",
       "lane": "web",
-      "title": "Orders column + card actions",
-      "goal": "Middle column: sections (Nove/Prirazene/Probihajici/Naplanovane/Dokoncene dnes), order cards with all fields and a 2-min red timer, and Assign (inline driver picker sorted by distance, free first) / Reassign / Cancel (reason from list) / Detail actions with optimistic update and 409 reconcile.",
+      "title": "Home /d: status button state machine + vehicle selector + connection dot + summary chips",
+      "goal": "Giant status button (Offline -> 'Zacit smenu' requires vehicle + location permission -> POST /drivers/me/online; Free -> 'Ukoncit smenu' + 'Cekam na objednavku'), vehicle selector shown only when offline, SignalR connection dot, today summary chips (rides, cash total, card total, hours online) from GET /drivers/me/summary.",
       "depends_on": [
-        "B3"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/src/features/board/OrdersColumn.tsx",
-        "web/src/features/board/OrderCard.tsx",
-        "web/src/features/board/sectionBucketing.ts",
-        "web/src/features/board/sectionBucketing.test.ts",
-        "web/src/features/board/elapsedTimer.ts",
-        "web/src/features/board/elapsedTimer.test.ts",
-        "web/src/features/board/useNewOrderHighlight.ts",
-        "web/src/features/board/useNewOrderHighlight.test.ts",
-        "web/src/features/board/driverDistanceSort.ts",
-        "web/src/features/board/driverDistanceSort.test.ts",
-        "web/src/features/board/useAssignOrder.ts",
-        "web/src/features/board/useReassignOrder.ts",
-        "web/src/features/board/useCancelOrder.ts",
-        "web/src/features/board/cancelReasons.ts",
-        "web/src/features/board/DriverPicker.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/api/client.ts"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px",
-        ".claude/state/02-dispatcher-web.md#behavior-rules"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "Orders bucket into the correct sections; Dokoncene dnes is collapsed by default; each card shows public code, time, phone+name, pickup->dropoff (ellipsized), price (fixed as a PEVNA badge), driver name, status pill.",
-        "A New order's elapsed-since-creation timer turns red after 2 minutes.",
-        "F-05b: a newly-arrived order card (new since the last render, e.g. from an App-source OrderChanged) shows a brief highlight for ~3 seconds, then settles to normal styling.",
-        "Assign opens an INLINE driver picker (never a form-blocking modal, per context 11) sorted by distance to pickup with free drivers first; the distance comparator uses each driver's lastLat/lastLng from GET /drivers (A3, F-02) versus the order pickup coords, and drivers with a null position sort last; Reassign and Detail work; Cancel requires a reason from a short list plus optional text.",
-        "A 409 on any action shows 'Objednavku mezitim zmenil nekdo jiny' and refreshes the card (no silent overwrite).",
-        "AC #7 parity green; sectionBucketing.test.ts (every status -> right section), elapsedTimer.test.ts (120s boundary), a distance-sort comparator test (incl. null-position sorts last), a new-order-highlight test (highlight present then cleared after ~3s using fake timers), and testing-library tests (inline picker opens; cancel without reason blocked) pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B5",
-      "lane": "web",
-      "title": "Drivers column + manual status override",
-      "goal": "Right column: driver rows (name, plate, Czech status pill, position age, current order code), a Nastavit stav override (Free/Busy/Offline via POST /drivers/{id}/status), and click-driver-centers-map (wired in B7).",
-      "depends_on": [
-        "B4"
+        "B-auth"
       ],
       "estimated_complexity": "M",
       "files_touched": [
-        "web/src/features/board/DriversColumn.tsx",
-        "web/src/features/board/DriverRow.tsx",
-        "web/src/features/board/positionAge.ts",
-        "web/src/features/board/positionAge.test.ts",
-        "web/src/features/board/statusPill.ts",
-        "web/src/features/board/statusPill.test.ts",
-        "web/src/features/board/useOverrideStatus.ts",
+        "web/src/features/driver/home/DriverHomePage.tsx",
+        "web/src/features/driver/home/StatusButton.tsx",
+        "web/src/features/driver/home/VehicleSelector.tsx",
+        "web/src/features/driver/home/ConnectionDot.tsx",
+        "web/src/features/driver/home/useDriverMe.ts",
+        "web/src/features/driver/home/useGoOnline.ts",
+        "web/src/features/driver/home/useGoOffline.ts",
+        "web/src/features/driver/home/useMySummary.ts",
+        "web/src/features/driver/home/homeState.ts",
+        "web/src/features/driver/home/homeState.test.ts",
         "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/api/client.ts"
+        "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px"
+        ".claude/state/03-driver-pwa.md#2-home-d"
       ],
       "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/03-driver-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "Each driver row renders the Czech status pill (Volny/Na ceste/Obsazen/Offline) with the correct color and a Czech position age (pred N s / pred N min); the current order code shows when assigned.",
-        "The Nastavit stav override sets Free/Busy/Offline via POST /drivers/{id}/status (A3) and updates the pill optimistically.",
-        "AC #7 parity green; positionAge.test.ts (seconds/minutes boundaries, Czech), statusPill.test.ts (DriverStatus -> label+color), and a testing-library test (override click issues the request with the chosen status) pass."
+        "The status button maps driver status to label/colour/action: Offline -> green 'Zacit smenu' calling POST /drivers/me/online, enabled only when a vehicle is selected AND location permission is granted; Free -> grey secondary 'Ukoncit smenu' with 'Cekam na objednavku' text.",
+        "The vehicle selector is shown only when offline; the connection dot reflects the SignalR hub state (green/yellow/red).",
+        "Today summary chips (rides, cash total, card total, hours online) render from GET /drivers/me/summary (A-me); offline shows last known values plus a banner.",
+        "go-online 409 (already online) reconciles; go-online 404 (invalid vehicle) shows a Czech message.",
+        "AC #8 parity green; homeState.test.ts (status -> button label/colour/action; go-online disabled without vehicle or permission) and a testing-library test (chip render from summary; connection dot colour) pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B6",
+      "id": "B-offer",
       "lane": "web",
-      "title": "SignalR realtime: events, optimistic + 409 reconcile, disconnect banner, sound",
-      "goal": "Wire the @microsoft/signalr client to /hubs/fleet (JWT via access_token query string) for OrderChanged/DriverStatusChanged/DriverPositionChanged with optimistic updates + 409 reconcile, a disconnect banner with backoff reconnect + refetch, and a persisted-mute notification sound.",
+      "title": "Full-screen offer takeover: sound/vibration/countdown/double-tap guard + NewOrderOffered handler",
+      "goal": "On NewOrderOffered (existing single /hubs/fleet connection, positional (dto, expiresAt)) a full-screen takeover: repeating loud sound + vibration respecting per-driver 'Tichy rezim' (default OFF), large pickup, distance/ETA via geo/route (A-geo), price badge (PEVNA green / Odhad grey / Taxametr), countdown ring to expiresAt, Prijmout (64px) / Odmitnout with reason, double-tap guard (single request), expiry auto-dismiss. Accept/decline are live-only.",
       "depends_on": [
-        "B5"
+        "B-home"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/src/shared/realtime/hubClient.ts",
+        "web/src/features/driver/offer/OfferTakeover.tsx",
+        "web/src/features/driver/offer/CountdownRing.tsx",
+        "web/src/features/driver/offer/PriceBadge.tsx",
+        "web/src/features/driver/offer/DeclineReasons.tsx",
+        "web/src/features/driver/offer/useOfferSound.ts",
+        "web/src/features/driver/offer/useOfferAccept.ts",
+        "web/src/features/driver/offer/useOfferDecline.ts",
+        "web/src/features/driver/offer/offerCountdown.ts",
+        "web/src/features/driver/offer/offerCountdown.test.ts",
+        "web/src/features/driver/offer/priceBadge.ts",
+        "web/src/features/driver/offer/priceBadge.test.ts",
         "web/src/shared/realtime/useFleetHub.ts",
-        "web/src/shared/realtime/reconnectBackoff.ts",
-        "web/src/shared/realtime/reconnectBackoff.test.ts",
-        "web/src/shared/realtime/eventReducer.test.ts",
-        "web/src/features/board/DisconnectBanner.tsx",
-        "web/src/shared/sound/useNotificationSound.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
@@ -519,40 +355,227 @@
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#10",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#behavior-rules"
+        ".claude/state/03-driver-pwa.md#3-order-offer-full-screen-takeover"
       ],
       "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/03-driver-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "The existing NewOrderOffered no-op handler in useFleetHub.ts is extended to render the full-screen takeover from the positional (dto, expiresAt) payload on the single /hubs/fleet connection (the driver auto-joins driver:{driverId}; there is no separate /hubs/driver).",
+        "Repeating loud sound + vibration play until answered or expired, feature-detected and no-op in tests, and are suppressed when the per-driver 'Tichy rezim' setting is on (default OFF).",
+        "The screen shows large pickup, distance/ETA from GET /geo/route (A-geo), a price badge (PEVNA green / Odhad grey / Taxametr), and a countdown ring driven by expiresAt; when the countdown reaches zero the offer auto-dismisses.",
+        "Prijmout is a 64px button issuing POST /orders/{id}/accept; a double-tap issues only ONE request (double-tap guard). Odmitnout requires selecting a reason (Daleko / Mam pauzu / Jiny duvod) -> POST /orders/{id}/decline. When offline, accept/decline are blocked with 'Bez pripojeni, zkuste znovu' (never queued).",
+        "AC #8 parity green; offerCountdown.test.ts (fake timers: ring value from expiresAt, auto-dismiss at 0), priceBadge.test.ts (Fixed/Estimate/Meter -> label+colour), and testing-library tests (double-tap -> one request; decline blocked without a reason) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B-ride",
+      "lane": "web",
+      "title": "Active ride /d/ride: status button + 5-min no-show timer + nav handoff + map strip + state restore",
+      "goal": "Status-driven big button (Accepted: 'Navigovat' + 'Jsem na miste'; Arrived: 'Zahajit jizdu' + 'Zakaznik neprisel' enabled only after a 5-min timer; InProgress: 'Navigovat k cili' + 'Ukoncit jizdu'), tap-to-call phone, collapsible Leaflet map strip, and state restore from IndexedDB + reconcile with GET /drivers/me (ActiveOrderId, A-me) + GET /orders/{id} on load (AC #6).",
+      "depends_on": [
+        "B-offer"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/features/driver/ride/DriverRidePage.tsx",
+        "web/src/features/driver/ride/RideButton.tsx",
+        "web/src/features/driver/ride/NoShowTimer.tsx",
+        "web/src/features/driver/ride/NavHandoff.tsx",
+        "web/src/features/driver/ride/RideMapStrip.tsx",
+        "web/src/features/driver/ride/useActiveOrder.ts",
+        "web/src/features/driver/ride/useRideTransition.ts",
+        "web/src/features/driver/ride/rideButtonState.ts",
+        "web/src/features/driver/ride/rideButtonState.test.ts",
+        "web/src/features/driver/ride/noShowTimer.ts",
+        "web/src/features/driver/ride/noShowTimer.test.ts",
+        "web/src/features/driver/ride/navLinks.ts",
+        "web/src/features/driver/ride/navLinks.test.ts",
+        "web/src/features/driver/ride/useRideRestore.ts",
+        "web/src/features/driver/ride/useRideRestore.test.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#8",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/03-driver-pwa.md#4-active-ride-dride"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "The big button maps order status to actions: Accepted -> 'Navigovat' (nav handoff) + 'Jsem na miste' (arrive); Arrived -> 'Zahajit jizdu' (start) + secondary 'Zakaznik neprisel' (no-show cancel) enabled ONLY after a visible 5-min timer; InProgress -> 'Navigovat k cili' (if dropoff known) + 'Ukoncit jizdu' (to complete).",
+        "Customer phone is tap-to-call; a collapsible Leaflet map strip shows own position + pickup/dropoff pins; nav handoff opens Google Maps / Mapy.cz / Waze via geo: and universal links per the settings preference.",
+        "On load the ride state is restored from IndexedDB then reconciled: GET /drivers/me (ActiveOrderId, A-me) is authoritative; if ActiveOrderId is set, GET /orders/{id} supplies the current status (AC #6). If IndexedDB is empty but ActiveOrderId is set, the ride is rebuilt from the server; if the server reports a terminal status, the ride is cleared and the driver returns Home.",
+        "arrive/start transitions are issued through the offline queue (B-queue); a transition 409 refetches the order.",
+        "AC #8 parity green; rideButtonState.test.ts (status -> button set), noShowTimer.test.ts (fake timers: disabled < 5 min, enabled >= 5 min), navLinks.test.ts (link per nav-app preference + platform), and useRideRestore.test.ts (IndexedDB + ActiveOrderId reconcile precedence) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B-complete",
+      "lane": "web",
+      "title": "Complete /d/ride/complete: fixed-locked + override reason, keypad, payment toggles",
+      "goal": "Fixed price -> locked prefilled + 'Zmenit cenu' reveal with mandatory >=5-char reason sent as overrideReason; Estimate/Meter -> big numeric keypad prefilled with estimate; payment toggles Hotove/Kartou/Faktura; 'Dokoncit' -> POST /orders/{id}/complete; success -> Home with a 2s 'Hotovo' confirmation.",
+      "depends_on": [
+        "B-ride"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "web/src/features/driver/complete/CompletePage.tsx",
+        "web/src/features/driver/complete/NumericKeypad.tsx",
+        "web/src/features/driver/complete/PaymentToggles.tsx",
+        "web/src/features/driver/complete/useCompleteRide.ts",
+        "web/src/features/driver/complete/completeForm.ts",
+        "web/src/features/driver/complete/completeForm.test.ts",
+        "web/src/features/driver/complete/overrideReason.ts",
+        "web/src/features/driver/complete/overrideReason.test.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/03-driver-pwa.md#5-complete-ride-dridecomplete"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "For a Fixed-price order the price is prefilled and locked; 'Zmenit cenu' reveals an input requiring a >=5-char reason, sent as overrideReason on POST /orders/{id}/complete only when the price actually changed.",
+        "For Estimate/Meter a big numeric keypad is prefilled with the estimate; the final value is sent as FinalPriceCzk (integer CZK).",
+        "Payment type is three big toggles Hotove/Kartou/Faktura mapping to PaymentType; a payment type must be chosen before completing.",
+        "'Dokoncit' completes via the offline queue (B-queue); success returns Home with a 2s 'Hotovo' confirmation; a complete 409 refetches.",
+        "AC #8 parity green; completeForm.test.ts (Fixed locked vs keypad; payment required) and overrideReason.test.ts (>=5-char rule; overrideReason present only when price changed) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B-position",
+      "lane": "web",
+      "title": "Background position reporting: watchPosition -> UpdatePosition throttle (3s/25m) + wake lock + 60s banner",
+      "goal": "While online, watchPosition (high accuracy) -> hub UpdatePosition every 3s OR when moved > 25m (client throttle; server also throttles), heading+speed included; Wake Lock on ride screens (feature-detected); red 'Poloha se neodesila' banner + single vibration when nothing sent for 60s; degradation notes measured to docs/driver-pwa-limits.md.",
+      "depends_on": [
+        "B-complete"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/features/driver/position/usePositionReporting.ts",
+        "web/src/features/driver/position/usePositionReporting.test.ts",
+        "web/src/features/driver/position/positionThrottle.ts",
+        "web/src/features/driver/position/positionThrottle.test.ts",
+        "web/src/features/driver/position/useWakeLock.ts",
+        "web/src/features/driver/position/StalePositionBanner.tsx",
+        "web/src/shared/realtime/useFleetHub.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "docs/driver-pwa-limits.md"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#10",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/03-driver-pwa.md#position-reporting"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "While the driver is online, navigator.geolocation.watchPosition (enableHighAccuracy) drives hub UpdatePosition(lat,lng,heading,speed) on the existing /hubs/fleet connection at most every 3s OR when moved > 25m, whichever first; heading and speed are forwarded.",
+        "Wake Lock is acquired on ride screens and is feature-detected (no-op where navigator.wakeLock is undefined).",
+        "If nothing was sent for 60s while online, a red 'Poloha se neodesila' banner shows and the phone vibrates once; docs/driver-pwa-limits.md records measured Android Chrome / iOS Safari background behaviour.",
+        "Vitest strategy: fake timers + mocked navigator.geolocation.watchPosition (injected fake position stream) + a spy on the hub invoke; Wake Lock no-ops when unavailable.",
+        "AC #8 parity green; positionThrottle.test.ts (3s tick; 25m displacement triggers early; both boundaries) and usePositionReporting.test.ts (mocked geolocation -> throttled invoke calls; 60s no-send -> banner state + one vibrate) pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B-queue",
+      "lane": "web",
+      "title": "Offline transition queue: IndexedDB (idb), ordered replay, idempotency keys, exactly-once",
+      "goal": "IndexedDB queue for arrive/start/complete/no-show-cancel with X-Idempotency-Key generated at ENQUEUE time (the exactly-once linchpin), ordered FIFO replay on reconnect, 'ceka na odeslani' indicators, exactly-once via server idempotency (A-idem). Accept/decline are never queued. App-level queue via idb, explicitly NOT workbox-background-sync (keeps it fake-indexeddb-testable and working with the SW disabled in E2E).",
+      "depends_on": [
+        "B-position"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/package.json",
+        "web/src/features/driver/queue/transitionQueue.ts",
+        "web/src/features/driver/queue/transitionQueue.test.ts",
+        "web/src/features/driver/queue/useTransitionQueue.ts",
+        "web/src/features/driver/queue/queueReplay.ts",
+        "web/src/features/driver/queue/queueReplay.test.ts",
+        "web/src/features/driver/queue/PendingBadge.tsx",
+        "web/src/features/driver/ride/useRideTransition.ts",
+        "web/src/features/driver/complete/useCompleteRide.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "spec#non-functional-requirements",
+        "00-PROJECT-CONTEXT.md#5",
+        "00-PROJECT-CONTEXT.md#11",
+        ".claude/state/03-driver-pwa.md#offline--reliability"
+      ],
+      "required_reads": [
+        ".claude/state/03-driver-pwa.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/specs/in-progress/driver-pwa-work-items.md"
       ],
       "needs_library_research": true,
       "acceptance_criteria": [
-        "OrderChanged moves a card between sections without a page reload; DriverStatusChanged updates driver pills; DriverPositionChanged is exposed for the map (B7). JWT is passed via the access_token query string per the hub contract (context 10).",
-        "On disconnect a yellow Czech banner 'Offline - zobrazuji posledni znamy stav' appears, server-requiring actions are disabled, and on reconnect the lists refetch; reconnection uses exponential backoff.",
-        "A short notification sound plays on a new App-source order and on a driver decline/timeout; the header mute toggle persists across reloads.",
-        "AC #7 parity green; reconnectBackoff.test.ts (capped exponential schedule), eventReducer.test.ts (OrderChanged updates the cached order; 409 triggers refetch), and a mute-persistence test pass."
+        "package.json adds idb@8.0.3 (pure JS, no engine restriction) and a devDependency fake-indexeddb@6.2.5 (engines >=18, satisfied by Node 20.0.0); the queue is an app-level IndexedDB store via idb, explicitly NOT workbox-background-sync.",
+        "arrive/start/complete/no-show-cancel are queued when offline (or always routed through the queue) with an X-Idempotency-Key minted at ENQUEUE time and preserved across every retry (the exactly-once linchpin); accept/decline are never queued.",
+        "On reconnect the queue replays in FIFO order; each queued item shows a 'ceka na odeslani' indicator; a replay 409 (Idempotency.KeyReused or a state 409) drops that order's queued items and reconciles from GET /orders/{id}; a network error keeps items queued for the next reconnect.",
+        "Exactly-once holds: a duplicate replay with the same key gets the server's stored response (A-idem) and the item is dropped.",
+        "AC #8 parity green; transitionQueue.test.ts (enqueue/persist/restore across reload via fake-indexeddb; key minted once at enqueue and preserved) and queueReplay.test.ts (FIFO order; retry keeps the same key; 409 drops+reconciles) pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B7",
+      "id": "B-history-settings",
       "lane": "web",
-      "title": "Map: Leaflet driver markers + pickup pins + highlight",
-      "goal": "Leaflet + OSM map: driver markers (heading arrow, status colors, 1s redraw throttle), pickup pins for New/Assigned orders, pin<->card highlight, and a toggle that replaces the middle column or becomes a 4th panel at >=1600.",
+      "title": "History /d/history + Settings /d/settings (nav app, silent mode, logout, version, Diagnostika)",
+      "goal": "History (read-only, today default, previous days selectable, list + per-payment totals) from GET /drivers/me/orders + /summary (A-me); Settings (nav-app preference, silent mode, logout, app version, Diagnostika: location/push permission states, last position sent, SignalR state).",
       "depends_on": [
-        "B6"
+        "B-queue"
       ],
       "estimated_complexity": "M",
       "files_touched": [
-        "web/src/features/board/MapPanel.tsx",
-        "web/src/features/board/driverMarker.ts",
-        "web/src/features/board/driverMarker.test.ts",
-        "web/src/features/board/markerThrottle.ts",
-        "web/src/features/board/markerThrottle.test.ts",
-        "web/src/features/board/useMapHighlight.ts",
-        "web/src/shared/map/leafletSetup.ts",
+        "web/src/features/driver/history/HistoryPage.tsx",
+        "web/src/features/driver/history/useMyOrders.ts",
+        "web/src/features/driver/history/historyTotals.ts",
+        "web/src/features/driver/history/historyTotals.test.ts",
+        "web/src/features/driver/settings/DriverSettingsPage.tsx",
+        "web/src/features/driver/settings/NavAppPreference.tsx",
+        "web/src/features/driver/settings/SilentModeToggle.tsx",
+        "web/src/features/driver/settings/Diagnostika.tsx",
+        "web/src/features/driver/settings/useDriverSettings.ts",
+        "web/src/features/driver/settings/useDriverSettings.test.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
@@ -560,169 +583,40 @@
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#5",
         "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#2-board-x-the-main-screen-desktop-first-1280-px"
+        ".claude/state/03-driver-pwa.md#6-history-dhistory",
+        ".claude/state/03-driver-pwa.md#7-settings-dsettings"
       ],
       "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/03-driver-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "Initial driver markers render from the GET /drivers lastLat/lastLng (A3, F-02); a driver with a null position is simply not placed until its first DriverPositionChanged event, and a marker tolerates a null heading (renders a neutral/non-directional icon) until the first position event supplies one. Subsequent live updates are fed by DriverPositionChanged (B6), with redraw throttled to 1s.",
-        "Pickup pins render for New/Assigned orders; clicking a pin highlights the corresponding card and clicking a card highlights the pin.",
-        "The map toggles to replace the middle column and becomes a 4th panel at viewport width >=1600.",
-        "AC #7 parity green; markerThrottle.test.ts (>=1 update/s coalesced), driverMarker.test.ts (icon by status/heading), and a highlight-mapping test pass."
+        "History is read-only: today by default with previous days selectable; renders the ride list from GET /drivers/me/orders and totals per payment type; offline shows last known + a banner.",
+        "Settings persists nav-app preference and silent mode (consumed by B-offer sound and B-ride nav handoff); shows app version; logout clears storage + IndexedDB and routes to /d/login.",
+        "Diagnostika shows location permission state, push permission state, last position sent (from B-position), and SignalR connection state, in a form a driver can read aloud to the dispatcher.",
+        "AC #8 parity green; historyTotals.test.ts (totals per payment type; empty day) and useDriverSettings.test.ts (persist/restore nav-app + silent mode) pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B8",
+      "id": "B-e2e",
       "lane": "web",
-      "title": "Order drawer /x/orders/:id: edit via PATCH + Czech event timeline",
-      "goal": "A right-side drawer with fields editable in New/Assigned via PATCH /orders/{id} (sends loaded version), a Czech event timeline covering all 13 OrderEventType values (incl. Updated) with actor, and transition buttons driven by allowedActions.",
+      "title": "Playwright driver specs (mobile viewport): AC#2 full flow, AC#4 decline->New, AC#5 offline queue + decisions/docs",
+      "goal": "Mobile-viewport Playwright specs proving AC #2 (start shift -> offer via dispatcher API assign -> accept -> arrive -> start -> complete fixed -> home totals), AC #4 (decline -> order returns to New), and AC #5 (context.setOffline during 'Jsem na miste' -> queued -> delivered exactly once). Reuses the UC-002 harness by adding a mobile Playwright project (leaves Desktop Chrome/dispatcher.spec.ts intact). Records the AC #3 push deferral + UC-003 assumptions in docs/decisions.md; docs/api.md regenerated by the full dotnet test.",
       "depends_on": [
-        "B7"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "web/src/features/orders/OrderDrawer.tsx",
-        "web/src/features/orders/useUpdateOrder.ts",
-        "web/src/features/orders/eventTimeline.ts",
-        "web/src/features/orders/eventTimeline.test.ts",
-        "web/src/features/orders/EventTimeline.tsx",
-        "web/src/features/orders/transitionButtons.ts",
-        "web/src/features/orders/transitionButtons.test.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/api/client.ts"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#3-order-detail-xordersid-opens-as-right-side-drawer-not-a-page"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "The drawer opens over the board (not a page); fields (address, time, note, passengers) are editable only in New/Assigned and PATCH sends the version loaded from GET /orders/{id} (F-01 — OrderDetailDto now carries Version, exposed by A2); a 409 shows the concurrency message and refetches.",
-        "The event timeline renders every OrderEventType including Updated in Czech with the actor; ALL 13 event-type keys exist in cs.json and en.json; the Cancelled timeline entry renders the cancel reason from the event payload (second half of binding AC #4).",
-        "Transition buttons are rendered from the order's allowedActions.",
-        "AC #7 parity green; eventTimeline.test.ts iterates all 13 OrderEventType values (catches a missing key), transitionButtons.test.ts maps allowedActions, and an edit-disabled-outside-New/Assigned test pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B9",
-      "lane": "web",
-      "title": "Search /x/orders + client-side CSV export",
-      "goal": "A filterable orders table (date range, status, driver, free text; today default), row->drawer, and a client-side CSV export of the current filter.",
-      "depends_on": [
-        "B8"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "web/src/features/orders/SearchPage.tsx",
-        "web/src/features/orders/useOrderSearch.ts",
-        "web/src/features/orders/orderFilters.ts",
-        "web/src/features/orders/orderFilters.test.ts",
-        "web/src/features/orders/csvExport.ts",
-        "web/src/features/orders/csvExport.test.ts",
-        "web/src/features/orders/SearchFilters.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#4-search-xorders"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "The default filter is today; date range, status, driver, and free-text filters compose into the GET /orders query.",
-        "Clicking a row opens the order drawer (B8).",
-        "CSV export produces a correct client-side file of the current filtered rows (proper escaping, header row).",
-        "AC #7 parity green; csvExport.test.ts (escaping, header, empty set) and orderFilters.test.ts (state -> params incl. status[] and date range) pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B10",
-      "lane": "web",
-      "title": "Settings /x/settings: Vozidla, Lide (+ reset password), Fleet (read-only)",
-      "goal": "FleetAdmin-only settings tabs: Vozidla CRUD, Lide CRUD + reset password (A4), and a read-only Fleet tab from GET /fleet/settings (A5) with the auto-dispatch toggle disabled (v1.1 hint).",
-      "depends_on": [
-        "B9"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "web/src/features/settings/SettingsPage.tsx",
-        "web/src/features/settings/VehiclesTab.tsx",
-        "web/src/features/settings/PeopleTab.tsx",
-        "web/src/features/settings/FleetTab.tsx",
-        "web/src/features/settings/useVehicles.ts",
-        "web/src/features/settings/useStaff.ts",
-        "web/src/features/settings/useResetPassword.ts",
-        "web/src/features/settings/useFleetSettings.ts",
-        "web/src/features/settings/resetPassword.test.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/src/shared/api/client.ts"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/02-dispatcher-web.md#5-settings-xsettings-fleetadmin-only"
-      ],
-      "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "Vozidla CRUD works against the existing vehicle endpoints; Lide CRUD plus reset-password (A4) reveals the one-time temporary password exactly once.",
-        "The Fleet tab renders name/phone/offer-timeout/auto-dispatch from GET /fleet/settings (A5) read-only, with the auto-dispatch toggle disabled and a v1.1 hint.",
-        "A route guard prevents non-FleetAdmin users from reaching /x/settings.",
-        "AC #7 parity green; resetPassword.test.ts (one-time-display logic), a route-guard test, and a fleet-settings read-mapping test pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B11",
-      "lane": "web",
-      "title": "Playwright E2E (create+assign AC#1, realtime AC#2) + API-run harness",
-      "goal": "The Playwright suite proving AC #1 (create+assign <=6 interactions) and AC #2 (realtime card move on driver accept) against the real API + Postgres + seed, with a concrete compose-Postgres + dotnet-run harness. Depends on all Lane A WIs because the harness boots the shared working tree.",
-      "depends_on": [
-        "B10",
-        "A1",
-        "A2",
-        "A3",
-        "A4",
-        "A5"
+        "B-history-settings",
+        "A-offer",
+        "A-idem",
+        "A-me",
+        "A-geo"
       ],
       "estimated_complexity": "L",
       "files_touched": [
         "web/playwright.config.ts",
-        "web/e2e/global-setup.ts",
-        "web/e2e/create-assign.spec.ts",
-        "web/e2e/realtime.spec.ts",
+        "web/e2e/driver.spec.ts",
         "web/e2e/helpers/apiDriver.ts",
         "DEMO.md",
         "docs/decisions.md",
@@ -732,27 +626,27 @@
         "spec#non-functional-requirements",
         "00-PROJECT-CONTEXT.md#11",
         "00-PROJECT-CONTEXT.md#12",
-        "docs/decisions.md#2026-09-11-uc-002-frontend-quality-gate",
-        ".claude/state/02-dispatcher-web.md#acceptance-criteria"
+        ".claude/state/03-driver-pwa.md#acceptance-criteria",
+        "docs/decisions.md#2026-09-11-uc-002-frontend-quality-gate"
       ],
       "required_reads": [
-        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/03-driver-pwa.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
         "docs/decisions.md"
       ],
-      "needs_library_research": true,
+      "needs_library_research": false,
       "acceptance_criteria": [
-        "playwright.config.ts uses a webServer array (or globalSetup): docker compose -f infra/docker-compose.dev.yml up db, then dotnet run --project api/src/Taxi.Api --environment Development with Seed__Enabled=true against the compose Postgres, waiting on /health/ready; then Vite at http://localhost:5173 (matches the API CORS default). @playwright/test is pinned to the conductor's prefetched Chromium version.",
-        "create-assign.spec.ts: from a fresh login, create an order with phone + pickup (via a quick chip) + ASAP in <=6 UI interactions, then assign it to a free driver; scripted time excluding network < 20 s (AC #1).",
-        "realtime.spec.ts: a helper logs in as driver1@demo.local/Demo1234! via API, goes online (POST /drivers/me/online), and after the dispatcher assigns, accepts (POST /orders/{id}/accept); the card moves to Probihajici without a page reload within 1 s (AC #2).",
-        "Secondary assertions where cheap: driver override pill change (A3), drawer edit via PATCH (A2), reset-password reveal (A4), fleet-settings read (A5), map marker move on a position push (AC #3), and a viewport 1280x720 assertion that the board has no horizontal scroll (AC #6 — vitest cannot measure layout, so this is proven here).",
-        "docs/decisions.md gains the UC-002 assumptions 1-14 (per DoD #6), explicitly including: the assumption-9 supersession (AuditLog is now written by A3's driver-status override, override semantics vs decisions.md assumption #9 remains flagged), and assumption 14 (F-05a — customer name auto-fill from past orders is DEFERRED to UC-006: no backend lookup exists and none is added in this UC); docs/api.md is regenerated by running the full dotnet test after A1-A5 land.",
-        "DEMO.md documents the manual npx lighthouse accessibility run on the board (AC #8, best-effort, non-blocking) and how to boot the compose+dotnet-run harness for a manual smoke check."
+        "playwright.config.ts gains a second project (mobile device e.g. Pixel 5) whose testMatch is scoped to driver.spec.ts; the existing Desktop Chrome project and dispatcher.spec.ts are untouched, and the webServer harness (scripts/e2e-api.mjs: docker db + dotnet run Development Seed__Enabled=true wait /health/ready, then Vite 5173) is reused.",
+        "Driver_FullFlow_StartShiftToCompleteFixed_ShowsTotals (AC #2): mobile login as a seeded driver -> select vehicle -> start shift -> dispatcher assigns via API -> offer appears in the foreground within 2 s -> accept -> arrive -> start -> complete with fixed price -> Home shows 1 ride and correct totals.",
+        "AC #1 (installability) is verified manually and documented in DEMO.md against a production build (npm run build && npx vite preview -> Chrome DevTools Application panel or Lighthouse PWA category, incl. the maskable-icon check). It is manual because devOptions.enabled:false means the SW and manifest never activate under npm run dev (what the harness boots), so E2E cannot observe them; this is the one binding AC with no automated home and the manual step is its assigned verification.",
+        "Driver_Decline_ReturnsOrderToNew (AC #4): decline requires a reason and the order returns to New (dispatcher-visible) within 1 s.",
+        "Driver_OfflineArrive_QueuedThenDeliveredExactlyOnce (AC #5): context.setOffline(true) around 'Jsem na miste' queues the action ('ceka na odeslani'), and setOffline(false) delivers it exactly once (a single server-side transition, proven via the X-Idempotency-Key and A-idem).",
+        "docs/decisions.md is updated (DoD #6) with the AC #3 push-notification-half deferral to assignment 05 and the UC-003 assumptions echo; docs/api.md is regenerated by the full dotnet test (OpenApi_Document_GeneratesApiMarkdown); DEMO.md documents the manual push test steps and how to boot the harness."
       ],
       "verification": {
         "tool": "playwright"
       }
     }
   ],
-  "notes": "UC-002 = 5 Lane A (api) WIs + 11 Lane B (web) WIs = 16 total. REVISION (round 2, F-01..F-05 resolved). Array is topologically ordered and acyclic. Lane A is NO LONGER fully parallel: F-04 serializes the three ErrorCodes.cs-touching WIs into a chain A1->A2->A3 (each appends its own const block to ErrorCodes.cs; the dependency edge removes the silent lost-update risk of concurrent edits to the same file). A4 and A5 keep empty depends_on and stay parallel (verified: neither touches ErrorCodes.cs -- A4 files_touched is Staff/ResetPassword + its test, A5 is Fleet feature + its test). B1..B11 form a strict chain; B11 additionally depends on A1-A5. Complexity scale XS/S/M/L (no XL) per the UC-001 handoff shape. Each WI carries a lane field (api|web). verification.tool enum extended for this UC: dotnet-test | dotnet-build | npm-lint | npm-tsc | vitest | playwright. verification.filter (dotnet-test only) keeps the FullyQualifiedName~ prefix per the UC-001 convention and uses single-token namespace fragments (Taxi.Api.Tests.<Area>); the npm-*/vitest/playwright tools take no filter (the filter charset excludes '/', so no path fragments are used). LANE INDEPENDENCE: Lane A never edits the shared composition root Program.cs — verified that Program.cs already calls AddFeatureConfigurations (Common/Features/FeatureConfigurationExtensions.cs), which reflects over every IFeatureConfiguration and invokes AddFeatureDependencies, so A1's geo HttpClient registers inside GeoFeatureConfiguration; A5's Fleet feature ships its own FleetFeatureConfiguration. Lane A shared-file edits and serialization (F-04): A1, A2, and A3 each append a distinct const block to the shared Common/ErrorCodes.cs (A1: Geo.RouteUnavailable/Geo.SuggestQueryTooShort; A2: Order.NotEditable/Order.StaleVersion; A3: Driver.InvalidOverrideStatus). Rather than rely on the developers to only-append (a discipline that fails silently -> lost update), these three WIs are SERIALIZED via depends_on A1->A2->A3 so only one edits ErrorCodes.cs at a time; the const additions are still disjoint, so each WI merely appends after the previous landed. A2 also adds OrderEventType.Updated (string enum, no migration, per the UserRole.System precedent) and, per F-01, adds Version to OrderDetailDto (both construction sites: OrderDetailMapper.ToDto feeding the 8 transition endpoints, plus the inline new OrderDetailDto(...) in GetOrderEndpoint) and to OrderChangedDto.From; OrderSummaryDto stays lean. A3 also adds, per F-02, lastLat/lastLng to DriverSummaryDto + the ListDriversEndpoint projection (Driver.LastLat/LastLng already exist; lastPositionAt was already on the DTO). A4/A5 touch neither ErrorCodes.cs nor any shared file and run parallel to the A1->A2->A3 chain. Staging discipline (autonomous, single working tree): Lane A stages api/ paths only, Lane B stages web/ paths only; neither commits. KEY DECISIONS: (geo failure) suggest 200-empty-list on upstream failure so the order form is never blocked, route 502 with Geo.RouteUnavailable; provider Photon for suggest (Nominatim 1req/s cap is hostile to autocomplete), OSRM public for route; base URLs are config keys for later self-hosting; 4s timeout no retries. (F-03 tariff source for price preview) DECISION: extend A1's GET /geo/route to return a SERVER-priced estimate { distanceMeters, durationSeconds, estimatedPriceCzk } rather than add a Dispatcher-readable tariff endpoint -- route injects TaxiDbContext, loads the caller's fleet default enabled Tariff via the tenant query filter, computes estimatedPriceCzk = max(MinimumFareCzk, BaseFareCzk + PerKmCzk*km) integer CZK, null when no default tariff. This keeps tariff math server-side and dispatcher-accessible without exposing the FleetAdminOnly tariff data. Consequence: route now reads tenant data, so Assumption 4 is amended (suggest still touches no tenant data; route gains a tenant-isolation test) and A1 gains ef-core rule citations; B3's former client-side priceEstimate.ts calc is REMOVED (client renders the server's estimatedPriceCzk; preview absent on 502 OR null price). (PATCH concurrency) client sends loaded version -> 409 Order.StaleVersion on mismatch before write, EF token backstop; non-editable status -> 409 Order.NotEditable. (override semantics) Free/Busy/Offline allowed regardless of active order (principle 7 truthful fallback); writes only the Driver row + first AuditLog row (Entity=Driver, Action=StatusOverride) + shift close on Offline (mirrors StalePositionJob write set: Status=Offline, CurrentVehicleId=null, close DriverShift); NEVER touches an Order; this SUPERSEDES decisions.md assumption 9 (AuditLog unwritten until 07) and must be re-documented in decisions.md. (settings endpoint) A5 added: GET /fleet/settings FleetAdminOnly read-only Fleet+FleetSettings DTO; no write endpoint (v1.1); quick chips stay hardcoded frontend constants. (F-01 version exposure) Order.Version exists as an int concurrency token but was projected into NO frontend-visible DTO; A2 now adds it to OrderDetailDto (GET /orders/{id}) and OrderChangedDto (realtime) so A2's client-version PATCH and B8's send-loaded-version work; summary DTO stays lean. (F-02 driver position source) GET /drivers omitted LastLat/LastLng; A3 adds them to DriverSummaryDto + projection (additive) so B4 distance-sort and B7 initial markers have a REST source; B7 markers tolerate null heading/position until the first DriverPositionChanged event. (F-05 orphan behaviors) (a) customer name auto-fill from past orders: DEFERRED to UC-006 -- no backend lookup exists and none is added here (documented as assumption 14 in decisions.md, recorded by B11); (b) new-order 3s highlight: assigned to B4 (NOT B3) because B3 creates no order cards -- OrderCard/OrdersColumn are B4-owned files, so a highlight AC on B3 would target a component that does not yet exist. (e2e harness) Playwright webServer array: compose db + dotnet run Development Seed:Enabled=true wait /health/ready, then Vite 5173; AC#2 driver helper logs in via API and must POST /drivers/me/online first (seeded drivers start Offline) then /orders/{id}/accept. B11 depends on ALL of A1-A5 not for functional reasons (the AC#1 flow makes zero geo calls — quick chips carry hardcoded coords, no dropoff -> no route call) but because the harness boots the API from the shared working tree via dotnet run, which fails to compile if any Lane A WI is mid-implementation — a build-integrity dependency. (pinned versions, Node 20.0.0 exact, verified via npm view engines) vite 5.4.x (^18||>=20 OK; vite 6 also OK but 5.4 chosen), @vitejs/plugin-react 4.3.4, vitest 2.1.9, eslint 8.57.1 (NOT 9 — engines ^20.9.0 FAILS 20.0.0), typescript-eslint 7.18.0 (NOT 8 — same failure), styled-components 6.1.x, @microsoft/signalr 8.x, @testing-library/react 16.x; root engines.node>=20.0.0 + .npmrc engine-strict=true so a bad pin fails fast. needs_library_research true on exactly A1 (Photon/OSRM response parsing + typed HttpClient via feature config), B1 (exact Node-20.0.0-safe version pins), B6 (@microsoft/signalr JS client reconnect policy + JWT-in-query-string), and B11 (Playwright webServer harness + Chromium version pin). AC MAPPING: AC#1 create+assign<=6 -> B3+B4+B11; AC#2 realtime<1s -> B6+B11; AC#3 map markers -> B7+B11; AC#4 cancel reason in timeline -> B4(reason)+B8(timeline); AC#5 override AuditLog -> A3; AC#6 1280x720 no h-scroll -> B3; AC#7 cs/en complete -> mechanized by B1 locales.parity.test.ts + enforced on every screen WI (B2-B10); AC#8 Lighthouse a11y>=90 -> B11 best-effort manual, documented in DEMO.md. Tenant-isolation tests on A2/A3/A4/A5 (cross-tenant -> 404 not 403); A1 suggest has none (no tenant data) but A1 route now reads the tenant-filtered Tariff table, so A1 gains Route_UsesCallersFleetDefaultTariff (F-03)."
+  "notes": "UC-003 = 4 Lane A (api) WIs + 10 Lane B (web) WIs = 14 total. Array is topologically ordered and acyclic. Schema shape matches the UC-002 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum: dotnet-test | dotnet-build | npm-lint | npm-tsc | vitest | playwright; verification.filter (dotnet-test only) uses single-token FullyQualifiedName~Taxi.Api.Tests.<Area> fragments (the filter charset excludes '/', so vitest/playwright/npm-* tools carry no filter). LANE A is NOT fully parallel: A-offer->A-idem are serialized because they share Common/Orders/OrderService.cs, the six transition endpoints, and Common/ErrorCodes.cs (A-offer edits OrderService's post-commit publish + corrects the IRealtimePublisher XML comment; A-idem then adds the endpoint-level idempotency helper call to the six endpoints and appends the Idempotency.* block to ErrorCodes.cs). A-me and A-geo have empty depends_on and run in parallel with the A-offer->A-idem chain and each other (disjoint files: A-me = new Features/Drivers/GetMySummary + GetMyOrders slices + additive ActiveOrderId on GetMe; A-geo = sole toucher of AuthorizationPolicies.cs + RouteEndpoint.cs). LANE B is a strict chain B-pwa->B-auth->B-home->B-offer->B-ride->B-complete->B-position->B-queue->B-history-settings->B-e2e; B-e2e ADDITIONALLY depends on all of A-offer/A-idem/A-me/A-geo for build-integrity (the Playwright harness boots the API from the shared working tree via dotnet run, which fails to compile if any Lane A WI is mid-implementation) — the vitest-only B WIs need no cross-lane edges because their API calls are mocked. Staging discipline (autonomous single tree): Lane A stages api/ only, Lane B stages web/ only (plus docs/ from B-e2e); neither commits. KEY DECISIONS: (offer expiry consistency) ApplyAssign AND ApplyReassign both set AssignedAt=now (verified OrderStateMachine.cs 130/226), and OfferTimeoutJob expires from AssignedAt+OfferTimeoutSeconds, so A-offer computes expiresAt=AssignedAt+timeout — same instant for job and driver countdown, reassign refreshes the window, no early-timeout bug; NOT a fresh GetUtcNow(). OfferTimeoutSeconds loaded with the mandatory (int?)-cast + ??45 fallback (CLAUDE.md). (idempotency hook) endpoint-level helper in Common/Idempotency — zero FastEndpoints pre/post-processor precedent exists and a post-processor cannot cleanly capture the serialized body; six call sites. IdempotencyRecord is NOT ITenantEntity (UserId-scoped, mirrors RefreshToken/SmsCode / decisions.md assumption 4) so no query filter and no SaveChanges tenant guard. Claim-then-execute four branches: (1) unique-index (UserId,Key) INSERT committed before execution = the lock; (2) stored response -> replay verbatim; (3) in-flight (<60s, null response) -> 409 Idempotency.InFlight retryable; (4) orphaned claim (>=60s, null response, crash between claim and store) -> take over + re-execute (without branch 4 one 500 permanently bricks a queued transition and AC#5 fails in the field). RequestHash mismatch -> 409 Idempotency.KeyReused. Store only 2xx + expected 4xx/409; never 5xx (retryable). Purge opportunistic DELETE <now-24h on the claim path. Header optional (drivers always send, dispatchers never). (A-me date binding) date bound as string? + DateOnly.TryParseExact InvariantCulture (FastEndpoints locale landmine), Europe/Prague calendar day -> UTC window; GetMe gains ActiveOrderId (additive) as the restore source B-ride AC#6 needs (GetMeResponse had no active-order id); isolation tests cover driver B vs driver A AND cross-tenant. (A-geo) new DispatcherOrDriver policy (Dispatcher+FleetAdmin+Driver) per the DispatcherOrCustomer precedent; suggest stays DispatcherOnly. (B-pwa SW scope) vite-plugin-pwa@0.20.5 pinned (Node>=16, vite ^5 peer — verified vs vite@^5.4.8 + Node 20.0.0); @vite-pwa/assets-generator BANNED because it wraps sharp whose engines >=20.9.0 FAIL Node 20.0.0 under engine-strict (verified npm view sharp engines) — icons generated by a one-off pngjs@7.0.0 (>=14.19.0) script and committed to web/public. SW must not break /x or the dispatcher E2E: devOptions.enabled:false (SW never registers under npm run dev, which Playwright boots) + Workbox precache app shell only + navigateFallbackDenylist + no runtime cache for ^/api or ^/hubs; registerType 'prompt'. (B-auth silent refresh) single-flight refresh mutex is MANDATORY — /auth/refresh rotates tokens so two concurrent 401-triggered refreshes mutually invalidate and log the driver out mid-shift (the exact failure the spec forbids); proactive timer at exp-2min, 401->one shared refresh->retry once->else logout; ADDITIVE to shared client.ts, /x keeps its clear+redirect (guarded); refresh token in IndexedDB on 'Zustat prihlasen'; role landing Driver->/d else /x. (B-queue exactly-once) idempotency key minted at ENQUEUE time (not send) is the linchpin; app-level IndexedDB via idb@8.0.3, NOT workbox-background-sync (keeps it fake-indexeddb@6.2.5-testable and working with SW disabled in E2E); replay 409 -> drop that order's items + reconcile from server. (single hub) confirmed one /hubs/fleet — driver auto-joins driver:{driverId}; B-offer extends the existing NewOrderOffered no-op handler ((dto,expiresAt) positional); B-position invokes UpdatePosition(lat,lng,heading,speed) on the same connection; there is NO separate /hubs/driver. (B-e2e) second Playwright project (mobile Pixel 5) with testMatch scoped to driver.spec.ts; AC #3 push half deferred to 05 recorded in decisions.md; docs/api.md regenerated by full dotnet test. needs_library_research true on exactly B-pwa (vite-plugin-pwa/workbox + sharp avoidance) and B-queue (idb + fake-indexeddb Node-20 compat + workbox-background-sync avoidance). AC MAPPING: AC#1 installability -> B-pwa + B-e2e signals; AC#2 full flow -> B-home/B-offer/B-ride/B-complete + B-e2e; AC#3 foreground <=2s offer -> B-offer + B-e2e (push half DEFERRED to 05); AC#4 decline->New -> B-offer + B-e2e; AC#5 offline queue exactly-once -> A-idem + B-queue + B-e2e; AC#6 restore mid-ride -> A-me(ActiveOrderId) + B-ride; AC#7 touch targets -> every /d screen WI (>=48px, primary >=64px); AC#8 cs/en -> mechanized by locales.parity.test.ts on every screen WI. NOTE: no .claude/schemas/work-items.v1.json file exists in this repo (a known scaffold gap per CLAUDE.md); this handoff matches the UC-002 handoff-designer.json shape, which is the operative 'UC-002 schema' the conductor consumes."
 }

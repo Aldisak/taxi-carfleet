@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { axe } from '../../shared/test/axe'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
@@ -424,5 +425,19 @@ describe('OrderCard — Confirm button blocked when disconnected', () => {
     fireEvent.click(screen.getByLabelText('Potvrdit'))
     await new Promise(r => setTimeout(r, 50))
     expect(client.postCancelOrder).not.toHaveBeenCalled()
+  })
+})
+
+describe('OrderCard — accessibility', () => {
+  beforeEach(() => {
+    vi.mocked(client.getDrivers).mockResolvedValue({ items: [] })
+    vi.mocked(client.getOrder).mockResolvedValue(MOCK_ORDER_DETAIL)
+  })
+
+  it('has no axe violations', async () => {
+    const { container } = render(createElement(OrderCard, { order: makeOrder() }), {
+      wrapper: makeWrapper(),
+    })
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

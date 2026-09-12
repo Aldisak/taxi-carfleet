@@ -39,8 +39,12 @@ internal interface IRealtimePublisher
         CancellationToken ct);
 
     /// <summary>Broadcasts a new order offer to a specific driver.
-    /// Called by WI-13/WI-14 after assignment; <c>OrderService</c> does NOT call this
-    /// because expiresAt requires FleetSettings which the service does not load.</summary>
+    /// Called by <see cref="Taxi.Api.Common.Orders.OrderService"/> after a successful Assign or Reassign
+    /// transition, post-commit, alongside <see cref="OrderChangedAsync"/>. The service loads
+    /// <c>OfferTimeoutSeconds</c> from FleetSettings (default 45) and computes
+    /// <paramref name="expiresAt"/> = <c>order.AssignedAt + timeout</c>, identical to
+    /// the value used by <c>OfferTimeoutJob</c> so the driver countdown and the server timeout
+    /// are the same instant.</summary>
     /// <param name="order">The newly-assigned order.</param>
     /// <param name="driverId">The driver to notify.</param>
     /// <param name="expiresAt">UTC instant when the offer expires (AssignedAt + OfferTimeoutSeconds).</param>

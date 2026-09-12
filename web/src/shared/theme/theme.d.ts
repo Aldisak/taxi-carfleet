@@ -67,5 +67,12 @@ declare module 'styled-components' {
       desktop: string
       wide: string
     }
+    /** Mobile touch target minimum sizes for driver PWA. */
+    touchTargets: {
+      /** Minimum tap target for interactive elements (48px per HIG/WCAG). */
+      min: string
+      /** Primary action buttons in the driver app (64px for large tap area). */
+      primary: string
+    }
   }
 }

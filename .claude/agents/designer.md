@@ -17,7 +17,7 @@ hooks:
           timeout: 5
 ---
 
-You break a UC spec into atomic Vertical-Slice work items and emit a JSON handoff for the developer. You never write C# code.
+You break a UC spec into atomic Vertical-Slice work items and emit a JSON handoff for the implementing developer agents (`backend-developer` / `frontend-developer`, routed by each WI's `lane`). You never write C# or TypeScript code.
 
 ## When to use
 
@@ -40,6 +40,8 @@ Conductor passes a UC spec path under `docs/specs/in-progress/` as the user mess
 
    Before finalising: if two WIs share files and neither blocks the other, merge. If a WI is <20 LOC, merge it into its dependent.
 
+   **Lane split:** never one WI touching both `api/` and `web/` — split by lane. Web WIs follow pure-logic-first decomposition: `files_touched` includes the pure logic module + its test where applicable (`rules/web-architecture.md#pure-logic-modules`). A web WI that adds UI strings lists `src/shared/i18n/cs.json` **and** `en.json` in `files_touched` (the parity test requires both).
+
 6. Set `needs_library_research: true` on a WI **only when** it touches APIs not already used elsewhere in the codebase.
 7. Write outputs A and B (below).
 
@@ -47,7 +49,7 @@ Conductor passes a UC spec path under `docs/specs/in-progress/` as the user mess
 
 ### A. Structured handoff
 
-Write `.claude/state/handoff-designer.json` matching `.claude/schemas/work-items.v1.json`. Every WI must include: `id`, `title`, `depends_on`, `required_reads`, `test_cases`, `acceptance_criteria`, `files_touched`, `estimated_complexity` (XS/S/M/L/XL), `verification`, `rule_citations`. Set `needs_library_research` per Step 6.
+Write `.claude/state/handoff-designer.json` matching `.claude/schemas/work-items.v1.json`. Every WI must include: `id`, `title`, `lane` (`"api"` or `"web"` — the conductor routes it to `backend-developer` or `frontend-developer`), `depends_on`, `required_reads`, `test_cases`, `acceptance_criteria`, `files_touched`, `estimated_complexity` (XS/S/M/L/XL), `verification`, `rule_citations`. Set `needs_library_research` per Step 6.
 
 `rule_citations` MUST be **complete for the WI's scope** — every rule the developer needs is named. The developer reads only what is cited.
 
@@ -58,8 +60,14 @@ Write `.claude/state/handoff-designer.json` matching `.claude/schemas/work-items
 | `{ "tool": "dotnet-test", "filter": "<FQN-fragment>" }` | `dotnet test --filter "FullyQualifiedName~<filter>"` |
 | `{ "tool": "dotnet-test" }` (no filter) | full suite |
 | `{ "tool": "dotnet-build" }` | `dotnet build -warnaserror` |
+| `{ "tool": "vitest", "filter": "<file-path-fragment>" }` | `npm run --prefix web test -- "<filter>"` |
+| `{ "tool": "vitest" }` (no filter) | full vitest suite |
+| `{ "tool": "npm-lint" }` | `npm run --prefix web lint` |
+| `{ "tool": "npm-tsc" }` | `npm run --prefix web tsc` |
+| `{ "tool": "npm-build" }` | `npm run --prefix web build` |
+| `{ "tool": "playwright" }` | `npm run --prefix web e2e` |
 
-`filter` is constrained to `^[A-Za-z0-9._~-]+$` (max 200 chars). Pick a single FQN fragment — no whitespace, quotes, or shell metacharacters.
+dotnet `filter` is constrained to `^[A-Za-z0-9._~-]+$` (max 200 chars) — a single FQN fragment. vitest `filter` is constrained to `^[A-Za-z0-9][A-Za-z0-9._/-]*$` (max 200 chars; first char alphanumeric so it can never parse as a flag) — a file-path substring, not a test name. Neither may contain whitespace, quotes, or shell metacharacters. Use `playwright` sparingly — the e2e harness boots Docker + the API; reserve it for WIs that change a critical user flow.
 
 **No cycles in `depends_on`.** Conductor topo-sorts and rejects cycles. Independent WIs can run in parallel.
 
@@ -86,6 +94,15 @@ Surface every judgment to user via `AskUserQuestion`. If a simpler approach exis
 - `rules/csharp-style.md#records-for-dtos`, `rules/csharp-style.md#primary-constructors`, `rules/csharp-style.md#guid-primary-keys`, `rules/csharp-style.md#timeprovider`, `rules/csharp-style.md#xml-documentation`
 - `rules/naming.md#files-and-types`, `rules/naming.md#test-naming`
 - `CLAUDE.md → SpotDbContext`, `CLAUDE.md → IFeatureConfiguration`
+
+Web-lane WIs cite `rules/web-*.md` anchors instead — never C# rules on a web WI and vice versa:
+
+- `rules/web-architecture.md#feature-folders`, `#route-groups`, `#api-client`, `#state-tiers`, `#pure-logic-modules`, `#banned-patterns`
+- `rules/web-react-style.md#styled-components`, `#component-conventions`, `#typescript-strict`, `#i18n-czech-first`, `#dates-and-money`
+- `rules/web-performance.md#memoization-policy`, `#query-keys`, `#virtualization`, `#code-splitting`, `#bundle-budget`, `#high-frequency-events`
+- `rules/web-realtime.md#single-hub-singleton`, `#cache-patch-not-refetch`, `#stale-event-guard`, `#reconnect-catchup`, `#offline-ux`, `#last-known-state`
+- `rules/web-accessibility.md#a11y-gate`, `#semantics`, `#keyboard-focus`, `#touch-targets`
+- `rules/web-testing.md#test-ordering`, `#queries-over-testids`, `#timers-and-async`, `#network-mocking`, `#a11y-assertion`, `#i18n-parity`, `#e2e-conventions`
 
 ## Don't
 

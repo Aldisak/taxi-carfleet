@@ -55,6 +55,9 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
     /// <summary>Generic audit log for non-order entity changes.</summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    /// <summary>Idempotency records for driver transition requests (claim-then-execute deduplication).</summary>
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

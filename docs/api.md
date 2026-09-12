@@ -26,6 +26,8 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | GET | `/drivers` | List drivers | Bearer |
 | POST | `/drivers/me/online` | Go online | Bearer |
 | POST | `/drivers/me/offline` | Go offline | Bearer |
+| GET | `/drivers/me/summary` | Get my daily summary (Driver only) | Bearer |
+| GET | `/drivers/me/orders` | Get my ride list for a day (Driver only) | Bearer |
 | GET | `/drivers/me` | Get my driver profile | Bearer |
 
 ## Fleet

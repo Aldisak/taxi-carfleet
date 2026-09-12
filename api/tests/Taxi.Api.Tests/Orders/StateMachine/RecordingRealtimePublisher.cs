@@ -9,12 +9,16 @@ internal sealed class RecordingRealtimePublisher : IRealtimePublisher
 {
     private readonly List<Order> _orderChangedCalls = [];
     private readonly List<(Guid DriverId, DriverStatus Status)> _driverStatusChangedCalls = [];
+    private readonly List<(Order Order, Guid DriverId, DateTimeOffset ExpiresAt)> _newOrderOfferedCalls = [];
 
     /// <summary>Orders passed to <see cref="OrderChangedAsync"/>.</summary>
     public IReadOnlyList<Order> OrderChangedCalls => _orderChangedCalls;
 
     /// <summary>Driver status changes passed to <see cref="DriverStatusChangedAsync"/>.</summary>
     public IReadOnlyList<(Guid DriverId, DriverStatus Status)> DriverStatusChangedCalls => _driverStatusChangedCalls;
+
+    /// <summary>Calls made to <see cref="NewOrderOfferedAsync"/> — captured for assertion.</summary>
+    public IReadOnlyList<(Order Order, Guid DriverId, DateTimeOffset ExpiresAt)> NewOrderOfferedCalls => _newOrderOfferedCalls;
 
     /// <inheritdoc />
     public ValueTask OrderChangedAsync(Order order, CancellationToken ct)
@@ -37,5 +41,8 @@ internal sealed class RecordingRealtimePublisher : IRealtimePublisher
 
     /// <inheritdoc />
     public ValueTask NewOrderOfferedAsync(Order order, Guid driverId, DateTimeOffset expiresAt, CancellationToken ct)
-        => ValueTask.CompletedTask;
+    {
+        _newOrderOfferedCalls.Add((order, driverId, expiresAt));
+        return ValueTask.CompletedTask;
+    }
 }

@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB3c (B-ride+B-complete)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "B3c-1",
+      "severity": "minor",
+      "file": "web/src/features/driver/complete/useCompleteRide.ts",
+      "rule": ".claude/state/handoff-designer.json#B-complete AC4; B-ride AC4",
+      "title": "409 does not actually refetch the active order (comment/key promise a refetch that never happens)",
+      "detail": "Both ACs state a complete/transition 409 'refetches the order'. The active order lives in the useActiveOrderStore zustand store, populated once by useRideRestore on mount; there is NO TanStack query subscribed to it. On a 409, CompletePage only sets serverNote='driver.complete.staleRefetched' and DriverRidePage only sets staleNote -> a banner. reconcileActiveRide/getOrder is never re-run. The useRideTransition comment ('the order is refetched by the query layer') and the i18n key name 'staleRefetched' assert a refetch that does not occur. Functionally the driver sees a stale-warning banner but the store order is not refreshed.",
+      "recommendation": "Acceptable to defer the actual refetch to B-queue (both ACs forward-reference 'via the offline queue (B-queue)'), but correct the misleading comment in useRideTransition.ts and consider renaming the 'staleRefetched' key, or trigger reconcileActiveRide() on the 409 path now. Record the deferral in the handoff so B-queue closes it."
+    },
+    {
+      "id": "B3c-2",
+      "severity": "minor",
+      "file": "web/src/features/driver/complete/completeForm.ts",
+      "rule": "rules/web-react-style.md; consistency with overrideReason.ts",
+      "title": "Override-reason length check is untrimmed in validator but trimmed in payload builder",
+      "detail": "validateCompleteForm gates the override reason on input.overrideReason.length < 5 (untrimmed), while isOverrideReasonValid and buildCompletePayload both use reason.trim(). A reason of 5 spaces passes client validation (length 5) but buildCompletePayload trims it to '' and omits overrideReason -> the server receives a changed Fixed price with no reason and rejects it. The two functions must agree on trimming.",
+      "recommendation": "Use input.overrideReason.trim().length < 5 in validateCompleteForm (or reuse isOverrideReasonValid) so the client validation and the payload builder apply the same rule."
+    }
+  ],
+  "summary": "B-ride + B-complete (laneB3c) PASS, no merge blockers. All five verification targets confirmed against staged source: (1) AC#6 ride-restore precedence is correctly fixed -- reconcileActiveRide always fetches GET /drivers/me (authoritative), fetches GET /orders/{id} when activeOrderId is set, rebuilds from server when IDB is empty (persisting the id), clears+Home on terminal, and clears stale IDB when activeOrderId is null; useRideRestore.test.ts genuinely exercises the IDB-empty->server-rebuild path and the activeOrderId-null->no-getOrder path. (2) F-04 live-clear is wired end-to-end: useFleetHub.ts dispatches window CustomEvents 'driver:orderChanged' (line 148) and 'driver:statusChanged' (line 160) carrying the full payload, and useLiveClear listens, clears store+IDB, and navigates Home with the Czech toast key 'driver.ride.reassigned' on status=Free or driverId!=me. (3) B-complete: Fixed price locked + 'Zmenit cenu' reveal; buildCompletePayload sends overrideReason ONLY when a Fixed price actually changed AND was revealed; finalPriceCzk floored to integer; payment required before complete (validateCompleteForm); 409 handled (see minor B3c-1). (4) D12 hoist confirmed: DriverHomePage has ZERO references to useFleetHub/useOfferListener/OfferTakeover/useOfferStore (grep clean), and DriverLayout mounts all of them once -> single hub survives /d/ride and /d/ride/complete. (5) Rules sanity: atomic one-field zustand selectors throughout (useRideRestore/useRideTransition/useActiveOrder/useLiveClear/CompletePage -- no object-returning selectors); Leaflet kept lazy (RideMapStrip React.lazy(import RideMapInner), collapsed by default); touch targets use theme.touchTargets.min/primary; new i18n keys present in BOTH cs.json and en.json; no hardcoded user-facing strings (all via t()); no cross-feature imports beyond the intended shared/ and home/useDriverMe usage. Two MINOR findings recorded (non-blocking): a 409 that does not truly refetch (deferred to B-queue but with a misleading comment/key), and a trim mismatch between completeForm validation and overrideReason payload building. Tests not re-run per instruction (developer reports 542 web tests green; tsc/lint/build/size all pass)."
+}

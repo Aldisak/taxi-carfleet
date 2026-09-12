@@ -114,6 +114,9 @@ public static class ErrorCodes
 
         /// <summary>The version field is required for optimistic concurrency on PATCH operations.</summary>
         public const string VersionRequired = "Validation.VersionRequired";
+
+        /// <summary>The date value is not a valid yyyy-MM-dd date.</summary>
+        public const string InvalidDateFormat = "Validation.InvalidDateFormat";
     }
 
     /// <summary>Auth-domain error codes (not validation — used for 429 rate-limit responses).</summary>
@@ -181,6 +184,19 @@ public static class ErrorCodes
     {
         /// <summary>The requested override status is not allowed (EnRoute cannot be set manually).</summary>
         public const string InvalidOverrideStatus = "Driver.InvalidOverrideStatus";
+    }
+
+    /// <summary>Idempotency error codes for driver transition deduplication.</summary>
+    public static class Idempotency
+    {
+        /// <summary>A request with the same key is currently in flight (inflight &lt; 60 s); retry after the in-flight request completes.</summary>
+        public const string InFlight = "Idempotency.InFlight";
+
+        /// <summary>The same key has been used for a different request (RequestHash mismatch); use a new key.</summary>
+        public const string KeyReused = "Idempotency.KeyReused";
+
+        /// <summary>The X-Idempotency-Key value exceeds the maximum allowed length of 200 characters.</summary>
+        public const string KeyTooLong = "Idempotency.KeyTooLong";
     }
 
 }

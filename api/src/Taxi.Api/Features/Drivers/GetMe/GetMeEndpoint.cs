@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common.Features;
 using Taxi.Api.Infrastructure;
+using Taxi.Api.Infrastructure.Entities;
 
 namespace Taxi.Api.Features.Drivers.GetMe;
 
@@ -78,6 +79,16 @@ internal sealed class GetMeEndpoint(TaxiDbContext dbContext)
             .Select(s => new { s.Id, s.StartedAt })
             .FirstOrDefaultAsync(ct);
 
+        // Load the driver's active (non-terminal) order id, if any.
+        var activeOrderId = await dbContext.Orders.AsNoTracking()
+            .Where(o => o.DriverId == driverData.Id
+                     && (o.Status == OrderStatus.Assigned
+                         || o.Status == OrderStatus.Accepted
+                         || o.Status == OrderStatus.Arrived
+                         || o.Status == OrderStatus.InProgress))
+            .Select(o => (Guid?)o.Id)
+            .FirstOrDefaultAsync(ct);
+
         await Send.OkAsync(new GetMeResponse(
             driverData.Id,
             driverData.DisplayName,
@@ -86,6 +97,7 @@ internal sealed class GetMeEndpoint(TaxiDbContext dbContext)
             vehiclePlate,
             driverData.LastPositionAt,
             openShift?.Id,
-            openShift?.StartedAt), ct);
+            openShift?.StartedAt,
+            activeOrderId), ct);
     }
 }

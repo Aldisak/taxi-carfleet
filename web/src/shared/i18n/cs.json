@@ -267,6 +267,216 @@
       "next": "Další"
     }
   },
+  "driver": {
+    "login": {
+      "title": "Přihlášení řidiče",
+      "fleetSlug": "Kód flotily",
+      "fleetSlugPlaceholder": "např. kolintaxi",
+      "email": "E-mail",
+      "emailPlaceholder": "vas@email.cz",
+      "password": "Heslo",
+      "staySignedIn": "Zůstat přihlášen",
+      "submit": "Přihlásit se",
+      "loading": "Přihlašuji...",
+      "invalidCredentials": "Nesprávné přihlašovací údaje. Zkuste to znovu.",
+      "networkError": "Nelze se připojit k serveru. Zkontrolujte připojení.",
+      "unknownError": "Nastala neočekávaná chyba. Zkuste to znovu.",
+      "validation": {
+        "fleetSlugRequired": "Kód flotily je povinný.",
+        "emailRequired": "E-mail je povinný.",
+        "emailInvalid": "Zadejte platnou e-mailovou adresu.",
+        "passwordRequired": "Heslo je povinné."
+      }
+    },
+    "install": {
+      "bannerTitle": "Nainstalovat aplikaci",
+      "bannerDescription": "Přidejte aplikaci na plochu pro rychlý přístup.",
+      "installButton": "Nainstalovat",
+      "dismissButton": "Ne, díky",
+      "iosInstructions": "Přidat na plochu: klepněte na Sdílet a poté na Přidat na plochu."
+    },
+    "permissions": {
+      "locationTitle": "Poloha",
+      "locationDescription": "Aplikace potřebuje znát vaši polohu, aby mohla přijímat a sledovat jízdy.",
+      "notificationsTitle": "Oznámení",
+      "notificationsDescription": "Povolte oznámení, abyste dostávali nové nabídky jízd.",
+      "allow": "Povolit",
+      "skip": "Přeskočit"
+    },
+    "home": {
+      "title": "Taxi Řidič",
+      "status": {
+        "startShift": "Začít směnu",
+        "endShift": "Ukončit směnu",
+        "waitingForOrder": "Čekám na objednávku",
+        "rideInProgress": "Probíhá jízda",
+        "viewRide": "Zobrazit jízdu"
+      },
+      "summary": {
+        "rides": "Jízdy",
+        "cash": "Hotovost",
+        "card": "Karta",
+        "hours": "Hodiny online"
+      },
+      "connection": {
+        "connected": "Připojeno",
+        "connecting": "Připojuji...",
+        "reconnecting": "Znovu připojuji...",
+        "disconnected": "Odpojeno"
+      },
+      "vehicle": {
+        "label": "Vozidlo",
+        "placeholder": "Vyberte vozidlo",
+        "noVehicleHint": "Vyberte vozidlo pro zahájení směny",
+        "noLocationHint": "Povolte polohu pro zahájení směny"
+      },
+      "errors": {
+        "goOnlineConflict": "Jste již online",
+        "goOnlineNotFound": "Vozidlo nenalezeno nebo není aktivní",
+        "goOnlineFailed": "Zahájení směny se nezdařilo. Zkuste to znovu."
+      }
+    },
+    "ride": {
+      "navigate": "Navigovat",
+      "navigateToDropoff": "Navigovat k cíli",
+      "arrive": "Jsem na místě",
+      "start": "Zahájit jízdu",
+      "complete": "Ukončit jízdu",
+      "noShow": "Zákazník nepřišel",
+      "noShowCountdown": "Dostupné za {{sec}} s",
+      "noShowConfirm": "Zákazník nepřišel ({{min}} min čekání)",
+      "phone": "Telefon",
+      "pickup": "Nástup",
+      "dropoff": "Cíl",
+      "note": "Poznámka",
+      "map": "Mapa",
+      "mapShow": "Zobrazit mapu",
+      "mapHide": "Skrýt mapu",
+      "reassigned": "Objednávka byla přeřazena",
+      "loading": "Načítám jízdu...",
+      "noRide": "Žádná aktivní jízda",
+      "backHome": "Zpět domů"
+    },
+    "complete": {
+      "title": "Dokončit jízdu",
+      "price": "Cena (Kč)",
+      "pricePlaceholder": "Zadejte cenu",
+      "changePrice": "Změnit cenu",
+      "overrideReason": "Důvod změny ceny",
+      "overrideReasonPlaceholder": "Zadejte důvod (min. 5 znaků)",
+      "paymentTitle": "Způsob platby",
+      "paymentCash": "Hotově",
+      "paymentCard": "Kartou",
+      "paymentInvoice": "Faktura",
+      "submit": "Dokončit",
+      "submitting": "Dokončuji...",
+      "successOverlay": "Hotovo ✓",
+      "queuedOverlay": "Odešle se po připojení",
+      "fixedLocked": "Pevná cena",
+      "staleRefetched": "Stav jízdy se změnil, zkontrolujte údaje.",
+      "offlineHint": "Bez připojení, zkuste znovu.",
+      "keypad": {
+        "delete": "Smazat",
+        "clear": "Vymazat"
+      },
+      "errors": {
+        "priceRequired": "Zadejte cenu větší než 0.",
+        "paymentRequired": "Vyberte způsob platby.",
+        "overrideReasonTooShort": "Důvod změny musí mít alespoň 5 znaků."
+      }
+    },
+    "offer": {
+      "accept": "Přijmout",
+      "decline": "Odmítnout",
+      "pickup": "Nástup",
+      "dropoff": "Cíl",
+      "distance": "{{km}} km",
+      "eta": "{{min}} min",
+      "priceFixed": "PEVNÁ",
+      "priceEstimate": "Odhad",
+      "priceMeter": "Taxametr",
+      "priceCzk": "{{amount}} Kč",
+      "customerName": "Zákazník",
+      "note": "Poznámka",
+      "scheduledAt": "Naplánováno",
+      "expired": "Nabídka vypršela",
+      "staleOffer": "Nabídka již není dostupná",
+      "offlineHint": "Bez připojení, zkuste znovu",
+      "declineReasonTitle": "Důvod odmítnutí",
+      "declineReasonFar": "Daleko",
+      "declineReasonBreak": "Mám pauzu",
+      "declineReasonOther": "Jiný důvod",
+      "declineReasonRequired": "Vyberte důvod odmítnutí",
+      "silentMode": "Tichý režim",
+      "accepting": "Přijímám...",
+      "declining": "Odmítám..."
+    },
+    "position": {
+      "stale": "Poloha se neodesílá"
+    },
+    "queue": {
+      "pending": "čeká na odeslání"
+    },
+    "nav": {
+      "label": "Navigace",
+      "home": "Domů",
+      "history": "Historie",
+      "settings": "Nastavení"
+    },
+    "history": {
+      "title": "Historie jízd",
+      "dateLabel": "Datum",
+      "today": "Dnes",
+      "empty": "Žádné jízdy v tento den.",
+      "loading": "Načítám...",
+      "ride": "Jízda",
+      "active": "Probíhá",
+      "totalsTitle": "Souhrn",
+      "ridesCount": "Jízd",
+      "cashTotal": "Hotovost",
+      "cardTotal": "Karta",
+      "invoiceTotal": "Faktura",
+      "payment": {
+        "Cash": "Hotově",
+        "Card": "Kartou",
+        "Invoice": "Faktura"
+      }
+    },
+    "settings": {
+      "title": "Nastavení",
+      "navAppTitle": "Navigace",
+      "navAppGeo": "Výchozí mapa",
+      "navAppGoogle": "Google Maps",
+      "navAppMapy": "Mapy.cz",
+      "navAppWaze": "Waze",
+      "silentModeTitle": "Tichý režim",
+      "silentModeDescription": "Ztlumí zvuk a vibrace u nových nabídek.",
+      "versionLabel": "Verze aplikace",
+      "logout": "Odhlásit se",
+      "diagnostika": {
+        "title": "Diagnostika",
+        "hint": "Tyto údaje můžete přečíst dispečerovi.",
+        "locationPermission": "Oprávnění polohy",
+        "pushPermission": "Oprávnění oznámení",
+        "lastPositionSent": "Poslední odeslaná poloha",
+        "connectionState": "Stav připojení",
+        "never": "Nikdy",
+        "unknown": "Neznámo",
+        "permission": {
+          "granted": "Povoleno",
+          "denied": "Zamítnuto",
+          "prompt": "Nevyžádáno",
+          "default": "Nevyžádáno"
+        },
+        "connection": {
+          "connected": "Připojeno",
+          "connecting": "Připojuji",
+          "reconnecting": "Znovu připojuji",
+          "disconnected": "Odpojeno"
+        }
+      }
+    }
+  },
   "orders": {
     "drawer": {
       "title": "Detail objednávky",

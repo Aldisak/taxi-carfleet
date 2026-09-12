@@ -18,6 +18,8 @@ allowed-tools:
   - Bash(dotnet build:*)
   - Bash(dotnet test:*)
   - Bash(dotnet format:*)
+  - Bash(npm run:*)
+  - Bash(npx playwright install:*)
 model: fable
 ---
 
@@ -38,7 +40,7 @@ User explicitly invokes `/conductor`. Argument is the feature request or the lit
 
 ## Pipeline
 
-One backend pipeline: specs live under `docs/specs/{todo,in-progress,done}/`, agents are `designer`, `design-reviewer`, `developer`, `impl-reviewer`, quality-gate commands are `dotnet build -warnaserror` / `dotnet test` / `dotnet format --verify-no-changes`. The work-items schema's `verification.tool` enum values are `dotnet-test`/`dotnet-build`.
+One two-lane pipeline: specs live under `docs/specs/{todo,in-progress,done}/`, agents are `designer`, `design-reviewer`, `backend-developer`, `frontend-developer`, `impl-reviewer`. Every WI carries `lane: "api" | "web"`; the lane picks the implementing agent (`"api"` → `backend-developer`, `"web"` → `frontend-developer`). Quality-gate commands are per-lane (Phase 5). The work-items schema's `verification.tool` enum values are `dotnet-test` / `dotnet-build` / `vitest` / `npm-lint` / `npm-tsc` / `npm-build` / `playwright`.
 
 ## State file
 
@@ -88,9 +90,9 @@ Otherwise: dispatch `design-reviewer`. Read `.claude/state/handoff-design-review
 
 For each WI in topological order:
 
-1. Dispatch `developer` with the WI id. Read `.claude/state/handoff-developer-{wi_id}.json`.
-2. If `hit_max_turns: true`: resume same WI on user confirmation (re-dispatching `developer`).
-3. Dispatch `impl-reviewer` with WI id. Read `.claude/state/handoff-impl-reviewer.json`. If `blocks_merge: true` → re-dispatch `developer` with findings. Max 3 rounds per WI.
+1. Dispatch the WI's lane developer (`backend-developer` for `lane: "api"`, `frontend-developer` for `lane: "web"`) with the WI id. Read `.claude/state/handoff-backend-developer-{wi_id}.json` or `.claude/state/handoff-frontend-developer-{wi_id}.json` accordingly.
+2. If `hit_max_turns: true`: resume same WI on user confirmation (re-dispatching the same lane's developer).
+3. Dispatch `impl-reviewer` with WI id. Read `.claude/state/handoff-impl-reviewer.json`. If `blocks_merge: true` → re-dispatch the same lane's developer with findings. Max 3 rounds per WI.
 4. Optionally run `/verify` or `/build-fix` between iterations.
 
 **Gate D:** Show report after each WI iteration. Ask "Continue to next WI / redo / stop?"
@@ -99,13 +101,24 @@ For each WI in topological order:
 
 ### Phase 5 — Quality gate
 
+Stack-aware: run the backend block when any completed WI touched `api/`, the web block when any touched `web/`; mixed UCs run both.
+
 ```bash
+# backend
 dotnet build -warnaserror     # blocking
 dotnet test                   # blocking — global safety net
 dotnet format --verify-no-changes   # informational; do NOT block
+
+# web (run from repo root)
+npm run --prefix web lint     # blocking (--max-warnings 0)
+npm run --prefix web tsc      # blocking
+npm run --prefix web test     # blocking — global safety net
+npm run --prefix web build    # blocking
+npm run --prefix web size     # blocking — bundle budget; needs the fresh dist/ from build
+npm run --prefix web e2e      # blocking when web user flows changed; user may waive at Gate E
 ```
 
-Read full output of every command; do not claim "passed" on partial evidence. On build/test failure → re-dispatch `developer` with the failure output.
+Read full output of every command; do not claim "passed" on partial evidence. On failure → re-dispatch the failing lane's developer with the failure output.
 
 **Gate E:** Show quality results. Ask "Approve commit?"
 
@@ -118,7 +131,7 @@ Invoke `superpowers:finishing-a-development-branch` for final verification, merg
 - Subagent crashes (no handoff file) → ask user: retry / abort / edit state.
 - `hit_max_turns: true` → ask: resume same WI or split it.
 - Review round 3 still blocks → ask user to edit work items / spec, then return to Phase 3 or 4.
-- `dotnet build` or `dotnet test` fails after Gate D → back to Phase 4 with the failing WI and `developer`.
+- A Phase 5 command fails after Gate D → back to Phase 4 with the failing WI and its lane's developer.
 
 ## Don't
 

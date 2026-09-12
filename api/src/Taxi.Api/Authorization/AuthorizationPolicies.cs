@@ -27,6 +27,11 @@ public static class AuthorizationPolicies
     /// customers may place orders.</summary>
     public const string DispatcherOrCustomer = nameof(DispatcherOrCustomer);
 
+    /// <summary>Policy that allows <see cref="UserRole.Dispatcher"/>, <see cref="UserRole.FleetAdmin"/>,
+    /// or <see cref="UserRole.Driver"/> users. Used for read-only geo queries needed by both
+    /// dispatcher UI and driver PWA.</summary>
+    public const string DispatcherOrDriver = nameof(DispatcherOrDriver);
+
     /// <summary>Registers all authorization policies in the service collection.</summary>
     /// <param name="options">The <see cref="AuthorizationOptions"/> to register policies into.</param>
     public static void RegisterPolicies(AuthorizationOptions options)
@@ -57,5 +62,12 @@ public static class AuthorizationPolicies
                       nameof(UserRole.Dispatcher),
                       nameof(UserRole.FleetAdmin),
                       nameof(UserRole.Customer)));
+
+        options.AddPolicy(DispatcherOrDriver, policy =>
+            policy.RequireAuthenticatedUser()
+                  .RequireRole(
+                      nameof(UserRole.Dispatcher),
+                      nameof(UserRole.FleetAdmin),
+                      nameof(UserRole.Driver)));
     }
 }

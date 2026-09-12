@@ -23,7 +23,9 @@ export function useLogin(): UseLoginResult {
     mutationFn: postStaffLogin,
     onSuccess(data, variables) {
       authStorage.setTokens(data.accessToken, data.refreshToken, variables.fleetSlug, data.user.role)
-      navigate('/x')
+      // Role-based landing: Driver goes to the driver PWA, everyone else to the dispatcher app
+      const destination = data.user.role === 'Driver' ? '/d' : '/x'
+      navigate(destination)
     },
   })
 

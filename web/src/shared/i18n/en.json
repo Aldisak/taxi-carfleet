@@ -267,6 +267,216 @@
       "next": "Next"
     }
   },
+  "driver": {
+    "login": {
+      "title": "Driver sign in",
+      "fleetSlug": "Fleet code",
+      "fleetSlugPlaceholder": "e.g. kolintaxi",
+      "email": "Email",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "staySignedIn": "Stay signed in",
+      "submit": "Sign in",
+      "loading": "Signing in...",
+      "invalidCredentials": "Invalid credentials. Please try again.",
+      "networkError": "Cannot connect to server. Check your connection.",
+      "unknownError": "An unexpected error occurred. Please try again.",
+      "validation": {
+        "fleetSlugRequired": "Fleet code is required.",
+        "emailRequired": "Email is required.",
+        "emailInvalid": "Enter a valid email address.",
+        "passwordRequired": "Password is required."
+      }
+    },
+    "install": {
+      "bannerTitle": "Install app",
+      "bannerDescription": "Add the app to your home screen for quick access.",
+      "installButton": "Install",
+      "dismissButton": "No thanks",
+      "iosInstructions": "Add to home screen: tap Share then Add to Home Screen."
+    },
+    "permissions": {
+      "locationTitle": "Location",
+      "locationDescription": "The app needs your location to receive and track rides.",
+      "notificationsTitle": "Notifications",
+      "notificationsDescription": "Allow notifications to receive new ride offers.",
+      "allow": "Allow",
+      "skip": "Skip"
+    },
+    "home": {
+      "title": "Taxi Driver",
+      "status": {
+        "startShift": "Start shift",
+        "endShift": "End shift",
+        "waitingForOrder": "Waiting for an order",
+        "rideInProgress": "Ride in progress",
+        "viewRide": "View ride"
+      },
+      "summary": {
+        "rides": "Rides",
+        "cash": "Cash",
+        "card": "Card",
+        "hours": "Hours online"
+      },
+      "connection": {
+        "connected": "Connected",
+        "connecting": "Connecting...",
+        "reconnecting": "Reconnecting...",
+        "disconnected": "Disconnected"
+      },
+      "vehicle": {
+        "label": "Vehicle",
+        "placeholder": "Select vehicle",
+        "noVehicleHint": "Select a vehicle to start shift",
+        "noLocationHint": "Allow location to start shift"
+      },
+      "errors": {
+        "goOnlineConflict": "Already online",
+        "goOnlineNotFound": "Vehicle not found or inactive",
+        "goOnlineFailed": "Failed to start shift. Please try again."
+      }
+    },
+    "ride": {
+      "navigate": "Navigate",
+      "navigateToDropoff": "Navigate to dropoff",
+      "arrive": "I'm here",
+      "start": "Start ride",
+      "complete": "End ride",
+      "noShow": "Customer no-show",
+      "noShowCountdown": "Available in {{sec}} s",
+      "noShowConfirm": "Customer no-show ({{min}} min wait)",
+      "phone": "Phone",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "note": "Note",
+      "map": "Map",
+      "mapShow": "Show map",
+      "mapHide": "Hide map",
+      "reassigned": "Order was reassigned",
+      "loading": "Loading ride...",
+      "noRide": "No active ride",
+      "backHome": "Back home"
+    },
+    "complete": {
+      "title": "Complete ride",
+      "price": "Price (CZK)",
+      "pricePlaceholder": "Enter price",
+      "changePrice": "Change price",
+      "overrideReason": "Reason for price change",
+      "overrideReasonPlaceholder": "Enter reason (min. 5 characters)",
+      "paymentTitle": "Payment method",
+      "paymentCash": "Cash",
+      "paymentCard": "Card",
+      "paymentInvoice": "Invoice",
+      "submit": "Complete",
+      "submitting": "Completing...",
+      "successOverlay": "Done ✓",
+      "queuedOverlay": "Will send once connected",
+      "fixedLocked": "Fixed price",
+      "staleRefetched": "Ride state changed, please review.",
+      "offlineHint": "No connection, try again.",
+      "keypad": {
+        "delete": "Delete",
+        "clear": "Clear"
+      },
+      "errors": {
+        "priceRequired": "Enter a price greater than 0.",
+        "paymentRequired": "Select a payment method.",
+        "overrideReasonTooShort": "Price change reason must be at least 5 characters."
+      }
+    },
+    "offer": {
+      "accept": "Accept",
+      "decline": "Decline",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "distance": "{{km}} km",
+      "eta": "{{min}} min",
+      "priceFixed": "FIXED",
+      "priceEstimate": "Estimate",
+      "priceMeter": "Meter",
+      "priceCzk": "{{amount}} CZK",
+      "customerName": "Customer",
+      "note": "Note",
+      "scheduledAt": "Scheduled",
+      "expired": "Offer expired",
+      "staleOffer": "Offer is no longer available",
+      "offlineHint": "No connection, please try again",
+      "declineReasonTitle": "Decline reason",
+      "declineReasonFar": "Too far",
+      "declineReasonBreak": "On break",
+      "declineReasonOther": "Other reason",
+      "declineReasonRequired": "Please select a decline reason",
+      "silentMode": "Silent mode",
+      "accepting": "Accepting...",
+      "declining": "Declining..."
+    },
+    "position": {
+      "stale": "Location is not being sent"
+    },
+    "queue": {
+      "pending": "waiting to send"
+    },
+    "nav": {
+      "label": "Navigation",
+      "home": "Home",
+      "history": "History",
+      "settings": "Settings"
+    },
+    "history": {
+      "title": "Ride history",
+      "dateLabel": "Date",
+      "today": "Today",
+      "empty": "No rides on this day.",
+      "loading": "Loading...",
+      "ride": "Ride",
+      "active": "In progress",
+      "totalsTitle": "Summary",
+      "ridesCount": "Rides",
+      "cashTotal": "Cash",
+      "cardTotal": "Card",
+      "invoiceTotal": "Invoice",
+      "payment": {
+        "Cash": "Cash",
+        "Card": "Card",
+        "Invoice": "Invoice"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "navAppTitle": "Navigation",
+      "navAppGeo": "Default map",
+      "navAppGoogle": "Google Maps",
+      "navAppMapy": "Mapy.cz",
+      "navAppWaze": "Waze",
+      "silentModeTitle": "Silent mode",
+      "silentModeDescription": "Mutes sound and vibration for new offers.",
+      "versionLabel": "App version",
+      "logout": "Log out",
+      "diagnostika": {
+        "title": "Diagnostics",
+        "hint": "You can read these out to the dispatcher.",
+        "locationPermission": "Location permission",
+        "pushPermission": "Notification permission",
+        "lastPositionSent": "Last position sent",
+        "connectionState": "Connection state",
+        "never": "Never",
+        "unknown": "Unknown",
+        "permission": {
+          "granted": "Granted",
+          "denied": "Denied",
+          "prompt": "Not requested",
+          "default": "Not requested"
+        },
+        "connection": {
+          "connected": "Connected",
+          "connecting": "Connecting",
+          "reconnecting": "Reconnecting",
+          "disconnected": "Disconnected"
+        }
+      }
+    }
+  },
   "orders": {
     "drawer": {
       "title": "Order detail",

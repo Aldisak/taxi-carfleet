@@ -13,7 +13,7 @@ import {
 import type { OrderChangedPayload, DriverStatusChangedPayload, CachedOrderVersion } from './eventReducer'
 import { usePositionStore } from './usePositionStore'
 import { authStorage } from '../api/auth-storage'
-import type { ListOrdersResponse, ListDriversResponse } from '../api/client'
+import type { ListOrdersResponse, ListDriversResponse, OrderDetailDto } from '../api/client'
 import { playNotificationSound } from '../sound/playNotificationSound'
 
 export type ConnectionState = 'connected' | 'disconnected' | 'connecting' | 'reconnecting'
@@ -49,6 +49,23 @@ export function useConnectionState(): ConnectionState {
 
 // Module-level singleton state to prevent multiple hub connections
 let hubInstance: signalR.HubConnection | null = null
+
+/**
+ * Invokes a hub method on the existing singleton connection.
+ * No-ops (resolves false) when the hub is not currently connected — never builds a
+ * second connection (rules/web-realtime.md#single-hub-singleton). Returns true on a
+ * successful invoke; throws are propagated so callers can treat a failed send as "not sent".
+ *
+ * @param method  Hub method name (e.g. 'UpdatePosition').
+ * @param args    Positional arguments forwarded to the hub method.
+ */
+export async function invokeHub(method: string, ...args: unknown[]): Promise<boolean> {
+  if (!hubInstance || hubInstance.state !== signalR.HubConnectionState.Connected) {
+    return false
+  }
+  await hubInstance.invoke(method, ...args)
+  return true
+}
 const hubStateRef: { current: ConnectionState } = { current: 'disconnected' }
 const stateListeners = new Set<(s: ConnectionState) => void>()
 
@@ -143,6 +160,9 @@ export function useFleetHub() {
 
       // Invalidate detail cache for this order so the drawer refetches
       void queryClient.invalidateQueries({ queryKey: ['orders', 'detail', payload.id] })
+
+      // Notify driver ride screen so it can detect order reassignment (F-04 live-clear).
+      window.dispatchEvent(new CustomEvent('driver:orderChanged', { detail: payload }))
     })
 
     connection.on('DriverStatusChanged', (payload: DriverStatusChangedPayload) => {
@@ -153,6 +173,8 @@ export function useFleetHub() {
           return { ...old, items: applyDriverStatusChanged(old.items, payload) }
         },
       )
+      // Notify driver home screen so it can patch the ['driver','me'] cache for own status.
+      window.dispatchEvent(new CustomEvent('driver:statusChanged', { detail: payload }))
     })
 
     connection.on('DriverPositionChanged', (payload: DriverPositionChangedPayload) => {
@@ -166,10 +188,14 @@ export function useFleetHub() {
       })
     })
 
-    // NewOrderOffered — no dispatcher UI in v1; log only
-    connection.on('NewOrderOffered', () => {
-      // Intentionally ignored in dispatcher view v1.
-      // The offer is rendered in the driver app. No dispatcher UI needed.
+    // NewOrderOffered — two positional args: (orderDto, expiresAt).
+    // Dispatched to driver:{driverId} group only. The dispatcher view receives nothing here.
+    // Writes to the offer store so OfferTakeover can render.
+    connection.on('NewOrderOffered', (dto: OrderDetailDto, expiresAt: string) => {
+      // Dispatch a window event so the driver offer store can be updated without a circular import.
+      window.dispatchEvent(new CustomEvent('driver:newOrderOffered', {
+        detail: { dto, expiresAt },
+      }))
     })
 
     // ── Connection lifecycle ────────────────────────────────────────────────

@@ -1,26 +1,68 @@
 {
   "version": 1,
-  "uc_id": "UC-002",
-  "title": "Dispatcher web app",
+  "uc_id": "UC-003",
+  "title": "Driver PWA",
   "stack": "mixed",
+  "lanes": { "A": "api backend support", "B": "web driver PWA" },
   "complexity_tag": "novel",
   "autonomous_mode": true,
+  "autonomous_mode_authority": "standing user directive (UC-002, renewed 2026-09-12 'continue autonomously until you finish whole project'): gates pre-approved, parallel lanes, interrupt only on 3-round blocks / quality-gate failures / undecidable scope",
   "phase": "done",
-  "spec_path": "docs/specs/done/002_UC_002_dispatcher-web.md",
-  "work_items_doc": "docs/specs/done/dispatcher-web-work-items.md",
-  "gates_passed": ["A (auto)", "B (auto)", "C (auto — r1 blocked Version projection + 3 majors, revision verified)", "D (auto — per-batch reviews: LaneA r1 major fixed+proven; B1-B4 clean w/ 5 minors fixed; B5-B8 r1 blocked dead-sound+fabricated-test, fixed incl. backend Source field; B9-B10 sweep clean; B11 caught CreateOrderResponse contract bug)", "E (auto)"],
-  "work_items": ["A1","A2","A3","A4","A5","B1","B2","B3","B4","B5","B6","B7","B8","B9","B10","B11"],
-  "completed_wis": ["A1","A2","A3","A4","A5","B1","B2","B3","B4","B5","B6","B7","B8","B9","B10","B11"],
-  "quality_gate": {
-    "api_build": "0 warnings, 0 errors (-warnaserror)",
-    "api_test": "255/255",
-    "api_format": "clean",
-    "web_tsc": "clean",
-    "web_lint": "0 warnings",
-    "web_vitest": "334/334",
-    "web_build": "clean",
-    "e2e": "2/2 — AC1: 4.6s, 5 interactions; AC2: ~38ms SignalR latency"
+  "spec_path": "docs/specs/in-progress/003_UC_003_driver-pwa.md",
+  "gates_passed": ["A (auto)", "B (auto)", "C (round 1, blocks_merge=false, amendments folded into briefs)"],
+  "design_review_round": 1,
+  "work_items": [
+    { "id": "A-offer", "lane": "api", "status": "done", "batch": "laneA3" },
+    { "id": "A-idem", "lane": "api", "status": "done", "batch": "laneA3" },
+    { "id": "A-me", "lane": "api", "status": "done", "batch": "laneA3" },
+    { "id": "A-geo", "lane": "api", "status": "done", "batch": "laneA3" },
+    { "id": "B-pwa", "lane": "web", "status": "done", "batch": "laneB3a" },
+    { "id": "B-auth", "lane": "web", "status": "done", "batch": "laneB3a" },
+    { "id": "B-home", "lane": "web", "status": "done", "batch": "laneB3b" },
+    { "id": "B-offer", "lane": "web", "status": "done", "batch": "laneB3b" },
+    { "id": "B-ride", "lane": "web", "status": "done", "batch": "laneB3c" },
+    { "id": "B-complete", "lane": "web", "status": "done", "batch": "laneB3c" },
+    { "id": "B-position", "lane": "web", "status": "done", "batch": "laneB3d" },
+    { "id": "B-queue", "lane": "web", "status": "done", "batch": "laneB3d" },
+    { "id": "B-history-settings", "lane": "web", "status": "done", "batch": "laneB3e" },
+    { "id": "B-e2e", "lane": "web", "status": "done", "batch": "laneB3f" }
+  ],
+  "completed_wis": ["A-offer", "A-idem", "A-me", "A-geo", "B-pwa", "B-auth", "B-home", "B-offer", "B-ride", "B-complete", "B-position", "B-queue", "B-history-settings", "B-e2e"],
+  "impl_review": {
+    "laneA3_B3a_B3b": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/1 minor-accepted/4 info; F-01/05/06/07/08 amendments verified landed (handoff-impl-reviewer-uc003-r1.json)",
+    "laneB3c": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/2 minor; AC#6 restore + F-04 live-clear + D12 hoist verified. Minor B3c-1 (409 shows banner but no real refetch; name over-promises) + B3c-2 (untrimmed >=5-char overrideReason check) FOLDED into B-queue brief (handoff-impl-reviewer-uc003-laneB3c.json)",
+    "laneB3d": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/0 minor/2 info; enqueue-time idem key, F-02 (InFlight retryable by code), F-03 (dequeue on definitive 2xx/4xx), accept/decline never queued, drainer at DriverLayout w/ single-drain guard, B3c-1/B3c-2 folds verified (handoff-impl-reviewer-uc003-laneB3d.json)",
+    "laneB3e": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 blocker/0 major/2 minor/1 info. Non-blocking follow-ups: B3e-1 promote features/board/DisconnectBanner to src/shared (driver->board cross-feature import drift); B3e-2 cosmetic bottom-nav on /d/ride + /d/ride/complete (reachable by scroll, primary button not hidden) (handoff-impl-reviewer-uc003-laneB3e.json)"
   },
-  "ship": "commit on main (autonomous directive; Gate E precedent from UC-001)",
+  "followups_open": [
+    "B3e-1: DisconnectBanner lives in features/board but is now imported by features/driver/history — promote to src/shared/realtime (or src/shared/ui) and update AppLayout + HistoryPage imports. Architecture drift, non-functional.",
+    "B3e-2: consider suppressing BottomNav on /d/ride and /d/ride/complete for a clean 100dvh full-screen flow.",
+    "B3f-AC2 (route to B-home/backend): add a DriverOnly vehicle-list endpoint + start-shift-from-offline UI. Currently POST /drivers/me/offline nulls current_vehicle_id and the only vehicle list is FleetAdminOnly, so an offline driver cannot pick a vehicle through the UI. E2E AC#2 drives from the online precondition; substantive ride flow fully proven. Reviewer verdict: accepted follow-up, NOT a sign-off blocker.",
+    "B3f-F1 (route to dispatcher-orders owner): client.ts patchOrder types PATCH /orders/{id} as bare OrderDetailDto but UpdateOrderResponse is the { order } envelope (same class as the getOrder bug). Pre-existing UC-002, off the driver path, masked by cache-invalidation refetch through the now-correct getOrder. Not a UC-003 blocker."
+  ],
+  "impl_review_laneB3f": "round 1 PASSED 2026-09-12, blocks_merge=false, 0 crit/0 high/1 medium(F1 pre-existing patchOrder envelope, off-path)/1 low(F2 reload stand-in accepted). AC#2=accepted follow-up not blocker (handoff-impl-reviewer-uc003-laneB3f.json)",
+  "decisions_this_run": [
+    "AC#3 push-notification half deferred to assignment 05 (Web Push infra belongs there); foreground offer flow fully in scope",
+    "Agents renamed 2026-09-12: developer -> backend-developer (api lane), new frontend-developer (web lane); use frontend-developer for all web WIs"
+  ],
+  "test_count_backend": 283,
+  "test_count_web": 627,
+  "quality_gate": {
+    "backend_build_warnaserror": "exit 0, 0 warnings",
+    "backend_test": "283 passed, 0 failed",
+    "backend_format": "clean after auto-fix of 4 whitespace issues in GetMyOrdersEndpoint.cs",
+    "web_lint": "clean (--max-warnings 0)",
+    "web_tsc": "clean",
+    "web_test": "627 passed / 93 files (e2e excluded)",
+    "web_build": "exit 0 (pre-existing 500kB chunk warning only)",
+    "web_size": "193.39 kB brotli < 260 kB budget",
+    "web_e2e": "5/5 passed (dispatcher 2 + driver 3), both Playwright projects"
+  },
+  "environment": {
+    "dotnet_sdk": "10.0.401 user-local; prefix every dotnet command with: export PATH=\"/c/Users/alesm/AppData/Local/Microsoft/dotnet:$PATH\" && ",
+    "node": "v20.0.0 (established pins: Vite 5.4, eslint 8.57.1, ts-eslint 7.18, vitest 2.1.9)",
+    "docker": "26.1.1",
+    "playwright": "harness from UC-002 (webServer scripts, chromium)"
+  },
   "updated_at": "2026-09-12"
 }

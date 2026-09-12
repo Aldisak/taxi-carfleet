@@ -1,0 +1,54 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA3+laneB3a+laneB3b",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Common/Idempotency/IdempotencyHelper.cs",
+      "rule": "design-review F-05/F-06/F-07",
+      "title": "Design-review idempotency amendments all landed",
+      "detail": "F-05 verified: hash-mismatch -> 409 KeyReused branch (line 147-152) precedes the stored-response replay branch (line 155-159). F-06 verified: dbContext.Entry(claim).State = EntityState.Detached on the 23505 catch (line 131) before any further scoped-context use. F-07 verified: opportunistic purge query filters on CreatedAt (line 109-111) and the index exists in both IdempotencyRecordConfiguration.cs (HasIndex(x => x.CreatedAt), line 27) and migration 20260912081255_AddIdempotencyRecords.cs (ix_idempotency_records_created_at, line 38-41).",
+      "recommendation": "No action."
+    },
+    {
+      "id": "F-02",
+      "severity": "info",
+      "file": "web/src/features/driver/offer/useOfferAccept.ts, web/src/features/driver/offer/useOfferDecline.ts",
+      "rule": "design-review F-08",
+      "title": "F-08 stale-outcome handling landed in both offer hooks",
+      "detail": "useOfferAccept.ts line 36 and useOfferDecline.ts line 33 both branch `err.status === 404 || err.status === 409` -> { type: 'stale' }. Other ApiResponseError statuses (5xx) and network TypeErrors -> 'offline' keeping the takeover open. Correct per F-08 (404 is the dominant stale response).",
+      "recommendation": "No action."
+    },
+    {
+      "id": "F-03",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Common/Orders/OrderService.cs",
+      "rule": "spec UC-003 A-offer; taxi-order-state-machine",
+      "title": "NewOrderOffered publish placement and expiry calculation correct",
+      "detail": "OrderService.TransitionAsync publishes NewOrderOffered only on `transition is OrderTransition.Assign or OrderTransition.Reassign` with a non-null DriverId (line 85-86), AFTER SaveChangesAsync commit (line 68) and after OrderChanged/DriverStatusChanged publishes. expiresAt = order.AssignedAt!.Value.AddSeconds(timeout) where timeout = FleetSettings.OfferTimeoutSeconds via `(int?)` cast projection `?? 45` fallback (line 88-93) — matches the OfferTimeoutJob calculation so driver countdown and server timeout align.",
+      "recommendation": "No action."
+    },
+    {
+      "id": "F-04",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Features/Drivers/GetMySummary/GetMySummaryEndpoint.cs, api/src/Taxi.Api/Features/Drivers/GetMyOrders/GetMyOrdersEndpoint.cs",
+      "rule": "rules/api-design.md#authorization; spec §7 multi-tenancy",
+      "title": "A-me endpoints are tenant- and owner-scoped",
+      "detail": "Both endpoints apply Policies(nameof(AuthorizationPolicies.DriverOnly)), DontCatchExceptions(), resolve driverId from the `sub` claim (Send.NotFoundAsync when unresolved), and filter every query on `o.DriverId == driverId.Value` (own-rows predicate). Orders is a tenant entity so EF global query filters add FleetId isolation on top. AsNoTracking() used throughout. No cross-driver or cross-fleet leak path.",
+      "recommendation": "No action."
+    },
+    {
+      "id": "F-05",
+      "severity": "minor",
+      "file": "api/src/Taxi.Api/Common/Idempotency/IdempotencyHelper.cs",
+      "rule": "rules/error-handling.md; design-review F-01",
+      "title": "Idempotency replay writes an empty `{}` body for stored null-body responses",
+      "detail": "ReplayStoredResponseAsync (line 218-230) writes `{}` when ResponseBody is null (stored 404/409), to stop FastEndpoints defaulting to 204. This deviates from a bare Send.NotFoundAsync body on the first call (no body) vs replay (empty object). The design review (F-01) explicitly documented and accepted this contract; the client treats 404/409 as stale regardless of body (F-08). Not introduced as a defect — noting the documented asymmetry only.",
+      "recommendation": "No action required; behaviour is documented in the class XML doc and the F-01 amendment."
+    }
+  ],
+  "summary": "UC-003 batches laneA3 + laneB3a + laneB3b reviewed (focused pass). All four design-review amendments targeted for this round landed and are verified: F-05 (hash-before-replay ordering), F-06 (change-tracker detach on 23505), F-07 (CreatedAt purge index in both config and migration), F-08 (404 AND 409 -> stale in both offer hooks). A-offer OrderService publishes NewOrderOffered after commit on Assign/Reassign only with expiresAt = AssignedAt + OfferTimeoutSeconds ((int?) cast, ??45 fallback). A-me GetMySummary/GetMyOrders are DriverOnly, own-rows-scoped, AsNoTracking, tenant-isolated via global query filters. git diff --cached --stat is clean — all staged api/ and web/ changes are on-topic for UC-003; no accidental files. Developer handoffs report 279 backend + 427 web tests green with per-WI verification; not re-run per instruction. No blockers, no majors. blocks_merge = false."
+}

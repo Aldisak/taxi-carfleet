@@ -79,6 +79,21 @@ internal sealed class OrderService(
         foreach (var (driverId, newStatus) in result.DriverStatusChanges)
             await publisher.DriverStatusChangedAsync(driverId, order.FleetId, newStatus, ct);
 
+        // Publish NewOrderOffered on Assign and Reassign so the offered driver can start
+        // their countdown. expiresAt = AssignedAt + OfferTimeoutSeconds (same calculation
+        // as OfferTimeoutJob — ensures the driver countdown and the server timeout are identical).
+        if (transition is OrderTransition.Assign or OrderTransition.Reassign
+            && order.DriverId is { } offeredDriverId)
+        {
+            var timeout = await dbContext.FleetSettings
+                .Where(s => s.FleetId == order.FleetId)
+                .Select(s => (int?)s.OfferTimeoutSeconds)
+                .FirstOrDefaultAsync(ct) ?? 45;
+
+            var expiresAt = order.AssignedAt!.Value.AddSeconds(timeout);
+            await publisher.NewOrderOfferedAsync(order, offeredDriverId, expiresAt, ct);
+        }
+
         return result;
     }
 }

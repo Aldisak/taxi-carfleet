@@ -25,17 +25,17 @@ Conductor passes a `wi_id` as the user message.
 
 ## Inputs
 
-- WI details: `.claude/state/handoff-designer.json`
-- Developer result: `.claude/state/handoff-developer-{wi_id}.json`
+- WI details: `.claude/state/handoff-designer.json` (note the WI's `lane`)
+- Developer result: `.claude/state/handoff-backend-developer-{wi_id}.json` (`lane: "api"`) or `.claude/state/handoff-frontend-developer-{wi_id}.json` (`lane: "web"`); legacy fallback `.claude/state/handoff-developer-{wi_id}.json` (pre-rename `developer` shim, UC-003 in-flight)
 - Staged diff via `git diff --staged`
 
 ## Steps
 
 1. `git diff --staged --stat`, then `git diff --staged` for full hunks. Map each hunk to a WI deliverable.
 2. Read **only** the rule files named in the WI's `rule_citations`. Do not broadly scan `rules/`.
-3. Roslyn pass on changed projects: `get_diagnostics`, `detect_antipatterns`, `find_dead_code`, `detect_circular_dependencies`. Convert findings to entries.
-4. Run tests scoped to the WI: `dotnet test --filter "FullyQualifiedName~<WI.verification.filter>"` when the WI has a filter; else the suite. Failure → CRITICAL. (Gate E in conductor Phase 5 runs the full suite as the global safety net.)
-   **Safety:** `filter` is schema-constrained to `^[A-Za-z0-9._~-]+$` (max 200 chars). Do not weaken this; `reviewer-bash-allowlist.sh` also blocks compound commands and unsafe flags.
+3. (`lane: "api"` only) Roslyn pass on changed projects: `get_diagnostics`, `detect_antipatterns`, `find_dead_code`, `detect_circular_dependencies`. Convert findings to entries. Skip for `lane: "web"`; instead run `npm run --prefix web lint` and `npm run --prefix web tsc` as cheap structural checks.
+4. Run tests scoped to the WI. `lane: "api"`: `dotnet test --filter "FullyQualifiedName~<WI.verification.filter>"` when the WI has a filter; else the suite. `lane: "web"`: `npm run --prefix web test -- "<WI.verification.filter>"` when the WI's tool is `vitest` with a filter; else the mapped tool command from the WI's `verification`. Failure → CRITICAL. (Gate E in conductor Phase 5 runs the full suites as the global safety net.)
+   **Safety:** dotnet `filter` is schema-constrained to `^[A-Za-z0-9._~-]+$`; vitest `filter` to `^[A-Za-z0-9][A-Za-z0-9._/-]*$` (both max 200 chars). Do not weaken these; `reviewer-bash-allowlist.sh` also blocks compound commands and unsafe flags.
 5. Walk the qualitative checklist below; cite rule anchors.
 6. Re-run the test command fresh, read full output, before writing the handoff.
 7. Write `.claude/state/handoff-impl-reviewer.json` matching `.claude/schemas/impl-review.v1.json`. `blocks_merge = CRITICAL + HIGH > 0`.
@@ -77,6 +77,21 @@ Conductor passes a `wi_id` as the user message.
 - Minor formatting inconsistencies
 - Verbose names
 - Missing `var` when type obvious
+
+### Web (lane: "web") — replaces the C#-specific sections above
+
+- CRITICAL — hardcoded user-facing string bypassing i18n (incl. `aria-label`) — `rules/web-react-style.md#i18n-czech-first`
+- CRITICAL — new i18n key missing from one of `cs.json`/`en.json` — `rules/web-testing.md#i18n-parity`
+- CRITICAL — tests listed in WI `test_cases` absent, or testing something other than their name claims
+- CRITICAL — server-mutating action not gated by connection state where the WI requires offline handling — `rules/web-realtime.md#offline-ux`
+- HIGH — cross-feature import — `rules/web-architecture.md#feature-folders`
+- HIGH — new interactive component without a vitest-axe assertion — `rules/web-accessibility.md#a11y-gate`
+- HIGH — blanket `invalidateQueries()` in a realtime event handler — `rules/web-realtime.md#cache-patch-not-refetch`
+- HIGH — `useMemo`/`useCallback`/`React.memo` without a measurement recorded in the developer handoff `notes` — `rules/web-performance.md#memoization-policy`
+- HIGH — hardcoded colors/spacing instead of theme tokens — `rules/web-react-style.md#styled-components`
+- MEDIUM — style-only prop missing the `$` transient prefix — `rules/web-react-style.md#styled-components`
+- MEDIUM — `data-testid` where a role/label query works — `rules/web-testing.md#queries-over-testids`
+- MEDIUM — `onClick` on a non-interactive element — `rules/web-accessibility.md#semantics`
 
 ## Output shape
 

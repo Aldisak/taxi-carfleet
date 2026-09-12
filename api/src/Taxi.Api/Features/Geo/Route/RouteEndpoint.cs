@@ -32,7 +32,7 @@ internal sealed class RouteEndpoint(
             .WithName(nameof(RouteEndpoint))
             .WithTag(_featureConfiguration));
         DontCatchExceptions();
-        Policies(nameof(AuthorizationPolicies.DispatcherOnly));
+        Policies(nameof(AuthorizationPolicies.DispatcherOrDriver));
 
         Summary(s =>
         {
@@ -41,7 +41,7 @@ internal sealed class RouteEndpoint(
             s.Responses[StatusCodes.Status200OK] = "Distance, duration, and optional estimated price.";
             s.Responses[StatusCodes.Status400BadRequest] = "Invalid or missing coordinates.";
             s.Responses[StatusCodes.Status401Unauthorized] = "Not authenticated.";
-            s.Responses[StatusCodes.Status403Forbidden] = "Not a dispatcher.";
+            s.Responses[StatusCodes.Status403Forbidden] = "Not a dispatcher or driver.";
             s.Responses[StatusCodes.Status502BadGateway] = "Upstream route unavailable.";
         });
     }

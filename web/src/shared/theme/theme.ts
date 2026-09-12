@@ -68,4 +68,8 @@ export const theme: DefaultTheme = {
     desktop: '1280px',
     wide: '1600px',
   },
+  touchTargets: {
+    min: '48px',
+    primary: '64px',
+  },
 }

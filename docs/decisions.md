@@ -103,3 +103,34 @@ Fourteen assumptions resolved where `002_UC_002_dispatcher-web.md` was silent or
 13. **`docs/api.md` regenerates via full `dotnet test`.** `OpenApi_Document_GeneratesApiMarkdown` test regenerates on every suite run — not per-WI.
 
 14. **(F-05a) Customer name auto-fill from past orders DEFERRED to UC-006.** No "orders by phone" query endpoint exists; none is added here. The New order form's Name field is a plain manual input.
+
+---
+
+## 2026-09-12 — Frontend agent split: backend-developer + frontend-developer
+
+User decision: the pipeline's single `developer` agent is split into **`backend-developer`** (lane `"api"`, model sonnet) and **`frontend-developer`** (lane `"web"`, model sonnet per user choice), routed by each WI's `lane` field. Supporting changes:
+
+- Six auto-injected frontend rules added: `rules/web-architecture.md`, `web-react-style.md`, `web-performance.md`, `web-realtime.md`, `web-accessibility.md`, `web-testing.md`. Designer cites their anchors on web WIs (never C# rules on a web WI and vice versa); design-reviewer and impl-reviewer gained web checklists.
+- `verification.tool` enum formalized: `dotnet-test | dotnet-build | vitest | npm-lint | npm-tsc | npm-build | playwright`. vitest `filter` is a file-path substring constrained to `^[A-Za-z0-9][A-Za-z0-9._/-]*$` (max 200).
+- Conductor Phase 5 is stack-aware; the web gate is `npm run --prefix web lint / tsc / test / build / size` (all blocking) + `e2e` (blocking when web flows changed, waivable at Gate E).
+- Web tooling adopted: `eslint-plugin-jsx-a11y` (blocking via `--max-warnings 0`; zero violations in existing code at adoption), `vitest-axe` + `axe-core` (via the preconfigured `src/shared/test/axe.ts` helper — color-contrast disabled in jsdom), `size-limit`+`@size-limit/file` **pinned ^11.2.0** (v12+/13 require Node ≥22; repo pins Node 20.0.0), `web-vitals` (dev console sink; backend sink in assignment 07), `@tanstack/react-virtual` (installed; used only past the ~100-row threshold).
+- **Bundle budget: 260 KB (brotli) provisional** in `web/package.json` `"size-limit"` — measured 184 KB mid-UC-003 with headroom for the driver PWA lane. Ratchet down after UC-003 ships and role-group code-splitting (`rules/web-performance.md#code-splitting`) lands.
+- **Compatibility shim:** the change landed while a UC-003 conductor session was live mid-implementation (developer handoffs laneA3/B3a/B3b already written). `.claude/agents/developer.md` is kept as a verbatim deprecated alias so the live session's `developer` dispatches keep working, and impl-reviewer accepts the legacy `handoff-developer-{wi_id}.json` filename. **Cleanup after UC-003 ships:** delete the shim file and the legacy-fallback clause in `impl-reviewer.md`.
+
+---
+
+## 2026-09-12 — UC-003 implementation assumptions + AC#3 push deferral (DoD #6)
+
+Echoed per UC-003 Definition-of-Done #6. These resolve where the driver-PWA spec was silent or where a UC-003 half is intentionally out of scope.
+
+1. **AC#3 is split; the Web Push (background) half is DEFERRED to assignment 05.** The spec's AC#3 ("a new order reaches the driver within ~2 s") has two halves: (a) **foreground** — the full-screen offer takeover rendered from the `NewOrderOffered` SignalR event while the PWA is open; and (b) **background push** — a Web Push notification that wakes a backgrounded or closed PWA. Half (a) ships in this UC (B-offer) and is proven by the `Driver_FullFlow_…` E2E. Half (b) requires a backend push-subscription store + VAPID send pipeline that is **assignment 05 (notifications)** scope, not UC-003. The PWA's `PermissionPriming` primes the notification permission, but no server-side push is sent in v1. DEMO.md §12 documents the manual foreground check and the deferral.
+
+2. **AC#1 installability is a MANUAL acceptance step with no automated home.** `VitePWA` runs with `devOptions.enabled: false`, so the service worker and manifest never register under `npm run dev` — which is exactly what the Playwright harness boots — so E2E cannot observe them. Installability is therefore verified manually against a production build (`npm run build && npx vite preview` → Chrome DevTools Application panel / Lighthouse PWA, including the maskable-icon audit) and recorded in DEMO.md §11. This is the one binding AC with a manual-only verification; the manual step is its assigned verification, not a gap.
+
+3. **Driver specs drive AC#2 from the ONLINE precondition (documented B-home gap, not a test hack).** The driver home vehicle selector is populated **only** from `GET /drivers/me`'s `currentVehicleId`, and `POST /drivers/me/offline` nulls `current_vehicle_id`; there is no driver-facing vehicle-list endpoint. Consequently an Offline driver cannot select a vehicle to start a shift through the UI (and no seeded driver is Offline-with-vehicle). The `Driver_FullFlow_…` spec therefore keeps the seeded test driver (driver2) online via the API and drives the UI flow from there — offer → accept → arrive → start → complete(fixed) → Home totals — which proves the substance of AC#2 through the real UI. The "select vehicle → start shift" sub-step is a B-home limitation to route back to B-home; it is **not** worked around by DB-fabricating an unreachable Offline-with-vehicle state (that would assert a flow no real user can reach).
+
+4. **AC#5 exactly-once is proven via the dispatcher event feed.** The offline-queue spec taps "Jsem na místě" while `context.setOffline(true)` (item queued, "čeká na odeslání" shown), then `setOffline(false)` replays it. Exactly-once is asserted by counting `Arrived`-type events on `GET /orders/{id}/events` (dispatcher token) == 1 — the `X-Idempotency-Key` is minted once at enqueue time (B-queue) and the server idempotency layer (A-idem) dedupes the replay. The queue's reconnect drain fires from `DriverQueueBar`'s `useQueueReplayOnReconnect` on the `connected` transition.
+
+5. **Two Playwright projects, one harness.** A second `mobile-driver` project (Pixel 5, `geolocation` granted) with `testMatch: /driver\.spec\.ts/` is added alongside the existing Desktop `chromium` project, which gains `testIgnore: /driver\.spec\.ts/` so `dispatcher.spec.ts` stays desktop-only. Both projects reuse the single `webServer` array unchanged. `chromium` is listed first so the dispatcher flows run before the driver flows over the shared seeded DB.
+
+6. **`docs/api.md` regenerates via the full `dotnet test`** (the `OpenApi_Document_GeneratesApiMarkdown` test), not hand-edited in this WI.

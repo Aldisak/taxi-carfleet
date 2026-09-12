@@ -28,7 +28,7 @@ If any input is missing → exit with a single finding naming the missing input.
 
 1. Read the spec, work-items doc, and handoff JSON.
 2. Read **only** the rule files named in the WIs' `rule_citations`. Do not broadly scan `rules/`.
-3. Roslyn structural pass on existing codebase: `get_project_graph`, `detect_circular_dependencies` — flag issues the WIs might recreate.
+3. Roslyn structural pass on existing codebase: `get_project_graph`, `detect_circular_dependencies` — flag issues the WIs might recreate. Skip this pass when every WI in the handoff is `lane: "web"`.
 4. Walk the checklist; cite anchors.
 5. Write `.claude/state/handoff-design-reviewer.json` matching `.claude/schemas/design-review.v1.json`. `blocks_merge = CRITICAL + HIGH > 0`.
 
@@ -53,6 +53,14 @@ If any input is missing → exit with a single finding naming the missing input.
 ### CRITICAL — validators and feature config
 - Every POST/PUT/PATCH/DELETE-with-body has a planned `{Request}Validator` — `rules/validation.md#when-to-add-a-validator`
 - Every new feature slice has a `{Feature}FeatureConfiguration` deliverable — `rules/architecture.md#feature-configuration`, `CLAUDE.md → IFeatureConfiguration`
+
+### Web work items (lane: "web")
+
+- CRITICAL — `files_touched` implies a cross-feature import (a `features/A/` file consuming `features/B/`) — `rules/web-architecture.md#feature-folders`
+- HIGH — WI missing the `lane` field, or one WI touching both `api/` and `web/`
+- HIGH — web WI citing zero `rules/web-*.md` anchors (citation-completeness; the developer reads only what is cited)
+- HIGH — WI introducing a new screen or interactive component without an a11y test case in `test_cases` — `rules/web-accessibility.md#a11y-gate`
+- MEDIUM — WI adding user-facing strings without both `src/shared/i18n/cs.json` and `en.json` in `files_touched` — `rules/web-testing.md#i18n-parity`
 
 ### HIGH — work-item completeness
 Each WI must have: `required_reads`, `files_touched`, `test_cases`, `acceptance_criteria`, `error_paths` (if applicable), `verification`. Flag missing sections.

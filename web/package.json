@@ -13,12 +13,22 @@
     "tsc": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "size": "size-limit",
     "preview": "vite preview"
   },
+  "size-limit": [
+    {
+      "name": "app js (gzip)",
+      "path": "dist/assets/*.js",
+      "limit": "260 KB"
+    }
+  ],
   "dependencies": {
     "@microsoft/signalr": "^8.0.7",
     "@tanstack/react-query": "^5.59.0",
+    "@tanstack/react-virtual": "^3.14.12",
     "i18next": "^23.15.1",
+    "idb": "^8.0.3",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -26,10 +36,12 @@
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.26.2",
     "styled-components": "~6.1.13",
+    "web-vitals": "^6.2.1",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@playwright/test": "1.48.2",
+    "@size-limit/file": "^11.2.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
@@ -40,13 +52,20 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "4.3.4",
     "@vitest/coverage-v8": "2.1.9",
+    "axe-core": "^4.13.0",
     "cross-env": "^10.1.0",
     "eslint": "8.57.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^4.6.2",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^25.0.1",
+    "pngjs": "^7.0.0",
+    "size-limit": "^11.2.0",
     "typescript": "^5.6.3",
     "typescript-eslint": "7.18.0",
     "vite": "^5.4.8",
-    "vitest": "2.1.9"
+    "vite-plugin-pwa": "^0.20.5",
+    "vitest": "2.1.9",
+    "vitest-axe": "^0.1.0"
   }
 }

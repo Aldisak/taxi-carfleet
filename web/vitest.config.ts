@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // Mirror vite.config.ts so __APP_VERSION__ is defined under the test runner too.
+  define: {
+    __APP_VERSION__: JSON.stringify('0.0.1-test'),
+  },
   test: {
     environment: 'jsdom',
     globals: true,
