@@ -19,14 +19,14 @@ function renderBadge(...args: Parameters<typeof PriceRangeBadge>) {
 
 describe('PriceRangeBadge', () => {
   it('renders a fixed price as a single "pevná" price', () => {
-    renderBadge({ view: { kind: 'fixed', priceCzk: 300 } })
+    renderBadge({ view: { kind: 'fixed', priceCzk: 300, routeId: 'r7' } })
     const badge = screen.getByRole('status')
     expect(badge).toHaveTextContent(/300\s*Kč/)
     expect(badge).toHaveTextContent(/pevná/i)
   })
 
   it('renders an estimate as a RANGE, never a single number (AC #4)', () => {
-    renderBadge({ view: { kind: 'estimate', lowCzk: 180, highCzk: 220 } })
+    renderBadge({ view: { kind: 'estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 } })
     const badge = screen.getByRole('status')
     // Both DISTINCT bounds appear, joined by a dash — never one exact number.
     expect(badge).toHaveTextContent(/180\s*Kč/)
@@ -35,6 +35,12 @@ describe('PriceRangeBadge', () => {
     expect(badge).toHaveTextContent(/–/)
     // A single exact estimate (e.g. just "Odhad 200 Kč") must NOT be shown.
     expect(badge.textContent).not.toMatch(/^Odhad\s+\d+\s*Kč$/)
+  })
+
+  it('renders a Meter quote as "Podle taximetru" (A6 fallback)', () => {
+    renderBadge({ view: { kind: 'meter' } })
+    const badge = screen.getByRole('status')
+    expect(badge).toHaveTextContent(/taximetru/i)
   })
 
   it('shows the error message when the quote is unavailable (502)', () => {
@@ -48,7 +54,7 @@ describe('PriceRangeBadge', () => {
   })
 
   it('has no axe violations', async () => {
-    const { container } = renderBadge({ view: { kind: 'estimate', lowCzk: 180, highCzk: 220 } })
+    const { container } = renderBadge({ view: { kind: 'estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 } })
     expect(await axe(container)).toHaveNoViolations()
   })
 })

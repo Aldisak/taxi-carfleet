@@ -38,6 +38,15 @@ public class Route : ITenantEntity
     /// <summary>Destination longitude for PointToPoint routes. Null when not applicable.</summary>
     public double? ToLng { get; set; }
 
+    /// <summary>Match radius in meters around the origin point for PointToPoint routes. Default 150.</summary>
+    public double FromRadiusMeters { get; set; } = 150;
+
+    /// <summary>Match radius in meters around the destination point for PointToPoint routes. Default 150.</summary>
+    public double ToRadiusMeters { get; set; } = 150;
+
+    /// <summary>When true, a ZoneToZone route matches both from→to and to→from directions. Default true.</summary>
+    public bool IsBidirectional { get; set; } = true;
+
     /// <summary>Time of day from which this route is valid. Null means valid all day.</summary>
     public TimeOnly? ValidFromTime { get; set; }
 

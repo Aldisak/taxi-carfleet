@@ -11,18 +11,25 @@ import { theme } from '../../../shared/theme/theme'
 import { axe } from '../../../shared/test/axe'
 import type { CommonRouteDto } from '../../../shared/api/client'
 
+// Leaflet body is stubbed so jsdom never loads react-leaflet (Zone pickup map).
+vi.mock('./PickupMapInner', () => ({ default: () => <div data-testid="fake-map" /> }))
+
 vi.mock('../../../shared/api/client', () => ({
   postCreateOrder: vi.fn(),
   requestCustomerCode: vi.fn(),
   verifyCustomerCode: vi.fn(),
+  getGeoSuggest: vi.fn(),
+  getPriceQuote: vi.fn(),
 }))
 
-import { postCreateOrder, requestCustomerCode, verifyCustomerCode } from '../../../shared/api/client'
+import { postCreateOrder, requestCustomerCode, verifyCustomerCode, getGeoSuggest, getPriceQuote } from '../../../shared/api/client'
 import { RouteOrderPage } from './RouteOrderPage'
 
 const mockCreate = vi.mocked(postCreateOrder)
 const mockRequestCode = vi.mocked(requestCustomerCode)
 const mockVerifyCode = vi.mocked(verifyCustomerCode)
+const mockSuggest = vi.mocked(getGeoSuggest)
+const mockQuote = vi.mocked(getPriceQuote)
 
 const p2p: CommonRouteDto = {
   id: 'r1',
@@ -65,6 +72,7 @@ function renderPage(route: CommonRouteDto = p2p) {
 describe('RouteOrderPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
     localStorage.clear()
   })
 
@@ -76,9 +84,82 @@ describe('RouteOrderPage', () => {
     expect(screen.getByLabelText(/kde přesně/i)).toBeInTheDocument()
   })
 
-  it('shows a zone placeholder for Zone routes (pre-06)', () => {
+  it('Zone route: an in-zone pickup yields a Fixed quote and the order carries the matched routeId', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('auth.accessToken', 'customer-token')
+    // The server quote matches the Zone route → Fixed (pickup is inside the zone).
+    mockQuote.mockResolvedValue({ type: 'Fixed', priceCzk: 110, routeId: 'r2', routeName: 'Centrum' })
+    mockSuggest.mockResolvedValue({ items: [{ label: 'Palackého nám. 1, Kutná Hora', lat: 49.948, lng: 15.268 }] })
+    mockCreate.mockResolvedValue({
+      order: {
+        id: 'o2', publicCode: 'ZONE01', status: 'New', source: 'App', customerPhone: '+420111222333',
+        customerName: null, pickupAddress: 'Palackého nám. 1, Kutná Hora', pickupLat: 49.948, pickupLng: 15.268,
+        dropoffAddress: null, dropoffLat: null, dropoffLng: null, scheduledAt: null, note: null,
+        passengers: 1, priceType: 'Fixed', estimatedPriceCzk: null, fixedPriceCzk: 110,
+        finalPriceCzk: null, paymentType: null, driverId: null, vehicleId: null,
+        createdAt: '2026-09-12T12:00:00Z', updatedAt: '2026-09-12T12:00:00Z', allowedActions: [], version: 0,
+      },
+    })
+
     renderPage(zone)
-    expect(screen.getByText(/zóně bude brzy/i)).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/odkud vás vyzvedneme/i), 'Palack')
+    await user.click(await screen.findByRole('option', { name: /palackého nám/i }))
+
+    // The in-zone confirmation surfaces once the Fixed quote resolves.
+    expect(await screen.findByText(/v zóně – cena je pevná/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^objednat$/i }))
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+    const payload = mockCreate.mock.calls[0][0]
+    expect(payload.priceType).toBe('Fixed')
+    expect(payload.routeId).toBe('r2')
+    expect(payload.fixedPriceCzk).toBe(110)
+    expect(payload.pickupLat).toBe(49.948)
+    expect(await screen.findByTestId('location')).toHaveTextContent('/c/t/ZONE01')
+  })
+
+  it('Zone route, LOGGED OUT: an in-zone pickup reaches the inline login (quote runs anonymously by slug)', async () => {
+    const user = userEvent.setup()
+    // No access token, but a fleet slug is present → the quote must resolve anonymously.
+    localStorage.setItem('auth.fleetSlug', 'demo')
+    mockQuote.mockResolvedValue({ type: 'Fixed', priceCzk: 110, routeId: 'r2', routeName: 'Centrum' })
+    mockRequestCode.mockResolvedValue(undefined)
+
+    // Logged out: no suggest dropdown, so resolve the in-zone pickup via a stubbed GPS pin.
+    const getCurrentPosition = vi.fn((success: PositionCallback) =>
+      success({ coords: { latitude: 49.948, longitude: 15.268 } } as GeolocationPosition),
+    )
+    vi.stubGlobal('navigator', { ...navigator, onLine: true, geolocation: { getCurrentPosition } })
+
+    renderPage(zone)
+    await user.click(screen.getByRole('button', { name: /použít moji polohu/i }))
+
+    // The in-zone confirmation resolves even without a token.
+    expect(await screen.findByText(/v zóně – cena je pevná/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^objednat$/i }))
+
+    // The customer is offered the inline login — NOT an "outside zone" error.
+    expect(screen.getByRole('button', { name: /odeslat kód/i })).toBeInTheDocument()
+    expect(screen.queryByText(/mimo zónu/i)).not.toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  it('Zone route: an out-of-zone pickup (non-Fixed quote) shows "mimo zónu" and blocks the order', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('auth.accessToken', 'customer-token')
+    // The server quote does NOT match the Zone route → Meter (pickup is outside the zone).
+    mockQuote.mockResolvedValue({ type: 'Meter', baseCzk: 40, perKmCzk: 30, minimumCzk: 60 })
+    mockSuggest.mockResolvedValue({ items: [{ label: 'Někde daleko', lat: 48.0, lng: 16.0 }] })
+
+    renderPage(zone)
+    await user.type(screen.getByLabelText(/odkud vás vyzvedneme/i), 'Někde')
+    await user.click(await screen.findByRole('option', { name: /někde daleko/i }))
+
+    expect(await screen.findByText(/mimo zónu/i)).toBeInTheDocument()
+    // The order button is disabled while the pickup is outside the zone.
+    expect(screen.getByRole('button', { name: /^objednat$/i })).toBeDisabled()
+    expect(mockCreate).not.toHaveBeenCalled()
   })
 
   it('when not logged in, Objednat shows the inline login without losing the form state', async () => {

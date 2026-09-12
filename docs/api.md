@@ -72,11 +72,20 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | POST | `/orders/{id}/notes` | Add a note to an order | Bearer |
 | POST | `/orders/{id}/accept` | Accept an assigned order (Driver only) | Bearer |
 
+## Places
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| PUT | `/places/{id}` | Update a place | Bearer |
+| DELETE | `/places/{id}` | Delete a place | Bearer |
+| GET | `/places` | List places | Bearer |
+| POST | `/places` | Create a place | Bearer |
+
 ## Pricing
 
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
-| GET | `/pricing/quote` | Get a price quote (Customer only) | Bearer |
+| POST | `/pricing/quote` | Get a price quote | Anonymous |
 
 ## Public
 
@@ -89,6 +98,12 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
+| PUT | `/routes/{id}` | Update a route | Bearer |
+| DELETE | `/routes/{id}` | Delete (soft) a route | Bearer |
+| PATCH | `/routes/{id}/priority` | Set route priority | Bearer |
+| PATCH | `/routes/{id}/enable` | Enable/disable a route | Bearer |
+| GET | `/routes` | List routes (admin) | Bearer |
+| POST | `/routes` | Create a route | Bearer |
 | GET | `/routes/common` | List common routes (anonymous, fleet-scoped) | Anonymous |
 
 ## Staff
@@ -111,6 +126,15 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | DELETE | `/vehicles/{id}` | Delete (deactivate) a vehicle | Bearer |
 | GET | `/vehicles` | List vehicles | Bearer |
 | POST | `/vehicles` | Create a vehicle | Bearer |
+
+## Zones
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| PUT | `/zones/{id}` | Update a zone | Bearer |
+| DELETE | `/zones/{id}` | Delete a zone | Bearer |
+| GET | `/zones` | List zones | Bearer |
+| POST | `/zones` | Create a zone | Bearer |
 
 ---
 

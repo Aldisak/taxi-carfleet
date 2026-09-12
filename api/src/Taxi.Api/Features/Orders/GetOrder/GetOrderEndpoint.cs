@@ -138,7 +138,8 @@ internal sealed class GetOrderEndpoint(TaxiDbContext dbContext)
             order.Version,
             order.RatingStars,
             order.RatingComment,
-            order.RatedAt);
+            order.RatedAt,
+            order.PriceOverrideReason);
 
         await Send.OkAsync(new GetOrderResponse(detail), ct);
     }

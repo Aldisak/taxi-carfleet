@@ -123,6 +123,45 @@ public static class ErrorCodes
 
         /// <summary>The rating comment must not exceed 500 characters.</summary>
         public const string RatingCommentTooLong = "Validation.RatingCommentTooLong";
+
+        /// <summary>The place name is required.</summary>
+        public const string PlaceNameRequired = "Validation.PlaceNameRequired";
+
+        /// <summary>The place address is required.</summary>
+        public const string PlaceAddressRequired = "Validation.PlaceAddressRequired";
+
+        /// <summary>The sort order must be zero or greater.</summary>
+        public const string SortOrderNonNegative = "Validation.SortOrderNonNegative";
+
+        /// <summary>The zone name is required.</summary>
+        public const string ZoneNameRequired = "Validation.ZoneNameRequired";
+
+        /// <summary>A Circle zone requires a positive radius and no polygon.</summary>
+        public const string ZoneCircleInvalid = "Validation.ZoneCircleInvalid";
+
+        /// <summary>A Polygon zone requires 3..200 coordinate pairs and no radius.</summary>
+        public const string ZonePolygonInvalid = "Validation.ZonePolygonInvalid";
+
+        /// <summary>The route name is required.</summary>
+        public const string RouteNameRequired = "Validation.RouteNameRequired";
+
+        /// <summary>The route price must be zero or greater.</summary>
+        public const string RoutePriceNonNegative = "Validation.RoutePriceNonNegative";
+
+        /// <summary>A PointToPoint route requires from/to coordinates and positive radii.</summary>
+        public const string RoutePointToPointInvalid = "Validation.RoutePointToPointInvalid";
+
+        /// <summary>A Zone route requires a from-zone and no to-zone.</summary>
+        public const string RouteZoneInvalid = "Validation.RouteZoneInvalid";
+
+        /// <summary>A ZoneToZone route requires both a from-zone and a to-zone.</summary>
+        public const string RouteZoneToZoneInvalid = "Validation.RouteZoneToZoneInvalid";
+
+        /// <summary>The pickup coordinates are out of the valid WGS84 range.</summary>
+        public const string PickupCoordsOutOfRange = "Validation.PickupCoordsOutOfRange";
+
+        /// <summary>The dropoff coordinates are out of the valid WGS84 range.</summary>
+        public const string DropoffCoordsOutOfRange = "Validation.DropoffCoordsOutOfRange";
     }
 
     /// <summary>Auth-domain error codes (not validation — used for 429 rate-limit responses).</summary>

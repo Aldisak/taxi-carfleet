@@ -609,6 +609,54 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.ToTable("order_events", (string)null);
                 });
 
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.Place", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<double>("Lat")
+                        .HasColumnType("double precision")
+                        .HasColumnName("lat");
+
+                    b.Property<double>("Lng")
+                        .HasColumnType("double precision")
+                        .HasColumnName("lng");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id")
+                        .HasName("pk_places");
+
+                    b.HasIndex("FleetId")
+                        .HasDatabaseName("ix_places_fleet_id");
+
+                    b.ToTable("places", (string)null);
+                });
+
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.PushSubscription", b =>
                 {
                     b.Property<Guid>("Id")
@@ -731,9 +779,21 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("from_lng");
 
+                    b.Property<double>("FromRadiusMeters")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(150.0)
+                        .HasColumnName("from_radius_meters");
+
                     b.Property<Guid?>("FromZoneId")
                         .HasColumnType("uuid")
                         .HasColumnName("from_zone_id");
+
+                    b.Property<bool>("IsBidirectional")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_bidirectional");
 
                     b.Property<bool>("IsEnabled")
                         .HasColumnType("boolean")
@@ -760,6 +820,12 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.Property<double?>("ToLng")
                         .HasColumnType("double precision")
                         .HasColumnName("to_lng");
+
+                    b.Property<double>("ToRadiusMeters")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(150.0)
+                        .HasColumnName("to_radius_meters");
 
                     b.Property<Guid?>("ToZoneId")
                         .HasColumnType("uuid")
@@ -1203,6 +1269,16 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_order_events_orders_order_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.Place", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_places_fleets_fleet_id");
                 });
 
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.PushSubscription", b =>

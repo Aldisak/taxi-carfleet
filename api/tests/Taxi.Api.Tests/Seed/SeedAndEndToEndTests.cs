@@ -100,11 +100,11 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
         zones.Should().Contain(z => z.Name == "Kutná Hora", "KH zone must exist");
         zones.Should().Contain(z => z.Name == "Kolín", "Kolín zone must exist");
 
-        // 3 Routes
+        // 4 Routes (3 base + 1 night-only route for UC-006 AC#5)
         var routes = await db.Routes.IgnoreQueryFilters().AsNoTracking()
             .Where(r => r.FleetId == fleet.Id && r.DeletedAt == null)
             .ToListAsync(ct);
-        routes.Should().HaveCount(3, "3 Routes");
+        routes.Should().HaveCount(4, "3 base Routes + 1 night-only route (UC-006 AC#5)");
 
         // 5 seeded Orders — filter by fixed public codes so E2E-created orders don't pollute the count.
         var demoPublicCodes = new[] { "DEMO01", "DEMO02", "DEMO03", "DEMO04", "DEMO05" };
@@ -442,10 +442,27 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             // Geo
             "GET /api/v1/geo/suggest",
             "GET /api/v1/geo/route",
-            // Pricing (UC-004)
-            "GET /api/v1/pricing/quote",
+            // Pricing (UC-004 → UC-006: migrated from GET to POST)
+            "POST /api/v1/pricing/quote",
             // Routes (UC-004)
             "GET /api/v1/routes/common",
+            // Routes — admin CRUD (UC-006)
+            "GET /api/v1/routes",
+            "POST /api/v1/routes",
+            "PUT /api/v1/routes/{id}",
+            "DELETE /api/v1/routes/{id}",
+            "PATCH /api/v1/routes/{id}/enable",
+            "PATCH /api/v1/routes/{id}/priority",
+            // Places (UC-006)
+            "GET /api/v1/places",
+            "POST /api/v1/places",
+            "PUT /api/v1/places/{id}",
+            "DELETE /api/v1/places/{id}",
+            // Zones (UC-006)
+            "GET /api/v1/zones",
+            "POST /api/v1/zones",
+            "PUT /api/v1/zones/{id}",
+            "DELETE /api/v1/zones/{id}",
             // Public (UC-004, anonymous)
             "GET /api/v1/public/fleet",
             "GET /api/v1/public/track/{code}",

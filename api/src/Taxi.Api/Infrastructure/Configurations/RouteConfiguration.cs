@@ -15,6 +15,11 @@ internal sealed class RouteConfiguration : IEntityTypeConfiguration<Entities.Rou
 
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
 
+        // PointToPoint match radii (meters) and ZoneToZone bidirectionality — defaults backfill existing rows.
+        builder.Property(x => x.FromRadiusMeters).HasDefaultValue(150d);
+        builder.Property(x => x.ToRadiusMeters).HasDefaultValue(150d);
+        builder.Property(x => x.IsBidirectional).HasDefaultValue(true);
+
         builder.HasIndex(x => x.FleetId);
         builder.HasIndex(x => x.FromZoneId);
         builder.HasIndex(x => x.ToZoneId);

@@ -295,8 +295,10 @@ test.describe.serial('Customer PWA', () => {
     // Fresh/logged-out visit to the customer home (localhost → slug 'demo').
     await page.goto('/c')
 
-    // The "Nádraží → Centrum" common-route card (seeded PointToPoint, price 100, valid all week).
-    const routeCard = page.getByRole('button', { name: /Nádraží → Centrum/ })
+    // The seeded station→centre PointToPoint common-route card (price 100, valid all week).
+    // Matched by a resilient pattern so a seed route-name tweak (UC-006 renamed it
+    // "Nádraží → Centrum" → "Nádraží Kutná Hora → Centrum") does not break this flow.
+    const routeCard = page.getByRole('button', { name: /Nádraží.*Centrum/ })
     await expect(routeCard).toBeVisible({ timeout: 10_000 })
 
     // TAP 1: the route card → navigates to the Confirm screen (/c/order/route/:id) preselected.

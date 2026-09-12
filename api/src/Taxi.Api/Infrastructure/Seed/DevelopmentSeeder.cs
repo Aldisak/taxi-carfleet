@@ -247,18 +247,70 @@ internal sealed class DevelopmentSeeder(
         db.Zones.AddRange(zoneKH, zoneKolin);
         await db.SaveChangesAsync(ct);
 
+        // ── Places (quick-fill chips + address suggestions) ───────────────────
+        db.Places.AddRange(
+            new Place
+            {
+                Id = Guid.CreateVersion7(),
+                FleetId = fleet.Id,
+                Name = "Nádraží Kolín",
+                Lat = 50.0281,
+                Lng = 15.2006,
+                Address = "Rorejcova, Kolín",
+                SortOrder = 0,
+                IsEnabled = true
+            },
+            new Place
+            {
+                Id = Guid.CreateVersion7(),
+                FleetId = fleet.Id,
+                Name = "Kutná Hora hl.n.",
+                Lat = 49.9556,
+                Lng = 15.2731,
+                Address = "Nádražní, Kutná Hora",
+                SortOrder = 1,
+                IsEnabled = true
+            },
+            new Place
+            {
+                Id = Guid.CreateVersion7(),
+                FleetId = fleet.Id,
+                Name = "Kutná Hora město",
+                Lat = 49.9481,
+                Lng = 15.2681,
+                Address = "Palackého náměstí, Kutná Hora",
+                SortOrder = 2,
+                IsEnabled = true
+            },
+            new Place
+            {
+                Id = Guid.CreateVersion7(),
+                FleetId = fleet.Id,
+                Name = "Nemocnice Kolín",
+                Lat = 50.0206,
+                Lng = 15.1897,
+                Address = "Žižkova 146, Kolín",
+                SortOrder = 3,
+                IsEnabled = true
+            });
+        await db.SaveChangesAsync(ct);
+
         // ── Routes ───────────────────────────────────────────────────────────
+        // KH station → KH centre: a PointToPoint fixed 100. Generous radii (500 m) so address-level
+        // pickup/dropoff coords near the station and the square both match (A1 default is 150 m).
         var route1 = new RouteEntity
         {
             Id = Guid.CreateVersion7(),
             FleetId = fleet.Id,
-            Name = "Nádraží → Centrum",
+            Name = "Nádraží Kutná Hora → Centrum",
             Type = RouteType.PointToPoint,
             PriceCzk = 100,
-            FromLat = 50.0281,
-            FromLng = 15.2006,
-            ToLat = 50.0320,
-            ToLng = 15.1990,
+            FromLat = 49.9556,
+            FromLng = 15.2731,
+            ToLat = 49.9481,
+            ToLng = 15.2681,
+            FromRadiusMeters = 500,
+            ToRadiusMeters = 500,
             ValidDays = 127, // Mon-Sun
             Priority = 10,
             IsEnabled = true
@@ -292,7 +344,24 @@ internal sealed class DevelopmentSeeder(
             Priority = 15,
             IsEnabled = true
         };
-        db.Routes.AddRange(route1, route2, route3);
+        // Night-only route (AC#5): valid only 03:00-04:00 Europe/Prague (a non-wrapping window).
+        var route4Night = new RouteEntity
+        {
+            Id = Guid.CreateVersion7(),
+            FleetId = fleet.Id,
+            Name = "Noční příplatek Kutná Hora",
+            Type = RouteType.Zone,
+            PriceCzk = 200,
+            FromZoneId = zoneKH.Id,
+            FromLat = 0,
+            FromLng = 0,
+            ValidDays = 127,
+            ValidFromTime = new TimeOnly(3, 0),
+            ValidToTime = new TimeOnly(4, 0),
+            Priority = 50, // higher than route2 so it wins during its window
+            IsEnabled = true
+        };
+        db.Routes.AddRange(route1, route2, route3, route4Night);
         await db.SaveChangesAsync(ct);
 
         // ── Sample orders (via OrderService for state transitions) ─────────────

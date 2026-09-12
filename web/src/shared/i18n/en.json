@@ -148,7 +148,38 @@
     "tabs": {
       "vehicles": "Vehicles",
       "people": "People",
-      "fleet": "Fleet"
+      "fleet": "Fleet",
+      "routesZones": "Routes & zones"
+    },
+    "routesZones": {
+      "title": "Routes & zones",
+      "tabs": {
+        "zones": "Zones",
+        "routes": "Routes",
+        "places": "Places"
+      }
+    },
+    "zones": {
+      "title": "Zones",
+      "listLabel": "Zone list",
+      "loading": "Loading zones…",
+      "loadingMap": "Loading map…",
+      "empty": "No zones yet. Draw your first zone on the map below.",
+      "nameLabel": "Zone name",
+      "namePlaceholder": "e.g. Kutná Hora centre",
+      "nameRequired": "Enter a zone name first.",
+      "modeCircle": "Circle",
+      "modePolygon": "Polygon",
+      "circleHint": "Click the centre, then click the edge to set the radius.",
+      "polygonHint": "Click to add points, double-click to close the polygon.",
+      "circleMeta": "Circle · radius {{radius}} m",
+      "polygonMeta": "Polygon · {{count}} points",
+      "disabled": "off",
+      "delete": "Delete",
+      "deleteAria": "Delete zone {{name}}",
+      "saved": "Zone saved.",
+      "saveFailed": "Could not save the zone. Please try again.",
+      "polygonTooFewPoints": "A polygon needs at least 3 points."
     },
     "vehicles": {
       "title": "Vehicles",
@@ -231,6 +262,123 @@
       "autoDispatch": "Auto-dispatch",
       "autoDispatchHint": "Available in v1.1",
       "loading": "Loading settings..."
+    },
+    "routes": {
+      "title": "Routes",
+      "listLabel": "Route list",
+      "loading": "Loading routes…",
+      "empty": "No routes yet. Add the first route below.",
+      "add": "Add route",
+      "edit": "Edit",
+      "delete": "Delete",
+      "disabled": "disabled",
+      "priceMeta": "{{price}} CZK",
+      "moveUp": "Move route {{name}} up",
+      "moveDown": "Move route {{name}} down",
+      "enableAria": "Enable or disable route {{name}}",
+      "editAria": "Edit route {{name}}",
+      "deleteAria": "Delete route {{name}}",
+      "types": {
+        "PointToPoint": "Point to point",
+        "Zone": "Zone",
+        "ZoneToZone": "Zone to zone"
+      },
+      "days": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      },
+      "daysShort": {
+        "mon": "Mo",
+        "tue": "Tu",
+        "wed": "We",
+        "thu": "Th",
+        "fri": "Fr",
+        "sat": "Sa",
+        "sun": "Su"
+      },
+      "editor": {
+        "title": "Route editor",
+        "name": "Route name",
+        "type": "Route type",
+        "price": "Price (CZK)",
+        "pickupPick": "Click the map to set the pickup point.",
+        "pickupSet": "Pickup: {{lat}}, {{lng}}",
+        "dropoffPick": "Click the map to set the dropoff point.",
+        "dropoffSet": "Dropoff: {{lat}}, {{lng}}",
+        "loadingMap": "Loading map…",
+        "fromRadius": "Pickup radius (m)",
+        "toRadius": "Dropoff radius (m)",
+        "fromZone": "From zone",
+        "toZone": "To zone",
+        "selectZone": "Select a zone…",
+        "bidirectional": "Valid both directions",
+        "days": "Valid days",
+        "validFrom": "Valid from",
+        "validTo": "Valid to",
+        "enabled": "Enabled",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "validation": {
+        "nameRequired": "Enter a route name.",
+        "priceRequired": "Price must be greater than zero.",
+        "daysRequired": "Select at least one day.",
+        "pickupRequired": "Set the pickup point on the map.",
+        "dropoffRequired": "Set the dropoff point on the map.",
+        "radiusRequired": "Radii must be greater than zero.",
+        "fromZoneRequired": "Select the from zone.",
+        "toZoneRequired": "Select the to zone."
+      },
+      "test": {
+        "title": "Test route",
+        "pickPickup": "Click the map to set the pickup point.",
+        "pickupSet": "Pickup: {{lat}}, {{lng}}",
+        "dropoffOptional": "Optionally click the map to set a dropoff.",
+        "dropoffSet": "Dropoff: {{lat}}, {{lng}}",
+        "at": "Time (optional)",
+        "loading": "Calculating price…",
+        "fixed": "Fixed price {{price}} CZK",
+        "estimate": "Estimate {{low}}–{{high}} CZK",
+        "meter": "By the meter",
+        "unknown": "Could not determine the price.",
+        "quoteUnavailable": "Cannot calculate the price, please call us."
+      }
+    },
+    "places": {
+      "title": "Places",
+      "listLabel": "Place list",
+      "loading": "Loading places…",
+      "empty": "No places yet. Add the first place below.",
+      "add": "Add place",
+      "edit": "Edit",
+      "delete": "Delete",
+      "disabled": "disabled",
+      "editAria": "Edit place {{name}}",
+      "deleteAria": "Delete place {{name}}",
+      "editor": {
+        "title": "Place editor",
+        "name": "Place name",
+        "address": "Address",
+        "addressPlaceholder": "e.g. Nadrazni 1, Kutna Hora",
+        "pickCoords": "Click the map to set the location.",
+        "coordsSet": "Location: {{lat}}, {{lng}}",
+        "loadingMap": "Loading map…",
+        "sortOrder": "Sort order",
+        "enabled": "Enabled",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "validation": {
+        "nameRequired": "Enter a place name.",
+        "addressRequired": "Enter an address.",
+        "coordsRequired": "Set the location on the map.",
+        "sortOrderInvalid": "Sort order cannot be negative."
+      }
     }
   },
   "search": {
@@ -564,7 +712,11 @@
       "submit": "Order",
       "submitting": "Ordering...",
       "loginPrompt": "Please sign in to complete your order.",
-      "zonePlaceholder": "Address entry within the zone is coming soon. Please call us for this route.",
+      "zonePickupLabel": "Where shall we pick you up? (in the zone)",
+      "zoneDropoffLabel": "Where are you going? (in the target zone)",
+      "zonePickupRequired": "Please choose a pickup location within the zone first.",
+      "zoneConfirmed": "The address is in the zone – the price is fixed.",
+      "outsideZone": "The entered address is outside this route's zone. Choose another spot or call us.",
       "offlineBlocked": "You are offline. The order cannot be created now – please call us.",
       "errorTooSoon": "Pickup must be at least 20 minutes from now.",
       "errorTooLate": "Pickup can be scheduled at most 7 days ahead.",
@@ -589,6 +741,7 @@
       "dragHint": "Drag the pin to the exact pickup spot.",
       "quoteFixed": "Price {{price}} – fixed",
       "quoteEstimate": "Estimate {{low}} – {{high}}",
+      "quoteMeter": "By the meter",
       "quoteUnavailable": "We can't compute a price, please call us.",
       "submit": "Order",
       "submitting": "Ordering...",

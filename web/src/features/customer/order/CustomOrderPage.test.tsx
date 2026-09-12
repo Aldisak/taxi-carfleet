@@ -69,7 +69,7 @@ describe('CustomOrderPage', () => {
 
   it('shows an ESTIMATE RANGE once a pickup is chosen — never a single exact number (AC #4)', async () => {
     const user = userEvent.setup()
-    mockQuote.mockResolvedValue({ priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: 180, estimateHighCzk: 220 })
+    mockQuote.mockResolvedValue({ type: 'Estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 })
     renderPage()
     await pickPickup(user)
 
@@ -109,7 +109,7 @@ describe('CustomOrderPage', () => {
 
   it('disables Objednat until a pickup location with coords is chosen', async () => {
     const user = userEvent.setup()
-    mockQuote.mockResolvedValue({ priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: 180, estimateHighCzk: 220 })
+    mockQuote.mockResolvedValue({ type: 'Estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 })
     renderPage()
     expect(screen.getByRole('button', { name: /^objednat$/i })).toBeDisabled()
     await pickPickup(user)
@@ -118,7 +118,7 @@ describe('CustomOrderPage', () => {
 
   it('sends the resolved pickup coords/address in the create payload and navigates to tracking', async () => {
     const user = userEvent.setup()
-    mockQuote.mockResolvedValue({ priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: 180, estimateHighCzk: 220 })
+    mockQuote.mockResolvedValue({ type: 'Estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 })
     mockCreate.mockResolvedValue({
       order: {
         id: 'o1', publicCode: 'K7F2A9', status: 'New', source: 'App', customerPhone: '+420111222333',
@@ -188,7 +188,7 @@ describe('CustomOrderPage', () => {
   it('disables ordering while offline (spec §Behavior — the phone fallback stays in the layout)', async () => {
     const user = userEvent.setup()
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    mockQuote.mockResolvedValue({ priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: 180, estimateHighCzk: 220 })
+    mockQuote.mockResolvedValue({ type: 'Estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 })
     renderPage()
     await pickPickup(user)
     // Even with a resolved pickup, Objednat is disabled offline and no order is created.

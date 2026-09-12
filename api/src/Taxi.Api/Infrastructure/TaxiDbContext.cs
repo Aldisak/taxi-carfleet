@@ -37,6 +37,9 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
     /// <summary>Geographical zones used for zone-based pricing.</summary>
     public DbSet<Zone> Zones => Set<Zone>();
 
+    /// <summary>Named places (points of interest) for quick-fill and address suggestions.</summary>
+    public DbSet<Place> Places => Set<Place>();
+
     /// <summary>Metered pricing tariffs.</summary>
     public DbSet<Tariff> Tariffs => Set<Tariff>();
 
@@ -94,6 +97,7 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
         modelBuilder.Entity<OrderEvent>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<Entities.Route>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<Zone>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
+        modelBuilder.Entity<Place>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<Tariff>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<FleetSettings>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<AuditLog>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);

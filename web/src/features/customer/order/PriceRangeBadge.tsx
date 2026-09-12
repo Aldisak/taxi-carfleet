@@ -37,8 +37,9 @@ export interface PriceRangeBadgeProps {
 /**
  * Renders the custom-order price preview. A Fixed quote shows "Cena {n} Kč – pevná"; an
  * Estimate shows a RANGE "Odhad {low} Kč – {high} Kč" (AC #4 — never a single exact
- * estimate). A quote failure (502) shows "Cenu nelze spočítat, zavolejte nám". The Czech
- * label is composed via useTranslation (the pure priceQuote.ts stays structured).
+ * estimate); a Meter quote shows "Podle taximetru" (A6 fallback — no dropoff). A quote
+ * failure (502) shows "Cenu nelze spočítat, zavolejte nám". The Czech label is composed via
+ * useTranslation (the pure priceQuote.ts stays structured).
  */
 export function PriceRangeBadge({ view, errorKey = null }: PriceRangeBadgeProps) {
   const { t } = useTranslation()
@@ -53,6 +54,10 @@ export function PriceRangeBadge({ view, errorKey = null }: PriceRangeBadgeProps)
 
   if (view.kind === 'fixed') {
     return <Badge $fixed role="status">{t('customer.custom.quoteFixed', { price: formatCzk(view.priceCzk) })}</Badge>
+  }
+
+  if (view.kind === 'meter') {
+    return <Badge $fixed={false} role="status">{t('customer.custom.quoteMeter')}</Badge>
   }
 
   return (

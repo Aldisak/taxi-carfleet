@@ -3,20 +3,20 @@ import { interpretQuote, isFormSubmittable, type PriceQuoteView } from './priceQ
 import type { PriceQuoteResponse } from '../../../shared/api/client'
 
 describe('interpretQuote', () => {
-  it('maps a Fixed quote to a single price', () => {
-    const res: PriceQuoteResponse = { priceType: 'Fixed', fixedPriceCzk: 300, estimateLowCzk: null, estimateHighCzk: null }
+  it('maps a Fixed quote to a single price + routeId', () => {
+    const res: PriceQuoteResponse = { type: 'Fixed', priceCzk: 300, routeId: 'r7', routeName: 'KH → Kolín' }
     const view = interpretQuote(res)
-    expect(view).toEqual<PriceQuoteView>({ kind: 'fixed', priceCzk: 300 })
+    expect(view).toEqual<PriceQuoteView>({ kind: 'fixed', priceCzk: 300, routeId: 'r7' })
   })
 
-  it('maps an Estimate quote to a low/high RANGE', () => {
-    const res: PriceQuoteResponse = { priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: 180, estimateHighCzk: 220 }
+  it('maps an Estimate quote to a low/high RANGE carrying distance/duration', () => {
+    const res: PriceQuoteResponse = { type: 'Estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 }
     const view = interpretQuote(res)
-    expect(view).toEqual<PriceQuoteView>({ kind: 'estimate', lowCzk: 180, highCzk: 220 })
+    expect(view).toEqual<PriceQuoteView>({ kind: 'estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18 })
   })
 
   it('NEVER collapses an estimate to a single number (AC #4): low and high stay distinct', () => {
-    const res: PriceQuoteResponse = { priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: 200, estimateHighCzk: 200 }
+    const res: PriceQuoteResponse = { type: 'Estimate', lowCzk: 200, highCzk: 200, distanceKm: 5, durationMin: 8 }
     const view = interpretQuote(res)
     expect(view.kind).toBe('estimate')
     if (view.kind === 'estimate') {
@@ -25,9 +25,9 @@ describe('interpretQuote', () => {
     }
   })
 
-  it('treats a malformed Estimate (missing bounds) as unknown, never a point price', () => {
-    const res: PriceQuoteResponse = { priceType: 'Estimate', fixedPriceCzk: null, estimateLowCzk: null, estimateHighCzk: null }
-    expect(interpretQuote(res)).toEqual<PriceQuoteView>({ kind: 'unknown' })
+  it('maps a Meter quote to the meter view (the NEW A6 branch — was previously "unknown")', () => {
+    const res: PriceQuoteResponse = { type: 'Meter', baseCzk: 40, perKmCzk: 30, minimumCzk: 60 }
+    expect(interpretQuote(res)).toEqual<PriceQuoteView>({ kind: 'meter' })
   })
 })
 

@@ -148,7 +148,38 @@
     "tabs": {
       "vehicles": "Vozidla",
       "people": "Lidé",
-      "fleet": "Flotila"
+      "fleet": "Flotila",
+      "routesZones": "Trasy a zóny"
+    },
+    "routesZones": {
+      "title": "Trasy a zóny",
+      "tabs": {
+        "zones": "Zóny",
+        "routes": "Trasy",
+        "places": "Místa"
+      }
+    },
+    "zones": {
+      "title": "Zóny",
+      "listLabel": "Seznam zón",
+      "loading": "Načítám zóny…",
+      "loadingMap": "Načítám mapu…",
+      "empty": "Zatím nejsou žádné zóny. Nakreslete první zónu na mapě níže.",
+      "nameLabel": "Název zóny",
+      "namePlaceholder": "např. Centrum Kutná Hora",
+      "nameRequired": "Nejprve zadejte název zóny.",
+      "modeCircle": "Kruh",
+      "modePolygon": "Mnohoúhelník",
+      "circleHint": "Klikněte na střed, poté klikněte na okraj pro určení poloměru.",
+      "polygonHint": "Klikáním přidávejte body, dvojklikem mnohoúhelník uzavřete.",
+      "circleMeta": "Kruh · poloměr {{radius}} m",
+      "polygonMeta": "Mnohoúhelník · {{count}} bodů",
+      "disabled": "vypnuto",
+      "delete": "Smazat",
+      "deleteAria": "Smazat zónu {{name}}",
+      "saved": "Zóna uložena.",
+      "saveFailed": "Zónu se nepodařilo uložit. Zkuste to prosím znovu.",
+      "polygonTooFewPoints": "Mnohoúhelník potřebuje alespoň 3 body."
     },
     "vehicles": {
       "title": "Vozidla",
@@ -231,6 +262,123 @@
       "autoDispatch": "Automatické přidělování",
       "autoDispatchHint": "Dostupné ve verzi 1.1",
       "loading": "Načítám nastavení..."
+    },
+    "routes": {
+      "title": "Trasy",
+      "listLabel": "Seznam tras",
+      "loading": "Načítám trasy…",
+      "empty": "Zatím nejsou žádné trasy. Přidejte první trasu níže.",
+      "add": "Přidat trasu",
+      "edit": "Upravit",
+      "delete": "Smazat",
+      "disabled": "vypnuto",
+      "priceMeta": "{{price}} Kč",
+      "moveUp": "Posunout trasu {{name}} nahoru",
+      "moveDown": "Posunout trasu {{name}} dolů",
+      "enableAria": "Zapnout nebo vypnout trasu {{name}}",
+      "editAria": "Upravit trasu {{name}}",
+      "deleteAria": "Smazat trasu {{name}}",
+      "types": {
+        "PointToPoint": "Z bodu do bodu",
+        "Zone": "Zóna",
+        "ZoneToZone": "Mezi zónami"
+      },
+      "days": {
+        "mon": "Pondělí",
+        "tue": "Úterý",
+        "wed": "Středa",
+        "thu": "Čtvrtek",
+        "fri": "Pátek",
+        "sat": "Sobota",
+        "sun": "Neděle"
+      },
+      "daysShort": {
+        "mon": "Po",
+        "tue": "Út",
+        "wed": "St",
+        "thu": "Čt",
+        "fri": "Pá",
+        "sat": "So",
+        "sun": "Ne"
+      },
+      "editor": {
+        "title": "Editor trasy",
+        "name": "Název trasy",
+        "type": "Typ trasy",
+        "price": "Cena (Kč)",
+        "pickupPick": "Klikněte do mapy a určete místo nástupu.",
+        "pickupSet": "Nástup: {{lat}}, {{lng}}",
+        "dropoffPick": "Klikněte do mapy a určete místo výstupu.",
+        "dropoffSet": "Výstup: {{lat}}, {{lng}}",
+        "loadingMap": "Načítám mapu…",
+        "fromRadius": "Poloměr nástupu (m)",
+        "toRadius": "Poloměr výstupu (m)",
+        "fromZone": "Výchozí zóna",
+        "toZone": "Cílová zóna",
+        "selectZone": "Vyberte zónu…",
+        "bidirectional": "Platí oběma směry",
+        "days": "Platné dny",
+        "validFrom": "Platí od",
+        "validTo": "Platí do",
+        "enabled": "Zapnuto",
+        "save": "Uložit",
+        "cancel": "Zrušit"
+      },
+      "validation": {
+        "nameRequired": "Zadejte název trasy.",
+        "priceRequired": "Cena musí být větší než nula.",
+        "daysRequired": "Vyberte alespoň jeden den.",
+        "pickupRequired": "Určete místo nástupu v mapě.",
+        "dropoffRequired": "Určete místo výstupu v mapě.",
+        "radiusRequired": "Poloměry musí být větší než nula.",
+        "fromZoneRequired": "Vyberte výchozí zónu.",
+        "toZoneRequired": "Vyberte cílovou zónu."
+      },
+      "test": {
+        "title": "Otestovat trasu",
+        "pickPickup": "Klikněte do mapy a určete místo nástupu.",
+        "pickupSet": "Nástup: {{lat}}, {{lng}}",
+        "dropoffOptional": "Volitelně klikněte do mapy a určete výstup.",
+        "dropoffSet": "Výstup: {{lat}}, {{lng}}",
+        "at": "Čas (volitelně)",
+        "loading": "Počítám cenu…",
+        "fixed": "Pevná cena {{price}} Kč",
+        "estimate": "Odhad {{low}}–{{high}} Kč",
+        "meter": "Podle taximetru",
+        "unknown": "Cenu se nepodařilo určit.",
+        "quoteUnavailable": "Cenu nelze spočítat, zavolejte nám."
+      }
+    },
+    "places": {
+      "title": "Místa",
+      "listLabel": "Seznam míst",
+      "loading": "Načítám místa…",
+      "empty": "Zatím nejsou žádná místa. Přidejte první místo níže.",
+      "add": "Přidat místo",
+      "edit": "Upravit",
+      "delete": "Smazat",
+      "disabled": "vypnuto",
+      "editAria": "Upravit místo {{name}}",
+      "deleteAria": "Smazat místo {{name}}",
+      "editor": {
+        "title": "Editor místa",
+        "name": "Název místa",
+        "address": "Adresa",
+        "addressPlaceholder": "např. Nádražní 1, Kutná Hora",
+        "pickCoords": "Klikněte do mapy a určete polohu.",
+        "coordsSet": "Poloha: {{lat}}, {{lng}}",
+        "loadingMap": "Načítám mapu…",
+        "sortOrder": "Pořadí",
+        "enabled": "Zapnuto",
+        "save": "Uložit",
+        "cancel": "Zrušit"
+      },
+      "validation": {
+        "nameRequired": "Zadejte název místa.",
+        "addressRequired": "Zadejte adresu.",
+        "coordsRequired": "Určete polohu v mapě.",
+        "sortOrderInvalid": "Pořadí nesmí být záporné."
+      }
     }
   },
   "search": {
@@ -564,7 +712,11 @@
       "submit": "Objednat",
       "submitting": "Objednávám...",
       "loginPrompt": "Pro dokončení objednávky se prosím přihlaste.",
-      "zonePlaceholder": "Zadání adresy v zóně bude brzy k dispozici. Pro tuto trasu nám prosím zavolejte.",
+      "zonePickupLabel": "Odkud vás vyzvedneme? (v zóně)",
+      "zoneDropoffLabel": "Kam jedete? (v cílové zóně)",
+      "zonePickupRequired": "Nejprve zvolte místo vyzvednutí v zóně.",
+      "zoneConfirmed": "Adresa je v zóně – cena je pevná.",
+      "outsideZone": "Zadaná adresa je mimo zónu této trasy. Zvolte jiné místo nebo nám zavolejte.",
       "offlineBlocked": "Jste offline. Objednávku nyní nelze vytvořit – zavolejte nám prosím.",
       "errorTooSoon": "Vyzvednutí musí být nejdříve za 20 minut.",
       "errorTooLate": "Vyzvednutí lze naplánovat nejdéle na 7 dní dopředu.",
@@ -589,6 +741,7 @@
       "dragHint": "Posuňte špendlík na přesné místo vyzvednutí.",
       "quoteFixed": "Cena {{price}} – pevná",
       "quoteEstimate": "Odhad {{low}} – {{high}}",
+      "quoteMeter": "Podle taximetru",
       "quoteUnavailable": "Cenu nelze spočítat, zavolejte nám.",
       "submit": "Objednat",
       "submitting": "Objednávám...",

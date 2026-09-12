@@ -1,41 +1,34 @@
-using System.Globalization;
 using FastEndpoints;
 using FluentValidation;
 using Taxi.Api.Common;
 
 namespace Taxi.Api.Features.Pricing.Quote;
 
-/// <summary>Validates the GET /pricing/quote request — pickup coords required and parseable;
-/// dropoff coords optional but parseable when present. Invalid doubles return a clean 400
-/// (FastEndpoints double query binding is locale-sensitive; CLAUDE.md).</summary>
+/// <summary>Validates the POST /pricing/quote body — pickup coords within WGS84 range; dropoff coords,
+/// when present, both supplied and in range.</summary>
 internal sealed class QuoteValidator : Validator<QuoteRequest>
 {
     /// <summary>Initializes validation rules.</summary>
     public QuoteValidator()
     {
-        RuleFor(x => x.FromLat)
-            .NotEmpty().WithErrorCode(ErrorCodes.Validation.PickupCoordsRequired)
-            .Must(IsParseable)
-            .When(x => !string.IsNullOrEmpty(x.FromLat))
-            .WithErrorCode(ErrorCodes.Validation.PickupCoordsRequired);
+        RuleFor(x => x.PickupLat)
+            .InclusiveBetween(-90, 90).WithErrorCode(ErrorCodes.Validation.PickupCoordsOutOfRange);
+        RuleFor(x => x.PickupLng)
+            .InclusiveBetween(-180, 180).WithErrorCode(ErrorCodes.Validation.PickupCoordsOutOfRange);
 
-        RuleFor(x => x.FromLng)
-            .NotEmpty().WithErrorCode(ErrorCodes.Validation.PickupCoordsRequired)
-            .Must(IsParseable)
-            .When(x => !string.IsNullOrEmpty(x.FromLng))
-            .WithErrorCode(ErrorCodes.Validation.PickupCoordsRequired);
+        // When a dropoff is supplied, both coords must be present and in range.
+        RuleFor(x => x.DropoffLng)
+            .NotNull().WithErrorCode(ErrorCodes.Validation.DropoffCoordsRequired)
+            .When(x => x.DropoffLat is not null);
+        RuleFor(x => x.DropoffLat)
+            .NotNull().WithErrorCode(ErrorCodes.Validation.DropoffCoordsRequired)
+            .When(x => x.DropoffLng is not null);
 
-        RuleFor(x => x.ToLat)
-            .Must(IsParseable)
-            .When(x => !string.IsNullOrEmpty(x.ToLat))
-            .WithErrorCode(ErrorCodes.Validation.DropoffCoordsRequired);
-
-        RuleFor(x => x.ToLng)
-            .Must(IsParseable)
-            .When(x => !string.IsNullOrEmpty(x.ToLng))
-            .WithErrorCode(ErrorCodes.Validation.DropoffCoordsRequired);
+        RuleFor(x => x.DropoffLat!.Value)
+            .InclusiveBetween(-90, 90).WithErrorCode(ErrorCodes.Validation.DropoffCoordsOutOfRange)
+            .When(x => x.DropoffLat is not null);
+        RuleFor(x => x.DropoffLng!.Value)
+            .InclusiveBetween(-180, 180).WithErrorCode(ErrorCodes.Validation.DropoffCoordsOutOfRange)
+            .When(x => x.DropoffLng is not null);
     }
-
-    private static bool IsParseable(string? s) =>
-        double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
 }

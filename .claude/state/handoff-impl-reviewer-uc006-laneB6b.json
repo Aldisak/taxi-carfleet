@@ -1,0 +1,28 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB6b (B3+B4+envelope fix)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "L1",
+      "severity": "LOW",
+      "file": "web/src/features/settings/routesZones/routes/RouteEditor.tsx",
+      "rule": "designer AC B3-settings-routes-tab AC#2 / handoff notes",
+      "title": "B3 PointToPoint editor ships map-pin only, no address autocomplete",
+      "detail": "The B3 AC describes the PointToPoint form as 'address-autocomplete + map-pin point pickers + radii'. RouteEditor ships the lazy PinPickerMap (click + draggable marker) + a coordinate status line + radii, but no address text/autocomplete field. The backend RouteAdminDto/CreateRouteRequest carry only fromLat/fromLng/toLat/toLng (no address fields), so an address input would be a pure UI locating aid the backend never persists. The developer flagged this as a conscious deviation.",
+      "recommendation": "Accept as a minor follow-up. If letter-of-AC is required, promote a shared AddressAutocomplete wrapping the shared getGeoSuggest and set the pin from a search result (do NOT reuse features/customer/AddressAutocomplete — cross-feature)."
+    },
+    {
+      "id": "L2",
+      "severity": "LOW",
+      "file": "web/src/features/settings/routesZones/routes/RoutesTab.tsx",
+      "rule": "rules/web-react-style.md#styled-components",
+      "title": "Inline style object on the move-button column and the days fieldset",
+      "detail": "RoutesTab line 167 uses style={{ display:'flex', flexDirection:'column', gap:2 }} and RouteEditor line 283 uses style={{ border:'none', padding:0, margin:0 }} instead of styled-components with theme tokens. Minor and uses a raw px gap (2). Not a functional issue and does not bypass a color token.",
+      "recommendation": "Optionally move these into styled wrappers using theme.spacing tokens for consistency with the rest of the file."
+    }
+  ],
+  "summary": "laneB6b (B3 Trasy tab + B4 Mista tab + the deferred getZones/getRoutes/getPlaces envelope fix) is clean and does NOT block merge. ENVELOPE FIX VERIFIED against the real C# records: getZones unwraps { zones } (ListZonesResponse(Zones)), getRoutes unwraps { routes } (ListRoutesResponse(Routes)), getPlaces unwraps { places } (ListPlacesResponse(Places)); no remaining .items mis-unwrap for these three; the regression tests in client.test.ts mock FETCH (not the client) against the real named-envelope shapes, so a revert to .items fails at unit level. PRICING PROMOTION VERIFIED: interpretQuote + PriceQuoteView moved to src/shared/pricing/interpretQuote.ts; customer/order/priceQuote.ts re-exports them so all existing customer importers are unchanged (priceQuote.test.ts imports interpretQuote/PriceQuoteView from './priceQuote' transparently); the dispatcher Otestovat panel and RouteEditor import from shared + '../PinPickerMap' only — grep confirms ZERO cross-feature imports under settings/routesZones and ZERO feature imports inside shared/pricing. B3: list is priority-desc with keyboard-accessible move-up/move-down buttons (jsdom-safe) driving pure priorityReorder (descending N-1..0, PATCHes only changed rows via setRoutePriority); type badge; pure validitySummary (ValidDays bitmask ranges/isolated days, all-week/all-day, bounded window, Nikdy); enable toggle -> setRouteEnabled; type-aware editor (P2P pins+radii, Zone FromZone dropdown, ZoneToZone From+To + bidirectional); Otestovat panel POSTs pricing/quote with optional 'at' (datetime-local -> toISOString) and renders Fixed/Estimate/Meter; TimeOnly wire format is HH:mm:ss (routeForm toHhMmSs) with HH:mm display. B4: places CRUD (name, address, lazy map pin lat/lng, sortOrder, enable), ordered by sortOrder. LAZY LEAFLET: PinPickerMap is a default-export React.lazy chunk in every caller; dist shows PinPickerMap-*.js and ZoneEditorMap-*.js as separate chunks (not eager in index). router.tsx and /c//d screens are NOT in the laneB6b staged diff. i18n cs/en parity is EXACT (0 mismatch; comingSoon keys removed cleanly). Touch targets via theme.touchTargets.min on all buttons/inputs/chips; vitest-axe on RoutesTab + PlacesTab per the handoff tests. No tsconfig.tsbuildinfo staged. No Windows case-collision. Only two LOW findings, both cosmetic/scope.",
+  "ac_deviation_verdict": "ACCEPTABLE minor follow-up — does NOT block an AC. B3 P2P ships map-pin-only (no address autocomplete). Rationale: (1) RouteAdminDto/CreateRouteRequest carry only lat/lng, no address field, so the pin sets exactly the coordinates the backend stores; an address box would be a non-persisted locating convenience. (2) The AC#4 E2E acceptance flow creates a ZONE route (FromZone dropdown), not a P2P route, so no AC-level test depends on P2P address autocomplete. (3) B4's AC explicitly makes address autocomplete OPTIONAL, and PlaceEditor's plain address field + map pin is fully compliant there. The developer correctly avoided reusing the customer AddressAutocomplete (cross-feature) rather than shipping a rule violation. Recommend tracking the shared-AddressAutocomplete promotion as a clean follow-up WI; merge laneB6b now."
+}

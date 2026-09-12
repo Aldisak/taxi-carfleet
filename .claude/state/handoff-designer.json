@@ -1,207 +1,266 @@
 {
-  "uc_id": "UC-004",
-  "spec_path": "docs/specs/in-progress/004_UC_004_customer-pwa.md",
-  "work_items_doc": "docs/specs/in-progress/customer-pwa-work-items.md",
+  "uc_id": "UC-006",
+  "spec_path": "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
+  "work_items_doc": "docs/specs/in-progress/routes-zones-pricing-work-items.md",
   "work_items": [
     {
-      "id": "A-public-fleet",
+      "id": "A1-route-columns",
       "lane": "api",
-      "title": "GET public/fleet (AllowAnonymous, fleet from X-Fleet-Slug/subdomain) + Fleet.PrimaryColorHex column + migration",
-      "goal": "An AllowAnonymous branding endpoint returning the resolved fleet's public fields. TenantResolutionMiddleware resolves the fleet from X-Fleet-Slug header/subdomain for anonymous requests too (it is gated on IsAuthenticated only for the JWT branch, verified), so the EF global query filter auto-scopes the read and there is no cross-fleet leak. Adds a nullable PrimaryColorHex (#RRGGBB) column to Fleet + migration because Fleet has Name/Phone but no color column (verified).",
+      "title": "Add Route.FromRadiusMeters/ToRadiusMeters (PointToPoint, default 150) + IsBidirectional (ZoneToZone, default true) + EF config + migration",
+      "goal": "The first of two serialized Lane-A migrations. Add three columns to the existing Route entity (verified present: Type, PriceCzk, From/To Lat/Lng, FromZoneId/ToZoneId, ValidDays bitmask, ValidFromTime/ValidToTime, Priority, IsEnabled, DeletedAt): FromRadiusMeters (double, default 150) and ToRadiusMeters (double, default 150) for PointToPoint radius matching, and IsBidirectional (bool, default true) so ZoneToZone Kolin<->KH costs the same both ways. Update RouteConfiguration and add the migration. No endpoint changes here - this WI exists solely to land the schema cleanly before A2's Place migration (serialized so the TaxiDbContextModelSnapshot stays coherent, UC-004 precedent).",
       "depends_on": [],
-      "estimated_complexity": "M",
+      "estimated_complexity": "S",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetEndpoint.cs",
-        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetResponse.cs",
-        "api/src/Taxi.Api/Features/Public/PublicFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/Fleet.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/FleetConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Route.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/RouteConfiguration.cs",
         "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/tests/Taxi.Api.Tests/Public/PublicFleetTests.cs"
+        "api/tests/Taxi.Api.Tests/Routes/RouteColumnsTests.cs"
       ],
       "rule_citations": [
+        "rules/ef-core.md#entity-naming",
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#indexes",
+        "rules/ef-core.md#migrations",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#migrations",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "Route gains FromRadiusMeters (double, default 150), ToRadiusMeters (double, default 150), IsBidirectional (bool, default true). RouteConfiguration sets the three defaults (HasDefaultValue) so existing rows backfill. A migration AddRouteRadiusAndBidirectional is added with dotnet ef --output-dir Infrastructure/Migrations (CLAUDE.md). This migration is sequenced BEFORE A2's Place migration (the one hard Lane-A ordering constraint) so the model snapshot applies cleanly.",
+        "The migration up-SQL adds the three columns non-destructively with the stated defaults (review before commit - no column drops/renames per rules/ef-core.md#migrations).",
+        "RouteColumns_DefaultsApplied_NewRouteHas150And150AndTrue and RouteColumns_Migration_BackfillsExistingRows pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Routes.RouteColumns"
+      }
+    },
+    {
+      "id": "A2-places",
+      "lane": "api",
+      "title": "Place entity + DbSet + config + migration + seed + CRUD /api/v1/places (FleetAdmin, tenant-scoped)",
+      "goal": "The second serialized Lane-A migration. New Place entity (Id, FleetId, Name, Lat, Lng, Address, SortOrder, IsEnabled) implementing ITenantEntity; DbSet on TaxiDbContext; PlaceConfiguration with a FleetId index; migration AddPlacesTable (AFTER A1 so the snapshot rebases). Vertical-slice CRUD under Features/Places: list (ordered by SortOrder), create, update, delete (FleetAdmin), all tenant-scoped by the global query filter. Seed four demo places in DevelopmentSeeder (Kolin station, KH hl.n., KH mesto, hospital Kolin) inside the demo-fleet idempotent block. Used by dispatcher chips (UC-002) and customer address suggestions (UC-004).",
+      "depends_on": [
+        "A1-route-columns"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Entities/Place.cs",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/PlaceConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Migrations/",
+        "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
+        "api/src/Taxi.Api/Features/Places/PlacesFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Places/ListPlaces/ListPlacesEndpoint.cs",
+        "api/src/Taxi.Api/Features/Places/ListPlaces/ListPlacesResponse.cs",
+        "api/src/Taxi.Api/Features/Places/ListPlaces/PlaceDto.cs",
+        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceEndpoint.cs",
+        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceRequest.cs",
+        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceResponse.cs",
+        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceValidator.cs",
+        "api/src/Taxi.Api/Features/Places/UpdatePlace/UpdatePlaceEndpoint.cs",
+        "api/src/Taxi.Api/Features/Places/UpdatePlace/UpdatePlaceRequest.cs",
+        "api/src/Taxi.Api/Features/Places/UpdatePlace/UpdatePlaceValidator.cs",
+        "api/src/Taxi.Api/Features/Places/DeletePlace/DeletePlaceEndpoint.cs",
+        "api/src/Taxi.Api/Features/Places/DeletePlace/DeletePlaceRequest.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Places/PlacesCrudTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#one-type-per-file",
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
         "rules/api-design.md#authorization",
         "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#entity-naming",
+        "rules/ef-core.md#primary-keys",
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#indexes",
         "rules/ef-core.md#asnotracking",
         "rules/ef-core.md#projections",
         "rules/ef-core.md#migrations",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
+        "rules/error-handling.md#send-for-expected-errors",
         "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#guid-primary-keys",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#migrations",
-        "rules/error-handling.md#send-for-expected-errors",
+        "rules/naming.md#error-codes",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
+        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "GET public/fleet is AllowAnonymous() with a Summary documenting why it is public (branding for the customer PWA before login). It relies on TenantResolutionMiddleware resolving the fleet from the X-Fleet-Slug header or subdomain on an anonymous request (verified: the middleware gates only its JWT-claim branch on IsAuthenticated; branches 2 and 3 run for anonymous requests and it is registered before UseAuthorization).",
-        "When currentTenant.FleetId is null (unknown/missing slug) the endpoint returns 404 via Send.NotFoundAsync (no unscoped query). Otherwise it projects the resolved fleet (AsNoTracking, query-filter-scoped) to { name, phone, primaryColorHex, currency, timeZone }.",
-        "Fleet gains a nullable string PrimaryColorHex (#RRGGBB). A migration AddFleetPrimaryColor is added with dotnet ef --output-dir Infrastructure/Migrations (CLAUDE.md). This migration is sequenced BEFORE A-rating's AddOrderRating so the model snapshot applies cleanly (the one hard Lane-A ordering constraint).",
-        "PublicFleet_KnownSlug_ReturnsBranding, PublicFleet_UnknownSlug_Returns404, PublicFleet_NoSlug_Returns404, and PublicFleet_FleetASlug_NeverReturnsFleetBData (tenant isolation) pass."
+        "Place : ITenantEntity has Id (Guid), FleetId (Guid), Name (string), Lat (double), Lng (double), Address (string), SortOrder (int), IsEnabled (bool). DbSet<Place> Places registered; PlaceConfiguration indexes FleetId. Migration AddPlacesTable added with --output-dir Infrastructure/Migrations and sequenced AFTER A1's AddRouteRadiusAndBidirectional (serialized via depends_on so two migrations are never generated in parallel - the second would clobber the first's snapshot).",
+        "GET places (FleetAdmin, AsNoTracking, tenant-scoped) returns places ordered by SortOrder projected to { id, name, lat, lng, address, sortOrder, isEnabled }. POST/PUT/DELETE places are FleetAdmin, tenant-scoped, with validators (Name required, coords present, SortOrder >= 0). DELETE is a hard delete (places are not orders/events). A cross-fleet id on PUT/DELETE returns a no-leak 404.",
+        "DevelopmentSeeder seeds four places (Kolin station, KH hl.n., KH mesto, hospital Kolin) for the demo fleet inside the existing idempotent demo-slug block.",
+        "Places_List_OrderedBySortOrder, Places_Create_Persists, Places_Update_ChangesFields, Places_Delete_Removes, Places_CrossTenant_Returns404 (tenant isolation), and Places_NonFleetAdmin_Returns403 pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Public"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Places"
       }
     },
     {
-      "id": "A-track",
+      "id": "A3-zone-service",
       "lane": "api",
-      "title": "TrackingTokenService (HMAC mint/validate) + GET public/track/{code}?k= (AllowAnonymous) + create-order response tracking fields",
-      "goal": "The logged-out SMS tracking link. A Common/Tracking/TrackingTokenService mints/validates Base64Url(HMACSHA256(key, orderId:exp)); GET public/track/{code}?k= is AllowAnonymous, resolves the fleet from the slug, validates the token plus the 'valid until 2h after completion' rule, and returns the reduced TrackOrderResponse. FleetHub is [Authorize] (verified) so the logged-out path cannot use SignalR; the client polls this endpoint. Mint must live somewhere now even though SMS is deferred to 05, so the customer create-order response is extended with trackingCode/trackingToken/trackingUrlPath for the E2E.",
+      "title": "Pure ZoneService.Contains (haversine circle + ray-casting polygon) + exhaustive unit tests",
+      "goal": "The novel geometry primitive. A pure Common/Geo/ZoneService with Contains(Zone zone, double lat, double lng) -> bool: haversine great-circle distance <= RadiusMeters for Circle zones; ray-casting point-in-polygon for Polygon zones (Polygon is jsonb JsonDocument holding [[lat,lng],...]; parse in memory - never project a JsonDocument in LINQ, CLAUDE.md WI-10). No DbContext, no IO - a static/stateless helper so every consumer (matching service, zone-restricted inputs) shares one implementation. Unit-tested with Czech coordinates only, including points ON an edge and just inside/outside.",
       "depends_on": [],
-      "estimated_complexity": "L",
+      "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Common/Tracking/TrackingTokenService.cs",
-        "api/src/Taxi.Api/Common/Tracking/TrackingOptions.cs",
-        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeEndpoint.cs",
-        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeRequest.cs",
-        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeResponse.cs",
-        "api/src/Taxi.Api/Features/Public/TrackByCode/TrackByCodeValidator.cs",
-        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderResponse.cs",
-        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderEndpoint.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Public/PublicTrackTests.cs"
+        "api/src/Taxi.Api/Common/Geo/ZoneService.cs",
+        "api/tests/Taxi.Api.Tests/Geo/ZoneServiceTests.cs"
       ],
       "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#one-type-per-file",
+        "rules/architecture.md#banned-patterns",
+        "rules/csharp-style.md#expression-bodied",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "ZoneService.Contains handles Circle zones via haversine: a point whose great-circle distance to (CenterLat, CenterLng) is <= RadiusMeters returns true; a point just outside returns false. It handles Polygon zones via ray-casting over the [[lat,lng],...] array parsed from the jsonb JsonDocument in memory (the JsonDocument is never passed to a LINQ-to-SQL Select - CLAUDE.md). A null/empty Polygon or a null RadiusMeters for the wrong shape returns false (guard, not exception).",
+        "Unit tests use Kutna Hora / Kolin coordinates only and cover: center-inside, just-inside and just-outside a circle radius; a point inside a convex polygon; a point outside; and a point ON a polygon edge / on a circle boundary (AC#1 'pickup on a zone edge' - the chosen boundary convention is asserted and documented in a test comment).",
+        "ZoneService_CircleCenter_Contains, ZoneService_CircleJustOutside_Excludes, ZoneService_CircleOnBoundary_DocumentedConvention, ZoneService_PolygonInside_Contains, ZoneService_PolygonOutside_Excludes, and ZoneService_PolygonOnEdge_DocumentedConvention pass."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Geo.ZoneService"
+      }
+    },
+    {
+      "id": "A4-zones-crud",
+      "lane": "api",
+      "title": "Zones CRUD /api/v1/zones (FleetAdmin, Circle or Polygon <=200 pts, tenant-scoped)",
+      "goal": "Vertical-slice CRUD over the existing Zone entity (verified: Id, FleetId, Name, Shape Circle/Polygon, CenterLat/Lng, RadiusMeters?, Polygon jsonb JsonDocument?, IsEnabled; DbSet already registered). Endpoints under Features/Zones: list, create, update, delete (FleetAdmin, tenant-scoped). Per-shape validation: Circle requires CenterLat/Lng + RadiusMeters > 0 and Polygon null; Polygon requires a Polygon of 3..200 [lat,lng] pairs and RadiusMeters null. Writing the jsonb Polygon uses JsonDocument.Parse of the request's coordinate array; dispose per CLAUDE.md. No geometry math here - that lives in A3 (A4 shares no code files with A3 and does not call Contains). depends_on A2 ONLY to serialize the shared ErrorCodes.cs append after A2 (A2->A4 and A2->A5 keep ErrorCodes.cs writers down to 2 concurrent: A4 + A5, the UC-004 precedent level).",
+      "depends_on": [
+        "A2-places"
+      ],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Zones/ZonesFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Zones/ListZones/ListZonesEndpoint.cs",
+        "api/src/Taxi.Api/Features/Zones/ListZones/ListZonesResponse.cs",
+        "api/src/Taxi.Api/Features/Zones/ListZones/ZoneDto.cs",
+        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneEndpoint.cs",
+        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneRequest.cs",
+        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneResponse.cs",
+        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneValidator.cs",
+        "api/src/Taxi.Api/Features/Zones/UpdateZone/UpdateZoneEndpoint.cs",
+        "api/src/Taxi.Api/Features/Zones/UpdateZone/UpdateZoneRequest.cs",
+        "api/src/Taxi.Api/Features/Zones/UpdateZone/UpdateZoneValidator.cs",
+        "api/src/Taxi.Api/Features/Zones/DeleteZone/DeleteZoneEndpoint.cs",
+        "api/src/Taxi.Api/Features/Zones/DeleteZone/DeleteZoneRequest.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Zones/ZonesCrudTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#one-type-per-file",
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
         "rules/api-design.md#authorization",
         "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#feature-configuration",
+        "rules/api-design.md#routes",
         "rules/ef-core.md#asnotracking",
         "rules/ef-core.md#projections",
         "rules/validation.md#validator-class",
+        "rules/validation.md#common-rules",
         "rules/error-handling.md#send-for-expected-errors",
         "rules/error-handling.md#no-exceptions-for-control-flow",
         "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#error-codes",
-        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
+        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "TrackingTokenService (internal, InternalsVisibleTo the test project) mints token = Base64Url(HMACSHA256(Tracking:HmacKey, \"{orderId}:{expUnixSeconds}\")) and validates: the signature verifies against the configured key AND now < exp AND (if the order is Completed) now < CompletedAt + 2h. The '2h after completion' rule is a validation-time check (completion is unknown at mint), NOT a mint-time expiry. The key is bound via TrackingOptions from config (Tracking:HmacKey) and the raw token is never logged (rules/logging.md).",
-        "GET public/track/{code}?k= is AllowAnonymous(), resolves the fleet from the slug/subdomain via the middleware, loads the order by PublicCode within the fleet query-filter scope, confirms the token's embedded orderId matches the loaded order, and returns the existing TrackOrderResponse shape extended with priceType and a display price (no phone, no customer id).",
-        "A bad, missing, expired, or tampered token, or a token whose orderId does not match the code, returns 410 Tracking.LinkExpired via AddError(...) + Send.ErrorsAsync(410, ct); an unknown code within the resolved fleet returns 404 (no-leak); no resolvable slug returns 404.",
-        "The customer path of CreateOrderEndpoint mints a tracking token (exp = now + 24h) and the CreateOrderResponse gains trackingCode, trackingToken, and trackingUrlPath (/c/t/{code}?k={token}). The existing { order } envelope is preserved (these are additive sibling fields). Dispatcher create is unaffected.",
-        "Track_ValidToken_ReturnsReducedDto, Track_ExpiredToken_Returns410, Track_TamperedToken_Returns410, Track_CompletedOver2h_Returns410, Track_CompletedUnder2h_ReturnsDto, Track_FleetASlug_WithFleetBCode_Returns404 (tenant isolation), CreateOrder_Customer_ReturnsTrackingCodeAndToken, and TrackingTokenService_RoundTrips_MintThenValidate pass."
+        "GET zones (FleetAdmin, AsNoTracking, tenant-scoped) lists zones projected to { id, name, shape, centerLat, centerLng, radiusMeters, polygon (array of [lat,lng]), isEnabled }. The jsonb Polygon is materialized with ToListAsync() first then read in memory (never projected in a LINQ Select - CLAUDE.md WI-10).",
+        "POST/PUT zones (FleetAdmin, tenant-scoped) validate per shape: Circle -> CenterLat/Lng present + RadiusMeters > 0 + Polygon null; Polygon -> 3..200 coordinate pairs + RadiusMeters null. The request's polygon array is stored via JsonDocument.Parse and disposed (CLAUDE.md). A >200-point polygon returns 400 with a stable error code. DELETE zones is FleetAdmin, tenant-scoped, no-leak 404 cross-fleet.",
+        "Zones_Create_Circle_Persists, Zones_Create_Polygon_PersistsJsonb, Zones_Create_PolygonOver200_Returns400, Zones_List_ReturnsShapes, Zones_Update_ChangesShape, Zones_Delete_Removes, Zones_CrossTenant_Returns404 (tenant isolation), and Zones_NonFleetAdmin_Returns403 pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Public"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Zones"
       }
     },
     {
-      "id": "A-pricing",
+      "id": "A5-routes-crud",
       "lane": "api",
-      "title": "GET pricing/quote (CustomerOnly) returning a fixed price or an estimate RANGE",
-      "goal": "A CustomerOnly quote endpoint that wraps IGeoProvider + the fleet default Tariff server-side and returns a fixed price (route match) or an estimate RANGE (tariff price plus/minus 10 percent, rounded to 10 CZK). Never a single exact estimate (AC #4). This wraps geo/route server-side so no customer-facing geo/route widening is needed (only geo/suggest, A-geo-suggest). Pre-06 contract documented for Lane B.",
-      "depends_on": [],
-      "estimated_complexity": "M",
+      "title": "Routes CRUD /api/v1/routes (FleetAdmin, soft delete, PATCH enable, PATCH priority, per-type validation)",
+      "goal": "Vertical-slice CRUD over the existing Route entity plus the A1 columns: list (sorted by Priority desc), create, update, soft delete (set DeletedAt), PATCH /{id}/enable, PATCH /{id}/priority (FleetAdmin, tenant-scoped). Per-type validation in validators: PointToPoint requires From/To Lat/Lng + FromRadiusMeters/ToRadiusMeters > 0; Zone requires FromZoneId (To* null); ZoneToZone requires FromZoneId + ToZoneId + reads IsBidirectional. Validity fields (ValidDays bitmask, ValidFromTime/ValidToTime) are set as provided. Does NOT own the matching algorithm (A6) - this is administrative CRUD only. Coexists with the existing AllowAnonymous routes/common listing (ListCommonRoutes) under the same RoutesFeatureConfiguration. depends_on A1 (reads the A1 columns) AND A2 (serializes the shared ErrorCodes.cs append after A2 so at most A4 + A5 write ErrorCodes.cs concurrently).",
+      "depends_on": [
+        "A1-route-columns",
+        "A2-places"
+      ],
+      "estimated_complexity": "L",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteRequest.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteResponse.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteValidator.cs",
-        "api/src/Taxi.Api/Features/Pricing/PricingFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Routes/ListRoutes/ListRoutesEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/ListRoutes/ListRoutesResponse.cs",
+        "api/src/Taxi.Api/Features/Routes/ListRoutes/RouteAdminDto.cs",
+        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteRequest.cs",
+        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteResponse.cs",
+        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteValidator.cs",
+        "api/src/Taxi.Api/Features/Routes/UpdateRoute/UpdateRouteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/UpdateRoute/UpdateRouteRequest.cs",
+        "api/src/Taxi.Api/Features/Routes/UpdateRoute/UpdateRouteValidator.cs",
+        "api/src/Taxi.Api/Features/Routes/DeleteRoute/DeleteRouteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/DeleteRoute/DeleteRouteRequest.cs",
+        "api/src/Taxi.Api/Features/Routes/SetRouteEnabled/SetRouteEnabledEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/SetRouteEnabled/SetRouteEnabledRequest.cs",
+        "api/src/Taxi.Api/Features/Routes/SetRoutePriority/SetRoutePriorityEndpoint.cs",
+        "api/src/Taxi.Api/Features/Routes/SetRoutePriority/SetRoutePriorityRequest.cs",
         "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
+        "api/tests/Taxi.Api.Tests/Routes/RoutesCrudTests.cs"
       ],
       "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
         "rules/architecture.md#vertical-slice-layout",
         "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#banned-patterns",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#expression-bodied",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET pricing/quote is CustomerOnly and tenant-scoped. Coordinate query params are bound as string? and parsed with double.Parse(..., NumberStyles.Float, CultureInfo.InvariantCulture) exactly as RouteEndpoint does (the FastEndpoints double query-binding locale landmine, CLAUDE.md); the validator uses double.TryParse(InvariantCulture) to return a clean 400 for bad input.",
-        "When an enabled, non-deleted, valid-now PointToPoint Route exists whose from/to coords are within a small radius of the request, the response is { priceType: \"Fixed\", fixedPriceCzk } with that route's PriceCzk. Otherwise the endpoint calls IGeoProvider.RouteAsync, prices from the default Tariff as Max(MinimumFareCzk, round(BaseFareCzk + PerKmCzk*km)), and returns { priceType: \"Estimate\", estimateLowCzk, estimateHighCzk } where low/high = price minus/plus 10 percent rounded to 10 CZK. estimateLow is strictly less than estimateHigh — a single exact estimate is never returned (AC #4).",
-        "A missing dropoff returns an Estimate with a wide band derived from the tariff minimum. An OSRM/upstream failure returns 502 Geo.RouteUnavailable (reuse the existing code) via the try/catch + Send.ErrorsAsync(502) pattern from RouteEndpoint; no tenant resolved returns 400.",
-        "Quote_RouteMatch_ReturnsFixed, Quote_NoRoute_ReturnsEstimateRange_NeverExact, Quote_EstimateBand_IsTariffPricePlusMinus10RoundedTo10, Quote_NoDropoff_ReturnsWideEstimate, Quote_InvalidCoords_Returns400, Quote_CrossTenant_UsesCallerFleetTariffOnly (tenant isolation), and Quote_OsrmDown_Returns502 pass (FakeGeoProvider precedent)."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Pricing"
-      }
-    },
-    {
-      "id": "A-rating",
-      "lane": "api",
-      "title": "Order rating columns + migration + POST orders/{id}/rating (CustomerOnly, once) + dispatcher order-detail display",
-      "goal": "Customer rates a completed order once. Adds RatingStars/RatingComment/RatedAt to Order + migration; POST orders/{id}/rating is CustomerOnly, owner-only, Completed-only, once. The dispatcher order-detail (OrderDetailDto/GetOrderEndpoint) gains the three additive fields as a sub-task (AC #7), not a separate WI. Depends on A-public-fleet to serialize the TaxiDbContextModelSnapshot.cs regeneration (two migrations cannot be generated in parallel — the second would clobber the first's snapshot; the conductor serializes only via depends_on) and to serialize the ErrorCodes.cs append.",
-      "depends_on": [
-        "A-public-fleet"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/src/Taxi.Api/Features/Orders/RateOrder/RateOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/RateOrder/RateOrderRequest.cs",
-        "api/src/Taxi.Api/Features/Orders/RateOrder/RateOrderValidator.cs",
-        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
-        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Orders/Rating/OrderRatingTests.cs"
-      ],
-      "rule_citations": [
+        "rules/architecture.md#one-type-per-file",
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
         "rules/api-design.md#authorization",
         "rules/api-design.md#dont-catch-exceptions",
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#migrations",
-        "rules/ef-core.md#date-types",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#indexes",
         "rules/validation.md#validator-class",
         "rules/validation.md#common-rules",
+        "rules/validation.md#what-goes-where",
         "rules/error-handling.md#send-for-expected-errors",
         "rules/error-handling.md#no-exceptions-for-control-flow",
         "rules/csharp-style.md#records-for-dtos",
@@ -209,634 +268,395 @@
         "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#error-codes",
-        "rules/naming.md#migrations",
+        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
+        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "Order gains RatingStars (int?), RatingComment (string?, max 500), RatedAt (DateTimeOffset?). A migration AddOrderRating is added with dotnet ef --output-dir Infrastructure/Migrations. This migration runs AFTER A-public-fleet's AddFleetPrimaryColor so the model snapshot rebases cleanly (the one hard Lane-A ordering constraint).",
-        "POST orders/{id}/rating is CustomerOnly and owner-only (CustomerUserId == sub, no-leak 404 otherwise). The order must be Completed (else 409 Order.NotCompleted) and not already rated (RatedAt == null, else 409 Order.AlreadyRated). On success it sets RatingStars, RatingComment, RatedAt = timeProvider.GetUtcNow(). The request DTO uses plain properties (NOT C# required) with a validator enforcing stars in 1..5 and comment length <= 500 (the required-STJ-trap from CLAUDE.md).",
-        "The dispatcher order-detail OrderDetailDto and GetOrderEndpoint projection gain additive ratingStars/ratingComment/ratedAt fields (AC #7); existing fields and callers are unchanged.",
-        "Rate_CompletedOwnOrder_StoresRating, Rate_Twice_Returns409AlreadyRated, Rate_NotCompleted_Returns409, Rate_NotOwner_Returns404, Rate_StarsOutOfRange_Returns400, Rate_CrossTenant_Returns404 (tenant isolation), and DispatcherOrderDetail_AfterRating_IncludesStars (AC #7) pass."
+        "GET routes (FleetAdmin, AsNoTracking, tenant-scoped) lists non-deleted routes ordered by Priority desc projected to an admin DTO carrying all editable fields including FromRadiusMeters/ToRadiusMeters/IsBidirectional/ValidDays/ValidFromTime/ValidToTime. POST/PUT validate per RouteType (PointToPoint: From/To coords + radii > 0; Zone: FromZoneId required, To* null; ZoneToZone: FromZoneId + ToZoneId required) via the validator; a type/field mismatch returns 400 with a stable code.",
+        "DELETE routes is a SOFT delete (sets DeletedAt = timeProvider.GetUtcNow()); the row is never hard-deleted. PATCH routes/{id}/enable toggles IsEnabled; PATCH routes/{id}/priority sets Priority. All mutations are FleetAdmin, tenant-scoped, no-leak 404 cross-fleet.",
+        "Routes_List_OrderedByPriorityDesc, Routes_Create_PointToPoint_Persists, Routes_Create_Zone_RequiresFromZone_Returns400WhenMissing, Routes_Create_ZoneToZone_Persists, Routes_Delete_SoftDeletesSetsDeletedAt, Routes_Enable_Toggles, Routes_Priority_Sets, Routes_CrossTenant_Returns404 (tenant isolation), and Routes_NonFleetAdmin_Returns403 pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Rating"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Routes.RoutesCrud"
       }
     },
     {
-      "id": "A-common-routes",
+      "id": "A6-pricing-matching",
       "lane": "api",
-      "title": "GET routes/common?validNow= (CustomerOnly, tenant-safe, valid-now filter on the existing Route entity)",
-      "goal": "The Home common-route cards. A CustomerOnly, tenant-scoped read that filters the existing Route entity by valid-now (Europe/Prague time/day). Built from existing Route data (Name/Type/PriceCzk/ValidDays bitmask/ValidFromTime/ValidToTime/IsEnabled/DeletedAt, verified) — not a stub. Sole owner of the Routes test area; does NOT touch ErrorCodes.cs (no new error codes), so it is fully parallel-safe.",
-      "depends_on": [],
-      "estimated_complexity": "S",
+      "title": "Replace pricing/quote with the real matching service (POST, precedence, Meter, at?, widened policy) + pure RouteMatcher + seed example + night route",
+      "goal": "The novel backend core. A pure Common/Pricing/RouteMatcher that, given the fleet's candidate routes + zones (loaded in memory - jsonb Polygon not projected, CLAUDE.md), the pickup/dropoff coords, and an evaluation time, applies precedence PointToPoint -> ZoneToZone -> Zone (within a type: highest Priority, then lowest price), using ZoneService.Contains (A3) + the A1 radii/IsBidirectional, and validity (ValidDays bitmask + ValidFromTime/ValidToTime windows that MAY WRAP MIDNIGHT) evaluated in Europe/Prague. Then REPLACE the existing GET CustomerOnly QuoteEndpoint with POST pricing/quote { pickupLat, pickupLng, dropoffLat?, dropoffLng?, at? }: matched -> { type:'Fixed', priceCzk, routeId, routeName }; else dropoff known -> OSRM via IGeoProvider -> tariff max(Minimum, Base + PerKm*km) rounded UP to 10 -> { type:'Estimate', lowCzk, highCzk (+-10% rounded to 10), distanceKm, durationMin }; else -> { type:'Meter', tariff summary }. Widen policy to any-authenticated + anonymous-by-slug (mirror routes/common fleet-by-slug). Seed AC#2 example routes (KH station->center Fixed 100; anywhere-in-KH Fixed 110; KH<->Kolin Fixed 300 both directions via IsBidirectional) and the AC#5 night route valid only 03:00-04:00 in DevelopmentSeeder. NOTE: routes/common stays the canonical public valid-now listing (no rename, no duplicate routes/available - documented in decisions.md).",
+      "depends_on": [
+        "A2-places",
+        "A3-zone-service",
+        "A5-routes-crud"
+      ],
+      "estimated_complexity": "XL",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesRequest.cs",
-        "api/src/Taxi.Api/Features/Routes/ListCommonRoutes/ListCommonRoutesResponse.cs",
-        "api/src/Taxi.Api/Features/Routes/RoutesFeatureConfiguration.cs",
-        "api/tests/Taxi.Api.Tests/Routes/CommonRoutesTests.cs"
+        "api/src/Taxi.Api/Common/Pricing/RouteMatcher.cs",
+        "api/src/Taxi.Api/Common/Pricing/RouteMatchResult.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteRequest.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteResponse.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteValidator.cs",
+        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
+        "api/tests/Taxi.Api.Tests/Pricing/RouteMatcherTests.cs",
+        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
       ],
       "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
         "rules/architecture.md#vertical-slice-layout",
         "rules/architecture.md#feature-configuration",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#date-types",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET routes/common?validNow=true is CustomerOnly, tenant-scoped, AsNoTracking. It returns enabled (IsEnabled), non-soft-deleted (DeletedAt == null) routes whose ValidDays bit matches the current Europe/Prague weekday AND whose ValidFromTime..ValidToTime window (null = all-day) contains the current Europe/Prague time, projected to { id, name, type, priceCzk } ordered by Priority descending. Valid-now is computed by converting timeProvider.GetUtcNow() to Europe/Prague (CLAUDE.md time conventions).",
-        "The listing is tenant-safe via the query filter; another fleet's routes never appear.",
-        "CommonRoutes_ReturnsOnlyValidNowEnabled, CommonRoutes_OutOfWindow_Excluded, CommonRoutes_Deleted_Excluded, and CommonRoutes_CrossTenant_ReturnsOwnFleetOnly (tenant isolation) pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Routes"
-      }
-    },
-    {
-      "id": "A-my-orders",
-      "lane": "api",
-      "title": "GET orders/mine/active + GET orders/mine (CustomerOnly, own-rows, tenant-safe) under one Orders.Mine test area",
-      "goal": "Two CustomerOnly, own-rows, tenant-safe reads: orders/mine/active returns the caller's single non-terminal order for the Home sticky banner; orders/mine is a paged history listing (standard { items, total, page, pageSize } shape) for B-history. Both endpoints and all their tests live under the single Orders.Mine namespace so the single-token dotnet-test filter covers every named test (the one-feature-folder / single-filter rule). Built from existing Order data.",
-      "depends_on": [],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Orders/GetMyActiveOrder/GetMyActiveOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/GetMyActiveOrder/GetMyActiveOrderResponse.cs",
-        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersRequest.cs",
-        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersResponse.cs",
-        "api/src/Taxi.Api/Features/Orders/ListMyOrders/ListMyOrdersValidator.cs",
-        "api/tests/Taxi.Api.Tests/Orders/Mine/MyOrdersTests.cs"
-      ],
-      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#banned-patterns",
+        "rules/architecture.md#one-type-per-file",
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
         "rules/api-design.md#authorization",
         "rules/api-design.md#dont-catch-exceptions",
         "rules/api-design.md#routes",
-        "rules/architecture.md#vertical-slice-layout",
         "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
         "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#date-types",
-        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#validator-class",
         "rules/validation.md#common-rules",
         "rules/error-handling.md#send-for-expected-errors",
+        "rules/error-handling.md#exceptions-for-infrastructure",
         "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#expression-bodied",
+        "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
+        "rules/naming.md#error-codes",
+        "rules/naming.md#test-naming",
+        "rules/logging.md#style-message-templates",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
+        ".claude/state/06-common-routes-and-zones.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
         "docs/decisions.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "GET orders/mine/active is CustomerOnly and returns the caller's single non-terminal order (status in New/Assigned/Accepted/Arrived/InProgress, CustomerUserId == sub) as { id, publicCode, status }, or 204 No Content when the caller has none.",
-        "GET orders/mine?page=&pageSize= is CustomerOnly and returns the caller's own orders as the standard { items, total, page, pageSize } list shape (00-PROJECT-CONTEXT.md §9), AsNoTracking, projected to a read DTO with date, addresses/route, price, and status; it feeds B-history. A validator bounds page/pageSize.",
-        "Both endpoints are own-rows via CustomerUserId and tenant-safe via the query filter; another customer's or another fleet's rows never appear. Both endpoints' test classes live in namespace Taxi.Api.Tests.Orders.Mine so the filter FullyQualifiedName~Taxi.Api.Tests.Orders.Mine runs every named test.",
-        "MyActiveOrder_ReturnsNonTerminal, MyActiveOrder_NoneActive_Returns204, MyActiveOrder_OtherCustomer_NotReturned, MyOrders_ListsOwnOrdersPaged, MyOrders_OtherCustomer_NotReturned, and MyOrders_CrossTenant_ReturnsOwnFleetOnly (tenant isolation for both endpoints) pass."
+        "RouteMatcher is pure (no DbContext/IO): inputs are the in-memory candidate routes + zones + pickup/dropoff + an evaluation DateTimeOffset; it returns a match (routeId, routeName, priceCzk) or null. Precedence is PointToPoint -> ZoneToZone -> Zone; within a type it picks highest Priority then lowest price. ZoneToZone honours IsBidirectional (from->to OR to->from). Validity uses the ValidDays bitmask AND a time window that correctly WRAPS MIDNIGHT (e.g. 22:00-06:00 includes 23:30 and 02:00 but not 12:00), all evaluated in Europe/Prague.",
+        "AC#1 unit tests on RouteMatcher pass: RouteMatcher_OverlappingRoutes_PrecedenceAndPriorityWin (two matching routes of different types -> PointToPoint chosen; same type -> higher Priority then lower price), RouteMatcher_ZoneToZone_BidirectionalMatchesBothDirections, RouteMatcher_NightWindow_WrapsMidnight, and RouteMatcher_PickupOnZoneEdge_UsesZoneServiceConvention.",
+        "POST pricing/quote replaces the former GET. Request is a JSON body { pickupLat, pickupLng, dropoffLat?, dropoffLng?, at? } (POST body sidesteps the cs-CZ double query-binding trap, CLAUDE.md; a validator bounds coords and rejects a malformed body with 400). The endpoint loads the fleet's enabled/non-deleted routes + zones in memory, calls RouteMatcher at (at ?? now): match -> 200 { type:'Fixed', priceCzk, routeId, routeName }; else dropoff known -> IGeoProvider.RouteAsync -> tariff Max(Minimum, round UP to 10 of Base + PerKm*km) -> 200 { type:'Estimate', lowCzk, highCzk, distanceKm, durationMin } with lowCzk < highCzk always; else -> 200 { type:'Meter', tariff summary }. CRITICAL: the matcher runs BEFORE the dropoff-known branch and MUST run even when dropoff is null (a Zone route matches on pickup-in-zone alone -> AC#2 'anywhere in KH' Fixed 110 has NO dropoff). Do NOT inherit the old QuoteEndpoint's 'if (toLat.HasValue && toLng.HasValue)' guard that only matched when a dropoff was present - that is the opposite of what Zone matching needs. An OSRM failure returns 502 Geo.RouteUnavailable.",
+        "Policy is widened: pricing/quote allows any authenticated role (Customer/Driver/Dispatcher/FleetAdmin) AND anonymous-with-slug (the Otestovat panel is dispatcher-facing; the customer home is anonymous). The fleet is resolved by the tenant middleware (JWT claim or X-Fleet-Slug) and the read is query-filter-scoped; no fleet resolved -> 400. A cross-tenant request only ever prices from the caller's fleet routes/tariff.",
+        "AC#2 integration tests against seeded data pass: Quote_KHStationToCenter_ReturnsFixed100, Quote_AnywhereInKH_ReturnsFixed110, Quote_KHToKolin_ReturnsFixed300_BothDirections, Quote_KolinToPrague_ReturnsEstimateRange, Quote_OutsideAllZonesNoDropoff_ReturnsMeter. The DevelopmentSeeder is updated so these hold AND an extra route valid only 03:00-04:00 is seeded for AC#5. Quote_CrossTenant_UsesCallerFleetOnly (tenant isolation), Quote_Anonymous_BySlug_Returns200, Quote_Dispatcher_Returns200, and Quote_OsrmDown_Returns502 pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Orders.Mine"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Pricing"
       }
     },
     {
-      "id": "A-geo-suggest",
+      "id": "A7-price-lock-and-override",
       "lane": "api",
-      "title": "Widen GET geo/suggest to a CustomerOrStaff policy",
-      "goal": "Customers can call geo/suggest for pickup autocomplete in the custom-order screen. geo/suggest is DispatcherOnly today (verified) so a customer gets 403. Adds a CustomerOrStaff policy (Customer + Dispatcher + FleetAdmin) and switches SuggestEndpoint to it. geo/route is NOT widened (pricing/quote wraps it server-side). Sole toucher of AuthorizationPolicies.cs (parallel-safe).",
-      "depends_on": [],
-      "estimated_complexity": "S",
+      "title": "Price-lock immutability integration test (AC#3) + OrderDetailDto.PriceOverrideReason additive field (AC#6)",
+      "goal": "Close the two remaining AC gaps without touching hot shared files beyond an additive projection. AC#3: the create endpoint already copies PriceType/FixedPriceCzk/EstimatedPriceCzk/RouteId into the order row at creation (verified) so price-lock is structural - the deliverable is an INTEGRATION TEST proving that editing a route's price AFTER an order was created (via A5 UpdateRoute) does NOT change the existing order's stored price. AC#6: OrderDetailDto carries FinalPriceCzk but NOT PriceOverrideReason (verified); add the additive priceOverrideReason field + GetOrderEndpoint projection so the dispatcher detail can flag an override. The PriceOverridden OrderEvent + timeline already exist (WI-07) - no state-machine change. SCOPE NOTE: this WI does NOT rewrite CreateOrderEndpoint to re-price server-side (that trust hole is a labeled follow-up, see handoff notes).",
+      "depends_on": [
+        "A6-pricing-matching"
+      ],
+      "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Geo/SuggestAccessTests.cs"
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
+        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Pricing/PriceLockTests.cs"
       ],
       "rule_citations": [
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#dont-catch-exceptions",
         "rules/architecture.md#vertical-slice-layout",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#send-pattern",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#cross-cutting-invariants"
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
+        ".claude/state/06-common-routes-and-zones.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "AuthorizationPolicies gains a CustomerOrStaff constant, and RegisterPolicies adds AddPolicy(CustomerOrStaff, p => p.RequireAuthenticatedUser().RequireRole(nameof(UserRole.Customer), nameof(UserRole.Dispatcher), nameof(UserRole.FleetAdmin))), mirroring the existing DispatcherOrCustomer / DispatcherOrDriver precedents.",
-        "SuggestEndpoint.Configure() uses Policies(nameof(AuthorizationPolicies.CustomerOrStaff)); geo/route is NOT widened and remains DispatcherOrDriver.",
-        "Suggest_Customer_Returns200, Suggest_Dispatcher_StillReturns200 (regression), Suggest_Driver_Returns403, and Route_Customer_Returns403 (route not widened) pass."
+        "OrderDetailDto gains an additive priceOverrideReason (string?) field; GetOrderEndpoint's projection populates it from Order.PriceOverrideReason. Existing fields, callers, and the { order } envelope are unchanged (additive only).",
+        "PriceLock_RouteEdit_DoesNotChangeExistingOrderPrice (AC#3): create an order with a Fixed price from a route, then edit that route's PriceCzk via UpdateRoute, reload the order, and assert the order's FixedPriceCzk/PriceType/RouteId are unchanged.",
+        "OrderDetail_AfterDriverOverride_IncludesPriceOverrideReason (AC#6): an order completed with a FinalPriceCzk differing from the Fixed price and a PriceOverrideReason surfaces priceOverrideReason in the detail DTO (the PriceOverridden event in the timeline already exists from WI-07).",
+        "Both tests live in namespace Taxi.Api.Tests.Pricing.PriceLock so the single-token filter covers them."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Geo"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Pricing.PriceLock"
       }
     },
     {
-      "id": "B-pwa",
+      "id": "B1-quote-client-migration",
       "lane": "web",
-      "title": "/c PWA shell + lazy route group + fleet branding + Zavolat button + offline gate",
-      "goal": "The /c/* lazy route group + CustomerLayout; fleet branding from GET public/fleet applied as a theme override; the always-present Zavolat (tel:) button; the offline gate (cached routes + Zavolat, ordering disabled with the Czech message). Extends the existing /d vite-plugin-pwa config with the /c manifest/shell without breaking /x or /d. Home never imports Leaflet (slow-3G budget).",
-      "depends_on": [],
+      "title": "Migrate the web pricing/quote client to the new POST contract (Fixed+routeId / Estimate+distance / Meter) + customer custom-order + driver badge regression",
+      "goal": "The forced client migration: pricing/quote changed from GET CustomerOnly QuoteResponse(PriceType, FixedPriceCzk, EstimateLowCzk, EstimateHighCzk) to POST any-role { type:'Fixed', priceCzk, routeId, routeName } | { type:'Estimate', lowCzk, highCzk, distanceKm, durationMin } | { type:'Meter', ... }. Update client.ts (pricingQuote -> POST body; PriceQuoteResponse discriminated union with the new fields), usePriceQuote, the pure priceQuote.ts interpretQuote (add a Meter branch -> kind:'meter'; keep the estimate-never-a-single-number invariant; carry routeId/distanceKm), and PriceRangeBadge (render Meter -> 'Podle taximetru'). Verify the driver PriceBadge (priceBadgeUtils already has a Meter case) and FixedPriceBadge still render for the real shapes (AC#6 driver-badge regression). Mirror A6's QuoteResponse exactly.",
+      "depends_on": [
+        "A6-pricing-matching"
+      ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/vite.config.ts",
-        "web/src/app/router.tsx",
-        "web/src/features/customer/shell/CustomerLayout.tsx",
-        "web/src/features/customer/shell/CallButton.tsx",
-        "web/src/features/customer/shell/CallButton.test.tsx",
-        "web/src/features/customer/shell/OfflineGate.tsx",
-        "web/src/features/customer/shell/useFleetBranding.ts",
-        "web/src/features/customer/shell/useFleetBranding.test.ts",
         "web/src/shared/api/client.ts",
+        "web/src/features/customer/order/priceQuote.ts",
+        "web/src/features/customer/order/priceQuote.test.ts",
+        "web/src/features/customer/order/usePriceQuote.ts",
+        "web/src/features/customer/order/usePriceQuote.test.ts",
+        "web/src/features/customer/order/PriceRangeBadge.tsx",
+        "web/src/features/customer/order/PriceRangeBadge.test.tsx",
+        "web/src/features/customer/order/CustomOrderPage.tsx",
+        "web/src/features/customer/order/RouteOrderPage.tsx",
+        "web/src/features/driver/offer/priceBadgeUtils.ts",
+        "web/src/features/driver/offer/priceBadgeUtils.test.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#entry-points",
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#feature-folders",
         "rules/web-architecture.md#api-client",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-performance.md#bundle-budget",
-        "rules/web-testing.md#a11y-assertion"
-      ],
-      "required_reads": [
-        "docs/specs/in-progress/004_UC_004_customer-pwa.md",
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/specs/done/driver-pwa-work-items.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": true,
-      "acceptance_criteria": [
-        "router.tsx gains a lazy-loaded /c/* route group (React.lazy) + CustomerLayout without modifying any /x or /d route. vite.config.ts extends the existing manifest/precache for the /c scope if needed; devOptions.enabled stays false (SW never registers under npm run dev, which Playwright boots) and no runtime cache matches ^/api or ^/hubs — /x and /d E2E untouched.",
-        "getPublicFleet is added to client.ts (sends the X-Fleet-Slug header) and typed to { name, phone, primaryColorHex, currency, timeZone }. useFleetBranding maps the response to a styled-components theme override; a null primaryColorHex falls back to the theme token.",
-        "CallButton renders a tel: link to the fleet phone, is >= 48 px, has an i18n'd aria-label, and appears on every /c screen via CustomerLayout. OfflineGate disables ordering while offline and shows 'Jste offline - zavolejte nam' plus the number; reads keep working from the TanStack cache.",
-        "The Home/shell chunks do not import Leaflet; npm run size passes after build. npm run tsc, npm run lint (--max-warnings 0), and npm run test pass.",
-        "AC #8 parity green; useFleetBranding.test.ts (response -> theme override; null color -> fallback), CallButton.test.tsx (tel: href + no axe violations via the configured helper), and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-login",
-      "lane": "web",
-      "title": "/c/login inline phone + 6-digit code step (reuse customer SMS login + silent refresh)",
-      "goal": "Inline phone (+420) -> auth/customer/request-code -> 6-digit auto-submit auth/customer/verify-code, resend after 60 s, plain-Czech errors, token storage via the existing auth-storage + IndexedDB refresh infra; never re-ask on the device unless refresh fails. Embeddable in the order flow without losing form state.",
-      "depends_on": [
-        "B-pwa"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "web/src/features/customer/login/CustomerLoginStep.tsx",
-        "web/src/features/customer/login/PhoneInput.tsx",
-        "web/src/features/customer/login/CodeInput.tsx",
-        "web/src/features/customer/login/useCustomerLogin.ts",
-        "web/src/features/customer/login/useCustomerLogin.test.ts",
-        "web/src/features/customer/login/resendTimer.ts",
-        "web/src/features/customer/login/resendTimer.test.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#4-login-step-inline-clogin-when-standalone",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#timers-and-async",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#network-mocking"
-      ],
-      "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "requestCustomerCode and verifyCustomerCode are added to client.ts (POST auth/customer/request-code and auth/customer/verify-code, both with the X-Fleet-Slug header). The phone is normalized to +420; the 6-digit code auto-submits; resend is disabled for 60 s (resendTimer.ts pure module, fake-timer tested).",
-        "On verify success the customer tokens are stored via the existing authStorage + idbAuthStore (reuse, do not fork); the refresh path is the existing single-flight refresh.ts. Errors are plain Czech ('Kod nesouhlasi, zkuste to znovu', 429 -> 'Pockejte chvili...') and never JSON or a stack trace.",
-        "CustomerLoginStep is inline/embeddable: the parent order screen passes a continuation so the form state is preserved across the login step (the order is not lost).",
-        "AC #8 parity green; resendTimer.test.ts (fake timers: resend enabled only after 60 s), useCustomerLogin.test.ts (request -> verify -> token stored; 401 -> Czech error; client mocked per rules/web-testing.md#network-mocking), and a component axe assertion pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-home",
-      "lane": "web",
-      "title": "Home /c: common-route cards + Vlastni adresa + active-order sticky banner",
-      "goal": "Home renders common-route cards from GET routes/common?validNow=true (one tap -> Confirm preselected), a 'Vlastni adresa' button -> Custom order, and a sticky active-order banner from GET orders/mine/active that replaces the routes block when an order is active. Routes block hidden when none. No Leaflet import.",
-      "depends_on": [
-        "B-login"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "web/src/features/customer/home/CustomerHomePage.tsx",
-        "web/src/features/customer/home/RouteCard.tsx",
-        "web/src/features/customer/home/ActiveOrderBanner.tsx",
-        "web/src/features/customer/home/useCommonRoutes.ts",
-        "web/src/features/customer/home/useMyActiveOrder.ts",
-        "web/src/features/customer/home/homeContent.ts",
-        "web/src/features/customer/home/homeContent.test.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#6",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#1-home-c",
         "rules/web-architecture.md#pure-logic-modules",
         "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#dates-and-money",
         "rules/web-react-style.md#i18n-czech-first",
         "rules/web-performance.md#query-keys",
-        "rules/web-testing.md#a11y-assertion"
-      ],
-      "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "getCommonRoutes and getMyActiveOrder are added to client.ts (hierarchical query keys ['routes','common'] and ['orders','mine','active']). RouteCard shows name + price formatted with Intl.NumberFormat('cs-CZ'), is >= 48 px, and on tap navigates to /c/order/route/:routeId. 'Vlastni adresa' navigates to /c/order/new.",
-        "homeContent.ts is a pure module that decides banner-vs-routes: when orders/mine/active returns an order, ActiveOrderBanner ('Mate aktivni objednavku {code} - sledovat' -> /c/t/{code}) replaces the routes block; when no routes are valid-now, the routes block is hidden; otherwise the cards render.",
-        "The Home chunk does not import Leaflet (slow-3G budget, AC #6). Offline shows cached routes + the B-pwa offline gate.",
-        "AC #8 parity green; homeContent.test.ts (active order -> banner replaces routes; empty routes -> block hidden; 204 active -> show routes), a RouteCard render + axe assertion, and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-route-order",
-      "lane": "web",
-      "title": "Confirm route order /c/order/route/:routeId (route-type-driven, When, passengers, inline login, create)",
-      "goal": "Route-type-driven confirm (PointToPoint locked pickup/dropoff + optional note; Zone/ZoneToZone placeholder pre-06), When Hned/Na cas (+20 min..+7 days), passengers 1-4, big fixed price, Objednat -> inline login if needed (form state preserved) -> POST orders -> Tracking. client.ts createOrder unwraps the { order } envelope (data.order.id).",
-      "depends_on": [
-        "B-home"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/src/features/customer/order/RouteOrderPage.tsx",
-        "web/src/features/customer/order/WhenPicker.tsx",
-        "web/src/features/customer/order/PassengerStepper.tsx",
-        "web/src/features/customer/order/FixedPriceBadge.tsx",
-        "web/src/features/customer/order/useRouteOrder.ts",
-        "web/src/features/customer/order/useCreateOrder.ts",
-        "web/src/features/customer/order/orderForm.ts",
-        "web/src/features/customer/order/orderForm.test.ts",
-        "web/src/features/customer/order/whenPicker.ts",
-        "web/src/features/customer/order/whenPicker.test.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#8",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#2-confirm-route-order-corderrouterouteid",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#api-client",
-        "rules/web-realtime.md#offline-ux",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#timers-and-async",
-        "rules/web-testing.md#a11y-assertion"
-      ],
-      "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "createOrder is added to client.ts and unwraps the { order: OrderDetailDto } envelope returning data.order.id (the carried UC-003 client.ts lesson) plus the trackingCode/trackingToken from A-track's extended response. A CreateOrderRequest is built from the route (routeId, priceType=Fixed, fixedPriceCzk, locked pickup/dropoff for PointToPoint + optional note). Zone/ZoneToZone pickup inputs are placeholders pre-06.",
-        "whenPicker.ts (pure) enforces Hned (default) or Na cas between now+20 min and now+7 days; orderForm.ts clamps passengers to 1..4; FixedPriceBadge shows the big fixed price formatted cs-CZ.",
-        "On Objednat, if no customer token is present the inline CustomerLoginStep (B-login) runs with the form state preserved (continuation), then the order is created and the app navigates to /c/t/{code} using data.order.id / trackingCode.",
-        "Creating an order is blocked (never queued) while offline with a Czech message (rules/web-realtime.md#offline-ux, spec §11 - order create is not retry-safe); a create 400 (no tenant / past scheduledAt) shows a plain Czech message.",
-        "AC #8 parity green; orderForm.test.ts (PointToPoint locked addresses; passengers clamp 1..4), whenPicker.test.ts (fake timers: min +20 min, max +7 days boundaries), and a component render + axe (inline login preserves form state) pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-custom-order",
-      "lane": "web",
-      "title": "Custom order /c/order/new (suggest autocomplete + GPS pin + map drag + price RANGE preview)",
-      "goal": "Pickup autocomplete (geo/suggest) + 'Pouzit moji polohu' (GPS pin, no reverse geocode) + map-pin drag fallback; optional dropoff; price preview from pricing/quote rendered as a RANGE for estimates (never exact, AC #4); When/passengers/note; Objednat as in B-route-order. Leaflet lazy-loaded.",
-      "depends_on": [
-        "B-route-order"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/src/features/customer/order/CustomOrderPage.tsx",
-        "web/src/features/customer/order/AddressAutocomplete.tsx",
-        "web/src/features/customer/order/PickupMap.tsx",
-        "web/src/features/customer/order/PriceRangeBadge.tsx",
-        "web/src/features/customer/order/useSuggest.ts",
-        "web/src/features/customer/order/usePriceQuote.ts",
-        "web/src/features/customer/order/priceQuote.ts",
-        "web/src/features/customer/order/priceQuote.test.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#6",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#3-custom-order-cordernew",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#api-client",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-testing.md#network-mocking",
         "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#network-mocking"
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
+        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
+        ".claude/state/06-common-routes-and-zones.md",
+        "docs/specs/done/customer-pwa-work-items.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "geoSuggest and pricingQuote are added to client.ts. AddressAutocomplete debounces and queries geo/suggest for >= 3 chars; 'Pouzit moji polohu' drops a GPS pin labeled 'Moje poloha (GPS)' from navigator.geolocation (NO reverse geocode - documented client stub); the map-pin drag fallback sets coords. The screen works without location permission (autocomplete + drag still function).",
-        "priceQuote.ts (pure) formats the pricing/quote response: Fixed -> 'Cena {n} Kc - pevna'; Estimate -> 'Odhad {low}-{high} Kc'. A test asserts an Estimate NEVER renders a single number (AC #4). PriceRangeBadge renders it.",
-        "PickupMap (Leaflet) is React.lazy so Leaflet loads only in this chunk (code-splitting, slow-3G budget); Objednat reuses the B-route-order create + inline-login path.",
-        "suggest upstream empty (200 empty) shows 'Zadne navrhy'; quote 502 shows 'Cenu nelze spocitat, zavolejte nam'.",
-        "AC #8 parity green; priceQuote.test.ts (Fixed -> pevna; Estimate -> low-high, never a single number), an AddressAutocomplete debounce + axe assertion, and locales.parity.test.ts pass."
+        "client.ts pricingQuote becomes a POST to /pricing/quote with a JSON body { pickupLat, pickupLng, dropoffLat?, dropoffLng?, at? } (numbers in the body - no cs-CZ string-parsing needed, CLAUDE.md); PriceQuoteResponse is a discriminated union on type: Fixed (priceCzk, routeId, routeName), Estimate (lowCzk, highCzk, distanceKm, durationMin), Meter (tariff summary fields). The X-Fleet-Slug header is still attached for the anonymous path.",
+        "priceQuote.ts interpretQuote gains a { kind:'meter' } branch and carries routeId (Fixed) + distanceKm/durationMin (Estimate); the estimate invariant (lowCzk < highCzk, never a single exact number, AC#4) is preserved. priceQuote.test.ts asserts Fixed -> pevna cena, Estimate -> a RANGE (never one number), and Meter -> the meter view.",
+        "PriceRangeBadge renders all three: Fixed 'Cena {n} Kc - pevna', Estimate 'Odhad {low}-{high} Kc', Meter 'Podle taximetru'. The driver PriceBadge (priceBadgeUtils) and FixedPriceBadge continue to render Fixed/Estimate/Meter (AC#6 driver-badge regression). New i18n keys land in both cs.json and en.json (formal 'vy' for customer copy).",
+        "Spec Lane-B item 6 clause 2 ('zone-restricted inputs validate against real zones'): the UC-004 RouteOrderPage shipped Zone/ZoneToZone ordering as a pre-06 placeholder. Un-stub it here by routing the in-zone pickup/dropoff through the migrated POST pricing/quote - a Zone route only yields a Fixed quote when the entered pickup is in the zone (and dropoff in the to-zone for ZoneToZone), so pricing/quote IS the zone-validation mechanism (no separate client-side polygon check; ZoneService containment is authoritative server-side). When the quote does not return the expected Fixed route for a Zone order, the customer sees a plain-Czech 'mimo zonu' message rather than a silent wrong price.",
+        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; priceQuote.test.ts, usePriceQuote.test.ts (client mocked per rules/web-testing.md#network-mocking), a PriceRangeBadge render + axe assertion, priceBadgeUtils.test.ts, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-tracking",
+      "id": "B2-settings-zones-tab",
       "lane": "web",
-      "title": "Tracking /c/t/:code (two modes: SignalR authed / public-track poll logged-out) + cancel + push prompt",
-      "goal": "Large human status headline per state; car marker + pickup pin. Authed customer -> the single /hubs/fleet Subscribe(orderId) (live headline + marker, cache-patch, stale-event guard). Logged-out link -> GET public/track poll every 10 s (FleetHub is [Authorize], verified). Collapsed details; 'Zrusit objednavku' (New/Assigned/Accepted, confirm dialog, post-Accepted hint) -> POST orders/{id}/cancel with reason text + JWT; push-subscription prompt after first order (client permission only).",
-      "depends_on": [
-        "B-custom-order"
-      ],
-      "estimated_complexity": "L",
+      "title": "Dispatcher Settings 'Trasy a zony' shell + Zony tab (list + Leaflet zone editor, lazy)",
+      "goal": "Add a 'Trasy a zony' area to the dispatcher Settings (/x) shell (SettingsPage has Vozidla/Lide/Fleet tabs; add a routes/zones/places area gated to FleetAdmin) and build the Zony tab: a zone list + a Leaflet editor to draw a Circle (click center, drag radius) or Polygon (click points, double-click to close), name + enable, with all zones rendered on one labeled map. Calls the A4 zones CRUD via new client.ts functions. Leaflet is React.lazy so the editor chunk never bloats the /x initial bundle (size budget). Pure geometry-to-request mapping extracted to a tested module.",
+      "depends_on": [],
+      "estimated_complexity": "XL",
       "files_touched": [
-        "web/src/features/customer/tracking/TrackingPage.tsx",
-        "web/src/features/customer/tracking/StatusHeadline.tsx",
-        "web/src/features/customer/tracking/TrackingMap.tsx",
-        "web/src/features/customer/tracking/CancelDialog.tsx",
-        "web/src/features/customer/tracking/PushPrompt.tsx",
-        "web/src/features/customer/tracking/useTrackingAuthed.ts",
-        "web/src/features/customer/tracking/useTrackingPublic.ts",
-        "web/src/features/customer/tracking/useCancelOrder.ts",
-        "web/src/features/customer/tracking/statusHeadline.ts",
-        "web/src/features/customer/tracking/statusHeadline.test.ts",
-        "web/src/features/customer/tracking/trackingMode.ts",
-        "web/src/features/customer/tracking/trackingMode.test.ts",
-        "web/src/features/customer/tracking/useTrackingPublic.test.ts",
+        "web/src/app/router.tsx",
+        "web/src/features/settings/SettingsPage.tsx",
+        "web/src/features/settings/routesZones/RoutesZonesPage.tsx",
+        "web/src/features/settings/routesZones/zones/ZonesTab.tsx",
+        "web/src/features/settings/routesZones/zones/ZoneEditorMap.tsx",
+        "web/src/features/settings/routesZones/zones/useZones.ts",
+        "web/src/features/settings/routesZones/zones/zoneDraw.ts",
+        "web/src/features/settings/routesZones/zones/zoneDraw.test.ts",
+        "web/src/features/settings/routesZones/zones/ZonesTab.test.tsx",
         "web/src/shared/api/client.ts",
-        "web/src/shared/realtime/useFleetHub.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#8",
-        "00-PROJECT-CONTEXT.md#10",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#5-tracking-ctcode",
-        "rules/web-realtime.md#single-hub-singleton",
-        "rules/web-realtime.md#cache-patch-not-refetch",
-        "rules/web-realtime.md#stale-event-guard",
-        "rules/web-realtime.md#last-known-state",
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#route-groups",
+        "rules/web-architecture.md#api-client",
         "rules/web-architecture.md#pure-logic-modules",
         "rules/web-architecture.md#state-tiers",
-        "rules/web-performance.md#code-splitting",
+        "rules/web-react-style.md#styled-components",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-accessibility.md#keyboard-focus",
-        "rules/web-testing.md#timers-and-async",
-        "rules/web-testing.md#a11y-assertion"
-      ],
-      "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "trackingMode.ts (pure) selects authed-vs-public from stored customer-token presence. Authed mode reuses the existing /hubs/fleet module-level singleton in useFleetHub.ts (NEVER a second connection), calls Subscribe(orderId), patches the ['orders','track',id]/detail cache in place on OrderChanged with a version stale-event guard (drops version <= cached), and moves the marker on DriverPositionChanged (AC #2). Public mode (logged-out /c/t/:code?k=) polls getPublicTrack every 10 s (FleetHub is [Authorize] so SignalR is unavailable logged-out) - no second connection, no auth.",
-        "statusHeadline.ts (pure) maps status -> one-line Czech headline: New 'Hledame ridice...', Assigned/Accepted 'Ridic {name} prijede za ~{eta} min' (eta omitted when the track DTO EtaMinutes is null, pre-06), Arrived 'Ridic je na miste' + plate/color, InProgress 'Jedete', Completed 'Hotovo - {price} Kc' + rating trigger, Cancelled customer-friendly reason + Zavolat.",
-        "getPublicTrack and cancelOrder are added to client.ts. 'Zrusit objednavku' is shown only in New/Assigned/Accepted via a confirm dialog with at most two buttons that traps focus and closes on Escape (rules/web-accessibility.md#keyboard-focus); after Accepted it shows the hint 'Ridic uz jede, prosime zruste jen v nutnem pripade'. Cancel POSTs orders/{id}/cancel with { reason: <czech text> } and the customer JWT (the server records CancelledByRole=Customer).",
-        "An expired public token (410 Tracking.LinkExpired) shows 'Odkaz vyprsel' + the call button (AC #3); a cancel 409 shows 'Objednavku uz nelze zrusit'; SignalR down in authed mode falls back to the last cache + offline banner, never a blank screen (rules/web-realtime.md#last-known-state). TrackingMap (Leaflet) is React.lazy. The push-subscription prompt (permission only, no server push) appears after the first order.",
-        "AC #8 parity green; statusHeadline.test.ts (each status -> headline; Cancelled shows reason+call; Completed shows price+rating), trackingMode.test.ts (token present -> authed/SignalR; absent -> public/poll), useTrackingPublic.test.ts (fake timers: 10 s poll; 410 -> expired state), a component axe assertion, and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B-rating",
-      "lane": "web",
-      "title": "Rating on Tracking after Completed (1-5 stars + optional comment, once)",
-      "goal": "A keyboard-accessible 1-5 star control + optional comment -> POST orders/{id}/rating, once; shown on the Completed tracking view. On 409 AlreadyRated the stored rating is shown read-only.",
-      "depends_on": [
-        "B-tracking"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "web/src/features/customer/tracking/RatingForm.tsx",
-        "web/src/features/customer/tracking/StarPicker.tsx",
-        "web/src/features/customer/tracking/useRateOrder.ts",
-        "web/src/features/customer/tracking/ratingForm.ts",
-        "web/src/features/customer/tracking/ratingForm.test.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#6-rating-on-tracking-after-completed",
-        "rules/web-architecture.md#api-client",
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-accessibility.md#semantics",
         "rules/web-accessibility.md#keyboard-focus",
         "rules/web-accessibility.md#touch-targets",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#a11y-assertion"
+        "rules/web-performance.md#code-splitting",
+        "rules/web-performance.md#bundle-budget",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
+        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
+        ".claude/state/06-common-routes-and-zones.md",
+        "docs/specs/done/customer-pwa-work-items.md"
       ],
-      "needs_library_research": false,
+      "needs_library_research": true,
       "acceptance_criteria": [
-        "rateOrder is added to client.ts (POST orders/{id}/rating). StarPicker is a keyboard-accessible 1-5 control (aria-labelled buttons, >= 48 px) and the comment is optional (<= 500 chars). On success the form hides and 'Dekujeme za hodnoceni' shows.",
-        "ratingForm.ts (pure) enforces stars >= 1 before submit and comment <= 500. A 409 Order.AlreadyRated renders the stored rating read-only (once-only); offline disables submit with a message.",
-        "AC #8 parity green; ratingForm.test.ts (stars required; comment optional <= 500), a StarPicker keyboard + axe assertion, and locales.parity.test.ts pass."
+        "A 'Trasy a zony' area is reachable from the dispatcher Settings /x (gated to FleetAdmin like the existing tabs) with a Zony / Trasy / Mista tab group; adding it does not modify any /d or /c route and does not change the Vozidla/Lide/Fleet tabs' behavior.",
+        "listZones/createZone/updateZone/deleteZone are added to client.ts (hierarchical key ['zones']). ZonesTab lists zones and the editor draws a Circle (click center + drag radius) or Polygon (click points, double-click close), sets name + enable, and renders all zones on one labeled map. zoneDraw.ts (pure) maps draw interactions to a CreateZoneRequest (Circle -> center+radius; Polygon -> [lat,lng] array) and is unit-tested.",
+        "ZoneEditorMap (Leaflet) is React.lazy so Leaflet loads only in this chunk; npm run size passes after build (the Settings/initial /x chunk does not import Leaflet eagerly). Touch targets >= 48px; new i18n keys in both cs.json + en.json.",
+        "npm run tsc, npm run lint (--max-warnings 0), npm run test, npm run build, npm run size pass; zoneDraw.test.ts, a ZonesTab render + axe assertion, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-history",
+      "id": "B3-settings-routes-tab",
       "lane": "web",
-      "title": "History /c/history (read-only tracking + Objednat znovu)",
-      "goal": "Past orders (date, addresses/route, price, status) from GET orders/mine (A-my-orders); tap -> read-only Tracking; 'Objednat znovu' copies addresses into the Custom order draft.",
+      "title": "Trasy tab: priority-sorted list with drag-to-reorder + type-aware route editor + live 'Otestovat' panel",
+      "goal": "The Trasy tab: a list sorted by Priority with drag-to-reorder (PATCH priority), a type badge, price, a validity summary ('Po-Ne, cely den' / 'Pa-So 22:00-06:00'), and an enable toggle (PATCH enable). A type-aware editor: the RouteType selector changes the form (PointToPoint = address-autocomplete + map-pin point pickers + radii; Zone = one zone dropdown; ZoneToZone = two zone dropdowns + bidirectional toggle), CZK price, validity day chips + two time inputs. A live 'Otestovat' panel enters a pickup + dropoff (+optional time) and shows what POST pricing/quote returns so the dispatcher verifies a route before enabling. Uses A5 routes CRUD + B1's migrated pricingQuote client. Validity-summary formatting is a pure tested module.",
       "depends_on": [
-        "B-rating"
+        "B1-quote-client-migration",
+        "B2-settings-zones-tab"
       ],
-      "estimated_complexity": "M",
+      "estimated_complexity": "XL",
       "files_touched": [
-        "web/src/features/customer/history/CustomerHistoryPage.tsx",
-        "web/src/features/customer/history/HistoryRow.tsx",
-        "web/src/features/customer/history/useMyOrderHistory.ts",
-        "web/src/features/customer/history/reorder.ts",
-        "web/src/features/customer/history/reorder.test.ts",
+        "web/src/features/settings/routesZones/routes/RoutesTab.tsx",
+        "web/src/features/settings/routesZones/routes/RouteEditor.tsx",
+        "web/src/features/settings/routesZones/routes/OtestovatPanel.tsx",
+        "web/src/features/settings/routesZones/routes/useRoutes.ts",
+        "web/src/features/settings/routesZones/routes/validitySummary.ts",
+        "web/src/features/settings/routesZones/routes/validitySummary.test.ts",
+        "web/src/features/settings/routesZones/routes/routeForm.ts",
+        "web/src/features/settings/routesZones/routes/routeForm.test.ts",
+        "web/src/features/settings/routesZones/routes/RoutesTab.test.tsx",
         "web/src/shared/api/client.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#5",
-        "00-PROJECT-CONTEXT.md#6",
-        "00-PROJECT-CONTEXT.md#11",
-        ".claude/state/04-customer-pwa.md#7-history-chistory",
+        "rules/web-architecture.md#feature-folders",
         "rules/web-architecture.md#api-client",
         "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#dates-and-money",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#styled-components",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#a11y-assertion"
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-react-style.md#typescript-strict",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#keyboard-focus",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-performance.md#query-keys",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
+        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
+        ".claude/state/06-common-routes-and-zones.md",
+        "docs/specs/done/customer-pwa-work-items.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "getMyOrderHistory is added to client.ts (GET orders/mine, the standard { items, total, page, pageSize } list from A-my-orders). HistoryRow shows the date formatted in Europe/Prague, the route/addresses, the price in cs-CZ CZK, and a status pill; tapping a row navigates to /c/t/{code} in read-only mode.",
-        "'Objednat znovu' uses reorder.ts (pure) to copy the row's pickup/dropoff into the Custom-order draft and navigates to /c/order/new prefilled.",
-        "Offline shows last known + a banner; an empty list shows 'Zatim zadne jizdy'.",
-        "AC #8 parity green; reorder.test.ts (copies pickup/dropoff into the custom-order draft), a HistoryRow render + axe assertion, and locales.parity.test.ts pass."
+        "listRoutes/createRoute/updateRoute/deleteRoute/setRouteEnabled/setRoutePriority are added to client.ts (key ['routes','admin']). RoutesTab lists routes sorted by Priority with drag-to-reorder (persists via PATCH priority), a type badge, price (Intl.NumberFormat cs-CZ), a validity summary, and an enable toggle (PATCH enable). validitySummary.ts (pure) renders 'Po-Ne, cely den' for all-day all-week and 'Pa-So 22:00-06:00' for a bounded window (including midnight-wrap) and is unit-tested.",
+        "RouteEditor is type-aware: the RouteType selector swaps the form (PointToPoint -> point pickers + FromRadius/ToRadius; Zone -> FromZone dropdown; ZoneToZone -> From/To zone dropdowns + IsBidirectional toggle), with a CZK price, validity day chips (Mon=1..Sun=64 bitmask) and two time inputs. routeForm.ts (pure) maps the form to a CreateRoute/UpdateRoute request and validates per-type required fields; it is unit-tested.",
+        "The 'Otestovat' panel takes a pickup + dropoff (+ optional time) and calls the B1 pricingQuote, rendering the Fixed/Estimate/Meter result inline so the dispatcher can verify before enabling. Touch targets >= 48px; new i18n keys in both cs.json + en.json.",
+        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; validitySummary.test.ts (all-day + night-wrap), routeForm.test.ts (per-type required fields), a RoutesTab render + axe assertion, and locales.parity.test.ts pass."
       ],
       "verification": {
         "tool": "vitest"
       }
     },
     {
-      "id": "B-e2e",
+      "id": "B4-settings-places-tab",
       "lane": "web",
-      "title": "Playwright customer specs (mobile viewport): AC#1 3-tap order, AC#2 live tracking, AC#3 valid/expired link, AC#5 cancel + decisions/docs",
-      "goal": "Mobile-viewport Playwright specs proving AC #1 (3-tap common-route -> phone+code -> Tracking 'Hledame ridice...'), AC #2 (dispatcher assign + driver accept via API -> headline updates + marker moves, no reload), AC #3 (valid vs expired tracking link), AC #5 (cancel in Accepted -> Cancelled CancelledByRole=Customer, driver returns Home). Adds a customer mobile Playwright project (leaves Desktop Chrome + driver project intact). Records the push-sending deferral + pre-06 stubs in docs/decisions.md; docs/api.md regenerated by the full dotnet test.",
+      "title": "Mista tab: quick-places CRUD with a map pin (lazy Leaflet)",
+      "goal": "The Mista tab under 'Trasy a zony': a places list + an editor to add/edit/delete a quick place (Name, Address, Lat/Lng via a map pin + optional address autocomplete, SortOrder, enable). Calls the A2 places CRUD via new client.ts functions. Reuses the lazy Leaflet map pattern from B2 so no extra eager Leaflet import. Pure form-to-request mapping extracted and tested.",
       "depends_on": [
-        "B-history",
-        "A-public-fleet",
-        "A-track",
-        "A-pricing",
-        "A-rating",
-        "A-common-routes",
-        "A-my-orders",
-        "A-geo-suggest"
+        "B2-settings-zones-tab"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/playwright.config.ts",
-        "web/e2e/customer.spec.ts",
-        "web/e2e/helpers/apiCustomer.ts",
-        "DEMO.md",
-        "docs/decisions.md",
-        "docs/api.md"
+        "web/src/features/settings/routesZones/places/PlacesTab.tsx",
+        "web/src/features/settings/routesZones/places/PlaceEditor.tsx",
+        "web/src/features/settings/routesZones/places/usePlaces.ts",
+        "web/src/features/settings/routesZones/places/placeForm.ts",
+        "web/src/features/settings/routesZones/places/placeForm.test.ts",
+        "web/src/features/settings/routesZones/places/PlacesTab.test.tsx",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
-        "spec#non-functional-requirements",
-        "00-PROJECT-CONTEXT.md#11",
-        "00-PROJECT-CONTEXT.md#12",
-        ".claude/state/04-customer-pwa.md#acceptance-criteria",
-        "rules/web-testing.md#e2e-conventions",
-        "rules/web-testing.md#red-green-refactor",
-        "docs/specs/done/driver-pwa-work-items.md"
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-react-style.md#typescript-strict",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-performance.md#query-keys",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/specs/done/driver-pwa-work-items.md",
-        "docs/decisions.md"
+        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
+        ".claude/state/06-common-routes-and-zones.md",
+        "docs/specs/done/customer-pwa-work-items.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "playwright.config.ts gains a customer mobile project (e.g. Pixel 5) whose testMatch is scoped to customer.spec.ts; the existing Desktop Chrome project and the UC-003 driver project are untouched, and the webServer harness (docker db + dotnet run Development Seed__Enabled wait /health/ready, then Vite) is reused. The E2E clock-trap workaround (E2ETaxiApiFactory LifetimeValidator, CLAUDE.md) applies to app-minted customer JWTs.",
-        "Customer_ThreeTapCommonRoute_ToTracking (AC #1): a fresh visitor taps a common route -> Objednat -> enters phone + the dev code read from the ConsoleSmsSender output -> lands on Tracking with 'Hledame ridice...'; exactly 3 taps before the phone step.",
-        "Customer_LiveHeadlineAndMarker_OnAssignAccept (AC #2): a dispatcher assigns and a driver accepts via the API helper -> the Tracking headline updates to the Accepted state and the car marker moves on DriverPositionChanged, with no reload.",
-        "Customer_PublicTrackingLink_ValidVsExpired (AC #3): opening /c/t/{code}?k={validToken} logged-out works; an expired token shows 'Odkaz vyprsel' + the call button. The valid and expired tokens are constructed from A-track's create-order response (no SMS needed).",
-        "Customer_CancelInAccepted_ReasonCustomer_DriverReturnsHome (AC #5): cancelling in Accepted shows the hint, and on confirm the order is Cancelled with CancelledByRole=Customer (asserted via API) and the driver app/state returns Home; rating is stored and visible in dispatcher order detail (AC #7, asserted via API). AC #4 estimate-range is proven in vitest priceQuote.test.ts (the E2E asserts the UI shows two numbers, never one). AC #6 Lighthouse (Perf >= 85, PWA installable, A11y >= 90) is manual against a production build (npm run build + vite preview), documented in DEMO.md.",
-        "docs/decisions.md is updated (DoD #6) with: push-SENDING deferred to assignment 05 (client prompt in scope); pricing/quote uses the tariff estimate until assignment 06 provides route matching; reverse-geocode is a client stub; Fleet.PrimaryColorHex added; common-routes-valid-now built from the existing Route entity; orders/mine history listing added. docs/api.md is regenerated by the full dotnet test (OpenApi document test); DEMO.md documents the manual Lighthouse + tracking-link steps and how to boot the harness."
+        "listPlaces/createPlace/updatePlace/deletePlace are added to client.ts (key ['places']). PlacesTab lists places ordered by SortOrder and the editor adds/edits/deletes a place with Name, Address, Lat/Lng via a map pin (lazy Leaflet, reusing the B2 pattern), SortOrder, and enable. placeForm.ts (pure) maps the form to a request and validates required fields; it is unit-tested.",
+        "The map pin uses the lazy Leaflet chunk (no new eager import); touch targets >= 48px; new i18n keys in both cs.json + en.json.",
+        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; placeForm.test.ts, a PlacesTab render + axe assertion, and locales.parity.test.ts pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "E2E-zone-route-quote",
+      "lane": "web",
+      "title": "Playwright E2E: dispatcher draws a polygon zone -> creates a Zone route -> Otestovat -> enable (AC#4); customer home shows only valid-now routes (AC#5)",
+      "goal": "The two cross-role acceptance flows as Playwright specs against the real API harness + seeded data. AC#4: on /x Settings 'Trasy a zony', draw a polygon zone, create a Zone route from it, test it in the Otestovat panel (sees the Fixed quote), and enable it. AC#5: the customer home (/c) shows only routes valid at the current time - assert the seeded 03:00-04:00 route is hidden outside that window. Depends on the Lane-A WIs for backend build integrity (the harness boots the API via dotnet run from the shared tree) and on the Lane-B Settings + customer-home screens being present.",
+      "depends_on": [
+        "A6-pricing-matching",
+        "A7-price-lock-and-override",
+        "B3-settings-routes-tab",
+        "B4-settings-places-tab"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/e2e/routes-zones.spec.ts",
+        "web/e2e/customer-valid-now-routes.spec.ts",
+        "docs/specs/in-progress/DEMO.md"
+      ],
+      "rule_citations": [
+        "rules/web-testing.md#e2e-conventions",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-testing.md#queries-over-testids",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
+        ".claude/state/06-common-routes-and-zones.md",
+        "docs/specs/done/customer-pwa-work-items.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "routes-zones.spec.ts (serial, chromium, real API harness + seeded demo fleet): a FleetAdmin logs in to /x, opens Settings 'Trasy a zony', draws a polygon zone on the Leaflet map, creates a Zone route referencing it, enters a pickup in the zone in the Otestovat panel and sees the Fixed quote, then enables the route (AC#4).",
+        "customer-valid-now-routes.spec.ts: the customer home (/c) lists the valid-now routes and does NOT show the seeded 03:00-04:00-only route outside that window (AC#5). Uses seeded data; no new role flow duplicates a component-tested behavior (rules/web-testing.md#e2e-conventions).",
+        "test-results/ and playwright-report/ stay gitignored (CLAUDE.md laneB11); the chromium pinned revision is installed (CLAUDE.md). DEMO.md documents the manual Lighthouse a11y check and the two E2E flows. Both specs pass under npm run e2e / playwright."
       ],
       "verification": {
         "tool": "playwright"
       }
     }
   ],
-  "notes": "UC-004 = 7 Lane A (api) WIs + 9 Lane B (web) WIs = 16 total. Array is topologically ordered and acyclic. Schema shape matches the UC-003 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum: dotnet-test | dotnet-build | npm-lint | npm-tsc | vitest | npm-build | playwright; verification.filter (dotnet-test only) uses single-token FullyQualifiedName~Taxi.Api.Tests.<Area> fragments (charset excludes '/', so vitest/playwright tools carry no filter). NO .claude/schemas/work-items.v1.json file exists (known scaffold gap per CLAUDE.md); this matches the operative UC-002/UC-003 handoff-designer.json shape the conductor consumes. PUBLIC-ENDPOINT / TENANT APPROACH (the novel backend risk, resolved against source): TenantResolutionMiddleware (Common/Tenancy/TenantResolutionMiddleware.cs) resolves the fleet per request: (1) JWT fleet_id claim [gated on IsAuthenticated], (2) X-Fleet-Slug header -> DB slug lookup, (3) first subdomain label -> DB slug lookup. Branches 2/3 run for ANONYMOUS requests too, and the middleware is registered after UseAuthentication + before UseAuthorization (WI-04 fact), so it fires for AllowAnonymous endpoints. An AllowAnonymous public/* endpoint therefore gets a correctly-scoped CurrentTenant.FleetId and the EF global query filter (e.FleetId == currentTenant.FleetId) auto-scopes every read -> fleet-safe by construction, no manual fleet-id plumbing, no cross-fleet leak. GetOrderByCodeEndpoint already relies on this pattern (verified). Every public WI ships an isolation test (fleet A slug + fleet B code/token -> 404). PRE-06 STUBS (documented for Lane B stability): (pricing/quote) CustomerOnly, wraps IGeoProvider.RouteAsync + default Tariff SERVER-SIDE, returns { priceType Fixed|Estimate, fixedPriceCzk? , estimateLowCzk?, estimateHighCzk? } with the estimate band = tariff price +/-10% rounded to 10 (assignment rule) - NEVER a single exact estimate (AC #4); this wraps geo/route server-side so geo/route is NOT widened (only geo/suggest). (common routes) NOT a stub - the Route entity already has Name/Type/PriceCzk/ValidDays(Mon=1 bitmask)/ValidFromTime/ValidToTime/IsEnabled/DeletedAt (verified), so GET routes/common?validNow= (A-common-routes) is a real valid-now listing computed in Europe/Prague; full route/zone MANAGEMENT stays in assignment 06. (reverse geocode) IGeoProvider has SuggestAsync + RouteAsync only (verified) - no reverse-geocode; 'Pouzit moji polohu' is a CLIENT stub (GPS pin labeled 'Moje poloha (GPS)', no street name) + map-drag fallback; building a backend reverse-geocode is deferred to 06. (primary color) Fleet has no color column (verified) -> A-public-fleet adds nullable PrimaryColorHex + migration (additive, Fleet has no query filter); null -> client theme fallback. 'flags' out of scope pre-06. (order history) no customer order-history endpoint exists -> GET orders/mine (standard list shape) is built in A-my-orders alongside orders/mine/active under one Orders.Mine test namespace. THE THREE 'REUSE' GAPS THE ADVISOR FLAGGED, all resolved against source: (1) geo/suggest is DispatcherOnly (verified) so a customer gets 403 -> A-geo-suggest widens it to a new CustomerOrStaff policy (mirror of UC-003 A-geo; sole toucher of AuthorizationPolicies.cs). (2) FleetHub is [Authorize] (verified line 38) so the logged-out SMS tracking link CANNOT use SignalR -> B-tracking is explicitly two-mode: authed customer -> /hubs/fleet Subscribe(orderId) (live, cache-patch, stale-guard, AC#2); logged-out -> GET public/track poll every 10s (AC#3). (3) the tracking token needs a mint home now even though SMS is deferred to 05 -> A-track adds Common/Tracking/TrackingTokenService (InternalsVisibleTo test) AND extends the customer create-order response with trackingCode/trackingToken/trackingUrlPath so the E2E builds valid+expired links without SMS; 'valid until 2h after completion' is a VALIDATION-time rule (signature verifies AND now<exp AND (if Completed) now<CompletedAt+2h), never a mint-time expiry. ALREADY-PRESENT BACKEND (verified, no new WI): customer phone-code login (auth/customer/request-code + verify-code, AllowAnonymous) reused by B-login; customer order create (CreateOrderEndpoint is DispatcherOrCustomer, sets Source=App/CustomerUserId, response envelope { order: OrderDetailDto } -> client unwraps data.order.id, the UC-003 lesson); customer cancel (OrderStateMachine.ApplyCancel allows Customer in New/Assigned/Accepted, owner-only, sets CancelledByRole=actor.Role -> AC#5 asserts CancelledByRole==Customer, NOT a literal reason string since CancelReason is a free-form string, verified; IdempotencyHelper already wraps CancelOrderEndpoint so cancel inherits exactly-once); SignalR Subscribe(orderId) customer path (FleetHub.Subscribe uses IgnoreQueryFilters + o.CustomerUserId==sub, tenant-safe by construction, verified). A-idem/IdempotencyRecord already landed in UC-003 (verified). Rating POST is NOT idempotency-keyed (a customer taps once, online; not retry-queued). LANE A PARALLELISM (7 WIs): A-public-fleet, A-track, A-pricing, A-common-routes, A-my-orders, A-geo-suggest are independent EXCEPT for two shared-writer edges expressed via depends_on (the conductor serializes ONLY via depends_on): (edge 1, migrations) A-rating depends_on A-public-fleet because both regenerate TaxiDbContextModelSnapshot.cs - dotnet ef rewrites the snapshot against the current model, so generated in parallel the second migration would clobber the first's column; A-public-fleet's AddFleetPrimaryColor runs first, then A-rating's AddOrderRating rebases. This also serializes their two ErrorCodes.cs appends (A-rating appends Order.AlreadyRated/Order.NotCompleted). (ErrorCodes.cs) the remaining appenders are A-track (Tracking.*) and A-pricing (Pricing.* if any) - distinct nested blocks that merge cleanly; if the conductor cannot guarantee append-safety on the same file it should serialize A-track->A-pricing on ErrorCodes.cs, but no depends_on edge is forced because the blocks are disjoint and A-track/A-pricing are otherwise independent. A-common-routes adds no error codes (parallel-safe); A-my-orders adds no error codes (parallel-safe). AuthorizationPolicies.cs sole writer is A-geo-suggest; CreateOrderResponse.cs + CreateOrderEndpoint.cs sole writer is A-track. A-common-routes owns the Routes test area; A-my-orders owns the Orders.Mine test area (both endpoints' tests under one namespace so the single-token filter covers every named test - the one-feature-folder / single-filter rule). LANE B strict chain B-pwa->B-login->B-home->B-route-order->B-custom-order->B-tracking->B-rating->B-history->B-e2e (serializes shared cs.json/en.json + client.ts edits); useFleetHub.ts touched only by B-tracking; router.tsx /c group lands in B-pwa. B-e2e ADDITIONALLY depends on all seven Lane A WIs for build-integrity (the Playwright harness boots the API from the shared working tree via dotnet run, which fails to compile if any Lane A WI is mid-implementation); the vitest-only B WIs mock the api client so they need no cross-lane edges. STAGING: Lane A stages api/ only, Lane B stages web/ only (plus docs/ from B-e2e); neither commits. needs_library_research true on exactly B-pwa (vite-plugin-pwa /c manifest scope sharing the /d SW; the /d PWA mechanics already exist). AC MAPPING: AC#1 3-tap -> B-home/B-route-order/B-login + B-e2e; AC#2 live tracking -> B-tracking(SignalR) + B-e2e; AC#3 public link valid/expired -> A-track + B-tracking(poll) + B-e2e; AC#4 estimate range -> A-pricing + B-custom-order(priceQuote.test); AC#5 customer cancel -> existing cancel + B-tracking + B-e2e (CancelledByRole assertion); AC#6 Lighthouse -> manual DEMO.md (B-e2e); AC#7 rating visible to dispatcher -> A-rating (columns+endpoint+dispatcher-detail sub-task) + B-rating + B-e2e. UNDECIDABLE-SCOPE NOTES (proceeded with best judgment): tracking 'flags' in public/fleet (spec §1) left out of scope pre-06; ETA refresh every 15s on the authed tracking headline is deferred because TrackOrderResponse.EtaMinutes is null pre-06 (OSRM ETA is assignment 06) - the headline omits '~min' when null; the HMAC tracking secret (Tracking:HmacKey) dev default is seeded and MUST be set per-env in production (noted for assignment 08 infra)."
+  "notes": "UC-006 = 7 Lane A (api) WIs (A1..A7) + 5 Lane B (web) WIs (B1..B4 + E2E) = 12 total. Array is topologically ordered and acyclic. Schema shape matches the operative UC-004 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum used: dotnet-test | vitest | playwright; dotnet-test filter is a single-token FullyQualifiedName~Taxi.Api.Tests.<Area> fragment. NO .claude/schemas/work-items.v1.json file exists (known scaffold gap per CLAUDE.md); this matches the operative UC-002/003/004 handoff shape the conductor consumes. ============ RECONCILIATION 1 - routes/common vs routes/available (LOAD-BEARING): The SOURCE (api ListCommonRoutesEndpoint) already exposes routes/common as AllowAnonymous, fleet-by-slug via TenantResolutionMiddleware, AsNoTracking + query-filter-scoped, unwrapping a named { routes } envelope, returning id/name/type/priceCzk (+ PointToPoint pickup/dropoff coords/addresses) filtered by Europe/Prague valid-now (validNow=true). The UC-004 web client ALREADY calls getCommonRoutes() -> GET /routes/common?validNow=true and unwraps data.routes (web client.ts, web useCommonRoutes.ts - both verified). DECISION: routes/common IS the canonical public valid-now route listing; the assignment's GET routes/available is SATISFIED-BY it (superset shape - the assignment's fromLabel/toLabel are covered by name + the existing pickup/dropoff addresses). Do NOT add a second endpoint and do NOT rename - ZERO client migration on the routes side. A5-routes-crud adds the admin CRUD under the same RoutesFeatureConfiguration and MUST NOT touch ListCommonRoutesEndpoint. Documented in decisions.md by A6. ============ RECONCILIATION 2 - pricing/quote REPLACED (LOAD-BEARING, forces a Lane-B client migration): The SOURCE (api QuoteEndpoint) is GET + CustomerOnly, QuoteResponse(PriceType, FixedPriceCzk, EstimateLowCzk, EstimateHighCzk) with NO Meter branch, no routeId/routeName on Fixed, no distanceKm/durationMin on Estimate, and a no-dropoff -> wide-Estimate behavior. UC-006 requires: precedence PointToPoint->ZoneToZone->Zone over the real route set (not just PointToPoint radius), a Meter fallback (outside-all-zones + no dropoff -> Meter, FLIPPING the current Estimate behavior), an at? param (Otestovat must quote at an arbitrary time to test a night route), a WIDENED policy (any authenticated role + anonymous-by-slug - AC#4's dispatcher Otestovat panel gets 403 under the current CustomerOnly), and routeId/routeName on Fixed + distanceKm/durationMin on Estimate. DECISION: switch verb to POST with a JSON body (the authoritative assignment verb; ALSO sidesteps the cs-CZ double query-binding locale trap per CLAUDE.md since numbers ride in the JSON body). Because the response SHAPE changes, the web client that calls it (client.ts pricingQuote/PriceQuoteResponse, usePriceQuote, the pure priceQuote.ts interpretQuote, PriceRangeBadge - all verified present from UC-004 B-custom-order) MUST migrate: this is B1-quote-client-migration, the exact 'don't leave the client on a removed contract' lesson from the UC-004 review. interpretQuote today returns 'unknown' for Meter -> B1 adds a Meter branch; the driver priceBadgeUtils already handles Meter (verified) so the driver badge is a regression check. ============ AC#3 PRICE-LOCK - do NOT over-scope: CreateOrderEndpoint (verified) already copies PriceType/FixedPriceCzk/EstimatedPriceCzk/RouteId straight into the order row at creation, so price-lock is STRUCTURAL - AC#3's deliverable is the INTEGRATION TEST only (A7: edit the route price after create, assert the order price is unchanged), NOT a create rewrite. LABELED BEST-JUDGMENT ASSUMPTION (decided separately, NOT bundled): the assignment's 'order creation calls the SAME service and LOCKS' gestures at server-side price AUTHORITY - today a customer can POST any fixedPriceCzk (a PRE-EXISTING trust hole, not introduced by UC-006). Re-pricing server-side would edit the shared, already-heavily-modified CreateOrderEndpoint (see git status). UC-006 does NOT do that rewrite; if the reviewer wants server authority it is a clean follow-up WI (call pricing/RouteMatcher inside CreateOrderEndpoint and overwrite the client-supplied price for Fixed routes). ============ MIGRATION SERIALIZATION: Zone entity ALREADY exists (Circle/Polygon, jsonb JsonDocument Polygon) with DbSets registered (verified) - so NO new Zone migration. Only two migrations: A1 Route ALTER (AddRouteRadiusAndBidirectional) and A2 Place CREATE (AddPlacesTable), serialized A1->A2 via depends_on so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel (the second would clobber the first's column - UC-004 precedent, CLAUDE.md). No other Lane-A WI adds a migration. ============ JSONB TRAP (cited in A3/A4/A6): Zone.Polygon is System.Text.Json.JsonDocument mapped jsonb; it CANNOT be projected inside a LINQ-to-SQL Select (runtime 500 via DontCatchExceptions, CLAUDE.md WI-10). ZoneService (A3), the zones list projection (A4), and the matching service (A6) all ToListAsync() the zones first, then read Polygon in memory. ============ AC GAPS SURFACED: (AC#6) OrderDetailDto has FinalPriceCzk but NOT PriceOverrideReason (verified) -> A7 adds the additive field + projection so the dispatcher detail flags an override; the PriceOverridden OrderEvent + GetOrderEvents timeline already exist from WI-07 (no state-machine change). The driver/customer badges already carry a Meter case (priceBadgeUtils.ts) but the customer interpretQuote must gain one (B1). (AC#5) the current seed has no 03:00-04:00-only route -> A6 seeds one in DevelopmentSeeder. (AC#2) the current seed routes approximate the examples but A6 must ensure the exact quotes (Fixed 100/110/300 both directions). ============ LANE PARALLELISM: Lane A and Lane B run in parallel where files are disjoint. Within Lane A the shared-writer edges are expressed via depends_on (the conductor serializes only via depends_on): A2 depends_on A1 (migration snapshot serialization + both under no shared endpoint file); A4 depends_on A3 (zones CRUD consumes ZoneService - build edge, though A4 itself does not call Contains, it is grouped to keep Zones coherent); A5 depends_on A1 (routes CRUD reads the A1 columns); A6 depends_on A2+A3+A5 (matching needs zones+places seed context, ZoneService, and the route admin surface + A1 columns); A7 depends_on A6 (the price-lock test edits a route via A5 surface and quotes via A6; also sequences the ErrorCodes.cs / shared-file writes last). ErrorCodes.cs is appended by A2 (Place.*), A4 (Zone.*), A5 (Route.*), A6 (Pricing.*) - distinct nested blocks that merge cleanly; if the conductor cannot guarantee append-safety it should serialize those four on ErrorCodes.cs, but no extra depends_on edge is forced because the blocks are disjoint. DevelopmentSeeder.cs is written by A2 (places) and A6 (example + night routes) - A6 depends_on A2 so these serialize. AuthorizationPolicies.cs sole writer is A6 (widen pricing/quote). Within Lane B: B1 depends_on A6 (the migrated client mirrors A6's QuoteResponse - a cross-lane BUILD/contract edge); B2 is independent (settings shell + zones tab); B3 depends_on B1 (Otestovat calls the migrated pricingQuote) + B2 (tab shell); B4 depends_on B2 (tab shell + lazy Leaflet pattern). The cs.json/en.json + client.ts serial edits within Lane B are ordered by the B2->B3->B4 chain and the B1 pricing edits are disjoint files from B2/B4 except client.ts (B1 edits the pricingQuote function; B2/B3/B4 add zones/routes/places functions - distinct regions; if the conductor cannot guarantee append-safety on client.ts, serialize B1 before B2). E2E depends_on A6+A7 (backend build integrity - the Playwright harness dotnet-run's the API from the shared tree) + B3+B4 (the Settings screens must exist). ============ STAGING: Lane A stages api/ only; Lane B stages web/ only (plus docs/ from E2E for DEMO.md + decisions.md by A6); neither commits (conductor gates commit). ============ needs_library_research true on exactly B2 (Leaflet draw interactions - circle click-drag + polygon click-to-close editor; the read-only Leaflet map + lazy-load pattern already exist from UC-004 but the DRAW/edit interaction is new). ============ AC MAPPING: AC#1 (matching precedence / bidirectional / night-wrap / zone-edge unit tests) -> A3 (ZoneService edge) + A6 (RouteMatcher precedence/bidirectional/night-wrap). AC#2 (seeded-route quotes) -> A6. AC#3 (route price edit does not change an existing order) -> A7. AC#4 (draw polygon -> Zone route -> Otestovat -> enable) -> A4+A5+A6 + B2+B3 + E2E. AC#5 (customer home valid-now only) -> existing routes/common + A6 seeded night route + E2E. AC#6 (driver override reason in timeline + flagged in detail) -> A7 (detail field) + existing WI-07 timeline + B1 (badge regression). ============ SPEC LANE-B ITEM 6 CLAUSE 2 ('zone-restricted inputs validate against real zones') - DECISION: there is NO standalone zone-validation WI because pricing/quote IS the validation mechanism. UC-004 RouteOrderPage shipped Zone/ZoneToZone customer ordering as a pre-06 placeholder; B1 un-stubs it (RouteOrderPage.tsx added to B1 files_touched) by routing in-zone pickup/dropoff through the migrated POST pricing/quote. A Zone route only prices Fixed when the entered pickup is in the zone (A6 RouteMatcher + A3 ZoneService containment is authoritative server-side), so no client-side polygon check is needed; a non-Fixed result for a Zone order surfaces a plain-Czech 'mimo zonu' message. This avoids duplicating zone geometry in the browser and keeps one source of truth. ============ SHARED-FILE SERIALIZATION (autonomous parallel mode): ErrorCodes.cs appenders are A2/A4/A5/A6; edges A1->A2, A2->A4, A2->A5, A5/A2/A3->A6 reduce concurrent ErrorCodes.cs writers to at most 2 (A4 + A5), matching the UC-004 precedent. DevelopmentSeeder.cs writers A2+A6 serialize via A2->A6. client.ts (web) writers B1/B2/B3/B4: B1 edits the pricingQuote region; B2/B3/B4 add zones/routes/places functions (distinct regions) and are chained B2->B3, B2->B4 with B1->B3; the only fully-concurrent client.ts pair is B1 vs B2 (pricing region vs zones region - disjoint). If the conductor cannot guarantee append-safety on a shared file for a concurrent pair, it should serialize that pair; no further depends_on edge is forced because the regions are disjoint."
 }

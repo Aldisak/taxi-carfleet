@@ -255,50 +255,100 @@ export function getGeoRoute(req: GeoRouteRequest): Promise<GeoRouteResponse> {
 }
 
 // ---------------------------------------------------------------------------
-// Pricing quote (CustomerOnly)
+// Pricing quote (POST — any authenticated role + anonymous-by-slug, A6/UC-006)
 // ---------------------------------------------------------------------------
 
 /**
- * A price quote from GET /pricing/quote. Either a Fixed price (a matching route rule) or
- * an Estimate RANGE (tariff ±10%, rounded to 10 CZK) — the backend guarantees it is NEVER
- * a single exact estimate (AC #4: estimateLow < estimateHigh).
+ * A Fixed price: a route rule matched (PointToPoint/Zone/ZoneToZone). Carries the routeId
+ * + routeName so the caller (dispatcher Otestovat panel, customer Zone order) can reference
+ * the matched rule.
  */
-export interface PriceQuoteResponse {
-  /** "Fixed" when a route rule matched, else "Estimate". */
-  priceType: 'Fixed' | 'Estimate'
-  /** Integer CZK fixed price when priceType is Fixed; null otherwise. */
-  fixedPriceCzk: number | null
-  /** Lower bound of the estimate range when priceType is Estimate; null otherwise. */
-  estimateLowCzk: number | null
-  /** Upper bound of the estimate range when priceType is Estimate; null otherwise. */
-  estimateHighCzk: number | null
-}
-
-/** Query params for GET /pricing/quote. Dropoff is optional (omit → a wide estimate). */
-export interface PriceQuoteRequest {
-  fromLat: number
-  fromLng: number
-  toLat?: number | null
-  toLng?: number | null
+export interface FixedPriceQuote {
+  type: 'Fixed'
+  /** Integer CZK locked price. */
+  priceCzk: number
+  /** The matched route's id. */
+  routeId: string
+  /** The matched route's display name. */
+  routeName: string
 }
 
 /**
- * GET /pricing/quote — a Fixed price or an Estimate range for a prospective order.
- * CustomerOnly; coords are sent as invariant-format strings (the backend parses them as
- * invariant doubles to dodge the cs-CZ locale double-binding trap). Throws
+ * An Estimate RANGE: no route matched but a dropoff is known, so the backend priced via
+ * OSRM + the fleet tariff (±10%, rounded to 10 CZK). The backend guarantees lowCzk < highCzk
+ * so it is NEVER a single exact number (AC #4).
+ */
+export interface EstimatePriceQuote {
+  type: 'Estimate'
+  /** Lower bound of the estimate range (integer CZK). */
+  lowCzk: number
+  /** Upper bound of the estimate range (integer CZK), strictly greater than lowCzk. */
+  highCzk: number
+  /** Driving distance in km from the route computation. */
+  distanceKm: number
+  /** Driving duration in minutes from the route computation. */
+  durationMin: number
+}
+
+/**
+ * A Meter fallback: no route matched AND no dropoff is known, so the price is whatever the
+ * taximeter runs. Carries the fleet tariff summary so the UI can show the base/per-km rate.
+ */
+export interface MeterPriceQuote {
+  type: 'Meter'
+  /** Integer CZK pick-up / base fare. */
+  baseCzk: number
+  /** Integer CZK per-km rate. */
+  perKmCzk: number
+  /** Integer CZK minimum fare. */
+  minimumCzk: number
+}
+
+/**
+ * The POST /pricing/quote response, discriminated on `type` (A6/UC-006). Migrated from the
+ * old GET QuoteResponse(priceType, fixedPriceCzk, estimateLow/HighCzk) — the field names
+ * are byte-identical to the backend QuoteResponse (O-02).
+ */
+export type PriceQuoteResponse = FixedPriceQuote | EstimatePriceQuote | MeterPriceQuote
+
+/**
+ * POST /pricing/quote body. Coordinates ride in the JSON body as numbers — this sidesteps
+ * the cs-CZ double query-binding locale trap (CLAUDE.md) that forced string params on the
+ * old GET. Dropoff is optional; `at` (ISO timestamp) quotes at an arbitrary time so the
+ * dispatcher Otestovat panel can verify a night-tariff route.
+ */
+export interface PriceQuoteRequest {
+  pickupLat: number
+  pickupLng: number
+  dropoffLat?: number | null
+  dropoffLng?: number | null
+  /** Optional ISO timestamp to evaluate route validity at; omit → now. */
+  at?: string | null
+}
+
+/**
+ * POST /pricing/quote — a Fixed price, an Estimate range, or a Meter fallback for a
+ * prospective order. Any authenticated role (Customer/Driver/Dispatcher/FleetAdmin) plus
+ * anonymous-by-slug (X-Fleet-Slug header, attached by apiRequest). Throws
  * ApiResponseError(502) when the upstream route is unavailable — the caller surfaces the
  * "Cenu nelze spočítat, zavolejte nám" message.
  */
 export function getPriceQuote(req: PriceQuoteRequest): Promise<PriceQuoteResponse> {
-  const params = new URLSearchParams({
-    fromLat: String(req.fromLat),
-    fromLng: String(req.fromLng),
-  })
-  if (req.toLat != null && req.toLng != null) {
-    params.set('toLat', String(req.toLat))
-    params.set('toLng', String(req.toLng))
+  const body: PriceQuoteRequest = {
+    pickupLat: req.pickupLat,
+    pickupLng: req.pickupLng,
   }
-  return apiRequest<PriceQuoteResponse>(`/pricing/quote?${params}`)
+  if (req.dropoffLat != null && req.dropoffLng != null) {
+    body.dropoffLat = req.dropoffLat
+    body.dropoffLng = req.dropoffLng
+  }
+  if (req.at != null) {
+    body.at = req.at
+  }
+  return apiRequest<PriceQuoteResponse>('/pricing/quote', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,4 +1065,262 @@ export interface FleetSettingsDto {
 
 export function getFleetSettings(): Promise<FleetSettingsDto> {
   return apiRequest<FleetSettingsDto>('/fleet/settings')
+}
+
+// ---------------------------------------------------------------------------
+// Zones CRUD (FleetAdmin — A4 /api/v1/zones, UC-006)
+// ---------------------------------------------------------------------------
+
+/** Zone shape discriminator (matches the backend ZoneShape enum). */
+export type ZoneShape = 'Circle' | 'Polygon'
+
+/** A single [lat, lng] coordinate pair on a polygon ring. */
+export type ZonePolygonPoint = [number, number]
+
+/**
+ * A zone from GET /api/v1/zones (A4). A Circle carries centerLat/centerLng + radiusMeters
+ * (polygon null); a Polygon carries a [lat,lng] point array (center/radius null). The
+ * backend materializes the jsonb Polygon in memory before projecting (CLAUDE.md WI-10).
+ */
+export interface ZoneDto {
+  id: string
+  name: string
+  shape: ZoneShape
+  centerLat: number | null
+  centerLng: number | null
+  radiusMeters: number | null
+  polygon: ZonePolygonPoint[] | null
+  isEnabled: boolean
+}
+
+/**
+ * List-zones response envelope. CONFIRMED against the real backend record
+ * `ListZonesResponse(IReadOnlyList<ZoneDto> Zones)` → a NAMED `{ zones }` envelope, NOT the
+ * `{ items }` list convention (the laneB6a assumption was wrong — the {routes}/{items}
+ * envelope-bug class, CLAUDE.md). A fetch-mocked regression test in client.test.ts locks this.
+ */
+export interface ListZonesResponse {
+  zones: ZoneDto[]
+}
+
+/** Create-zone body: per-shape fields (Circle → center+radius; Polygon → points). */
+export interface CreateZoneRequest {
+  name: string
+  shape: ZoneShape
+  centerLat?: number | null
+  centerLng?: number | null
+  radiusMeters?: number | null
+  polygon?: ZonePolygonPoint[] | null
+  isEnabled: boolean
+}
+
+/** Update-zone body (same shape as create). */
+export type UpdateZoneRequest = CreateZoneRequest
+
+/** GET /api/v1/zones — lists the fleet's zones (FleetAdmin, tenant-scoped). Unwraps `{ zones }`. */
+export async function getZones(): Promise<ZoneDto[]> {
+  const data = await apiRequest<ListZonesResponse>('/zones')
+  return data.zones
+}
+
+/** POST /api/v1/zones — creates a zone. */
+export function createZone(req: CreateZoneRequest): Promise<ZoneDto> {
+  return apiRequest<ZoneDto>('/zones', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+/** PUT /api/v1/zones/{id} — updates a zone. */
+export function updateZone(zoneId: string, req: UpdateZoneRequest): Promise<ZoneDto> {
+  return apiRequest<ZoneDto>(`/zones/${zoneId}`, {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  })
+}
+
+/** DELETE /api/v1/zones/{id} — removes a zone. Returns 204. */
+export function deleteZone(zoneId: string): Promise<void> {
+  return apiRequest<void>(`/zones/${zoneId}`, {
+    method: 'DELETE',
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Routes admin CRUD (FleetAdmin — A5 /api/v1/routes, UC-006)
+// ---------------------------------------------------------------------------
+
+/**
+ * An admin route (GET /api/v1/routes) — byte-for-byte the backend RouteAdminDto. Times are
+ * serialized TimeOnly → "HH:mm:ss" strings (or null = all-day). Prices are integer CZK.
+ * ValidDays is a bitmask (1=Mon … 64=Sun; 127 = all week). This is the ADMIN editor listing;
+ * the anonymous customer listing is getCommonRoutes (a different endpoint + shape).
+ */
+export interface RouteAdminDto {
+  id: string
+  name: string
+  type: RouteType
+  priceCzk: number
+  fromZoneId: string | null
+  toZoneId: string | null
+  fromLat: number
+  fromLng: number
+  toLat: number | null
+  toLng: number | null
+  fromRadiusMeters: number
+  toRadiusMeters: number
+  isBidirectional: boolean
+  validDays: number
+  /** Start of the validity window as "HH:mm:ss", or null for all-day. */
+  validFromTime: string | null
+  /** End of the validity window as "HH:mm:ss", or null for all-day. */
+  validToTime: string | null
+  priority: number
+  isEnabled: boolean
+}
+
+/**
+ * List-routes response envelope. CONFIRMED against the backend record
+ * `ListRoutesResponse(IReadOnlyList<RouteAdminDto> Routes)` → a NAMED `{ routes }` envelope.
+ */
+export interface ListRoutesResponse {
+  routes: RouteAdminDto[]
+}
+
+/**
+ * Create/update body for a route (byte-for-byte the backend CreateRouteRequest /
+ * UpdateRouteRequest). Required fields depend on `type`: PointToPoint → from/to coords +
+ * radii; Zone → fromZoneId; ZoneToZone → fromZoneId + toZoneId. Times are "HH:mm:ss" or null.
+ */
+export interface CreateRouteRequest {
+  name: string
+  type: RouteType
+  priceCzk: number
+  fromZoneId?: string | null
+  toZoneId?: string | null
+  fromLat: number
+  fromLng: number
+  toLat?: number | null
+  toLng?: number | null
+  fromRadiusMeters: number
+  toRadiusMeters: number
+  isBidirectional: boolean
+  validDays: number
+  validFromTime?: string | null
+  validToTime?: string | null
+  priority: number
+  isEnabled: boolean
+}
+
+/** Update-route body (same shape as create). */
+export type UpdateRouteRequest = CreateRouteRequest
+
+/** GET /api/v1/routes — lists admin routes ordered by priority desc. Unwraps `{ routes }`. */
+export async function getRoutes(): Promise<RouteAdminDto[]> {
+  const data = await apiRequest<ListRoutesResponse>('/routes')
+  return data.routes
+}
+
+/** POST /api/v1/routes — creates a route. Returns only the new id (CreateRouteResponse). */
+export function createRoute(req: CreateRouteRequest): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>('/routes', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+/** PUT /api/v1/routes/{id} — full update. Returns the updated RouteAdminDto. */
+export function updateRoute(routeId: string, req: UpdateRouteRequest): Promise<RouteAdminDto> {
+  return apiRequest<RouteAdminDto>(`/routes/${routeId}`, {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  })
+}
+
+/** DELETE /api/v1/routes/{id} — soft delete (sets DeletedAt). Returns 204. */
+export function deleteRoute(routeId: string): Promise<void> {
+  return apiRequest<void>(`/routes/${routeId}`, {
+    method: 'DELETE',
+  })
+}
+
+/** PATCH /api/v1/routes/{id}/enable — toggle IsEnabled. Returns 204. */
+export function setRouteEnabled(routeId: string, isEnabled: boolean): Promise<void> {
+  return apiRequest<void>(`/routes/${routeId}/enable`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isEnabled }),
+  })
+}
+
+/** PATCH /api/v1/routes/{id}/priority — set Priority. Returns 204. */
+export function setRoutePriority(routeId: string, priority: number): Promise<void> {
+  return apiRequest<void>(`/routes/${routeId}/priority`, {
+    method: 'PATCH',
+    body: JSON.stringify({ priority }),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Places CRUD (FleetAdmin — A2 /api/v1/places, UC-006)
+// ---------------------------------------------------------------------------
+
+/** A named place (GET /api/v1/places) — byte-for-byte the backend PlaceDto, ordered by sortOrder. */
+export interface PlaceDto {
+  id: string
+  name: string
+  lat: number
+  lng: number
+  address: string
+  sortOrder: number
+  isEnabled: boolean
+}
+
+/**
+ * List-places response envelope. CONFIRMED against the backend record
+ * `ListPlacesResponse(IReadOnlyList<PlaceDto> Places)` → a NAMED `{ places }` envelope.
+ */
+export interface ListPlacesResponse {
+  places: PlaceDto[]
+}
+
+/** Create/update body for a place (byte-for-byte the backend CreatePlaceRequest / UpdatePlaceRequest). */
+export interface CreatePlaceRequest {
+  name: string
+  lat: number
+  lng: number
+  address: string
+  sortOrder: number
+  isEnabled: boolean
+}
+
+/** Update-place body (same shape as create). */
+export type UpdatePlaceRequest = CreatePlaceRequest
+
+/** GET /api/v1/places — lists places ordered by sortOrder. Unwraps `{ places }`. */
+export async function getPlaces(): Promise<PlaceDto[]> {
+  const data = await apiRequest<ListPlacesResponse>('/places')
+  return data.places
+}
+
+/** POST /api/v1/places — creates a place. Returns the created place (CreatePlaceResponse). */
+export function createPlace(req: CreatePlaceRequest): Promise<PlaceDto> {
+  return apiRequest<PlaceDto>('/places', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+/** PUT /api/v1/places/{id} — full update. Returns the updated PlaceDto. */
+export function updatePlace(placeId: string, req: UpdatePlaceRequest): Promise<PlaceDto> {
+  return apiRequest<PlaceDto>(`/places/${placeId}`, {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  })
+}
+
+/** DELETE /api/v1/places/{id} — hard delete. Returns 204. */
+export function deletePlace(placeId: string): Promise<void> {
+  return apiRequest<void>(`/places/${placeId}`, {
+    method: 'DELETE',
+  })
 }

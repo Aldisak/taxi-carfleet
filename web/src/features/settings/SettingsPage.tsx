@@ -6,6 +6,7 @@ import { canAccessSettings } from './roleGating'
 import { VehiclesTab } from './VehiclesTab'
 import { PeopleTab } from './PeopleTab'
 import { FleetTab } from './FleetTab'
+import { RoutesZonesPage } from './routesZones/RoutesZonesPage'
 
 const Page = styled.div`
   display: flex;
@@ -50,7 +51,7 @@ const AccessDenied = styled.div`
   color: ${({ theme }) => theme.colors.textSecondary};
 `
 
-type Tab = 'vehicles' | 'people' | 'fleet'
+type Tab = 'vehicles' | 'people' | 'fleet' | 'routesZones'
 
 /** Settings page — FleetAdmin only. Shows Vozidla / Lidé / Fleet tabs. */
 export function SettingsPage() {
@@ -95,12 +96,21 @@ export function SettingsPage() {
         >
           {t('settings.tabs.fleet')}
         </TabButton>
+        <TabButton
+          role="tab"
+          aria-selected={activeTab === 'routesZones'}
+          $active={activeTab === 'routesZones'}
+          onClick={() => setActiveTab('routesZones')}
+        >
+          {t('settings.tabs.routesZones')}
+        </TabButton>
       </TabBar>
 
       <TabContent>
         {activeTab === 'vehicles' && <VehiclesTab />}
         {activeTab === 'people' && <PeopleTab />}
         {activeTab === 'fleet' && <FleetTab />}
+        {activeTab === 'routesZones' && <RoutesZonesPage />}
       </TabContent>
     </Page>
   )

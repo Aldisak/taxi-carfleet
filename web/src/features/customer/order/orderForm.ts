@@ -66,3 +66,55 @@ export function buildRouteOrderRequest(input: RouteOrderInput): CreateOrderReque
     routeId: route.id,
   }
 }
+
+/** A customer-entered endpoint (address + resolved coords) for a Zone/ZoneToZone order. */
+export interface ZoneOrderPoint {
+  address: string
+  lat: number
+  lng: number
+}
+
+/** Inputs for building a Zone / ZoneToZone order from customer-entered in-zone endpoints. */
+export interface ZoneOrderInput {
+  route: CommonRouteDto
+  /** The customer-entered pickup, validated in-zone by the server quote (A6 RouteMatcher). */
+  pickup: ZoneOrderPoint
+  /** The customer-entered dropoff (ZoneToZone); null for a single-Zone order. */
+  dropoff: ZoneOrderPoint | null
+  passengers: number
+  scheduledAt: string | null
+  note: string | null
+  /**
+   * The server-matched routeId + locked price from POST /pricing/quote (B1). The quote is
+   * authoritative for zone containment (ZoneService runs server-side), so we send the
+   * matched route's id + price rather than trusting a client-side polygon check.
+   */
+  quoteRouteId: string
+  quotePriceCzk: number
+}
+
+/**
+ * Builds the CreateOrderRequest for a Zone / ZoneToZone confirm order. Unlike the
+ * PointToPoint builder (fixed endpoints from the route), the customer enters the pickup (and
+ * for ZoneToZone the dropoff) and the server quote validates zone containment. The request
+ * carries the quote's matched routeId + locked Fixed price — pricing/quote IS the
+ * zone-validation mechanism (UC-006 spec Lane-B item 6), so no client-side polygon check.
+ */
+export function buildZoneOrderRequest(input: ZoneOrderInput): CreateOrderRequest {
+  const { route, pickup, dropoff, passengers, scheduledAt, note, quoteRouteId, quotePriceCzk } = input
+
+  return {
+    pickupAddress: pickup.address || route.name,
+    pickupLat: pickup.lat,
+    pickupLng: pickup.lng,
+    dropoffAddress: dropoff ? (dropoff.address || route.name) : null,
+    dropoffLat: dropoff ? dropoff.lat : null,
+    dropoffLng: dropoff ? dropoff.lng : null,
+    scheduledAt,
+    note,
+    passengers: clampPassengers(passengers),
+    priceType: 'Fixed',
+    fixedPriceCzk: quotePriceCzk,
+    routeId: quoteRouteId,
+  }
+}

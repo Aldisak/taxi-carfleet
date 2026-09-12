@@ -38,7 +38,7 @@ describe('usePriceQuote', () => {
   })
 
   it('interprets a Fixed quote into a fixed view', async () => {
-    mockQuote.mockResolvedValue({ priceType: 'Fixed', fixedPriceCzk: 300, estimateLowCzk: null, estimateHighCzk: null })
+    mockQuote.mockResolvedValue({ type: 'Fixed', priceCzk: 300, routeId: 'r7', routeName: 'KH → Kolín' })
     const { result } = renderHook(
       () => usePriceQuote({ pickupLat: 50.08, pickupLng: 14.42, dropoffLat: 50.07, dropoffLng: 14.43 }),
       { wrapper },

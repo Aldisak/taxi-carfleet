@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA6 (7 api WIs: A1-A7)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "N-01",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Features/Zones/ListZones/ListZonesEndpoint.cs",
+      "rule": "rules/architecture.md#one-type-per-file",
+      "title": "Two types in one file (ListZonesEndpoint + ZonePolygonMapper)",
+      "detail": "ListZonesEndpoint.cs declares both ListZonesEndpoint and the internal static helper ZonePolygonMapper in the same file. rules/architecture.md#one-type-per-file and csharp-style.md#no-regions call for one type per file with the file name matching the type. Both are internal and co-located; no behavioral impact. The WI files_touched list did not enumerate a ZonePolygonMapper.cs.",
+      "recommendation": "Extract ZonePolygonMapper to its own file (or fold ToArray into the endpoint as a private static method) in a follow-up; non-blocking."
+    },
+    {
+      "id": "O-01",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
+      "rule": "rules/ef-core.md#entity-naming",
+      "title": "Vestigial FromLat/FromLng on seeded Zone-type night route",
+      "detail": "route4Night is RouteType.Zone but sets FromLat=0, FromLng=0. Zone matching uses FromZoneId only (RouteMatcher.MatchesZone), so the zeroed coords are inert and never read. Harmless dead data carried to satisfy non-null column expectations; does not affect matching or AC#5.",
+      "recommendation": "Optionally drop the FromLat/FromLng assignments for Zone-type seed routes; non-blocking."
+    }
+  ],
+  "summary": "laneA6 (UC-006 backend, A1-A7) is sound and does NOT block merge. CRITICAL checks pass: (1) A3 ZoneService is pure, stateless; haversine circle uses distance<=radius (on-boundary=inside), polygon uses standard PNPoly ray-casting with an explicit on-edge/on-vertex pre-check (IsOnSegment) returning inside BEFORE ray-casting, making boundary points deterministic; Zone.Polygon jsonb is parsed in memory (ParsePolygon over RootElement), never LINQ-projected (CLAUDE.md WI-10); unit tests cover center/just-outside/on-boundary, polygon inside/outside/on-edge, and null guards with Czech coords. (2) A6 RouteMatcher precedence is PointToPoint->ZoneToZone->Zone, within-type OrderByDescending(Priority).ThenBy(PriceCzk); ZoneToZone honours IsBidirectional; IsWithinWindow wraps midnight (f>t => now>=f || now<=t) evaluated via TimeZoneInfo.ConvertTime to Europe/Prague; Zone-no-dropoff correct: matcher runs before the dropoff branch and MatchesZone needs no dropoff (AC#2 anywhere-in-KH 110); all four behaviors are pure-module unit-tested. M-01 applied: QuoteEndpoint is AllowAnonymous() + (FleetId is null -> 400 NoTenantResolved) guard; AuthorizationPolicies.cs is NOT in the staged diff (no policy edit/leak). Fixed/Estimate/Meter response shapes match the contract; Estimate rounded to 10 with EnsureSpread guaranteeing low<high; OSRM failure -> 502 Geo.RouteUnavailable. (3) A5 routes CRUD: soft-delete via DeletedAt, PATCH enable/priority, per-type validators; ListCommonRoutes NOT touched (confirmed absent from diff). (4) A7 price-lock is integration-test-only (create copies price); PriceOverrideReason is trailing-optional on OrderDetailDto, only GetOrderEndpoint populates it (additive, O-03 safe). (5) Multi-tenancy: Place/Zone/Route tenant-scoped; CrossTenant/UsesCallerFleetOnly isolation tests present in Places, Zones, RoutesCrud, and PricingQuote; anonymous quote is fleet-safe (query-filter scoped + 400 when unresolved). (6) Migrations non-destructive: A1 AddRouteRadiusAndBidirectional (3 AddColumn w/ HasDefaultValue, ts 214753) sequenced before A2 AddPlacesTable (CREATE, ts 215100); seed updated for AC#2 (KH station->centre Fixed 100, Zone-KH 110, ZoneToZone KH<->Kolin 300 bidirectional) and AC#5 (night route 03:00-04:00, priority 50). (7) Rules: DontCatchExceptions, _featureConfiguration, Send.* for expected errors, AsNoTracking on reads, validators use WithErrorCode with stable {Layer}.{ErrorName} codes, XML docs present, ErrorCodes appended coherently; docs/api.md updated for GET->POST quote + new endpoints. Two LOW/nit findings only (one-type-per-file in ListZonesEndpoint; inert zeroed coords on a seeded Zone route). No geometry error, no tenant leak on the anonymous quote. Tests NOT re-run per instruction (backend reports 373 green; concurrent web agent)."
+}

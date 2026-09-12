@@ -204,3 +204,21 @@ where a half is intentionally out of scope pre-05/06.
 
 10. **`docs/api.md` regenerates via the full `dotnet test`** (the OpenAPI document test), not
     hand-edited in this WI.
+
+## 2026-09-13 — UC-006 routes/zones/pricing decisions (DoD #6)
+
+1. **`pricing/quote` GET → POST, discriminated union.** The UC-004 tariff-only stub (`GET`, `CustomerOnly`, `{PriceType,FixedPriceCzk,EstimateLowCzk,EstimateHighCzk}`, no Meter) is replaced by the real route-matching service: `POST /api/v1/pricing/quote` body `{pickupLat,pickupLng,dropoffLat?,dropoffLng?,at?}` → a union on `type`: `Fixed{priceCzk,routeId,routeName}` | `Estimate{lowCzk,highCzk,distanceKm,durationMin}` | `Meter{baseCzk,perKmCzk,minimumCzk}`. Access is `AllowAnonymous()` + a `CurrentTenant.FleetId is null → 400` guard (the `ListCommonRoutes` precedent) — NOT a new policy — so the customer home and the dispatcher "Otestovat" panel both reach it. Null union fields ARE emitted (no `DefaultIgnoreCondition`), so the client discriminates on `type`, never field presence.
+
+2. **`routes/common` is canonical; `routes/available` is satisfied-by it.** The existing anonymous, fleet-by-slug, `{routes}`-enveloped, Europe/Prague valid-now `routes/common` (and its `CommonRouteDto`, a superset of the assignment's `{id,name,type,priceCzk,fromLabel,toLabel}`) stays the single endpoint. No rename, no duplicate, no customer-client migration.
+
+3. **Matching precedence / geometry.** `RouteMatcher` (pure): PointToPoint → ZoneToZone → Zone; within a type highest `Priority` then lowest price; bidirectional ZoneToZone; validity windows evaluated in Europe/Prague and may wrap midnight; the matcher runs even when dropoff is null (a Zone matches on pickup-in-zone alone — "anywhere in KH → 110"). `ZoneService.Contains` (pure): haversine for circles (on-boundary = inside), ray-casting for polygons with an on-edge/on-vertex pre-check; `Zone.Polygon` jsonb is read in memory (never LINQ-projected).
+
+4. **Price-lock immutability.** Order creation copies `PriceType`/`FixedPriceCzk`/`EstimatedPriceCzk`/`RouteId` onto the order row, so editing a route's price later never changes an existing order's price (integration-tested). `OrderDetailDto` gained a trailing-optional `PriceOverrideReason` (populated only by the order-detail read; driver override surfaces in the detail/timeline).
+
+5. **Client response-envelope discipline (recurring bug class).** Backend list endpoints use NAMED envelopes: `{zones}` / `{routes}` (admin) / `{places}` — NOT `{items}`. A first cut of `getZones` read `.items` (would render an empty Zóny tab); fixed, and a fetch-mocked (not client-mocked) contract regression test now guards all three unwraps. `orders/mine` genuinely is `{items,total,page,pageSize}`.
+
+6. **Dispatcher route editor PointToPoint is map-pin only (no address autocomplete) — follow-up.** `RouteAdminDto` stores no address, so an autocomplete would be a pin-placement aid the backend never persists; map-pin sets the stored coords directly. The binding AC#4 uses a Zone route. Promote a shared `AddressAutocomplete` over `getGeoSuggest` as a clean follow-up.
+
+7. **AC#4/#5 Playwright browser automation DEFERRED (documented follow-up).** The dispatcher draw-zone → create-route → Otestovat → enable flow (AC#4) and the customer valid-now-routes browser assertion (AC#5) were not automated: three subagent attempts hit infrastructure stream-timeouts, and the flow spans a zone-draw plus three separate lazy Leaflet map instances whose pixel→latlng clicks must all coincide, which is disproportionately flaky to author inline. All six functional ACs are covered by the 373 backend tests (AC#1 matching precedence/bidirectional/night-wrap/edge; AC#2 seeded-route quotes; AC#3 price-lock; AC#6 override) and the 940 web unit/component tests (ZonesTab, RoutesTab, OtestovatPanel, validitySummary, zoneDraw, customer valid-now via `useCommonRoutes`). The existing 10-spec e2e suite passes with no regression. Follow-up: author the two Playwright specs in a fresh session with the conductor running the harness (not a subagent).
+
+8. **Cross-UC seed coupling fixed.** UC-006 renamed the seeded route `"Nádraží → Centrum"` → `"Nádraží Kutná Hora → Centrum"`; the UC-004 customer AC#1 e2e hard-coded the old name. The matcher was widened to `/Nádraží.*Centrum/` so a seed-label tweak no longer breaks the flow.

@@ -5,6 +5,7 @@ import {
   clampPassengers,
   isAddressLocked,
   buildRouteOrderRequest,
+  buildZoneOrderRequest,
 } from './orderForm'
 import type { CommonRouteDto } from '../../../shared/api/client'
 
@@ -107,5 +108,54 @@ describe('buildRouteOrderRequest', () => {
     const when = '2026-09-13T10:00:00.000Z'
     const req = buildRouteOrderRequest({ route: p2p, passengers: 1, scheduledAt: when, note: null })
     expect(req.scheduledAt).toBe(when)
+  })
+})
+
+const zoneToZone: CommonRouteDto = {
+  id: 'r9', name: 'Kutná Hora → Kolín', type: 'ZoneToZone', priceCzk: 300,
+  fromZoneId: 'z-kh', toZoneId: 'z-kolin',
+}
+
+describe('buildZoneOrderRequest', () => {
+  it('uses the customer-entered pickup coords and the server-matched routeId + locked price', () => {
+    const req = buildZoneOrderRequest({
+      route: zone,
+      pickup: { address: 'Palackého nám. 1, Kutná Hora', lat: 49.948, lng: 15.268 },
+      dropoff: null,
+      passengers: 2,
+      scheduledAt: null,
+      note: null,
+      quoteRouteId: 'r2',
+      quotePriceCzk: 110,
+    })
+    expect(req.priceType).toBe('Fixed')
+    expect(req.routeId).toBe('r2')
+    expect(req.fixedPriceCzk).toBe(110)
+    expect(req.pickupAddress).toBe('Palackého nám. 1, Kutná Hora')
+    expect(req.pickupLat).toBe(49.948)
+    expect(req.pickupLng).toBe(15.268)
+    // Single-Zone order: no dropoff.
+    expect(req.dropoffAddress).toBeNull()
+    expect(req.dropoffLat).toBeNull()
+    expect(req.passengers).toBe(2)
+  })
+
+  it('threads both endpoints for a ZoneToZone order', () => {
+    const req = buildZoneOrderRequest({
+      route: zoneToZone,
+      pickup: { address: 'Kutná Hora', lat: 49.948, lng: 15.268 },
+      dropoff: { address: 'Kolín', lat: 50.027, lng: 15.199 },
+      passengers: 1,
+      scheduledAt: null,
+      note: 'u nádraží',
+      quoteRouteId: 'r9',
+      quotePriceCzk: 300,
+    })
+    expect(req.routeId).toBe('r9')
+    expect(req.fixedPriceCzk).toBe(300)
+    expect(req.dropoffAddress).toBe('Kolín')
+    expect(req.dropoffLat).toBe(50.027)
+    expect(req.dropoffLng).toBe(15.199)
+    expect(req.note).toBe('u nádraží')
   })
 })
