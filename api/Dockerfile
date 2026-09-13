@@ -26,14 +26,16 @@ WORKDIR /src/api/src/Taxi.Api
 RUN dotnet publish "Taxi.Api.csproj" -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
-# aspnet:10.0 (Debian) ships neither curl nor wget; install curl so the HEALTHCHECK
-# below has a binary to run. (Image size target <120 MB is documented as an expectation
-# in the runbook — the Debian base is ~220 MB; an alpine base would be the honest path
-# to that target, kept as a documented follow-up so the runtime matches the SDK base OS.)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# aspnet:10.0-alpine → 152 MB (the Debian aspnet base was 256 MB). This does NOT fully meet
+# the assignment §1 <120 MB target: hitting <120 MB needs a chiseled base, which has no
+# shell/curl and would force dropping the container HEALTHCHECK (also a §1 requirement) for
+# external /health/ready polling — an unfavourable trade, so alpine is the chosen balance
+# (keeps the HEALTHCHECK, ~40% smaller). Chiseled + a shell-less health probe is a documented
+# follow-up. The app is framework-dependent (UseAppHost=false → `dotnet Taxi.Api.dll`) so it
+# runs on the base image's musl runtime; Npgsql is fully managed, so musl is safe. Alpine
+# ships no curl — install it (has a shell, unlike chiseled) for the HEALTHCHECK.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
+RUN apk add --no-cache curl
 
 WORKDIR /app
 COPY --from=build /app/publish .
