@@ -13,6 +13,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
+      // injectManifest: we ship a custom service worker (src/sw.ts) so it can handle Web Push
+      // (show notification + notificationclick focus/open) in addition to app-shell precaching.
+      // generateSW has no hook for a custom push handler. (UC-005 B1)
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       devOptions: {
         // SW must NOT register in dev — only active in production builds
         enabled: false,
@@ -46,17 +52,10 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // Precache only app shell assets (JS/CSS/HTML) — not API or hub routes
+      injectManifest: {
+        // Precache only app shell assets (JS/CSS/HTML) — not API or hub routes.
+        // Runtime routing/navigation fallback is handled explicitly in src/sw.ts.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [
-          // Never intercept API calls or SignalR hub connections
-          /^\/api/,
-          /^\/hubs/,
-        ],
-        // No runtime caching for API or real-time traffic
-        runtimeCaching: [],
       },
     }),
   ],

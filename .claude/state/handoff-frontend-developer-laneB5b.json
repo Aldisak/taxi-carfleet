@@ -1,0 +1,19 @@
+{
+  "wi_id": "laneB5b",
+  "title": "board card at-a-glance failed-SMS red icon (hasFailedSms list flag)",
+  "files_changed": [
+    "web/src/shared/api/client.ts",
+    "web/src/features/board/OrderCard.tsx",
+    "web/src/features/board/OrderCard.test.tsx",
+    "web/src/shared/api/client.test.ts"
+  ],
+  "tests_added": [
+    "OrderCard.test.tsx > 'OrderCard — at-a-glance failed-SMS red icon (list flag, laneB5b)' (3: shows when hasFailedSms=true no-detail; absent when false no-detail; detail cache still shows icon when list flag false)",
+    "client.test.ts > 'getOrders — hasFailedSms list flag' (1: { items } envelope carries hasFailedSms per OrderSummaryDto)"
+  ],
+  "tests_passing": 1005,
+  "coverage_delta": "+4 tests (1001 baseline -> 1005; 154 files unchanged). 0 failures.",
+  "hit_max_turns": false,
+  "notes": "CONTRACT WIRED: laneA5b's additive OrderSummaryDto.hasFailedSms:boolean added to client.ts ListOrdersResponse item type. Typed OPTIONAL (hasFailedSms?: boolean) not required — deliberate deviation from the confirmed-non-null backend contract, consistent with the codebase additive-optional pattern (ratingStars?, smsUnitCostCzk?, etc.); `order.hasFailedSms === true` handles undefined cleanly so a pre-merge/stale payload degrades to no-icon rather than a crash. BOARD PATH: getOrders returns the raw ListOrdersResponse with NO transform; OrdersColumn buckets OrderSummaryDto[] and passes each straight to OrderCard via `order={order}` — the flag flows end-to-end with no mapping to drop it. ICON WIRING: OrderCard.showFailedSms is now `order.hasFailedSms === true || hasFailedSms(cachedDetail?.notifications)`. The LIST flag is PRIMARY/at-a-glance — the icon shows on the board WITHOUT opening any order (no detail fetch, no N-query storm). The laneB5a detail-cache predicate (useQuery enabled:false on ['orders','detail',id], reactive, never fetches) is kept as an OR fallback: a failed SMS is a latch (never un-fails), so detail can only ADD the icon when the cached list row has not caught up, never clear it — comment in OrderCard reworded to say exactly this (the advisor caught an earlier 'detail authoritative' wording that was misleading for an OR). Reused laneB5a's FailedSmsIcon styled.span (role='img' + i18n aria-label t('notifications.failedSmsIcon') = 'SMS se nepodařila odeslat...') — accessible element, not a bare glyph; icon is non-interactive so no new axe assertion is required (the existing OrderCard axe test still covers the card and passes). DETAIL-DRAWER Notifikace behavior untouched (NotificationsSection / hasFailedSms pure helper unchanged). NO new i18n keys (reused notifications.failedSmsIcon from laneB5a) so locales.parity cannot regress. FIXTURES: OrderCard.test.tsx makeOrder() takes Partial<OrderSummaryDto> overrides, so the new tests pass hasFailedSms via override — no standing fixture needed the field; sectionBucketing/disconnectDisable fixtures compile unchanged because the field is optional (verified by tsc + full suite). TDD: observed RED on the hasFailedSms=true test (icon absent before wiring — captured the full failing DOM), GREEN after the OrderCard OR edit (24/24 OrderCard), then full-suite + build + size. Staged web/ only (excluded web/tsconfig.tsbuildinfo); did NOT commit; did NOT touch api/**.",
+  "verification_output": "tsc --noEmit: exit 0 (=== TSC OK ===). lint (eslint . --max-warnings 0): exit 0 (=== LINT OK ===). vitest run (full): Test Files 154 passed (154); Tests 1005 passed (1005); 0 failures. OrderCard.test.tsx in isolation: 24 passed (24). build (tsc -b && vite build): built in 6.03s, dist/index-*.js 840.32 kB / gzip 242.08 kB, PWA sw.js generated; exit 0. size-limit: Size 227.38 kB brotlied < 260 kB limit; exit 0. Baseline before laneB5b: 1001 tests / 154 files (laneB5a handoff)."
+}

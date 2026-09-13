@@ -49,4 +49,10 @@ public sealed class CreateOrderRequest
 
     /// <summary>Route rule to use for pricing. Optional.</summary>
     public Guid? RouteId { get; init; }
+
+    /// <summary>How the order was placed. Additive + optional (no <c>required</c> to avoid the STJ
+    /// missing-field 500 trap). Ignored for customer callers (always App). For a dispatcher caller it
+    /// distinguishes a Phone-source order (customer has no app) from a Dispatcher-created order;
+    /// defaults to Dispatcher when omitted.</summary>
+    public OrderSource? Source { get; init; }
 }

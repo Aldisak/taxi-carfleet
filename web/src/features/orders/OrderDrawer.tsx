@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { getOrder, getOrderEvents } from '../../shared/api/client'
 import { isOrderEditable } from './isOrderEditable'
 import { EventTimeline } from './OrderEventTimeline'
+import { NotificationsSection } from './NotificationsSection'
 import { deriveTransitionButtons } from './transitionButtons'
 import { useUpdateOrder } from './useUpdateOrder'
 import { useAssignOrder } from '../board/useAssignOrder'
@@ -788,6 +789,12 @@ export function OrderDrawer() {
                   onClose={() => setActivePickerAction(null)}
                 />
               )}
+
+              {/* Notifikace — sent/failed notification delivery status (UC-005 B2) */}
+              <Section>
+                <SectionTitle>{t('notifications.title')}</SectionTitle>
+                <NotificationsSection notifications={order.notifications ?? []} />
+              </Section>
 
               {/* Event timeline */}
               <Section>

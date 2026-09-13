@@ -1,0 +1,16 @@
+{
+  "wi_id": "laneA5b",
+  "title": "hasFailedSms on order list DTO (board at-a-glance red icon, §5)",
+  "files_changed": [
+    "api/src/Taxi.Api/Features/Orders/Shared/OrderSummaryDto.cs",
+    "api/src/Taxi.Api/Features/Orders/ListOrders/ListOrdersEndpoint.cs",
+    "api/tests/Taxi.Api.Tests/Orders/Write/OrderWriteTests.cs"
+  ],
+  "tests_added": [
+    "Taxi.Api.Tests.Orders.Write.OrderWriteTests.ListOrders_HasFailedSms_TrueOnlyForFailedSmsAndTenantScoped"
+  ],
+  "tests_passing": 420,
+  "hit_max_turns": false,
+  "notes": "Endpoint: GET /api/v1/orders (ListOrdersEndpoint, Policies DispatcherOnly) — the dispatcher board's order LIST. DTO: OrderSummaryDto (Features/Orders/Shared) — the per-row list item returned in ListOrdersResponse.Items. Added trailing positional param `bool HasFailedSms` (additive, single construction site confirmed). Computed via a correlated EXISTS subquery inside the existing .Select projection: dbContext.NotificationLog.Any(l => l.OrderId == o.Id && l.Channel == NotificationChannel.Sms && l.Status == NotificationStatus.Failed). EF translates to one SQL round trip over the page rows — NO N+1, no in-memory lookup. AsNoTracking preserved. Tenant-scoped automatically: NotificationLog has a FleetId==currentTenant query filter, which applies to the subquery DbSet reference (proven by the test — fleet B's failed-SMS row pointing at fleet A's order does NOT set fleet A's flag). JSON field for the web lane: `hasFailedSms` (STJ Web camelCase default). NO docs/api.md change from this work (the api.md generator emits only the route table, not component schemas; a DTO field adds no route). NO OpenAPI allowlist change (no new route). Test lives in OrderWriteTests.cs (namespace Taxi.Api.Tests.Orders.Write) where the existing ListOrders endpoint tests are, so it runs under the list endpoint's FullyQualifiedName area filter. Strict red-green observed: field first wired as literal false -> RED (Expected HasFailedSms True but found False) -> swapped to .Any(...) EXISTS -> GREEN. Note: web/, CLAUDE.md, docs/api.md were already staged by the parallel web lane before this lane ran; `git add api/` only staged the three api files above.",
+  "verification_output": "dotnet build api/Taxi.sln -warnaserror: 0 warnings, 0 errors. dotnet test api/Taxi.sln: Uspesne! Neuspesne: 0, Uspesne: 420, Preskoceno: 0, Celkem: 420. dotnet format api/Taxi.sln --verify-no-changes: clean (after running dotnet format to fix whitespace on the new code). New test RED output: 'Expected failed.HasFailedSms to be True because a failed SMS log row for the order sets the flag, but found False.' then GREEN after the EXISTS subquery."
+}

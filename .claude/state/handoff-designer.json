@@ -1,181 +1,82 @@
 {
-  "uc_id": "UC-006",
-  "spec_path": "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-  "work_items_doc": "docs/specs/in-progress/routes-zones-pricing-work-items.md",
+  "uc_id": "UC-005",
+  "spec_path": "docs/specs/in-progress/005_UC_005_notifications.md",
+  "work_items_doc": "docs/specs/in-progress/notifications-work-items.md",
   "work_items": [
     {
-      "id": "A1-route-columns",
+      "id": "A1-notification-schema",
       "lane": "api",
-      "title": "Add Route.FromRadiusMeters/ToRadiusMeters (PointToPoint, default 150) + IsBidirectional (ZoneToZone, default true) + EF config + migration",
-      "goal": "The first of two serialized Lane-A migrations. Add three columns to the existing Route entity (verified present: Type, PriceCzk, From/To Lat/Lng, FromZoneId/ToZoneId, ValidDays bitmask, ValidFromTime/ValidToTime, Priority, IsEnabled, DeletedAt): FromRadiusMeters (double, default 150) and ToRadiusMeters (double, default 150) for PointToPoint radius matching, and IsBidirectional (bool, default true) so ZoneToZone Kolin<->KH costs the same both ways. Update RouteConfiguration and add the migration. No endpoint changes here - this WI exists solely to land the schema cleanly before A2's Place migration (serialized so the TaxiDbContextModelSnapshot stays coherent, UC-004 precedent).",
+      "title": "notification_outbox + notification_log entities (ITenantEntity, FleetId-scoped) + FleetSettings.SmsMonthlyCapCzk/SmsUnitCostCzk + dedup unique index + one migration",
+      "goal": "The single serialized Lane-A migration WI (UC-006 precedent: one coherent snapshot, all other Lane-A WIs depend on it). Add TWO new entities: NotificationOutbox (Id, FleetId, Event[enum], OrderId?, Channel[Sms|Push], RecipientUserId?, RecipientPhone?, RecipientEndpoint?, PayloadJson[jsonb], Attempts[int default 0], NextAttemptAt, Status[Queued|Sent|Failed|Skipped], CreatedAt) and NotificationLog (Id, FleetId, Event[enum], OrderId?, Channel, Recipient[string], Status[Queued|Sent|Failed|SkippedCap|SkippedNoChannel], ProviderMessageId?, Error?, CreatedAt, SentAt?). Both implement ITenantEntity (FleetId non-null, tenant-scoped via global query filter, mirroring Order). The DEDUP unique index (AC#7) lives on NotificationLog over (FleetId, Event, OrderId, Recipient, Channel). Add NotificationEvent + NotificationChannel + NotificationStatus enums under Infrastructure/Entities. Add FleetSettings.SmsMonthlyCapCzk (int, default 500) + SmsUnitCostCzk (int, default 1) via the SAME migration. Register both DbSets. PushSubscription already exists in the snapshot (verified InitialSchema) so NO push_subscription migration. Add global query filters for the two new tenant entities in TaxiDbContext.OnModelCreating. One migration AddNotificationTablesAndSmsCap via dotnet ef --output-dir Infrastructure/Migrations. No engine/endpoint logic here - schema only, so the snapshot lands cleanly before the parallel A2..A6 work.",
       "depends_on": [],
-      "estimated_complexity": "S",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/Route.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/RouteConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/tests/Taxi.Api.Tests/Routes/RouteColumnsTests.cs"
-      ],
-      "rule_citations": [
-        "rules/ef-core.md#entity-naming",
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#migrations",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#migrations",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "Route gains FromRadiusMeters (double, default 150), ToRadiusMeters (double, default 150), IsBidirectional (bool, default true). RouteConfiguration sets the three defaults (HasDefaultValue) so existing rows backfill. A migration AddRouteRadiusAndBidirectional is added with dotnet ef --output-dir Infrastructure/Migrations (CLAUDE.md). This migration is sequenced BEFORE A2's Place migration (the one hard Lane-A ordering constraint) so the model snapshot applies cleanly.",
-        "The migration up-SQL adds the three columns non-destructively with the stated defaults (review before commit - no column drops/renames per rules/ef-core.md#migrations).",
-        "RouteColumns_DefaultsApplied_NewRouteHas150And150AndTrue and RouteColumns_Migration_BackfillsExistingRows pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Routes.RouteColumns"
-      }
-    },
-    {
-      "id": "A2-places",
-      "lane": "api",
-      "title": "Place entity + DbSet + config + migration + seed + CRUD /api/v1/places (FleetAdmin, tenant-scoped)",
-      "goal": "The second serialized Lane-A migration. New Place entity (Id, FleetId, Name, Lat, Lng, Address, SortOrder, IsEnabled) implementing ITenantEntity; DbSet on TaxiDbContext; PlaceConfiguration with a FleetId index; migration AddPlacesTable (AFTER A1 so the snapshot rebases). Vertical-slice CRUD under Features/Places: list (ordered by SortOrder), create, update, delete (FleetAdmin), all tenant-scoped by the global query filter. Seed four demo places in DevelopmentSeeder (Kolin station, KH hl.n., KH mesto, hospital Kolin) inside the demo-fleet idempotent block. Used by dispatcher chips (UC-002) and customer address suggestions (UC-004).",
-      "depends_on": [
-        "A1-route-columns"
-      ],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/Place.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationOutbox.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationLog.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationEvent.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationChannel.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationStatus.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
         "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/PlaceConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/NotificationOutboxConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/NotificationLogConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/FleetSettingsConfiguration.cs",
         "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
-        "api/src/Taxi.Api/Features/Places/PlacesFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Places/ListPlaces/ListPlacesEndpoint.cs",
-        "api/src/Taxi.Api/Features/Places/ListPlaces/ListPlacesResponse.cs",
-        "api/src/Taxi.Api/Features/Places/ListPlaces/PlaceDto.cs",
-        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceEndpoint.cs",
-        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceRequest.cs",
-        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceResponse.cs",
-        "api/src/Taxi.Api/Features/Places/CreatePlace/CreatePlaceValidator.cs",
-        "api/src/Taxi.Api/Features/Places/UpdatePlace/UpdatePlaceEndpoint.cs",
-        "api/src/Taxi.Api/Features/Places/UpdatePlace/UpdatePlaceRequest.cs",
-        "api/src/Taxi.Api/Features/Places/UpdatePlace/UpdatePlaceValidator.cs",
-        "api/src/Taxi.Api/Features/Places/DeletePlace/DeletePlaceEndpoint.cs",
-        "api/src/Taxi.Api/Features/Places/DeletePlace/DeletePlaceRequest.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Places/PlacesCrudTests.cs"
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationSchemaTests.cs"
       ],
       "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
         "rules/ef-core.md#entity-naming",
         "rules/ef-core.md#primary-keys",
         "rules/ef-core.md#dbset-registration",
         "rules/ef-core.md#indexes",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
+        "rules/ef-core.md#enums-as-strings",
+        "rules/ef-core.md#date-types",
         "rules/ef-core.md#migrations",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
+        "rules/architecture.md#one-type-per-file",
         "rules/csharp-style.md#guid-primary-keys",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#migrations",
-        "rules/naming.md#error-codes",
+        "rules/naming.md#files-and-types",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/05-notifications.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "Place : ITenantEntity has Id (Guid), FleetId (Guid), Name (string), Lat (double), Lng (double), Address (string), SortOrder (int), IsEnabled (bool). DbSet<Place> Places registered; PlaceConfiguration indexes FleetId. Migration AddPlacesTable added with --output-dir Infrastructure/Migrations and sequenced AFTER A1's AddRouteRadiusAndBidirectional (serialized via depends_on so two migrations are never generated in parallel - the second would clobber the first's snapshot).",
-        "GET places (FleetAdmin, AsNoTracking, tenant-scoped) returns places ordered by SortOrder projected to { id, name, lat, lng, address, sortOrder, isEnabled }. POST/PUT/DELETE places are FleetAdmin, tenant-scoped, with validators (Name required, coords present, SortOrder >= 0). DELETE is a hard delete (places are not orders/events). A cross-fleet id on PUT/DELETE returns a no-leak 404.",
-        "DevelopmentSeeder seeds four places (Kolin station, KH hl.n., KH mesto, hospital Kolin) for the demo fleet inside the existing idempotent demo-slug block.",
-        "Places_List_OrderedBySortOrder, Places_Create_Persists, Places_Update_ChangesFields, Places_Delete_Removes, Places_CrossTenant_Returns404 (tenant isolation), and Places_NonFleetAdmin_Returns403 pass."
+        "NotificationOutbox and NotificationLog both implement ITenantEntity (non-null FleetId); each gets a global query filter `e => e.FleetId == currentTenant.FleetId` in TaxiDbContext.OnModelCreating alongside the existing Order filter. DbSet<NotificationOutbox> and DbSet<NotificationLog> are registered. Enums (NotificationEvent: OrderCreatedForCustomer, DriverAssigned, DriverArrived, RideStarted, RideCompleted, OrderCancelledByFleet, OrderCancelledByCustomer, OfferToDriver, DriverDeclined, DriverTimedOut, NewAppOrderForDispatch, ScheduledOrderReminder; NotificationChannel: Sms, Push; NotificationStatus: Queued, Sent, Failed, SkippedCap, SkippedNoChannel) are stored as strings (global Enum convention already present).",
+        "A UNIQUE index on NotificationLog (FleetId, Event, OrderId, Recipient, Channel) enforces dedup (AC#7). PayloadJson on NotificationOutbox is jsonb (System.Text.Json.JsonDocument? mapped with HasColumnType('jsonb'), CLAUDE.md). FleetId and (Status, NextAttemptAt) on NotificationOutbox are indexed for the dispatch-job scan.",
+        "FleetSettings gains SmsMonthlyCapCzk (int, default 500) and SmsUnitCostCzk (int, default 1); FleetSettingsConfiguration sets both defaults via HasDefaultValue so existing rows backfill. A single migration AddNotificationTablesAndSmsCap is added with --output-dir Infrastructure/Migrations (CLAUDE.md); its up-SQL creates two tables + the unique dedup index + adds two non-null columns with defaults, and is reviewed for non-destructive ops (rules/ef-core.md#migrations).",
+        "NotificationSchema_OutboxAndLog_AreTenantScoped (fleet A cannot read fleet B's outbox/log rows - tenant isolation), NotificationSchema_DedupIndex_RejectsDuplicateLogRow (inserting a second NotificationLog with the same FleetId+Event+OrderId+Recipient+Channel throws a 23505 PostgresException), and NotificationSchema_FleetSettingsCapDefaults_Are500And1 pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Places"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.NotificationSchema"
       }
     },
     {
-      "id": "A3-zone-service",
+      "id": "A2-push-subscriptions",
       "lane": "api",
-      "title": "Pure ZoneService.Contains (haversine circle + ray-casting polygon) + exhaustive unit tests",
-      "goal": "The novel geometry primitive. A pure Common/Geo/ZoneService with Contains(Zone zone, double lat, double lng) -> bool: haversine great-circle distance <= RadiusMeters for Circle zones; ray-casting point-in-polygon for Polygon zones (Polygon is jsonb JsonDocument holding [[lat,lng],...]; parse in memory - never project a JsonDocument in LINQ, CLAUDE.md WI-10). No DbContext, no IO - a static/stateless helper so every consumer (matching service, zone-restricted inputs) shares one implementation. Unit-tested with Czech coordinates only, including points ON an edge and just inside/outside.",
-      "depends_on": [],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Common/Geo/ZoneService.cs",
-        "api/tests/Taxi.Api.Tests/Geo/ZoneServiceTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#one-type-per-file",
-        "rules/architecture.md#banned-patterns",
-        "rules/csharp-style.md#expression-bodied",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#test-naming",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "ZoneService.Contains handles Circle zones via haversine: a point whose great-circle distance to (CenterLat, CenterLng) is <= RadiusMeters returns true; a point just outside returns false. It handles Polygon zones via ray-casting over the [[lat,lng],...] array parsed from the jsonb JsonDocument in memory (the JsonDocument is never passed to a LINQ-to-SQL Select - CLAUDE.md). A null/empty Polygon or a null RadiusMeters for the wrong shape returns false (guard, not exception).",
-        "Unit tests use Kutna Hora / Kolin coordinates only and cover: center-inside, just-inside and just-outside a circle radius; a point inside a convex polygon; a point outside; and a point ON a polygon edge / on a circle boundary (AC#1 'pickup on a zone edge' - the chosen boundary convention is asserted and documented in a test comment).",
-        "ZoneService_CircleCenter_Contains, ZoneService_CircleJustOutside_Excludes, ZoneService_CircleOnBoundary_DocumentedConvention, ZoneService_PolygonInside_Contains, ZoneService_PolygonOutside_Excludes, and ZoneService_PolygonOnEdge_DocumentedConvention pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Geo.ZoneService"
-      }
-    },
-    {
-      "id": "A4-zones-crud",
-      "lane": "api",
-      "title": "Zones CRUD /api/v1/zones (FleetAdmin, Circle or Polygon <=200 pts, tenant-scoped)",
-      "goal": "Vertical-slice CRUD over the existing Zone entity (verified: Id, FleetId, Name, Shape Circle/Polygon, CenterLat/Lng, RadiusMeters?, Polygon jsonb JsonDocument?, IsEnabled; DbSet already registered). Endpoints under Features/Zones: list, create, update, delete (FleetAdmin, tenant-scoped). Per-shape validation: Circle requires CenterLat/Lng + RadiusMeters > 0 and Polygon null; Polygon requires a Polygon of 3..200 [lat,lng] pairs and RadiusMeters null. Writing the jsonb Polygon uses JsonDocument.Parse of the request's coordinate array; dispose per CLAUDE.md. No geometry math here - that lives in A3 (A4 shares no code files with A3 and does not call Contains). depends_on A2 ONLY to serialize the shared ErrorCodes.cs append after A2 (A2->A4 and A2->A5 keep ErrorCodes.cs writers down to 2 concurrent: A4 + A5, the UC-004 precedent level).",
+      "title": "POST/DELETE /api/v1/push/subscriptions (all authenticated roles, multi-device, UserId-scoped, upsert + prune)",
+      "goal": "Resolve the UC-004 push-subscription-server deferral. Vertical-slice endpoints under Features/Push over the EXISTING PushSubscription entity (verified: Id, FleetId?, UserId, Endpoint, P256dh, Auth, UserAgent?, CreatedAt, LastUsedAt?; UserId-scoped, NOT ITenantEntity, nullable FleetId - mirrors RefreshToken; query filter already admits null FleetId). POST push/subscriptions upserts by (UserId, Endpoint) so re-subscribing the same browser is idempotent and one user may register several devices; it stamps FleetId from the JWT fleet_id claim when present (null for Customer). DELETE push/subscriptions removes by Endpoint for the calling user. Allowed for ANY authenticated role (Customer/Driver/Dispatcher/FleetAdmin). NOTE: there is no existing 'any authenticated' policy (verified policies: CustomerOnly, DriverOnly, DispatcherOnly, FleetAdminOnly, SuperAdminOnly, DispatcherOrCustomer, DispatcherOrDriver, CustomerOrStaff). Add an AuthenticatedOnly policy (RequireAuthenticatedUser) to AuthorizationPolicies and use it here, OR reuse CustomerOrStaff if it already covers all roles - pick the one that admits every role and document the choice. Reads/writes are UserId-scoped (the caller's sub claim), never cross-user. No new migration (PushSubscription already in the snapshot).",
       "depends_on": [
-        "A2-places"
+        "A1-notification-schema"
       ],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Zones/ZonesFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Zones/ListZones/ListZonesEndpoint.cs",
-        "api/src/Taxi.Api/Features/Zones/ListZones/ListZonesResponse.cs",
-        "api/src/Taxi.Api/Features/Zones/ListZones/ZoneDto.cs",
-        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneEndpoint.cs",
-        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneRequest.cs",
-        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneResponse.cs",
-        "api/src/Taxi.Api/Features/Zones/CreateZone/CreateZoneValidator.cs",
-        "api/src/Taxi.Api/Features/Zones/UpdateZone/UpdateZoneEndpoint.cs",
-        "api/src/Taxi.Api/Features/Zones/UpdateZone/UpdateZoneRequest.cs",
-        "api/src/Taxi.Api/Features/Zones/UpdateZone/UpdateZoneValidator.cs",
-        "api/src/Taxi.Api/Features/Zones/DeleteZone/DeleteZoneEndpoint.cs",
-        "api/src/Taxi.Api/Features/Zones/DeleteZone/DeleteZoneRequest.cs",
+        "api/src/Taxi.Api/Features/Push/PushFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeEndpoint.cs",
+        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeRequest.cs",
+        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeResponse.cs",
+        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeValidator.cs",
+        "api/src/Taxi.Api/Features/Push/Unsubscribe/UnsubscribeEndpoint.cs",
+        "api/src/Taxi.Api/Features/Push/Unsubscribe/UnsubscribeRequest.cs",
+        "api/src/Taxi.Api/Features/Push/Unsubscribe/UnsubscribeValidator.cs",
+        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
         "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Zones/ZonesCrudTests.cs"
+        "api/tests/Taxi.Api.Tests/Notifications/PushSubscriptionTests.cs"
       ],
       "rule_citations": [
         "rules/architecture.md#vertical-slice-layout",
@@ -187,476 +88,376 @@
         "rules/api-design.md#authorization",
         "rules/api-design.md#dont-catch-exceptions",
         "rules/api-design.md#routes",
+        "rules/ef-core.md#dbcontext-injection",
         "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
+        "rules/validation.md#when-to-add-a-validator",
         "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
         "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
         "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#guid-primary-keys",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#error-codes",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants",
+        "rules/naming.md#files-and-types",
+        "rules/logging.md#property-names",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
+        ".claude/state/05-notifications.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/specs/done/customer-pwa-work-items.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "GET zones (FleetAdmin, AsNoTracking, tenant-scoped) lists zones projected to { id, name, shape, centerLat, centerLng, radiusMeters, polygon (array of [lat,lng]), isEnabled }. The jsonb Polygon is materialized with ToListAsync() first then read in memory (never projected in a LINQ Select - CLAUDE.md WI-10).",
-        "POST/PUT zones (FleetAdmin, tenant-scoped) validate per shape: Circle -> CenterLat/Lng present + RadiusMeters > 0 + Polygon null; Polygon -> 3..200 coordinate pairs + RadiusMeters null. The request's polygon array is stored via JsonDocument.Parse and disposed (CLAUDE.md). A >200-point polygon returns 400 with a stable error code. DELETE zones is FleetAdmin, tenant-scoped, no-leak 404 cross-fleet.",
-        "Zones_Create_Circle_Persists, Zones_Create_Polygon_PersistsJsonb, Zones_Create_PolygonOver200_Returns400, Zones_List_ReturnsShapes, Zones_Update_ChangesShape, Zones_Delete_Removes, Zones_CrossTenant_Returns404 (tenant isolation), and Zones_NonFleetAdmin_Returns403 pass."
+        "POST push/subscriptions accepts { endpoint, p256dh, auth, userAgent? }; a validator requires endpoint/p256dh/auth non-empty (missing field -> 400 with a stable error code, NOT 500 - use plain properties + NotEmpty per the CLAUDE.md 'required on STJ-deserialized request properties' trap). The endpoint upserts by (UserId from the sub claim, Endpoint): a second POST with the same endpoint updates P256dh/Auth/UserAgent/LastUsedAt in place rather than inserting a duplicate. FleetId is stamped from the fleet_id JWT claim when present, left null for Customer. Returns 200/204.",
+        "DELETE push/subscriptions accepts { endpoint } and removes the calling user's subscription with that endpoint; a non-existent endpoint is a no-op 204 (idempotent, no 404 leak). Both endpoints require authentication for ALL roles via the chosen all-roles policy (new AuthenticatedOnly or an existing all-role policy); an anonymous request is 401.",
+        "A user may hold multiple subscriptions (different endpoints = different devices); subscriptions are UserId-scoped so one user never sees or deletes another user's subscription. Timestamps use the injected TimeProvider (CreatedAt on insert, LastUsedAt left for the push sender to bump).",
+        "PushSubscribe_NewEndpoint_Inserts, PushSubscribe_SameEndpointTwice_Upserts (no duplicate row), PushSubscribe_MultipleDevices_AllPersist, PushSubscribe_MissingEndpoint_Returns400, PushUnsubscribe_RemovesOwnEndpoint, PushUnsubscribe_Unknown_Returns204NoLeak, PushSubscribe_Anonymous_Returns401, and PushSubscribe_CustomerAndDriver_BothAllowed pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Zones"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.PushSubscription"
       }
     },
     {
-      "id": "A5-routes-crud",
+      "id": "A3-routing-and-templates",
       "lane": "api",
-      "title": "Routes CRUD /api/v1/routes (FleetAdmin, soft delete, PATCH enable, PATCH priority, per-type validation)",
-      "goal": "Vertical-slice CRUD over the existing Route entity plus the A1 columns: list (sorted by Priority desc), create, update, soft delete (set DeletedAt), PATCH /{id}/enable, PATCH /{id}/priority (FleetAdmin, tenant-scoped). Per-type validation in validators: PointToPoint requires From/To Lat/Lng + FromRadiusMeters/ToRadiusMeters > 0; Zone requires FromZoneId (To* null); ZoneToZone requires FromZoneId + ToZoneId + reads IsBidirectional. Validity fields (ValidDays bitmask, ValidFromTime/ValidToTime) are set as provided. Does NOT own the matching algorithm (A6) - this is administrative CRUD only. Coexists with the existing AllowAnonymous routes/common listing (ListCommonRoutes) under the same RoutesFeatureConfiguration. depends_on A1 (reads the A1 columns) AND A2 (serializes the shared ErrorCodes.cs append after A2 so at most A4 + A5 write ErrorCodes.cs concurrently).",
+      "title": "Pure routing matrix (Source + has-push) + GSM-7 Czech templates (build-time <=160 test, AC#5) + dedup-key helper - all unit-tested, no DbContext",
+      "goal": "The pure, testable core (no DbContext, no IO) that the engine (A4) and dispatch job (A5) share. THREE pure pieces under Common/Notifications: (1) NotificationRouting.Resolve(NotificationEvent evt, OrderSource source, bool customerHasPush) -> a list of (Recipient role, NotificationChannel) resolved from a STATIC in-code matrix exactly matching assignment section 1: Push preferred, SMS only when the matrix says so; PHONE orders (Source=Phone) get the SMS subset (OrderCreatedForCustomer + DriverArrived only); App+push -> push only; App+no-push -> SMS per the matrix (DriverArrived is SMS-ALWAYS regardless of push, AC#2; RideStarted/RideCompleted are push-only, AC#2). Model it so a per-fleet override is trivial later but DO NOT build the override. (2) SmsTemplates: Czech GSM-7 (no diacritics) render functions for OrderCreated ('Taxi {fleet}: objednavka {code} prijata. Sledujte: {link}') and DriverArrived ('Taxi {fleet}: ridic {driver} je na miste, {plate} {color}.'), plus push title/body templates (DriverAssigned push MAY use diacritics). A GsmSevenValidator.IsGsm7AndWithinLimit(string) -> bool checks every char is in the GSM-7 basic+extension set AND rendered length <= 160. (3) NotificationDedupKey.For(evt, orderId, recipient, channel) -> the canonical string used for the NotificationLog dedup. All three are stateless static/pure classes. TEST-CLASS NAMING: the GSM-7 build-time test class MUST be named NotificationSmsTemplateTests (NOT SmsTemplateGsm7Tests) so its FQN contains the substring 'Notifications.Notification' and is caught by this WI's single-token verification filter - a class named SmsTemplateGsm7Tests would NOT match and the AC#5 build-time test would silently not run in the gate.",
       "depends_on": [
-        "A1-route-columns",
-        "A2-places"
+        "A1-notification-schema"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Routes/ListRoutes/ListRoutesEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/ListRoutes/ListRoutesResponse.cs",
-        "api/src/Taxi.Api/Features/Routes/ListRoutes/RouteAdminDto.cs",
-        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteRequest.cs",
-        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteResponse.cs",
-        "api/src/Taxi.Api/Features/Routes/CreateRoute/CreateRouteValidator.cs",
-        "api/src/Taxi.Api/Features/Routes/UpdateRoute/UpdateRouteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/UpdateRoute/UpdateRouteRequest.cs",
-        "api/src/Taxi.Api/Features/Routes/UpdateRoute/UpdateRouteValidator.cs",
-        "api/src/Taxi.Api/Features/Routes/DeleteRoute/DeleteRouteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/DeleteRoute/DeleteRouteRequest.cs",
-        "api/src/Taxi.Api/Features/Routes/SetRouteEnabled/SetRouteEnabledEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/SetRouteEnabled/SetRouteEnabledRequest.cs",
-        "api/src/Taxi.Api/Features/Routes/SetRoutePriority/SetRoutePriorityEndpoint.cs",
-        "api/src/Taxi.Api/Features/Routes/SetRoutePriority/SetRoutePriorityRequest.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Routes/RoutesCrudTests.cs"
+        "api/src/Taxi.Api/Common/Notifications/NotificationRouting.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationRecipientChannel.cs",
+        "api/src/Taxi.Api/Common/Notifications/SmsTemplates.cs",
+        "api/src/Taxi.Api/Common/Notifications/PushTemplates.cs",
+        "api/src/Taxi.Api/Common/Notifications/GsmSevenValidator.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationDedupKey.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/Templates/cs/OrderCreated.txt",
+        "api/src/Taxi.Api/Infrastructure/Notifications/Templates/cs/DriverArrived.txt",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationRoutingTests.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationSmsTemplateTests.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationDedupKeyTests.cs"
       ],
       "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#common-infrastructure",
         "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#indexes",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/validation.md#what-goes-where",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/architecture.md#banned-patterns",
         "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#expression-bodied",
         "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#pattern-matching",
         "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#endpoints-requests-responses-validators-feature-configs",
-        "CLAUDE.md#cross-cutting-invariants",
+        "rules/naming.md#test-naming",
+        "rules/naming.md#files-and-types",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/05-notifications.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "GET routes (FleetAdmin, AsNoTracking, tenant-scoped) lists non-deleted routes ordered by Priority desc projected to an admin DTO carrying all editable fields including FromRadiusMeters/ToRadiusMeters/IsBidirectional/ValidDays/ValidFromTime/ValidToTime. POST/PUT validate per RouteType (PointToPoint: From/To coords + radii > 0; Zone: FromZoneId required, To* null; ZoneToZone: FromZoneId + ToZoneId required) via the validator; a type/field mismatch returns 400 with a stable code.",
-        "DELETE routes is a SOFT delete (sets DeletedAt = timeProvider.GetUtcNow()); the row is never hard-deleted. PATCH routes/{id}/enable toggles IsEnabled; PATCH routes/{id}/priority sets Priority. All mutations are FleetAdmin, tenant-scoped, no-leak 404 cross-fleet.",
-        "Routes_List_OrderedByPriorityDesc, Routes_Create_PointToPoint_Persists, Routes_Create_Zone_RequiresFromZone_Returns400WhenMissing, Routes_Create_ZoneToZone_Persists, Routes_Delete_SoftDeletesSetsDeletedAt, Routes_Enable_Toggles, Routes_Priority_Sets, Routes_CrossTenant_Returns404 (tenant isolation), and Routes_NonFleetAdmin_Returns403 pass."
+        "NotificationRouting.Resolve returns the correct (recipient, channel) set for every NotificationEvent from the static matrix. Key cases asserted: DriverArrived -> customer gets BOTH push AND SMS (SMS always, AC#2) when a push subscription exists; RideStarted -> customer gets push ONLY (no SMS, AC#2); RideCompleted -> push only; Phone-source order -> customer gets SMS for OrderCreatedForCustomer and DriverArrived ONLY, and nothing for RideStarted/RideCompleted; App+no-push -> OrderCreatedForCustomer resolves to SMS (tracking link); OfferToDriver -> driver push; DriverDeclined/DriverTimedOut/NewAppOrderForDispatch/OrderCancelledByCustomer -> dispatcher push. The matrix is a static table with no DbContext/IO.",
+        "GsmSevenValidator.IsGsm7AndWithinLimit returns true for a rendered SMS of valid GSM-7 chars <=160 and false for a diacritic char or >160 chars. SmsTemplates renders OrderCreated and DriverArrived with placeholder substitution ({fleet},{code},{link} / {fleet},{driver},{plate},{color}).",
+        "AC#5 build-time test SmsTemplateGsm7Tests renders EVERY SMS template with the LONGEST realistic values (a 30-char fleet name, a 6-char public code, a realistic absolute tracking URL, a long driver name + plate + color) and asserts each rendered message IsGsm7AndWithinLimit (GSM-7 and <=160). This fails the build if any template can exceed 160 GSM-7 chars.",
+        "NotificationDedupKey.For is deterministic and identical for the same (evt, orderId, recipient, channel) and differs when any component differs.",
+        "NotificationRouting_DriverArrived_SmsEvenWithPush, NotificationRouting_RideStarted_PushOnly, NotificationRouting_PhoneOrder_OnlyCreatedAndArrivedSms, NotificationRouting_AppNoPush_CreatedIsSms, SmsTemplates_AllTemplates_Fit160Gsm7WithLongestValues, SmsTemplates_DiacriticInput_FailsGsm7, and NotificationDedupKey_SameInputs_SameKey pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Routes.RoutesCrud"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.Notification"
       }
     },
     {
-      "id": "A6-pricing-matching",
+      "id": "A4-notification-engine",
       "lane": "api",
-      "title": "Replace pricing/quote with the real matching service (POST, precedence, Meter, at?, widened policy) + pure RouteMatcher + seed example + night route",
-      "goal": "The novel backend core. A pure Common/Pricing/RouteMatcher that, given the fleet's candidate routes + zones (loaded in memory - jsonb Polygon not projected, CLAUDE.md), the pickup/dropoff coords, and an evaluation time, applies precedence PointToPoint -> ZoneToZone -> Zone (within a type: highest Priority, then lowest price), using ZoneService.Contains (A3) + the A1 radii/IsBidirectional, and validity (ValidDays bitmask + ValidFromTime/ValidToTime windows that MAY WRAP MIDNIGHT) evaluated in Europe/Prague. Then REPLACE the existing GET CustomerOnly QuoteEndpoint with POST pricing/quote { pickupLat, pickupLng, dropoffLat?, dropoffLng?, at? }: matched -> { type:'Fixed', priceCzk, routeId, routeName }; else dropoff known -> OSRM via IGeoProvider -> tariff max(Minimum, Base + PerKm*km) rounded UP to 10 -> { type:'Estimate', lowCzk, highCzk (+-10% rounded to 10), distanceKm, durationMin }; else -> { type:'Meter', tariff summary }. Widen policy to any-authenticated + anonymous-by-slug (mirror routes/common fleet-by-slug). Seed AC#2 example routes (KH station->center Fixed 100; anywhere-in-KH Fixed 110; KH<->Kolin Fixed 300 both directions via IsBidirectional) and the AC#5 night route valid only 03:00-04:00 in DevelopmentSeeder. NOTE: routes/common stays the canonical public valid-now listing (no rename, no duplicate routes/available - documented in decisions.md).",
+      "title": "INotificationService.Notify enqueues notification_outbox rows in the SAME DbContext/transaction (AC#3) - wired into OrderService.TransitionAsync (pre-commit) AND CreateOrderEndpoint + pure monthly cost-cap counter (AC#6)",
+      "goal": "The load-bearing transactional-outbox core (AC#3). INotificationService.Notify(NotificationEvent evt, Order order, CancellationToken ct) resolves recipients via A3 NotificationRouting (loading the customer's push-subscription presence + applying the monthly cap), renders payloads via A3 templates, and ADDS NotificationOutbox rows to the SAME scoped TaxiDbContext change-tracker - it does NOT call SaveChanges and does NOT open its own scope/context. Atomicity comes from the caller's existing single SaveChangesAsync. CRITICAL CALL-SITES (both verified): (1) OrderService.TransitionAsync - inject INotificationService and call Notify AFTER OrderStateMachine.Apply succeeds and events are added but BEFORE the `await dbContext.SaveChangesAsync(ct)` at line 68 (NOT in the post-commit publish block at lines 77-95 where OrderChanged/NewOrderOffered fire); the outbox rows then commit atomically with the order + order_events. Map the transition result to the event(s): Assign/Reassign -> OfferToDriver; Accept -> DriverAssigned; Arrive -> DriverArrived; Start -> RideStarted; Complete -> RideCompleted; Cancel -> OrderCancelledByFleet/ByCustomer (by actor role); Decline -> DriverDeclined; Timeout -> DriverTimedOut. (2) CreateOrderEndpoint - inject INotificationService and call Notify(OrderCreatedForCustomer or NewAppOrderForDispatch) BEFORE the SaveChangesAsync inside the public-code retry loop (line 206) so the outbox row shares the create transaction; the re-save on a public-code collision re-saves the already-tracked outbox rows harmlessly. PURE cost-cap: NotificationCostCap.Decide(int sentThisMonthCzk, int capCzk, int unitCostCzk, NotificationEvent evt, NotificationChannel channel) -> Allow | SkipCap (100% reached AND not DriverArrived -> SkipCap; DriverArrived always Allow, AC#6; 90% -> a FleetAdmin warning flag). The engine reads the current-month SMS count from notification_log (SentAt within the TimeProvider month window) to feed the pure cap. Do NOT re-price or mutate the order.",
       "depends_on": [
-        "A2-places",
-        "A3-zone-service",
-        "A5-routes-crud"
+        "A2-push-subscriptions",
+        "A3-routing-and-templates"
       ],
       "estimated_complexity": "XL",
       "files_touched": [
-        "api/src/Taxi.Api/Common/Pricing/RouteMatcher.cs",
-        "api/src/Taxi.Api/Common/Pricing/RouteMatchResult.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteRequest.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteResponse.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteValidator.cs",
-        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/src/Taxi.Api/Infrastructure/Seed/DevelopmentSeeder.cs",
-        "api/tests/Taxi.Api.Tests/Pricing/RouteMatcherTests.cs",
-        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
+        "api/src/Taxi.Api/Common/Notifications/INotificationService.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationCostCap.cs",
+        "api/src/Taxi.Api/Common/Notifications/CapDecision.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationsServiceExtensions.cs",
+        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
+        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderEndpoint.cs",
+        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderRequest.cs",
+        "api/src/Taxi.Api/Common/Tracking/TrackingOptions.cs",
+        "api/src/Taxi.Api/appsettings.Development.json",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationOutboxTransactionTests.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationCostCapTests.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationDedupTests.cs"
       ],
       "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
         "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#banned-patterns",
         "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#asnotracking",
+        "rules/architecture.md#banned-patterns",
+        "rules/ef-core.md#dbcontext-injection",
         "rules/ef-core.md#n-plus-one",
-        "rules/validation.md#validator-class",
-        "rules/validation.md#common-rules",
-        "rules/error-handling.md#send-for-expected-errors",
+        "rules/ef-core.md#asnotracking",
+        "rules/error-handling.md#core-principle",
         "rules/error-handling.md#exceptions-for-infrastructure",
         "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#expression-bodied",
         "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#async-await",
         "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#test-naming",
         "rules/logging.md#style-message-templates",
+        "rules/logging.md#property-names",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/naming.md#test-naming",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
+        ".claude/state/05-notifications.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "RouteMatcher is pure (no DbContext/IO): inputs are the in-memory candidate routes + zones + pickup/dropoff + an evaluation DateTimeOffset; it returns a match (routeId, routeName, priceCzk) or null. Precedence is PointToPoint -> ZoneToZone -> Zone; within a type it picks highest Priority then lowest price. ZoneToZone honours IsBidirectional (from->to OR to->from). Validity uses the ValidDays bitmask AND a time window that correctly WRAPS MIDNIGHT (e.g. 22:00-06:00 includes 23:30 and 02:00 but not 12:00), all evaluated in Europe/Prague.",
-        "AC#1 unit tests on RouteMatcher pass: RouteMatcher_OverlappingRoutes_PrecedenceAndPriorityWin (two matching routes of different types -> PointToPoint chosen; same type -> higher Priority then lower price), RouteMatcher_ZoneToZone_BidirectionalMatchesBothDirections, RouteMatcher_NightWindow_WrapsMidnight, and RouteMatcher_PickupOnZoneEdge_UsesZoneServiceConvention.",
-        "POST pricing/quote replaces the former GET. Request is a JSON body { pickupLat, pickupLng, dropoffLat?, dropoffLng?, at? } (POST body sidesteps the cs-CZ double query-binding trap, CLAUDE.md; a validator bounds coords and rejects a malformed body with 400). The endpoint loads the fleet's enabled/non-deleted routes + zones in memory, calls RouteMatcher at (at ?? now): match -> 200 { type:'Fixed', priceCzk, routeId, routeName }; else dropoff known -> IGeoProvider.RouteAsync -> tariff Max(Minimum, round UP to 10 of Base + PerKm*km) -> 200 { type:'Estimate', lowCzk, highCzk, distanceKm, durationMin } with lowCzk < highCzk always; else -> 200 { type:'Meter', tariff summary }. CRITICAL: the matcher runs BEFORE the dropoff-known branch and MUST run even when dropoff is null (a Zone route matches on pickup-in-zone alone -> AC#2 'anywhere in KH' Fixed 110 has NO dropoff). Do NOT inherit the old QuoteEndpoint's 'if (toLat.HasValue && toLng.HasValue)' guard that only matched when a dropoff was present - that is the opposite of what Zone matching needs. An OSRM failure returns 502 Geo.RouteUnavailable.",
-        "Policy is widened: pricing/quote allows any authenticated role (Customer/Driver/Dispatcher/FleetAdmin) AND anonymous-with-slug (the Otestovat panel is dispatcher-facing; the customer home is anonymous). The fleet is resolved by the tenant middleware (JWT claim or X-Fleet-Slug) and the read is query-filter-scoped; no fleet resolved -> 400. A cross-tenant request only ever prices from the caller's fleet routes/tariff.",
-        "AC#2 integration tests against seeded data pass: Quote_KHStationToCenter_ReturnsFixed100, Quote_AnywhereInKH_ReturnsFixed110, Quote_KHToKolin_ReturnsFixed300_BothDirections, Quote_KolinToPrague_ReturnsEstimateRange, Quote_OutsideAllZonesNoDropoff_ReturnsMeter. The DevelopmentSeeder is updated so these hold AND an extra route valid only 03:00-04:00 is seeded for AC#5. Quote_CrossTenant_UsesCallerFleetOnly (tenant isolation), Quote_Anonymous_BySlug_Returns200, Quote_Dispatcher_Returns200, and Quote_OsrmDown_Returns502 pass."
+        "INotificationService.Notify ADDS NotificationOutbox rows to the injected scoped TaxiDbContext (the same instance the caller uses) WITHOUT calling SaveChangesAsync and WITHOUT opening a new scope. AC#3: NotificationOutbox_WrittenInSameTransaction proves atomicity - simulate a failure of the caller's SaveChanges (e.g. a concurrency conflict or forced rollback) after Notify and assert NO outbox row is persisted; on success the outbox row and the order/order_events commit together. The outbox insert is BEFORE OrderService line 68 and BEFORE CreateOrderEndpoint line 206, never in the post-commit SignalR publish block.",
+        "Notify resolves recipients via A3 NotificationRouting keyed on (event, Order.Source, customerHasPush) where customerHasPush is computed from PushSubscriptions for Order.CustomerUserId. Each outbox row stores INTENT (Event, OrderId, Channel, RecipientUserId?/RecipientPhone?/RecipientEndpoint?) - it does NOT store a pre-rendered SMS body. The SMS body (with the absolute tracking link) is rendered at SEND time by the dispatch job (A5) from the order's then-final PublicCode; this avoids the CreateOrderEndpoint public-code RETRY LOOP (lines 202-216) regenerating PublicCode AFTER a body was already rendered (AC#1 'working tracking link' would otherwise embed a stale code on a rare 23505 collision). The absolute link is built in A5 via TrackingTokenService.Mint(order.Id, now + lifetime) + a new dev-config PublicBaseUrl (added to appsettings.Development.json + an options type here in A4; prod wiring deferred to 08, documented).",
+        "CreateOrderRequest gains an additive `OrderSource? Source` (plain property, no `required`); CreateOrderEndpoint sets Source = isCustomer ? App : (req.Source ?? Dispatcher) so a dispatcher can create a Phone-source order. A Phone-source order enqueues exactly ONE OrderCreatedForCustomer SMS outbox row (AC#1).",
+        "Dedup (AC#7) - enforcement lives at SEND time in A5, NOT at enqueue: the outbox may contain two rows for the same (event,order,recipient,channel) after a duplicate Notify, and that is fine; the dispatch job (A5) CLAIMS the NotificationLog row via the unique-index insert (claim-then-execute, the existing IdempotencyRecord pattern) BEFORE calling the sender, so a 23505 means 'already sent/claimed' -> skip the send entirely. A4 therefore does NOT attempt to dedup at enqueue; it only ensures Notify enqueues outbox intent. A4's NotificationDedup_DuplicateNotify_EnqueuesButSendGuardedByA5 documents the hand-off (the send-once assertion itself is A5's NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce).",
+        "PURE NotificationCostCap.Decide (AC#6): with cap=2 and unit cost=1, after 2 SMS already sent this month a third NON-arrival SMS decides SkipCap (logged SkippedCap, no send) while a DriverArrived SMS decides Allow (still sends). NotificationCostCap_ThirdNonArrival_SkipsCap, NotificationCostCap_ArrivalAlwaysAllowed, and NotificationCostCap_At90Percent_FlagsWarning pass (pure unit tests, no DB).",
+        "Tenant safety: outbox/log rows carry the order's FleetId and are written through the tenant-scoped context. NotificationOutbox_IsWrittenForCorrectFleet (an order in fleet A never enqueues an outbox row readable by fleet B) passes. No raw phone numbers or tokens are logged (rules/logging.md) - use Reason/Phase discriminators and OrderId/FleetId."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Pricing"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.Notification"
       }
     },
     {
-      "id": "A7-price-lock-and-override",
+      "id": "A5-channels-and-dispatch-job",
       "lane": "api",
-      "title": "Price-lock immutability integration test (AC#3) + OrderDetailDto.PriceOverrideReason additive field (AC#6)",
-      "goal": "Close the two remaining AC gaps without touching hot shared files beyond an additive projection. AC#3: the create endpoint already copies PriceType/FixedPriceCzk/EstimatedPriceCzk/RouteId into the order row at creation (verified) so price-lock is structural - the deliverable is an INTEGRATION TEST proving that editing a route's price AFTER an order was created (via A5 UpdateRoute) does NOT change the existing order's stored price. AC#6: OrderDetailDto carries FinalPriceCzk but NOT PriceOverrideReason (verified); add the additive priceOverrideReason field + GetOrderEndpoint projection so the dispatcher detail can flag an override. The PriceOverridden OrderEvent + timeline already exist (WI-07) - no state-machine change. SCOPE NOTE: this WI does NOT rewrite CreateOrderEndpoint to re-price server-side (that trust hole is a labeled follow-up, see handoff notes).",
+      "title": "ISmsSender (Console/GoSms/SMSbrana, config-selected) + IPushSender (WebPush 1.0.13 VAPID, 410->delete, AC#4) + NotificationDispatchJob RunTickAsync shell (retry 3x, AC#1/#3) + notification_log writes",
+      "goal": "The channel adapters + the background drain job (mirrors OfferTimeoutJob's RunTickAsync testable-shell, CLAUDE.md WI-14). CHANNELS: ISmsSender with ConsoleSmsSender (DEFAULT in dev/test - writes the message via the injected logger so AC#1 can assert it; the <=80-line GoSmsSender (HTTP) and SMSbranaSmsSender behind config are ALSO written but untested against live API, config selects one via a Notifications:SmsProvider setting). IPushSender using WebPush 1.0.13 (author coryjthompson, the web-push-csharp lib; targets netstandard2.1/net8.0, compatible with .NET 10; VAPID via VapidDetails; 410 detected via WebPushException.StatusCode == Gone) with a NoOpPushSender for tests; payload <=3KB { title, body, url, tag, priority }; on HttpStatusCode.Gone (410) the sender DELETES the matching PushSubscription (AC#4). VAPID keys are dev-config only (appsettings.Development.json; prod -> 08, documented). JOB: NotificationDispatchJob : BackgroundService with a thin ExecuteAsync PeriodicTimer shell and all logic in public RunTickAsync(ct) (tests call it directly, no timer waits). Per tick: scan NotificationOutbox cross-tenant (IgnoreQueryFilters) for Status=Queued/Failed-retryable with NextAttemptAt<=now; per row open a FRESH scope, set CurrentTenant.FleetId = row.FleetId (so notification_log writes pass the tenant guard + query filter). AC#7 SEND-ONCE via CLAIM-THEN-EXECUTE (the existing IdempotencyRecord pattern): INSERT the NotificationLog row (Status=Queued) FIRST as a claim - if the unique dedup index rejects it (23505), another outbox row already claimed this (event,order,recipient,channel) so SKIP the send entirely (no second sender call); only on a successful claim does the job call the channel sender. RENDER AT SEND TIME: the SMS body (OrderCreated absolute tracking link) is rendered here from the order's then-final PublicCode via A3 SmsTemplates + TrackingTokenService.Mint + PublicBaseUrl - NOT at enqueue (avoids the CreateOrder public-code retry-loop staleness). RETRY COMPATIBILITY INVARIANT: a row's OWN failed send must stay retryable - the claim is keyed so a row can re-attempt its own send (match the claim to the outbox row / keep the log row non-terminal until Sent), while a DIFFERENT duplicate outbox row is blocked. After the send, update the claimed log row to Sent (+ProviderMessageId/SentAt) or on failure bump Attempts + NextAttemptAt (backoff via TimeProvider); after 3 failed attempts mark the outbox row + the log row Status=Failed. Register the job in JobsServiceExtensions.AddJobs.",
       "depends_on": [
-        "A6-pricing-matching"
+        "A4-notification-engine"
+      ],
+      "estimated_complexity": "XL",
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Notifications/ISmsSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/ConsoleSmsSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/GoSmsSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/SmsbranaSmsSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/IPushSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/WebPushSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/NoOpPushSender.cs",
+        "api/src/Taxi.Api/Infrastructure/Notifications/NotificationOptions.cs",
+        "api/src/Taxi.Api/Infrastructure/Jobs/NotificationDispatchJob.cs",
+        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationsServiceExtensions.cs",
+        "api/src/Taxi.Api/appsettings.Development.json",
+        "api/src/Taxi.Api/Program.cs",
+        "api/src/Taxi.Api/Taxi.Api.csproj",
+        "api/tests/Taxi.Api.Tests/Notifications/NotificationDispatchJobTests.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/PushSenderGoneTests.cs",
+        "api/tests/Taxi.Api.Tests/Notifications/PhoneOrderSmsEndToEndTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#one-type-per-file",
+        "rules/architecture.md#banned-patterns",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#n-plus-one",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#async-await",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#style-message-templates",
+        "rules/logging.md#property-names",
+        "rules/logging.md#levels",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/05-notifications.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": true,
+      "acceptance_criteria": [
+        "ISmsSender has ConsoleSmsSender (default, logs the rendered message so tests assert it), GoSmsSender (HTTP, <80 lines), and SmsbranaSmsSender, selected by Notifications:SmsProvider config (default Console in dev/test). IPushSender has WebPushSender (WebPush 1.0.13, VAPID from dev-config NotificationOptions; prod keys -> 08 documented) and NoOpPushSender (tests). The WebPush package reference is added to Taxi.Api.csproj at the pinned version 1.0.13.",
+        "NotificationDispatchJob mirrors OfferTimeoutJob: a thin ExecuteAsync PeriodicTimer(timeProvider) shell + a public RunTickAsync(ct) with all logic; tests construct the job and call RunTickAsync directly (no timer waits, CLAUDE.md WI-14). The scan uses IgnoreQueryFilters cross-tenant; each row is dispatched in a fresh scope with CurrentTenant.FleetId set from the row before writing notification_log. Registered via AddJobs.",
+        "AC#1: PhoneOrderSmsEndToEnd creates a Phone-source order (A4 Source field), runs RunTickAsync once with ConsoleSmsSender, and asserts EXACTLY ONE SMS was produced, its body contains a working ABSOLUTE tracking link, and a single NotificationLog row Status=Sent exists (ConsoleSmsSender output asserted).",
+        "AC#3: NotificationDispatchJob_SendFailsThreeTimes_MarksFailed - with a sender stubbed to throw, after 3 RunTickAsync passes the outbox row + the NotificationLog are Status=Failed (and the dispatcher board red icon surfaces via the A6 Notifikace list carrying a Failed SMS). Backoff uses TimeProvider; the test advances its own FakeTime (own factory per the CLAUDE.md TaxiApiFactory.FakeTime note).",
+        "AC#4: PushSender_Returns410_DeletesSubscription - a push send whose provider returns 410 Gone causes the matching PushSubscription row to be deleted. AC#7: NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce - with a RECORDING sender, two outbox rows for the same (event,order,recipient,channel) result in the sender being invoked EXACTLY ONCE (the claim-then-execute NotificationLog insert rejects the second BEFORE its send) and exactly one Sent log row. This asserts the SEND boundary (not just the log count) - the claim happens before the sender call.",
+        "notification_log and outbox are written tenant-scoped; a dispatch for fleet A never writes a log row visible to fleet B (tenant isolation). No raw phone/token/VAPID key is logged - only Reason/Phase/OrderId/FleetId/ProviderMessageId (rules/logging.md)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications"
+      }
+    },
+    {
+      "id": "A6-order-detail-notifikace",
+      "lane": "api",
+      "title": "OrderDetailDto gains an additive notifications list (sent/failed) + GetOrderEndpoint projection so the dispatcher sees delivery status (AC#3 red icon source)",
+      "goal": "Close the visibility gap (assignment section 5). OrderDetailDto/OrderDetailMapper gains an additive `notifications` list (each item: { event, channel, recipient, status, error?, createdAt, sentAt? }) projected from NotificationLog for the order. GetOrderEndpoint (and the shared OrderDetailMapper used by CreateOrder/transition detail responses) populates it - load the NotificationLog rows for the order with AsNoTracking (tenant-scoped) and map in memory (no jsonb in the projection). This is the server half of the dispatcher 'Notifikace' section + the failed-SMS red-icon signal (a Failed Sms log row = the red icon). Additive only: existing OrderDetailDto fields, callers, and the { order } envelope are unchanged. No state-machine change, no new migration.",
+      "depends_on": [
+        "A5-channels-and-dispatch-job"
       ],
       "estimated_complexity": "M",
       "files_touched": [
         "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderNotificationDto.cs",
+        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailMapper.cs",
         "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Pricing/PriceLockTests.cs"
+        "api/tests/Taxi.Api.Tests/Notifications/OrderDetailNotificationsTests.cs"
       ],
       "rule_citations": [
         "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#one-type-per-file",
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#send-pattern",
         "rules/ef-core.md#asnotracking",
         "rules/ef-core.md#projections",
+        "rules/ef-core.md#n-plus-one",
         "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#test-naming",
+        "rules/naming.md#files-and-types",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/06-common-routes-and-zones.md",
+        ".claude/state/05-notifications.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "OrderDetailDto gains an additive priceOverrideReason (string?) field; GetOrderEndpoint's projection populates it from Order.PriceOverrideReason. Existing fields, callers, and the { order } envelope are unchanged (additive only).",
-        "PriceLock_RouteEdit_DoesNotChangeExistingOrderPrice (AC#3): create an order with a Fixed price from a route, then edit that route's PriceCzk via UpdateRoute, reload the order, and assert the order's FixedPriceCzk/PriceType/RouteId are unchanged.",
-        "OrderDetail_AfterDriverOverride_IncludesPriceOverrideReason (AC#6): an order completed with a FinalPriceCzk differing from the Fixed price and a PriceOverrideReason surfaces priceOverrideReason in the detail DTO (the PriceOverridden event in the timeline already exists from WI-07).",
-        "Both tests live in namespace Taxi.Api.Tests.Pricing.PriceLock so the single-token filter covers them."
+        "OrderDetailDto gains an additive `notifications` array (OrderNotificationDto record: Event, Channel, Recipient, Status, Error?, CreatedAt, SentAt?). OrderDetailMapper/GetOrderEndpoint populate it from NotificationLog rows for the order (AsNoTracking, tenant-scoped, ordered by CreatedAt). Existing fields + the { order } envelope are unchanged (purely additive).",
+        "A completed order whose customer SMS went to Status=Failed surfaces that Failed Sms item in `notifications` so the dispatcher UI (B2) can render the red icon and call the customer (AC#3 server half). A Sent item shows SentAt.",
+        "Tenant isolation: GetOrder for an order in fleet A only returns fleet A notification rows; a cross-fleet order id is a no-leak 404 (existing behavior unchanged).",
+        "OrderDetail_IncludesSentAndFailedNotifications and OrderDetail_NotificationsAreTenantScoped pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Pricing.PriceLock"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.OrderDetailNotifications"
       }
     },
     {
-      "id": "B1-quote-client-migration",
+      "id": "B1-service-worker-push-and-subscription",
       "lane": "web",
-      "title": "Migrate the web pricing/quote client to the new POST contract (Fixed+routeId / Estimate+distance / Meter) + customer custom-order + driver badge regression",
-      "goal": "The forced client migration: pricing/quote changed from GET CustomerOnly QuoteResponse(PriceType, FixedPriceCzk, EstimateLowCzk, EstimateHighCzk) to POST any-role { type:'Fixed', priceCzk, routeId, routeName } | { type:'Estimate', lowCzk, highCzk, distanceKm, durationMin } | { type:'Meter', ... }. Update client.ts (pricingQuote -> POST body; PriceQuoteResponse discriminated union with the new fields), usePriceQuote, the pure priceQuote.ts interpretQuote (add a Meter branch -> kind:'meter'; keep the estimate-never-a-single-number invariant; carry routeId/distanceKm), and PriceRangeBadge (render Meter -> 'Podle taximetru'). Verify the driver PriceBadge (priceBadgeUtils already has a Meter case) and FixedPriceBadge still render for the real shapes (AC#6 driver-badge regression). Mirror A6's QuoteResponse exactly.",
+      "title": "Service-worker push display + click-to-open url + subscription wiring to A2 (driver mandatory, customer after first order) + client.ts subscribe/unsubscribe",
+      "goal": "The PWA push half (resolves UC-003 driver-priming + UC-004 customer-prompt deferrals on the client side). The /web service worker shows the push notification ({ title, body, url, tag, priority }) and on notificationclick opens/focuses `url`; OfferToDriver uses requireInteraction:true + the driver app sound (reuse UC-003 offer sound infra). Add pushSubscribe/pushUnsubscribe to client.ts POSTing/DELETEing /push/subscriptions with the browser PushSubscription JSON (endpoint, keys.p256dh, keys.auth, userAgent). Wire the subscription lifecycle: a pure subscription-manager module (request permission, subscribe via the VAPID public key from config, POST to the API) called for the DRIVER mandatorily at login (UC-003 PermissionPriming) and for the CUSTOMER after the first order (UC-004 PushPrompt, already present - wire its accept to pushSubscribe). VAPID public key is a dev build-config value (prod -> 08). Pure logic (payload->display mapping, subscription-manager decisioning) extracted and unit-tested; SW + browser Push API are thin shells.",
       "depends_on": [
-        "A6-pricing-matching"
+        "A2-push-subscriptions"
       ],
       "estimated_complexity": "L",
       "files_touched": [
         "web/src/shared/api/client.ts",
-        "web/src/features/customer/order/priceQuote.ts",
-        "web/src/features/customer/order/priceQuote.test.ts",
-        "web/src/features/customer/order/usePriceQuote.ts",
-        "web/src/features/customer/order/usePriceQuote.test.ts",
-        "web/src/features/customer/order/PriceRangeBadge.tsx",
-        "web/src/features/customer/order/PriceRangeBadge.test.tsx",
-        "web/src/features/customer/order/CustomOrderPage.tsx",
-        "web/src/features/customer/order/RouteOrderPage.tsx",
-        "web/src/features/driver/offer/priceBadgeUtils.ts",
-        "web/src/features/driver/offer/priceBadgeUtils.test.ts",
+        "web/src/shared/push/pushSubscriptionManager.ts",
+        "web/src/shared/push/pushSubscriptionManager.test.ts",
+        "web/src/shared/push/pushPayload.ts",
+        "web/src/shared/push/pushPayload.test.ts",
+        "web/src/shared/push/usePushSubscription.ts",
+        "web/src/shared/push/usePushSubscription.test.ts",
+        "web/src/sw.ts",
+        "web/src/features/customer/tracking/PushPrompt.tsx",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
         "rules/web-architecture.md#api-client",
         "rules/web-architecture.md#pure-logic-modules",
         "rules/web-architecture.md#state-tiers",
+        "rules/web-realtime.md#offline-ux",
         "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#dates-and-money",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-performance.md#query-keys",
+        "rules/web-accessibility.md#semantics",
         "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-        ".claude/state/06-common-routes-and-zones.md",
-        "docs/specs/done/customer-pwa-work-items.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "client.ts pricingQuote becomes a POST to /pricing/quote with a JSON body { pickupLat, pickupLng, dropoffLat?, dropoffLng?, at? } (numbers in the body - no cs-CZ string-parsing needed, CLAUDE.md); PriceQuoteResponse is a discriminated union on type: Fixed (priceCzk, routeId, routeName), Estimate (lowCzk, highCzk, distanceKm, durationMin), Meter (tariff summary fields). The X-Fleet-Slug header is still attached for the anonymous path.",
-        "priceQuote.ts interpretQuote gains a { kind:'meter' } branch and carries routeId (Fixed) + distanceKm/durationMin (Estimate); the estimate invariant (lowCzk < highCzk, never a single exact number, AC#4) is preserved. priceQuote.test.ts asserts Fixed -> pevna cena, Estimate -> a RANGE (never one number), and Meter -> the meter view.",
-        "PriceRangeBadge renders all three: Fixed 'Cena {n} Kc - pevna', Estimate 'Odhad {low}-{high} Kc', Meter 'Podle taximetru'. The driver PriceBadge (priceBadgeUtils) and FixedPriceBadge continue to render Fixed/Estimate/Meter (AC#6 driver-badge regression). New i18n keys land in both cs.json and en.json (formal 'vy' for customer copy).",
-        "Spec Lane-B item 6 clause 2 ('zone-restricted inputs validate against real zones'): the UC-004 RouteOrderPage shipped Zone/ZoneToZone ordering as a pre-06 placeholder. Un-stub it here by routing the in-zone pickup/dropoff through the migrated POST pricing/quote - a Zone route only yields a Fixed quote when the entered pickup is in the zone (and dropoff in the to-zone for ZoneToZone), so pricing/quote IS the zone-validation mechanism (no separate client-side polygon check; ZoneService containment is authoritative server-side). When the quote does not return the expected Fixed route for a Zone order, the customer sees a plain-Czech 'mimo zonu' message rather than a silent wrong price.",
-        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; priceQuote.test.ts, usePriceQuote.test.ts (client mocked per rules/web-testing.md#network-mocking), a PriceRangeBadge render + axe assertion, priceBadgeUtils.test.ts, and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B2-settings-zones-tab",
-      "lane": "web",
-      "title": "Dispatcher Settings 'Trasy a zony' shell + Zony tab (list + Leaflet zone editor, lazy)",
-      "goal": "Add a 'Trasy a zony' area to the dispatcher Settings (/x) shell (SettingsPage has Vozidla/Lide/Fleet tabs; add a routes/zones/places area gated to FleetAdmin) and build the Zony tab: a zone list + a Leaflet editor to draw a Circle (click center, drag radius) or Polygon (click points, double-click to close), name + enable, with all zones rendered on one labeled map. Calls the A4 zones CRUD via new client.ts functions. Leaflet is React.lazy so the editor chunk never bloats the /x initial bundle (size budget). Pure geometry-to-request mapping extracted to a tested module.",
-      "depends_on": [],
-      "estimated_complexity": "XL",
-      "files_touched": [
-        "web/src/app/router.tsx",
-        "web/src/features/settings/SettingsPage.tsx",
-        "web/src/features/settings/routesZones/RoutesZonesPage.tsx",
-        "web/src/features/settings/routesZones/zones/ZonesTab.tsx",
-        "web/src/features/settings/routesZones/zones/ZoneEditorMap.tsx",
-        "web/src/features/settings/routesZones/zones/useZones.ts",
-        "web/src/features/settings/routesZones/zones/zoneDraw.ts",
-        "web/src/features/settings/routesZones/zones/zoneDraw.test.ts",
-        "web/src/features/settings/routesZones/zones/ZonesTab.test.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#keyboard-focus",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-performance.md#bundle-budget",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-        ".claude/state/06-common-routes-and-zones.md",
-        "docs/specs/done/customer-pwa-work-items.md"
-      ],
-      "needs_library_research": true,
-      "acceptance_criteria": [
-        "A 'Trasy a zony' area is reachable from the dispatcher Settings /x (gated to FleetAdmin like the existing tabs) with a Zony / Trasy / Mista tab group; adding it does not modify any /d or /c route and does not change the Vozidla/Lide/Fleet tabs' behavior.",
-        "listZones/createZone/updateZone/deleteZone are added to client.ts (hierarchical key ['zones']). ZonesTab lists zones and the editor draws a Circle (click center + drag radius) or Polygon (click points, double-click close), sets name + enable, and renders all zones on one labeled map. zoneDraw.ts (pure) maps draw interactions to a CreateZoneRequest (Circle -> center+radius; Polygon -> [lat,lng] array) and is unit-tested.",
-        "ZoneEditorMap (Leaflet) is React.lazy so Leaflet loads only in this chunk; npm run size passes after build (the Settings/initial /x chunk does not import Leaflet eagerly). Touch targets >= 48px; new i18n keys in both cs.json + en.json.",
-        "npm run tsc, npm run lint (--max-warnings 0), npm run test, npm run build, npm run size pass; zoneDraw.test.ts, a ZonesTab render + axe assertion, and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B3-settings-routes-tab",
-      "lane": "web",
-      "title": "Trasy tab: priority-sorted list with drag-to-reorder + type-aware route editor + live 'Otestovat' panel",
-      "goal": "The Trasy tab: a list sorted by Priority with drag-to-reorder (PATCH priority), a type badge, price, a validity summary ('Po-Ne, cely den' / 'Pa-So 22:00-06:00'), and an enable toggle (PATCH enable). A type-aware editor: the RouteType selector changes the form (PointToPoint = address-autocomplete + map-pin point pickers + radii; Zone = one zone dropdown; ZoneToZone = two zone dropdowns + bidirectional toggle), CZK price, validity day chips + two time inputs. A live 'Otestovat' panel enters a pickup + dropoff (+optional time) and shows what POST pricing/quote returns so the dispatcher verifies a route before enabling. Uses A5 routes CRUD + B1's migrated pricingQuote client. Validity-summary formatting is a pure tested module.",
-      "depends_on": [
-        "B1-quote-client-migration",
-        "B2-settings-zones-tab"
-      ],
-      "estimated_complexity": "XL",
-      "files_touched": [
-        "web/src/features/settings/routesZones/routes/RoutesTab.tsx",
-        "web/src/features/settings/routesZones/routes/RouteEditor.tsx",
-        "web/src/features/settings/routesZones/routes/OtestovatPanel.tsx",
-        "web/src/features/settings/routesZones/routes/useRoutes.ts",
-        "web/src/features/settings/routesZones/routes/validitySummary.ts",
-        "web/src/features/settings/routesZones/routes/validitySummary.test.ts",
-        "web/src/features/settings/routesZones/routes/routeForm.ts",
-        "web/src/features/settings/routesZones/routes/routeForm.test.ts",
-        "web/src/features/settings/routesZones/routes/RoutesTab.test.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#keyboard-focus",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-performance.md#query-keys",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#queries-over-testids",
-        "rules/web-testing.md#i18n-parity",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-        ".claude/state/06-common-routes-and-zones.md",
-        "docs/specs/done/customer-pwa-work-items.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "listRoutes/createRoute/updateRoute/deleteRoute/setRouteEnabled/setRoutePriority are added to client.ts (key ['routes','admin']). RoutesTab lists routes sorted by Priority with drag-to-reorder (persists via PATCH priority), a type badge, price (Intl.NumberFormat cs-CZ), a validity summary, and an enable toggle (PATCH enable). validitySummary.ts (pure) renders 'Po-Ne, cely den' for all-day all-week and 'Pa-So 22:00-06:00' for a bounded window (including midnight-wrap) and is unit-tested.",
-        "RouteEditor is type-aware: the RouteType selector swaps the form (PointToPoint -> point pickers + FromRadius/ToRadius; Zone -> FromZone dropdown; ZoneToZone -> From/To zone dropdowns + IsBidirectional toggle), with a CZK price, validity day chips (Mon=1..Sun=64 bitmask) and two time inputs. routeForm.ts (pure) maps the form to a CreateRoute/UpdateRoute request and validates per-type required fields; it is unit-tested.",
-        "The 'Otestovat' panel takes a pickup + dropoff (+ optional time) and calls the B1 pricingQuote, rendering the Fixed/Estimate/Meter result inline so the dispatcher can verify before enabling. Touch targets >= 48px; new i18n keys in both cs.json + en.json.",
-        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; validitySummary.test.ts (all-day + night-wrap), routeForm.test.ts (per-type required fields), a RoutesTab render + axe assertion, and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B4-settings-places-tab",
-      "lane": "web",
-      "title": "Mista tab: quick-places CRUD with a map pin (lazy Leaflet)",
-      "goal": "The Mista tab under 'Trasy a zony': a places list + an editor to add/edit/delete a quick place (Name, Address, Lat/Lng via a map pin + optional address autocomplete, SortOrder, enable). Calls the A2 places CRUD via new client.ts functions. Reuses the lazy Leaflet map pattern from B2 so no extra eager Leaflet import. Pure form-to-request mapping extracted and tested.",
-      "depends_on": [
-        "B2-settings-zones-tab"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/src/features/settings/routesZones/places/PlacesTab.tsx",
-        "web/src/features/settings/routesZones/places/PlaceEditor.tsx",
-        "web/src/features/settings/routesZones/places/usePlaces.ts",
-        "web/src/features/settings/routesZones/places/placeForm.ts",
-        "web/src/features/settings/routesZones/places/placeForm.test.ts",
-        "web/src/features/settings/routesZones/places/PlacesTab.test.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-performance.md#query-keys",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-        ".claude/state/06-common-routes-and-zones.md",
-        "docs/specs/done/customer-pwa-work-items.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "listPlaces/createPlace/updatePlace/deletePlace are added to client.ts (key ['places']). PlacesTab lists places ordered by SortOrder and the editor adds/edits/deletes a place with Name, Address, Lat/Lng via a map pin (lazy Leaflet, reusing the B2 pattern), SortOrder, and enable. placeForm.ts (pure) maps the form to a request and validates required fields; it is unit-tested.",
-        "The map pin uses the lazy Leaflet chunk (no new eager import); touch targets >= 48px; new i18n keys in both cs.json + en.json.",
-        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; placeForm.test.ts, a PlacesTab render + axe assertion, and locales.parity.test.ts pass."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "E2E-zone-route-quote",
-      "lane": "web",
-      "title": "Playwright E2E: dispatcher draws a polygon zone -> creates a Zone route -> Otestovat -> enable (AC#4); customer home shows only valid-now routes (AC#5)",
-      "goal": "The two cross-role acceptance flows as Playwright specs against the real API harness + seeded data. AC#4: on /x Settings 'Trasy a zony', draw a polygon zone, create a Zone route from it, test it in the Otestovat panel (sees the Fixed quote), and enable it. AC#5: the customer home (/c) shows only routes valid at the current time - assert the seeded 03:00-04:00 route is hidden outside that window. Depends on the Lane-A WIs for backend build integrity (the harness boots the API via dotnet run from the shared tree) and on the Lane-B Settings + customer-home screens being present.",
-      "depends_on": [
-        "A6-pricing-matching",
-        "A7-price-lock-and-override",
-        "B3-settings-routes-tab",
-        "B4-settings-places-tab"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/e2e/routes-zones.spec.ts",
-        "web/e2e/customer-valid-now-routes.spec.ts",
-        "docs/specs/in-progress/DEMO.md"
-      ],
-      "rule_citations": [
-        "rules/web-testing.md#e2e-conventions",
         "rules/web-testing.md#red-green-refactor",
-        "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-        ".claude/state/06-common-routes-and-zones.md",
+        "docs/specs/in-progress/005_UC_005_notifications.md",
+        ".claude/state/05-notifications.md",
         "docs/specs/done/customer-pwa-work-items.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "routes-zones.spec.ts (serial, chromium, real API harness + seeded demo fleet): a FleetAdmin logs in to /x, opens Settings 'Trasy a zony', draws a polygon zone on the Leaflet map, creates a Zone route referencing it, enters a pickup in the zone in the Otestovat panel and sees the Fixed quote, then enables the route (AC#4).",
-        "customer-valid-now-routes.spec.ts: the customer home (/c) lists the valid-now routes and does NOT show the seeded 03:00-04:00-only route outside that window (AC#5). Uses seeded data; no new role flow duplicates a component-tested behavior (rules/web-testing.md#e2e-conventions).",
-        "test-results/ and playwright-report/ stay gitignored (CLAUDE.md laneB11); the chromium pinned revision is installed (CLAUDE.md). DEMO.md documents the manual Lighthouse a11y check and the two E2E flows. Both specs pass under npm run e2e / playwright."
+        "client.ts gains pushSubscribe({ endpoint, p256dh, auth, userAgent }) -> POST /push/subscriptions and pushUnsubscribe(endpoint) -> DELETE /push/subscriptions, both via the typed client (no raw fetch), attaching the X-Fleet-Slug/JWT as the existing client does. Responses are unwrapped per the client.ts named-envelope convention.",
+        "The service worker push handler renders a notification from the { title, body, url, tag, priority } payload; notificationclick opens or focuses `url`. For a payload with priority high / tag offer it sets requireInteraction:true and triggers the driver sound. pushPayload.ts (pure) maps a raw push payload to the display options and is unit-tested (including the OfferToDriver requireInteraction branch).",
+        "pushSubscriptionManager.ts (pure) decides subscribe/skip from (permission state, existing subscription, role) and builds the API request from a browser PushSubscription; it is unit-tested with mocked permission/subscription. The driver login path subscribes mandatorily (UC-003 priming) and the customer PushPrompt accept calls pushSubscribe (UC-004). No /x, /d, or /c route owned by another group is modified beyond the shared push module + the customer PushPrompt.",
+        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; pushPayload.test.ts, pushSubscriptionManager.test.ts, usePushSubscription.test.ts (client mocked per rules/web-testing.md#network-mocking), and locales.parity.test.ts pass. New i18n keys land in both cs.json + en.json (formal 'vy' for customer, informal 'ty' for driver)."
       ],
       "verification": {
-        "tool": "playwright"
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B2-dispatcher-notifikace-section",
+      "lane": "web",
+      "title": "Dispatcher order-detail 'Notifikace' section (sent/failed) + failed-SMS red icon on the order card + SMS cap/cost in settings",
+      "goal": "The dispatcher visibility half. In the /x order-detail view render a 'Notifikace' section listing the A6 `notifications` items (event, channel, recipient, status, time) with a clear sent/failed visual; a FAILED Sms item shows a red icon on the order card (so the dispatcher calls the customer). Add the monthly SMS count + estimated cost + cap-warning to the dispatcher Settings (reuse the FleetSettings surface; the cap numbers come from FleetSettings.SmsMonthlyCapCzk/SmsUnitCostCzk + the current-month count - a read-only display). Pure status->pill/icon mapping extracted and tested. Component-tested (+axe); no new e2e (the create-order/accept/customer flows are already e2e-covered and this is a display addition).",
+      "depends_on": [
+        "A6-order-detail-notifikace"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/features/board/orderDetail/NotificationsSection.tsx",
+        "web/src/features/board/orderDetail/NotificationsSection.test.tsx",
+        "web/src/features/board/orderDetail/notificationStatus.ts",
+        "web/src/features/board/orderDetail/notificationStatus.test.ts",
+        "web/src/features/board/OrderCard.tsx",
+        "web/src/features/board/OrderCard.test.tsx",
+        "web/src/features/settings/SettingsPage.tsx",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-react-style.md#typescript-strict",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-performance.md#query-keys",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        "docs/specs/in-progress/005_UC_005_notifications.md",
+        ".claude/state/05-notifications.md",
+        "docs/specs/done/dispatcher-web-work-items.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "The order-detail view renders a 'Notifikace' section listing each notification (translated event label, channel, recipient, status, time formatted Europe/Prague) from the A6 order DTO `notifications` field; the DTO type in client.ts is extended additively. A Failed Sms item renders with a clear failed state (role/aria, not color alone).",
+        "OrderCard shows a red icon (with an i18n'd aria-label, e.g. 'SMS se nepodarila odeslat') when the order has at least one Failed Sms notification, so the dispatcher knows to call the customer. notificationStatus.ts (pure) maps a status to its pill/icon descriptor and is unit-tested (Sent/Failed/Queued/SkippedCap).",
+        "Dispatcher Settings shows the current-month SMS count + estimated cost (count * SmsUnitCostCzk, Intl.NumberFormat cs-CZ) and a cap warning when near/over SmsMonthlyCapCzk (read-only display). Touch targets >= 48px; new i18n keys in both cs.json + en.json; the change does not modify /d or /c routes.",
+        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; notificationStatus.test.ts, a NotificationsSection render + axe assertion, an OrderCard red-icon test, and locales.parity.test.ts pass."
+      ],
+      "verification": {
+        "tool": "vitest"
       }
     }
   ],
-  "notes": "UC-006 = 7 Lane A (api) WIs (A1..A7) + 5 Lane B (web) WIs (B1..B4 + E2E) = 12 total. Array is topologically ordered and acyclic. Schema shape matches the operative UC-004 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum used: dotnet-test | vitest | playwright; dotnet-test filter is a single-token FullyQualifiedName~Taxi.Api.Tests.<Area> fragment. NO .claude/schemas/work-items.v1.json file exists (known scaffold gap per CLAUDE.md); this matches the operative UC-002/003/004 handoff shape the conductor consumes. ============ RECONCILIATION 1 - routes/common vs routes/available (LOAD-BEARING): The SOURCE (api ListCommonRoutesEndpoint) already exposes routes/common as AllowAnonymous, fleet-by-slug via TenantResolutionMiddleware, AsNoTracking + query-filter-scoped, unwrapping a named { routes } envelope, returning id/name/type/priceCzk (+ PointToPoint pickup/dropoff coords/addresses) filtered by Europe/Prague valid-now (validNow=true). The UC-004 web client ALREADY calls getCommonRoutes() -> GET /routes/common?validNow=true and unwraps data.routes (web client.ts, web useCommonRoutes.ts - both verified). DECISION: routes/common IS the canonical public valid-now route listing; the assignment's GET routes/available is SATISFIED-BY it (superset shape - the assignment's fromLabel/toLabel are covered by name + the existing pickup/dropoff addresses). Do NOT add a second endpoint and do NOT rename - ZERO client migration on the routes side. A5-routes-crud adds the admin CRUD under the same RoutesFeatureConfiguration and MUST NOT touch ListCommonRoutesEndpoint. Documented in decisions.md by A6. ============ RECONCILIATION 2 - pricing/quote REPLACED (LOAD-BEARING, forces a Lane-B client migration): The SOURCE (api QuoteEndpoint) is GET + CustomerOnly, QuoteResponse(PriceType, FixedPriceCzk, EstimateLowCzk, EstimateHighCzk) with NO Meter branch, no routeId/routeName on Fixed, no distanceKm/durationMin on Estimate, and a no-dropoff -> wide-Estimate behavior. UC-006 requires: precedence PointToPoint->ZoneToZone->Zone over the real route set (not just PointToPoint radius), a Meter fallback (outside-all-zones + no dropoff -> Meter, FLIPPING the current Estimate behavior), an at? param (Otestovat must quote at an arbitrary time to test a night route), a WIDENED policy (any authenticated role + anonymous-by-slug - AC#4's dispatcher Otestovat panel gets 403 under the current CustomerOnly), and routeId/routeName on Fixed + distanceKm/durationMin on Estimate. DECISION: switch verb to POST with a JSON body (the authoritative assignment verb; ALSO sidesteps the cs-CZ double query-binding locale trap per CLAUDE.md since numbers ride in the JSON body). Because the response SHAPE changes, the web client that calls it (client.ts pricingQuote/PriceQuoteResponse, usePriceQuote, the pure priceQuote.ts interpretQuote, PriceRangeBadge - all verified present from UC-004 B-custom-order) MUST migrate: this is B1-quote-client-migration, the exact 'don't leave the client on a removed contract' lesson from the UC-004 review. interpretQuote today returns 'unknown' for Meter -> B1 adds a Meter branch; the driver priceBadgeUtils already handles Meter (verified) so the driver badge is a regression check. ============ AC#3 PRICE-LOCK - do NOT over-scope: CreateOrderEndpoint (verified) already copies PriceType/FixedPriceCzk/EstimatedPriceCzk/RouteId straight into the order row at creation, so price-lock is STRUCTURAL - AC#3's deliverable is the INTEGRATION TEST only (A7: edit the route price after create, assert the order price is unchanged), NOT a create rewrite. LABELED BEST-JUDGMENT ASSUMPTION (decided separately, NOT bundled): the assignment's 'order creation calls the SAME service and LOCKS' gestures at server-side price AUTHORITY - today a customer can POST any fixedPriceCzk (a PRE-EXISTING trust hole, not introduced by UC-006). Re-pricing server-side would edit the shared, already-heavily-modified CreateOrderEndpoint (see git status). UC-006 does NOT do that rewrite; if the reviewer wants server authority it is a clean follow-up WI (call pricing/RouteMatcher inside CreateOrderEndpoint and overwrite the client-supplied price for Fixed routes). ============ MIGRATION SERIALIZATION: Zone entity ALREADY exists (Circle/Polygon, jsonb JsonDocument Polygon) with DbSets registered (verified) - so NO new Zone migration. Only two migrations: A1 Route ALTER (AddRouteRadiusAndBidirectional) and A2 Place CREATE (AddPlacesTable), serialized A1->A2 via depends_on so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel (the second would clobber the first's column - UC-004 precedent, CLAUDE.md). No other Lane-A WI adds a migration. ============ JSONB TRAP (cited in A3/A4/A6): Zone.Polygon is System.Text.Json.JsonDocument mapped jsonb; it CANNOT be projected inside a LINQ-to-SQL Select (runtime 500 via DontCatchExceptions, CLAUDE.md WI-10). ZoneService (A3), the zones list projection (A4), and the matching service (A6) all ToListAsync() the zones first, then read Polygon in memory. ============ AC GAPS SURFACED: (AC#6) OrderDetailDto has FinalPriceCzk but NOT PriceOverrideReason (verified) -> A7 adds the additive field + projection so the dispatcher detail flags an override; the PriceOverridden OrderEvent + GetOrderEvents timeline already exist from WI-07 (no state-machine change). The driver/customer badges already carry a Meter case (priceBadgeUtils.ts) but the customer interpretQuote must gain one (B1). (AC#5) the current seed has no 03:00-04:00-only route -> A6 seeds one in DevelopmentSeeder. (AC#2) the current seed routes approximate the examples but A6 must ensure the exact quotes (Fixed 100/110/300 both directions). ============ LANE PARALLELISM: Lane A and Lane B run in parallel where files are disjoint. Within Lane A the shared-writer edges are expressed via depends_on (the conductor serializes only via depends_on): A2 depends_on A1 (migration snapshot serialization + both under no shared endpoint file); A4 depends_on A3 (zones CRUD consumes ZoneService - build edge, though A4 itself does not call Contains, it is grouped to keep Zones coherent); A5 depends_on A1 (routes CRUD reads the A1 columns); A6 depends_on A2+A3+A5 (matching needs zones+places seed context, ZoneService, and the route admin surface + A1 columns); A7 depends_on A6 (the price-lock test edits a route via A5 surface and quotes via A6; also sequences the ErrorCodes.cs / shared-file writes last). ErrorCodes.cs is appended by A2 (Place.*), A4 (Zone.*), A5 (Route.*), A6 (Pricing.*) - distinct nested blocks that merge cleanly; if the conductor cannot guarantee append-safety it should serialize those four on ErrorCodes.cs, but no extra depends_on edge is forced because the blocks are disjoint. DevelopmentSeeder.cs is written by A2 (places) and A6 (example + night routes) - A6 depends_on A2 so these serialize. AuthorizationPolicies.cs sole writer is A6 (widen pricing/quote). Within Lane B: B1 depends_on A6 (the migrated client mirrors A6's QuoteResponse - a cross-lane BUILD/contract edge); B2 is independent (settings shell + zones tab); B3 depends_on B1 (Otestovat calls the migrated pricingQuote) + B2 (tab shell); B4 depends_on B2 (tab shell + lazy Leaflet pattern). The cs.json/en.json + client.ts serial edits within Lane B are ordered by the B2->B3->B4 chain and the B1 pricing edits are disjoint files from B2/B4 except client.ts (B1 edits the pricingQuote function; B2/B3/B4 add zones/routes/places functions - distinct regions; if the conductor cannot guarantee append-safety on client.ts, serialize B1 before B2). E2E depends_on A6+A7 (backend build integrity - the Playwright harness dotnet-run's the API from the shared tree) + B3+B4 (the Settings screens must exist). ============ STAGING: Lane A stages api/ only; Lane B stages web/ only (plus docs/ from E2E for DEMO.md + decisions.md by A6); neither commits (conductor gates commit). ============ needs_library_research true on exactly B2 (Leaflet draw interactions - circle click-drag + polygon click-to-close editor; the read-only Leaflet map + lazy-load pattern already exist from UC-004 but the DRAW/edit interaction is new). ============ AC MAPPING: AC#1 (matching precedence / bidirectional / night-wrap / zone-edge unit tests) -> A3 (ZoneService edge) + A6 (RouteMatcher precedence/bidirectional/night-wrap). AC#2 (seeded-route quotes) -> A6. AC#3 (route price edit does not change an existing order) -> A7. AC#4 (draw polygon -> Zone route -> Otestovat -> enable) -> A4+A5+A6 + B2+B3 + E2E. AC#5 (customer home valid-now only) -> existing routes/common + A6 seeded night route + E2E. AC#6 (driver override reason in timeline + flagged in detail) -> A7 (detail field) + existing WI-07 timeline + B1 (badge regression). ============ SPEC LANE-B ITEM 6 CLAUSE 2 ('zone-restricted inputs validate against real zones') - DECISION: there is NO standalone zone-validation WI because pricing/quote IS the validation mechanism. UC-004 RouteOrderPage shipped Zone/ZoneToZone customer ordering as a pre-06 placeholder; B1 un-stubs it (RouteOrderPage.tsx added to B1 files_touched) by routing in-zone pickup/dropoff through the migrated POST pricing/quote. A Zone route only prices Fixed when the entered pickup is in the zone (A6 RouteMatcher + A3 ZoneService containment is authoritative server-side), so no client-side polygon check is needed; a non-Fixed result for a Zone order surfaces a plain-Czech 'mimo zonu' message. This avoids duplicating zone geometry in the browser and keeps one source of truth. ============ SHARED-FILE SERIALIZATION (autonomous parallel mode): ErrorCodes.cs appenders are A2/A4/A5/A6; edges A1->A2, A2->A4, A2->A5, A5/A2/A3->A6 reduce concurrent ErrorCodes.cs writers to at most 2 (A4 + A5), matching the UC-004 precedent. DevelopmentSeeder.cs writers A2+A6 serialize via A2->A6. client.ts (web) writers B1/B2/B3/B4: B1 edits the pricingQuote region; B2/B3/B4 add zones/routes/places functions (distinct regions) and are chained B2->B3, B2->B4 with B1->B3; the only fully-concurrent client.ts pair is B1 vs B2 (pricing region vs zones region - disjoint). If the conductor cannot guarantee append-safety on a shared file for a concurrent pair, it should serialize that pair; no further depends_on edge is forced because the regions are disjoint."
+  "notes": "UC-005 = 6 Lane A (api) WIs (A1..A6) + 2 Lane B (web) WIs (B1,B2) = 8 total. Array is topologically ordered and acyclic. Schema shape matches the operative UC-006 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum used: dotnet-test | vitest; dotnet-test filter is a single-token FullyQualifiedName~Taxi.Api.Tests.Notifications[.<Area>] fragment. NO .claude/schemas/work-items.v1.json file exists (known scaffold gap, CLAUDE.md); this matches the UC-002/003/004/006 handoff shape the conductor consumes. ============ TRANSACTIONAL OUTBOX CALL-SITE (AC#3, load-bearing, SOURCE-VERIFIED): OrderService.TransitionAsync commits at the SINGLE `await dbContext.SaveChangesAsync(ct)` on line 68; it publishes OrderChanged/DriverStatusChanged/NewOrderOffered POST-COMMIT at lines 77-95. The notification_outbox insert MUST go BEFORE line 68 (after OrderStateMachine.Apply succeeds + dbContext.OrderEvents.AddRange(result.Events) at line 61, before order.Version++/SaveChanges), NOT in the post-commit publish block. Mechanism: INotificationService injects the SAME scoped TaxiDbContext and only ADDS outbox rows to the change-tracker (no SaveChanges, no new scope) so order + order_events + outbox commit in one implicit transaction. CreateOrderEndpoint is the SECOND call-site (OrderCreatedForCustomer / NewAppOrderForDispatch): it commits at the SaveChangesAsync inside the public-code retry loop (line 206) - Notify is called BEFORE that loop-save, and the public-code-collision re-save harmlessly re-persists the already-tracked outbox rows. WORDING RECONCILIATION: the assignment says 'Notify after each COMMITTED transition' but AC#3 says 'same transaction' - resolution: Notify = ENQUEUE the outbox row pre-commit (same tx); the actual SEND happens later in NotificationDispatchJob. Stated so the reviewer does not flag the apparent contradiction. ============ PUSH SUBSCRIPTION RECONCILIATION (SOURCE-VERIFIED): PushSubscription ENTITY already exists (Id, FleetId?, UserId, Endpoint, P256dh, Auth, UserAgent?, CreatedAt, LastUsedAt?) and is in TaxiDbContextModelSnapshot (InitialSchema) with a DbSet + a query filter that admits null FleetId (e => e.FleetId == null || e.FleetId == currentTenant.FleetId) + a SaveChanges guard clause - it is UserId-scoped, NOT ITenantEntity (mirrors RefreshToken), nullable FleetId. NO push_subscription migration. NO existing endpoint (grep found only entity/config/migration/DbContext references). A2 builds POST/DELETE /api/v1/push/subscriptions (all authenticated roles, multi-device upsert by (UserId,Endpoint), prune on DELETE; 410-prune is in A5's push sender; the 90-day-unused prune is a labeled follow-up, see below). ============ SOURCE (Phone vs App) DECISION (labeled best-judgment assumption, per advisor + plain reading): CreateOrderRequest has NO Source field and CreateOrderEndpoint hardcodes Source = isCustomer ? App : Dispatcher (verified) - so there is NO way today to create a Phone-source order, yet AC#1 requires 'Phone-SOURCE order' and the routing footnote says 'Phone orders (Source=Phone, no customer app)'. DECISION (A4): add an additive `OrderSource? Source` to CreateOrderRequest (plain property, no `required` - CLAUDE.md STJ trap) and set Source = isCustomer ? App : (req.Source ?? Dispatcher). The routing matrix (A3) keys on (event, Source, customerHasPush) so BOTH the literal Phone-source case AND the 'App order but no push subscription -> SMS' case are handled without Source being the only discriminator. This is decidable (spec text ties it down) - NOT an AskUserQuestion (spec renews the autonomous-batch directive: interrupt only on 3-round blocks / quality-gate failures / undecidable scope). ============ TRACKING LINK FOR SMS (AC#1 'working link', SOURCE-VERIFIED): the token is minted today ONLY under `if (isCustomer)` (CreateOrderEndpoint line 230) and returned in CreateOrderResponse; the stored path is RELATIVE (`/c/t/{code}?k={token}`, line 234) via TrackingTokenService.Mint(order.Id, now + 24h). For a Phone/Dispatcher order there is no returned link, and SMS needs an ABSOLUTE URL. DECISION (A4): the notification engine (or the SMS payload builder) calls TrackingTokenService.Mint ITSELF and prepends a NEW dev-config PublicBaseUrl (added to appsettings.Development.json + an options type) to the relative path. PublicBaseUrl prod wiring is deferred to 08 (documented). ============ WEBPUSH PACKAGE PIN (researched, needs_library_research=true on A5 only): WebPush 1.0.13 (NuGet id `WebPush`, author coryjthompson - the canonical web-push-libs/web-push-csharp library), last published 2026-04-28, target frameworks netstandard2.1 + net8.0 + net4.8, compatible with .NET 9/10 (verified on nuget.org). VAPID via VapidHelper.GenerateVapidKeys() + VapidDetails(subject, publicKey, privateKey). 410 Gone detected via WebPushException.StatusCode == HttpStatusCode.Gone (the lib surfaces the status on the exception). Alternatives considered: Lib.Net.Http.WebPush 3.3.1 (also VAPID, more modern API) - either works; the WI pins WebPush 1.0.13 as the primary and notes Lib.Net.Http.WebPush 3.3.1 as the fallback if a .NET 10 build warning appears under -warnaserror. A5 adds the PackageReference at the pinned version; if 1.0.13 emits a CS/NU warning-as-error on .NET 10, switch to Lib.Net.Http.WebPush 3.3.1 (documented in decisions.md). ============ MIGRATION SERIALIZATION: exactly ONE new migration (A1 AddNotificationTablesAndSmsCap): creates notification_outbox + notification_log (both new, ITenantEntity, FleetId-scoped, tenant-isolation test each) + the dedup unique index on notification_log + adds two FleetSettings columns - ONE coherent snapshot. All other Lane-A WIs depend_on A1 so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel (UC-004/006 precedent, CLAUDE.md). No push_subscription migration (already in snapshot). ============ BACKGROUND JOB PATTERN (A5, mirrors OfferTimeoutJob, CLAUDE.md WI-14, SOURCE-VERIFIED): NotificationDispatchJob : BackgroundService with a thin ExecuteAsync PeriodicTimer(TickInterval, timeProvider) shell + a public RunTickAsync(ct) holding all logic (tests construct the job and call RunTickAsync directly - deterministic, no timer waits). Scan outbox cross-tenant via IgnoreQueryFilters, project (OutboxId, FleetId), then per-row open a FRESH scope, set CurrentTenant.FleetId = row.FleetId (so notification_log writes pass the tenant guard + query filter), send, write the log, bump Attempts + NextAttemptAt via TimeProvider backoff, mark Failed after 3 attempts. Time-advancing tests create their OWN TaxiApiFactory (FakeTime is irreversible and would contaminate the shared fixture, CLAUDE.md WI-13). 410-delete (AC#4) runs in that tenant-set scope (PushSubscription query filter admits null FleetId so customer subs are reachable). ============ JSONB TRAP (A1 PayloadJson, cited): NotificationOutbox.PayloadJson is System.Text.Json.JsonDocument? mapped jsonb; never project it inside a LINQ-to-SQL Select - ToListAsync() then read in memory (CLAUDE.md WI-10). ============ POLICY GAP (A2): no existing 'any authenticated role' policy (verified: CustomerOnly/DriverOnly/DispatcherOnly/FleetAdminOnly/SuperAdminOnly/DispatcherOrCustomer/DispatcherOrDriver/CustomerOrStaff). A2 adds an AuthenticatedOnly policy (RequireAuthenticatedUser) OR reuses an existing all-role policy if one truly admits every role; the push endpoints use it. ============ LANE PARALLELISM + SHARED-FILE SERIALIZATION: Lane A stages api/ only; Lane B stages web/ only; neither commits (conductor gates commit). Within Lane A: A1 is the root (schema); A2/A3 depend_on A1 and run in parallel (disjoint files); A4 depends_on A2+A3 (engine needs the subscription presence read + routing/templates + it edits OrderService/CreateOrderEndpoint/Program.cs); A5 depends_on A4 (channels + job drain the outbox the engine fills; adds the WebPush package); A6 depends_on A5 (order detail reads notification_log the job writes). ErrorCodes.cs writers: A2 (Push.*) + potentially A4/A5 - serialized by the A2->A4->A5 chain (at most one concurrent writer). Program.cs writers: A4 (register INotificationService + JsonStringEnumConverter if a new request enum is added - note CreateOrderRequest.Source is an enum, see the FastEndpoints enum-serialization CLAUDE.md trap; the converter is ALREADY registered globally per WI-09, so no change needed, but the developer must confirm) + A5 (register senders + the job) - serialized by A4->A5. appsettings.Development.json writers: A4 (PublicBaseUrl) + A5 (VAPID + SmsProvider) - serialized by A4->A5. JobsServiceExtensions.cs sole new writer is A5. NotificationsServiceExtensions.cs written by A4 (create) + A5 (append senders/job) - serialized by A4->A5. Within Lane B: B1 depends_on A2 (subscribe client mirrors the A2 contract - cross-lane build/contract edge); B2 depends_on A6 (the Notifikace section reads A6's order DTO `notifications` field - cross-lane contract edge). B1 and B2 touch client.ts + cs.json/en.json but in DISJOINT regions (B1 = push subscribe/unsubscribe + push payload keys; B2 = order-notification DTO type + notifikace/settings keys) and have no depends_on between them; if the conductor cannot guarantee append-safety on a shared file for the B1/B2 concurrent pair, serialize them (no depends_on forced because regions are disjoint). SettingsPage.tsx is written only by B2. ============ AC MAPPING: AC#1 (Phone order -> exactly one SMS + working tracking link, ConsoleSmsSender asserted) -> A3 (routing Phone subset) + A4 (Source field + absolute link + single enqueue) + A5 (ConsoleSmsSender end-to-end assert). AC#2 (DriverArrived SMS even with push; RideStarted push-only) -> A3 routing matrix unit tests. AC#3 (outbox same transaction; 3x fail -> Failed + dispatcher red icon) -> A4 (same-transaction) + A5 (3x retry Failed) + A6 (Failed surfaced) + B2 (red icon). AC#4 (push 410 -> subscription deleted) -> A5 push sender. AC#5 (every SMS template <=160 GSM-7 with longest values) -> A3 build-time template test. AC#6 (cap=2 -> third non-arrival SkippedCap, arrival sends) -> A4 pure NotificationCostCap + engine. AC#7 (duplicate Notify -> sent once) -> A1 dedup unique index + A5 CLAIM-THEN-EXECUTE (insert the notification_log claim via the unique index BEFORE calling the sender; 23505 -> skip the send, so the sender is invoked exactly ONCE - asserted by A5 NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce with a recording sender, counting the SEND boundary not just the log row). Enqueue (A4) does NOT dedup; the outbox may hold a duplicate row harmlessly. ============ SEND-TIME RENDERING (AC#1 correctness + AC#7 seam, advisor fix): the outbox stores INTENT (event,orderId,channel,recipient), NOT a pre-rendered SMS body. The body (OrderCreated absolute tracking link) is rendered at SEND time in A5 from the order's then-final PublicCode, because CreateOrderEndpoint's public-code retry loop (lines 202-216) can REGENERATE PublicCode after a 23505 collision - rendering at enqueue would embed a stale code in the rare collision case. Send-time rendering + claim-before-send is one coherent A5 design. AC#5's GSM-7 test is unaffected (it tests the A3 render FUNCTION, independent of call timing). ============ A3 TEST-CLASS NAMING (advisor fix): the AC#5 build-time GSM-7 test class MUST be named NotificationSmsTemplateTests (files_touched: NotificationSmsTemplateTests.cs) so its FQN contains 'Notifications.Notification' and is executed by A3's single-token filter ~Taxi.Api.Tests.Notifications.Notification; a class named SmsTemplateGsm7Tests would NOT match the filter and AC#5 would silently never run in the gate. ============ DEFERRED / FOLLOW-UPS (labeled, per 00-PROJECT-CONTEXT DoD 'Follow-ups'): (1) the 90-day-unused push-subscription prune (assignment section 6) is NOT built now - it is a trivial later job/tick; noted as a follow-up (the 410-prune IS built in A5). (2) ScheduledOrderReminder (T-30 dispatch / T-15 driver) is in the NotificationEvent enum (A1) and routing matrix (A3) but its SCHEDULING TRIGGER (a time-based scan of ScheduledAt orders) is a follow-up job - the engine/routing support it, but no scheduled-reminder scan job is built in this UC (out-of-scope minimization; the 7 binding ACs do not require it). (3) per-fleet routing-matrix OVERRIDE is modeled-for but not built (assignment: 'overridable per fleet later'). (4) GoSmsSender/SmsbranaSmsSender are written but untested against live provider APIs (assignment + spec out-of-scope). (5) prod VAPID + SMS-provider + PublicBaseUrl secrets are dev-config only -> assignment 08 (documented in decisions.md by A5). These are recorded so the impl-reviewer does not flag them as gaps. ============ DECISIONS.MD: A5 appends the UC-005 decisions (WebPush pin + fallback, PublicBaseUrl, Source field, Notify-enqueue-vs-send wording, deferred reminder/prune). Lane B stages no docs; A5 stages docs/decisions.md."
 }

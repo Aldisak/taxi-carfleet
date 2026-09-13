@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA5 (6 api WIs)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "A6-1",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
+      "rule": "observation (not a rule violation)",
+      "title": "90% cap-warning push enqueued per SMS delivery in the loop",
+      "detail": "AddStaffOutboxAsync(SmsCapWarning) is invoked inside EnqueueDeliveryAsync for every SMS delivery of an event. If one event routes to multiple SMS recipients in a single NotifyAsync, the warning would be enqueued multiple times per order-event. In practice current routing yields at most one SMS delivery per customer event, and send-time dedup (FleetId,Event=SmsCapWarning,OrderId,Recipient,Channel) collapses repeats across events for the same order/admin, so no duplicate SMS-cap-warning pushes actually send. No functional defect; noted for clarity.",
+      "recommendation": "Optional: hoist the warning-threshold enqueue out of the per-delivery loop into NotifyAsync (once per event) if future routing adds multi-SMS fan-out."
+    },
+    {
+      "id": "A5-1",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Infrastructure/Jobs/NotificationDispatchJob.cs",
+      "rule": "observation",
+      "title": "SMS non-OrderCreated fallback renders an OrderCreated-style body",
+      "detail": "RenderSmsBodyAsync default arm renders the OrderCreated template for any SMS event other than OrderCreated/DriverArrived. Per the routing matrix the only customer SMS events are OrderCreated (+ its fallbacks) and DriverArrived, so the fallback is effectively unreachable for customer SMS; it is a defensive default, not a live path. No incorrect message ships under the current matrix.",
+      "recommendation": "Acceptable as-is; the routing matrix constrains SMS to the two handled events."
+    }
+  ],
+  "summary": "APPROVE — blocks_merge=false. All 9 verification points hold. AC#3 (transactional outbox): NotificationService.NotifyAsync only ADDs outbox rows to the caller's scoped TaxiDbContext with no SaveChanges/new scope; wired into OrderService.TransitionAsync BEFORE the single SaveChangesAsync (line ~70, after OrderEvents.AddRange, before Version++) and into CreateOrderEndpoint BEFORE the public-code retry-loop save — never in the post-commit publish block. The AC#3 rollback test (NotificationOutbox_FailedCommit_RollsBackOutboxAndOrder) forces a StaleVersion concurrency conflict and asserts BOTH result.FailureKind==StaleVersion AND the outbox is empty — genuine atomic-rollback proof. AC#7 (dedup two layers): unique index ix_notification_log (FleetId,Event,OrderId,Recipient,Channel) in the migration + claim-then-execute in the job (ClaimAsync inserts the log row before the sender; read-hit on Sent/SkippedCap → skip; 23505 → detach+skip). DuplicateOutbox_InvokesSenderOnce asserts two duplicate outbox rows → sender invoked once + one Sent log. Coherent. AC#5 (GSM-7): TrackingTokenService Mint/Validate are symmetric (both use ComputeSignature with SignatureBytes=16, no outer base64 wrapper) and round-trip; the AC#5 test (NotificationSmsTemplateTests) mints a REAL token via TrackingTokenService + shared TrackingLink.Build with a 30-char fleet + 6-digit code and asserts GsmSevenValidator ≤160. UC-004 preserved: PublicTrackTests/OrderTrackingTests use real Mint→Validate round-trips and full GET public/track?k= flows (token ephemeral, minted+validated in-test), so the token-shortening cannot break them. AC#2 routing matrix matches §1 (DriverArrived SMS-always+push-if-sub, RideStarted/Completed push-only, phone-order subset OrderCreated+DriverArrived SMS only). AC#6 cost cap: monthly Sent-SMS window via TimeProvider, DriverArrived always allowed, push free, 90%→SmsCapWarning FleetAdmin push (wired+tested), at/over cap→SkipCap log row. AC#4: WebPushSender deletes the subscription on WebPushException 410 Gone; WebPush 1.0.13 per handoff builds under -warnaserror. A2: POST upsert by (UserId,Endpoint), idempotent DELETE via ExecuteDeleteAsync, new AuthenticatedOnly (RequireAuthenticatedUser) policy, UserId-scoped, no new PushSubscription migration. Migration: exactly ONE (AddNotificationTablesAndSmsCap) — outbox+log+unique dedup index+(FleetId,OrderId) read index+outbox(status,next_attempt_at) index+2 FleetSettings cols with HasDefaultValue 500/1; non-destructive Up, symmetric Down. Rules: all new endpoints have DontCatchExceptions/_featureConfiguration/Send.*/Policies(nameof)/XML docs; logs use Reason/Phase structured placeholders and never emit raw tokens/phones/JWTs/push keys; tenant-isolation tests on outbox and notification_log present; docs/api.md updated with the 2 push routes. NOT run: dotnet test/npm (backend reports 419 green per instruction). Two LOW observations only — no blockers."
+}

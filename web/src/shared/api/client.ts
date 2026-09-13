@@ -1,6 +1,9 @@
 import { authStorage } from './auth-storage'
 import { idbAuthStore } from './idbAuthStore'
 import { getFailureRedirectPath, isSilentRefreshEnabled, silentRefresh } from './refresh'
+import type { OrderNotificationDto } from '../notifications/notificationStatus'
+
+export type { OrderNotificationDto }
 
 /** Typed error envelope matching the backend ValidationFailureExceptionHandler shape. */
 export interface ApiError {
@@ -594,6 +597,13 @@ export interface OrderSummaryDto {
   fixedPriceCzk: number | null
   driverId: string | null
   createdAt: string
+  /**
+   * True when this order has at least one FAILED SMS notification (UC-005 §5, laneA5b, additive).
+   * Drives the at-a-glance failed-SMS red icon on the dispatcher board card WITHOUT a per-order
+   * detail fetch. Optional so the type compiles whether or not the backend field is present;
+   * absent/undefined → treated as false (no icon). See OrderCard.showFailedSms.
+   */
+  hasFailedSms?: boolean
 }
 
 export interface ListOrdersResponse {
@@ -653,6 +663,12 @@ export interface OrderDetailDto {
   ratingComment?: string | null
   /** ISO timestamp when the customer rated the order; null until rated (A-rating). */
   ratedAt?: string | null
+  /**
+   * Sent/failed notification log items for this order (UC-005 A6, additive). Optional so the type
+   * compiles whether or not A6 has merged; absent pre-merge. Drives the dispatcher Notifikace
+   * section (B2) and the failed-SMS red icon on the order card.
+   */
+  notifications?: OrderNotificationDto[]
 }
 
 export interface TransitionOrderResponse {
@@ -1061,10 +1077,60 @@ export interface FleetSettingsDto {
   phone: string
   offerTimeoutSeconds: number
   autoDispatchEnabled: boolean
+  /**
+   * Monthly SMS cost cap in integer CZK (UC-005 §4, additive). Optional so the type compiles
+   * whether or not the backend has exposed it on this endpoint; absent → the Settings SMS panel
+   * is hidden. Default 500 server-side.
+   */
+  smsMonthlyCapCzk?: number
+  /** Per-SMS unit cost in integer CZK (UC-005 §4, additive). Default 1 server-side. */
+  smsUnitCostCzk?: number
+  /** SMS count sent this month (UC-005 §4, additive, read-only). Absent → panel hidden. */
+  smsSentThisMonth?: number
 }
 
 export function getFleetSettings(): Promise<FleetSettingsDto> {
   return apiRequest<FleetSettingsDto>('/fleet/settings')
+}
+
+// ---------------------------------------------------------------------------
+// Web Push subscriptions (A2 /api/v1/push/subscriptions — all authenticated roles,
+// multi-device, UserId-scoped; UC-005 B1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Body of POST /push/subscriptions — the browser PushSubscription decomposed into the fields the
+ * backend stores (endpoint + the two encryption keys). `userAgent` is optional (device label).
+ * Built by pushSubscriptionManager.toSubscribeRequest from a browser PushSubscriptionJSON.
+ */
+export interface PushSubscribeRequest {
+  endpoint: string
+  p256dh: string
+  auth: string
+  userAgent?: string
+}
+
+/**
+ * POST /push/subscriptions — register (or upsert by endpoint) a Web Push subscription for the
+ * calling user. Any authenticated role; multi-device. Returns 200/204 (the backend upserts by
+ * (UserId, Endpoint) so re-subscribing the same browser is idempotent). No response body is used.
+ */
+export function pushSubscribe(req: PushSubscribeRequest): Promise<void> {
+  return apiRequest<void>('/push/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+/**
+ * DELETE /push/subscriptions — remove the calling user's subscription with this endpoint (on
+ * unsubscribe/logout). Idempotent 204 — an unknown endpoint is a no-op, never a 404 leak.
+ */
+export function pushUnsubscribe(endpoint: string): Promise<void> {
+  return apiRequest<void>('/push/subscriptions', {
+    method: 'DELETE',
+    body: JSON.stringify({ endpoint }),
+  })
 }
 
 // ---------------------------------------------------------------------------

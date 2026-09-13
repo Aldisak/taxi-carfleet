@@ -40,4 +40,19 @@ internal static class OrderDetailMapper
             order.UpdatedAt,
             allowedActions,
             order.Version);
+
+    /// <summary>Maps loaded <see cref="NotificationLog"/> rows (AsNoTracking, tenant-scoped, ordered by
+    /// CreatedAt) to the order-detail notifications list.</summary>
+    /// <param name="rows">The notification-log rows for the order.</param>
+    public static IReadOnlyList<OrderNotificationDto> ToNotificationDtos(IEnumerable<NotificationLog> rows)
+        => rows
+            .Select(l => new OrderNotificationDto(
+                l.Event.ToString(),
+                l.Channel.ToString(),
+                l.Recipient,
+                l.Status.ToString(),
+                l.Error,
+                l.CreatedAt,
+                l.SentAt))
+            .ToList();
 }

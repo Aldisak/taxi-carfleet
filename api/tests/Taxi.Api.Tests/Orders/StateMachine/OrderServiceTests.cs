@@ -114,7 +114,7 @@ public sealed class OrderServiceTests(PostgresFixture fixture)
     {
         var fakeTime = new FakeTimeProvider(pinnedNow ?? FixedNow);
         var pub = publisher ?? new RecordingRealtimePublisher();
-        return new OrderService(db, fakeTime, pub);
+        return new OrderService(db, fakeTime, pub, new Taxi.Api.Tests.Infrastructure.NoOpNotificationService());
     }
 
     // ── Test 1: Happy path persists order and event atomically ────────────────
@@ -192,7 +192,7 @@ public sealed class OrderServiceTests(PostgresFixture fixture)
             .Where(o => o.Id == order.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.Version, 999), ct);
 
-        var svc = new OrderService(db, new FakeTimeProvider(FixedNow), recording);
+        var svc = new OrderService(db, new FakeTimeProvider(FixedNow), recording, new Taxi.Api.Tests.Infrastructure.NoOpNotificationService());
         var result = await svc.TransitionAsync(
             order.Id,
             OrderTransition.Assign,
@@ -284,7 +284,7 @@ public sealed class OrderServiceTests(PostgresFixture fixture)
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
 
-        var svc = new OrderService(db, new FakeTimeProvider(FixedNow), recording);
+        var svc = new OrderService(db, new FakeTimeProvider(FixedNow), recording, new Taxi.Api.Tests.Infrastructure.NoOpNotificationService());
         var result = await svc.TransitionAsync(
             order.Id,
             OrderTransition.Assign,
@@ -347,7 +347,7 @@ public sealed class OrderServiceTests(PostgresFixture fixture)
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
 
-        var svc = new OrderService(db, new FakeTimeProvider(FixedNow), recording);
+        var svc = new OrderService(db, new FakeTimeProvider(FixedNow), recording, new Taxi.Api.Tests.Infrastructure.NoOpNotificationService());
         var result = await svc.TransitionAsync(
             order.Id,
             OrderTransition.Reassign,

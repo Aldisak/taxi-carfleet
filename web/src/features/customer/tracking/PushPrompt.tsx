@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { usePushSubscription } from '../../../shared/push/usePushSubscription'
 
 const Prompt = styled.aside`
   display: flex;
@@ -60,6 +61,7 @@ function isPushSupported(): boolean {
 export function PushPrompt() {
   const { t } = useTranslation()
   const [dismissed, setDismissed] = useState(false)
+  const { ensureSubscribed } = usePushSubscription()
 
   // Only prompt when supported AND the user has not yet decided (permission === 'default').
   if (dismissed || !isPushSupported() || Notification.permission !== 'default') {
@@ -68,9 +70,11 @@ export function PushPrompt() {
 
   async function requestPermission(): Promise<void> {
     try {
-      await Notification.requestPermission()
+      // ensureSubscribed requests permission, subscribes via the Push API, and POSTs to
+      // /push/subscriptions on grant (UC-005 B1). It no-ops safely when unsupported/denied.
+      await ensureSubscribed()
     } catch {
-      // Permission request failed — ignore; push is an enhancement (spec §behavior rules).
+      // Subscription failed — ignore; push is an enhancement (spec §behavior rules).
     } finally {
       setDismissed(true)
     }

@@ -466,6 +466,9 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             // Public (UC-004, anonymous)
             "GET /api/v1/public/fleet",
             "GET /api/v1/public/track/{code}",
+            // Push subscriptions (UC-005)
+            "POST /api/v1/push/subscriptions",
+            "DELETE /api/v1/push/subscriptions",
             // Health / welcome
             "GET /api/v1/welcome",
         };

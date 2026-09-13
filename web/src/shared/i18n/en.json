@@ -839,5 +839,46 @@
       "priceUnknown": "—",
       "offline": "You are offline – showing the last known data."
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet.",
+    "failedSmsIcon": "SMS failed to send – call the customer",
+    "statusOf": "Status: {{status}}",
+    "status": {
+      "sent": "Sent",
+      "failed": "Failed",
+      "queued": "Queued",
+      "skippedCap": "Skipped (cap)",
+      "skippedNoChannel": "Skipped (no channel)",
+      "unknown": "Unknown status"
+    },
+    "channel": {
+      "sms": "SMS",
+      "push": "Push",
+      "unknown": "Channel"
+    },
+    "event": {
+      "OrderCreatedForCustomer": "Order received",
+      "DriverAssigned": "Driver assigned",
+      "DriverArrived": "Driver arrived",
+      "RideStarted": "Ride started",
+      "RideCompleted": "Ride completed",
+      "OrderCancelledByFleet": "Cancelled by dispatch",
+      "OrderCancelledByCustomer": "Cancelled by customer",
+      "OfferToDriver": "Offer to driver",
+      "DriverDeclined": "Driver declined",
+      "DriverTimedOut": "Driver timed out",
+      "NewAppOrderForDispatch": "New app order",
+      "ScheduledOrderReminder": "Scheduled ride reminder"
+    },
+    "settings": {
+      "title": "SMS notifications",
+      "monthlyCount": "SMS sent this month",
+      "estimatedCost": "Estimated cost",
+      "cap": "Monthly cap",
+      "nearCap": "You are approaching the monthly SMS cap.",
+      "overCap": "The monthly SMS cap is reached – only driver-arrival SMS are still sent."
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import { useFleetSettings } from './useFleetSettings'
+import { computeSmsCostDisplay, formatCzk } from './smsCostDisplay'
 
 const Section = styled.div`
   padding: ${({ theme }) => theme.spacing.md};
@@ -52,6 +53,13 @@ const HintText = styled.span`
   font-style: italic;
 `
 
+const CapWarning = styled.p<{ $over: boolean }>`
+  margin: ${({ theme }) => theme.spacing.xs} 0 0;
+  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
+  color: ${({ $over, theme }) => ($over ? theme.colors.error : theme.colors.warning)};
+`
+
 /** Fleet settings tab — read-only display. Auto-dispatch toggle is disabled (v1.1). */
 export function FleetTab() {
   const { t } = useTranslation()
@@ -60,6 +68,12 @@ export function FleetTab() {
   if (isLoading) {
     return <Section><p>{t('settings.fleet.loading')}</p></Section>
   }
+
+  // SMS cost/cap panel — only when the backend exposes the cap data (UC-005 §4, additive).
+  const sms =
+    data?.smsSentThisMonth != null && data.smsUnitCostCzk != null && data.smsMonthlyCapCzk != null
+      ? computeSmsCostDisplay(data.smsSentThisMonth, data.smsUnitCostCzk, data.smsMonthlyCapCzk)
+      : null
 
   return (
     <Section>
@@ -94,6 +108,35 @@ export function FleetTab() {
           <HintText>{t('settings.fleet.autoDispatchHint')}</HintText>
         </ToggleRow>
       </FieldGroup>
+
+      {sms && (
+        <section aria-label={t('notifications.settings.title')}>
+          <Title as="h3">{t('notifications.settings.title')}</Title>
+
+          <FieldGroup>
+            <FieldLabel>{t('notifications.settings.monthlyCount')}</FieldLabel>
+            <FieldValue data-testid="sms-month-count">{sms.count}</FieldValue>
+          </FieldGroup>
+
+          <FieldGroup>
+            <FieldLabel>{t('notifications.settings.estimatedCost')}</FieldLabel>
+            <FieldValue data-testid="sms-estimated-cost">{formatCzk(sms.estimatedCostCzk)}</FieldValue>
+          </FieldGroup>
+
+          <FieldGroup>
+            <FieldLabel>{t('notifications.settings.cap')}</FieldLabel>
+            <FieldValue data-testid="sms-cap">{formatCzk(sms.capCzk)}</FieldValue>
+          </FieldGroup>
+
+          {sms.level !== 'ok' && (
+            <CapWarning role="alert" $over={sms.level === 'over'}>
+              {sms.level === 'over'
+                ? t('notifications.settings.overCap')
+                : t('notifications.settings.nearCap')}
+            </CapWarning>
+          )}
+        </section>
+      )}
     </Section>
   )
 }

@@ -260,10 +260,22 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("offer_timeout_seconds");
 
+                    b.Property<int>("SmsMonthlyCapCzk")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(500)
+                        .HasColumnName("sms_monthly_cap_czk");
+
                     b.Property<string>("SmsSenderName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("sms_sender_name");
+
+                    b.Property<int>("SmsUnitCostCzk")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("sms_unit_cost_czk");
 
                     b.Property<string>("WelcomeText")
                         .HasMaxLength(500)
@@ -322,6 +334,145 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasDatabaseName("ix_idempotency_records_user_id_key");
 
                     b.ToTable("idempotency_records", (string)null);
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.NotificationLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("error");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("event");
+
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_message_id");
+
+                    b.Property<string>("Recipient")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("recipient");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_log");
+
+                    b.HasIndex("FleetId", "OrderId")
+                        .HasDatabaseName("ix_notification_log_fleet_id_order_id");
+
+                    b.HasIndex("FleetId", "Event", "OrderId", "Recipient", "Channel")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notification_log_fleet_id_event_order_id_recipient_channel");
+
+                    b.ToTable("notification_log", (string)null);
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.NotificationOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("event");
+
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<JsonDocument>("PayloadJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("RecipientEndpoint")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("recipient_endpoint");
+
+                    b.Property<string>("RecipientPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("recipient_phone");
+
+                    b.Property<Guid?>("RecipientUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notification_outbox");
+
+                    b.HasIndex("FleetId")
+                        .HasDatabaseName("ix_notification_outbox_fleet_id");
+
+                    b.HasIndex("Status", "NextAttemptAt")
+                        .HasDatabaseName("ix_notification_outbox_status_next_attempt_at");
+
+                    b.ToTable("notification_outbox", (string)null);
                 });
 
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.Order", b =>
@@ -1206,6 +1357,26 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_idempotency_records_users_user_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.NotificationLog", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_log_fleets_fleet_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.NotificationOutbox", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notification_outbox_fleets_fleet_id");
                 });
 
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.Order", b =>

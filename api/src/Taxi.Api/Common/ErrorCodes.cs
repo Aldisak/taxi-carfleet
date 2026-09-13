@@ -162,6 +162,15 @@ public static class ErrorCodes
 
         /// <summary>The dropoff coordinates are out of the valid WGS84 range.</summary>
         public const string DropoffCoordsOutOfRange = "Validation.DropoffCoordsOutOfRange";
+
+        /// <summary>The push-subscription endpoint is required.</summary>
+        public const string PushEndpointRequired = "Validation.PushEndpointRequired";
+
+        /// <summary>The push-subscription p256dh key is required.</summary>
+        public const string PushP256dhRequired = "Validation.PushP256dhRequired";
+
+        /// <summary>The push-subscription auth secret is required.</summary>
+        public const string PushAuthRequired = "Validation.PushAuthRequired";
     }
 
     /// <summary>Auth-domain error codes (not validation — used for 429 rate-limit responses).</summary>

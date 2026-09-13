@@ -584,4 +584,88 @@ public sealed class OrderWriteTests(PostgresFixture fixture)
         detail.Should().NotBeNull();
         detail!.Order.Id.Should().Be(body.Order.Id);
     }
+
+    // ── Test 12: ListOrders HasFailedSms at-a-glance flag (laneA5b, UC-005 §5) ───
+
+    /// <summary>Builds an order row for a fleet (raw DbContext, no tenant).</summary>
+    private static Order BuildOrder(Guid fleetId, string codeSeed) => new()
+    {
+        Id = Guid.CreateVersion7(),
+        FleetId = fleetId,
+        PublicCode = codeSeed[..6].ToUpperInvariant(),
+        Status = OrderStatus.New,
+        Source = OrderSource.Phone,
+        CustomerPhone = "+420600000099",
+        PickupAddress = "Pickup",
+        PriceType = PriceType.Meter,
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        Version = 1
+    };
+
+    private static NotificationLog BuildLog(
+        Guid fleetId, Guid orderId, NotificationChannel channel, NotificationStatus status) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            FleetId = fleetId,
+            Event = NotificationEvent.DriverArrived,
+            OrderId = orderId,
+            Channel = channel,
+            Recipient = "+420600000099",
+            Status = status,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+    /// <summary>UC-005 §5 Visibility: the order LIST item carries HasFailedSms so the board can show
+    /// the red icon at a glance. True only when the order has a failed SMS log row; a Sent SMS or a
+    /// failed Push does not set it; another fleet's failed SMS never leaks.</summary>
+    [Fact]
+    public async Task ListOrders_HasFailedSms_TrueOnlyForFailedSmsAndTenantScoped()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var suffixA = Guid.NewGuid().ToString("N")[..8];
+        var suffixB = Guid.NewGuid().ToString("N")[..8];
+        var (fleetA, dispatcherA) = await SeedFleetAndDispatcher(suffixA);
+        var (fleetB, _) = await SeedFleetAndDispatcher(suffixB);
+
+        // Fleet A orders:
+        //  - failedSmsOrder: one failed SMS → HasFailedSms == true
+        //  - cleanOrder:     one Sent SMS + one failed Push → HasFailedSms == false
+        //  - leakOrder:      no own failed SMS, but fleet B has a failed-SMS log row pointing at it
+        var failedSmsOrder = BuildOrder(fleetA.Id, $"FS{suffixA}");
+        var cleanOrder = BuildOrder(fleetA.Id, $"CL{suffixA}");
+        var leakOrder = BuildOrder(fleetA.Id, $"LK{suffixA}");
+
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+            db.Orders.AddRange(failedSmsOrder, cleanOrder, leakOrder);
+            db.NotificationLog.AddRange(
+                BuildLog(fleetA.Id, failedSmsOrder.Id, NotificationChannel.Sms, NotificationStatus.Failed),
+                BuildLog(fleetA.Id, cleanOrder.Id, NotificationChannel.Sms, NotificationStatus.Sent),
+                BuildLog(fleetA.Id, cleanOrder.Id, NotificationChannel.Push, NotificationStatus.Failed),
+                // Cross-tenant: fleet B owns a failed-SMS row referencing fleet A's leakOrder id.
+                // The query filter (FleetId == dispatcher A's fleet) must exclude it.
+                BuildLog(fleetB.Id, leakOrder.Id, NotificationChannel.Sms, NotificationStatus.Failed));
+            await db.SaveChangesAsync(ct);
+        }
+
+        var client = fixture.Factory.CreateClient();
+        client.AsDispatcher(fleetA.Id, dispatcherA.Id);
+
+        var listResp = await client.GetAsync("api/v1/orders?page=1&pageSize=100", ct);
+        listResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var list = await listResp.Content.ReadFromJsonAsync<ListOrdersResponse>(JsonOptions, ct);
+        list.Should().NotBeNull();
+
+        var failed = list!.Items.Single(o => o.Id == failedSmsOrder.Id);
+        failed.HasFailedSms.Should().BeTrue("a failed SMS log row for the order sets the flag");
+
+        var clean = list.Items.Single(o => o.Id == cleanOrder.Id);
+        clean.HasFailedSms.Should().BeFalse("a Sent SMS and a failed Push must not set the flag");
+
+        var leak = list.Items.Single(o => o.Id == leakOrder.Id);
+        leak.HasFailedSms.Should().BeFalse("another fleet's failed SMS must not leak across the tenant filter");
+    }
 }

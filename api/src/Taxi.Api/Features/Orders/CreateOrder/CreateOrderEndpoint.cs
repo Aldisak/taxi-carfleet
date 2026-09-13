@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common;
 using Taxi.Api.Common.Features;
+using Taxi.Api.Common.Notifications;
 using Taxi.Api.Common.Orders;
 using Taxi.Api.Common.Tenancy;
 using Taxi.Api.Features.Orders.GetOrder;
@@ -19,7 +20,8 @@ internal sealed class CreateOrderEndpoint(
     TaxiDbContext dbContext,
     ICurrentTenant currentTenant,
     TimeProvider timeProvider,
-    Taxi.Api.Common.Tracking.TrackingTokenService trackingTokenService)
+    Taxi.Api.Common.Tracking.TrackingTokenService trackingTokenService,
+    INotificationService notificationService)
     : Endpoint<CreateOrderRequest, CreateOrderResponse>
 {
     private const int MaxPublicCodeRetries = 5;
@@ -159,7 +161,7 @@ internal sealed class CreateOrderEndpoint(
             FleetId = fleetId,
             PublicCode = PublicCodeGenerator.Generate(),
             Status = OrderStatus.New,
-            Source = isCustomer ? OrderSource.App : OrderSource.Dispatcher,
+            Source = isCustomer ? OrderSource.App : (req.Source ?? OrderSource.Dispatcher),
             CustomerUserId = isCustomer ? customerUserId : null,
             CustomerPhone = customerPhone,
             CustomerName = req.CustomerName,
@@ -197,6 +199,14 @@ internal sealed class CreateOrderEndpoint(
 
         dbContext.Orders.Add(order);
         dbContext.OrderEvents.Add(createdEvent);
+
+        // Enqueue notification-outbox rows in the SAME create transaction (AC#3): the customer is
+        // told their order was created, and for an app-placed order the dispatch desk is notified.
+        // NotificationService only ADDS rows; the public-code retry-loop re-save below harmlessly
+        // re-persists the already-tracked rows. The SMS body (tracking link) is rendered at SEND time.
+        await notificationService.NotifyAsync(NotificationEvent.OrderCreatedForCustomer, order, ct);
+        if (order.Source == OrderSource.App)
+            await notificationService.NotifyAsync(NotificationEvent.NewAppOrderForDispatch, order, ct);
 
         // Retry loop for public code uniqueness (up to MaxPublicCodeRetries).
         for (var attempt = 0; attempt < MaxPublicCodeRetries; attempt++)

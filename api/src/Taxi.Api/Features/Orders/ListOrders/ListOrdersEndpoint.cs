@@ -97,7 +97,13 @@ internal sealed class ListOrdersEndpoint(TaxiDbContext dbContext)
                 o.EstimatedPriceCzk,
                 o.FixedPriceCzk,
                 o.DriverId,
-                o.CreatedAt))
+                o.CreatedAt,
+                // Correlated EXISTS — translated to SQL, runs only over the page rows (no N+1).
+                // Tenant-scoped: the NotificationLog query filter (FleetId == current tenant) applies.
+                dbContext.NotificationLog.Any(l =>
+                    l.OrderId == o.Id &&
+                    l.Channel == NotificationChannel.Sms &&
+                    l.Status == NotificationStatus.Failed)))
             .ToListAsync(ct);
 
         await Send.OkAsync(new ListOrdersResponse(items, total, req.Page, req.PageSize), ct);

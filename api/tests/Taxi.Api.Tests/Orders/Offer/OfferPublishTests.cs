@@ -134,7 +134,7 @@ public sealed class OfferPublishTests(PostgresFixture fixture)
         DateTimeOffset? pinnedNow = null)
     {
         var fakeTime = new FakeTimeProvider(pinnedNow ?? FixedNow);
-        return new OrderService(db, fakeTime, publisher);
+        return new OrderService(db, fakeTime, publisher, new Taxi.Api.Tests.Infrastructure.NoOpNotificationService());
     }
 
     // ── Test 1: Assign publishes NewOrderOffered ───────────────────────────────

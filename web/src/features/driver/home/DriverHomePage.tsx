@@ -8,6 +8,7 @@ import { useGoOnline } from './useGoOnline'
 import { useGoOffline } from './useGoOffline'
 import { useOwnStatusSync } from './useOwnStatusSync'
 import { useRouteToast } from './useRouteToast'
+import { usePushSubscription } from '../../../shared/push/usePushSubscription'
 import { StatusButton } from './StatusButton'
 import { VehicleSelector } from './VehicleSelector'
 import { ConnectionDot } from './ConnectionDot'
@@ -128,6 +129,13 @@ export function DriverHomePage() {
 
   const { data: meData } = useDriverMe()
   const { data: summaryData } = useMySummary()
+  const { ensureSubscribed } = usePushSubscription()
+
+  // Push notifications are MANDATORY for drivers (assignment 05 §6 / UC-003 priming): register a
+  // Web Push subscription once on landing. Feature-detected + idempotent; no-ops where unsupported.
+  useEffect(() => {
+    void ensureSubscribed()
+  }, [ensureSubscribed])
   const { isPending: goOnlinePending, error: goOnlineError, goOnline } = useGoOnline()
   const { isPending: goOfflinePending, goOffline } = useGoOffline()
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)

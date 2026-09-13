@@ -1,0 +1,1 @@
+Taxi {fleet}: ridic {driver} je na miste, {plate} {color}.

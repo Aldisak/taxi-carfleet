@@ -16,6 +16,8 @@ namespace Taxi.Api.Features.Orders.Shared;
 /// <param name="FixedPriceCzk">Fixed price in CZK. Null if not set.</param>
 /// <param name="DriverId">Assigned driver ID. Null when unassigned.</param>
 /// <param name="CreatedAt">UTC timestamp when the order was created.</param>
+/// <param name="HasFailedSms">True if at least one SMS notification for this order failed to send.
+/// Lets the dispatcher board render the failed-SMS red icon at a glance without opening each order.</param>
 public record OrderSummaryDto(
     Guid Id,
     string PublicCode,
@@ -31,4 +33,5 @@ public record OrderSummaryDto(
     int? EstimatedPriceCzk,
     int? FixedPriceCzk,
     Guid? DriverId,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    bool HasFailedSms);

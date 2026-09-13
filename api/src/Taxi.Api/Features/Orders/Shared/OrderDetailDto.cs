@@ -34,6 +34,7 @@ namespace Taxi.Api.Features.Orders.Shared;
 /// <param name="RatingComment">Optional customer rating comment. Null unless provided.</param>
 /// <param name="RatedAt">UTC timestamp when the customer rated the order. Null until rated.</param>
 /// <param name="PriceOverrideReason">Reason supplied when the final price differs from the fixed price. Null unless overridden.</param>
+/// <param name="Notifications">Delivery log for this order (sent/failed/skipped), for the dispatcher Notifikace section. Null/empty when not populated.</param>
 public record OrderDetailDto(
     Guid Id,
     string PublicCode,
@@ -64,4 +65,5 @@ public record OrderDetailDto(
     int? RatingStars = null,
     string? RatingComment = null,
     DateTimeOffset? RatedAt = null,
-    string? PriceOverrideReason = null);
+    string? PriceOverrideReason = null,
+    IReadOnlyList<OrderNotificationDto>? Notifications = null);

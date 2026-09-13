@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Taxi.Api.Common.Notifications;
 using Taxi.Api.Infrastructure;
+using Taxi.Api.Infrastructure.Entities;
 using Taxi.Api.Realtime;
 
 namespace Taxi.Api.Common.Orders;
@@ -17,7 +19,8 @@ namespace Taxi.Api.Common.Orders;
 internal sealed class OrderService(
     TaxiDbContext dbContext,
     TimeProvider timeProvider,
-    IRealtimePublisher publisher)
+    IRealtimePublisher publisher,
+    INotificationService notificationService)
 {
     /// <summary>Loads the order, applies the transition via <see cref="OrderStateMachine"/>,
     /// updates driver statuses, saves order + events in one transaction, then publishes
@@ -60,6 +63,12 @@ internal sealed class OrderService(
         // Add events to the context.
         dbContext.OrderEvents.AddRange(result.Events);
 
+        // Enqueue notification-outbox rows in the SAME transaction (AC#3) — BEFORE SaveChanges,
+        // never in the post-commit publish block. NotificationService only ADDS rows to this
+        // DbContext; it does not save. If SaveChanges below rolls back, the outbox rows roll back too.
+        if (MapTransitionToEvent(transition, actor) is { } notificationEvent)
+            await notificationService.NotifyAsync(notificationEvent, order, ct);
+
         // Increment Version before saving — EF uses it in the WHERE clause.
         order.Version++;
 
@@ -96,4 +105,23 @@ internal sealed class OrderService(
 
         return result;
     }
+
+    /// <summary>Maps a state-machine transition (and the acting role) to the notification event it
+    /// triggers. Returns null for transitions that do not notify.</summary>
+    private static NotificationEvent? MapTransitionToEvent(OrderTransition transition, Actor actor)
+        => transition switch
+        {
+            OrderTransition.Assign => NotificationEvent.OfferToDriver,
+            OrderTransition.Reassign => NotificationEvent.OfferToDriver,
+            OrderTransition.Accept => NotificationEvent.DriverAssigned,
+            OrderTransition.Arrive => NotificationEvent.DriverArrived,
+            OrderTransition.Start => NotificationEvent.RideStarted,
+            OrderTransition.Complete => NotificationEvent.RideCompleted,
+            OrderTransition.Decline => NotificationEvent.DriverDeclined,
+            OrderTransition.Timeout => NotificationEvent.DriverTimedOut,
+            OrderTransition.Cancel => actor.Role == UserRole.Customer
+                ? NotificationEvent.OrderCancelledByCustomer
+                : NotificationEvent.OrderCancelledByFleet,
+            _ => null
+        };
 }

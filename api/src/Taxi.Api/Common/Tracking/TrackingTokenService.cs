@@ -28,8 +28,9 @@ internal sealed class TrackingTokenService(IOptions<TrackingOptions> options, Ti
     {
         var exp = expiresAt.ToUnixTimeSeconds();
         var signature = ComputeSignature(orderId, exp);
-        var body = $"{exp}.{signature}";
-        return Base64UrlEncode(Encoding.UTF8.GetBytes(body));
+        // Token layout is the already-URL-safe "{exp}.{sig}" with no outer base64 wrapper — the inner
+        // string is digits + '.' + base64url, so the extra wrapper only bloated the SMS (UC-005 AC#5).
+        return $"{exp}.{signature}";
     }
 
     /// <summary>Validates a token against the given order. Returns true only when the signature
@@ -43,22 +44,12 @@ internal sealed class TrackingTokenService(IOptions<TrackingOptions> options, Ti
     {
         if (string.IsNullOrEmpty(token)) return false;
 
-        byte[] decoded;
-        try
-        {
-            decoded = Base64UrlDecode(token);
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-
-        var body = Encoding.UTF8.GetString(decoded);
-        var separator = body.IndexOf('.');
+        // Token is "{exp}.{sig}" (no outer base64 wrapper).
+        var separator = token.IndexOf('.');
         if (separator <= 0) return false;
 
-        var expPart = body[..separator];
-        var signaturePart = body[(separator + 1)..];
+        var expPart = token[..separator];
+        var signaturePart = token[(separator + 1)..];
 
         if (!long.TryParse(expPart, out var exp)) return false;
 
@@ -80,24 +71,17 @@ internal sealed class TrackingTokenService(IOptions<TrackingOptions> options, Ti
         return true;
     }
 
+    /// <summary>Number of HMAC bytes kept in the signature. 16 bytes (128 bits) is ample for a 24h
+    /// ephemeral, anonymous tracking link and keeps the SMS body within one GSM-7 segment (UC-005 AC#5).</summary>
+    private const int SignatureBytes = 16;
+
     private string ComputeSignature(Guid orderId, long exp)
     {
         var payload = Encoding.UTF8.GetBytes($"{orderId:D}:{exp}");
         var hash = HMACSHA256.HashData(_key, payload);
-        return Base64UrlEncode(hash);
+        return Base64UrlEncode(hash.AsSpan(0, SignatureBytes).ToArray());
     }
 
     private static string Base64UrlEncode(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
-    private static byte[] Base64UrlDecode(string value)
-    {
-        var padded = value.Replace('-', '+').Replace('_', '/');
-        switch (padded.Length % 4)
-        {
-            case 2: padded += "=="; break;
-            case 3: padded += "="; break;
-        }
-        return Convert.FromBase64String(padded);
-    }
 }

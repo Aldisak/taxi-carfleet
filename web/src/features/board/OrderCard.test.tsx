@@ -428,6 +428,91 @@ describe('OrderCard — Confirm button blocked when disconnected', () => {
   })
 })
 
+describe('OrderCard — failed-SMS red icon (UC-005 B2)', () => {
+  beforeEach(() => {
+    vi.mocked(client.getDrivers).mockResolvedValue({ items: [] })
+    vi.mocked(client.getOrder).mockResolvedValue(MOCK_ORDER_DETAIL)
+  })
+
+  it('shows the red icon when the cached order detail has a failed SMS', () => {
+    const { queryClient, wrapper } = makeWrapperWithClient()
+    // Seed the order-detail cache (the key OrderCard reads passively) with a failed SMS.
+    queryClient.setQueryData(['orders', 'detail', 'order-1'], {
+      ...MOCK_ORDER_DETAIL,
+      notifications: [
+        { event: 'DriverArrived', channel: 'Sms', recipient: '+420777123456', status: 'Failed', createdAt: '2026-09-13T09:00:00Z' },
+      ],
+    })
+    render(createElement(OrderCard, { order: makeOrder() }), { wrapper })
+    expect(screen.getByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+  })
+
+  it('does not show the icon when the cached detail has only a sent SMS', () => {
+    const { queryClient, wrapper } = makeWrapperWithClient()
+    queryClient.setQueryData(['orders', 'detail', 'order-1'], {
+      ...MOCK_ORDER_DETAIL,
+      notifications: [
+        { event: 'DriverArrived', channel: 'Sms', recipient: '+420777123456', status: 'Sent', createdAt: '2026-09-13T09:00:00Z' },
+      ],
+    })
+    render(createElement(OrderCard, { order: makeOrder() }), { wrapper })
+    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+  })
+
+  it('does not show the icon when the detail is not cached', () => {
+    render(createElement(OrderCard, { order: makeOrder() }), { wrapper: makeWrapper() })
+    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+  })
+
+  it('reacts when a failed SMS lands in the detail cache AFTER mount', async () => {
+    const { queryClient, wrapper } = makeWrapperWithClient()
+    render(createElement(OrderCard, { order: makeOrder() }), { wrapper })
+    // Initially no cached detail → no icon.
+    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+    // Detail lands later (e.g. drawer/assign-picker populates it) → the card must re-render.
+    queryClient.setQueryData(['orders', 'detail', 'order-1'], {
+      ...MOCK_ORDER_DETAIL,
+      notifications: [
+        { event: 'DriverArrived', channel: 'Sms', recipient: '+420777123456', status: 'Failed', createdAt: '2026-09-13T09:00:00Z' },
+      ],
+    })
+    expect(await screen.findByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+  })
+})
+
+describe('OrderCard — at-a-glance failed-SMS red icon (list flag, laneB5b)', () => {
+  beforeEach(() => {
+    vi.mocked(client.getDrivers).mockResolvedValue({ items: [] })
+    vi.mocked(client.getOrder).mockResolvedValue(MOCK_ORDER_DETAIL)
+  })
+
+  it('shows the red icon when the list item hasFailedSms=true (no detail cached)', () => {
+    render(createElement(OrderCard, { order: makeOrder({ hasFailedSms: true }) }), {
+      wrapper: makeWrapper(),
+    })
+    expect(screen.getByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+  })
+
+  it('does not show the icon when the list item hasFailedSms=false (no detail cached)', () => {
+    render(createElement(OrderCard, { order: makeOrder({ hasFailedSms: false }) }), {
+      wrapper: makeWrapper(),
+    })
+    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+  })
+
+  it('still shows the icon from the detail cache even when the list flag is false (detail is authoritative when present)', () => {
+    const { queryClient, wrapper } = makeWrapperWithClient()
+    queryClient.setQueryData(['orders', 'detail', 'order-1'], {
+      ...MOCK_ORDER_DETAIL,
+      notifications: [
+        { event: 'DriverArrived', channel: 'Sms', recipient: '+420777123456', status: 'Failed', createdAt: '2026-09-13T09:00:00Z' },
+      ],
+    })
+    render(createElement(OrderCard, { order: makeOrder({ hasFailedSms: false }) }), { wrapper })
+    expect(screen.getByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+  })
+})
+
 describe('OrderCard — accessibility', () => {
   beforeEach(() => {
     vi.mocked(client.getDrivers).mockResolvedValue({ items: [] })

@@ -13,7 +13,8 @@ import { DriverPicker } from './DriverPicker'
 import { useQuery } from '@tanstack/react-query'
 import { ApiResponseError, getOrder } from '../../shared/api/client'
 import { useHubConnectionState, isServerActionBlocked } from '../../shared/realtime/useFleetHub'
-import type { OrderSummaryDto } from '../../shared/api/client'
+import { hasFailedSms } from '../../shared/notifications/notificationStatus'
+import type { OrderSummaryDto, OrderDetailDto } from '../../shared/api/client'
 import type { CancelReasonCode } from './cancelReasons'
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,13 @@ const ErrorMsg = styled.span`
   color: ${({ theme }) => theme.colors.error};
 `
 
+const FailedSmsIcon = styled.span`
+  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  color: ${({ theme }) => theme.colors.error};
+  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+  line-height: 1;
+`
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -243,6 +251,21 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
   const reassignOrder = useReassignOrder()
   const cancelOrder = useCancelOrder()
   const blocked = isServerActionBlocked(useHubConnectionState())
+
+  // Failed-SMS red icon (UC-005 §5). PRIMARY source is the LIST DTO flag `order.hasFailedSms`
+  // (laneA5b/laneB5b) — it shows AT A GLANCE across the whole board WITHOUT any detail fetch.
+  // As a reactive fallback we also subscribe to the order-detail cache entry WITHOUT fetching
+  // (enabled: false — no N-query refetch storm, rules/web-performance.md#query-keys). Using
+  // useQuery (not getQueryData) re-renders the card when detail lands in cache later (e.g. the
+  // drawer or assign-picker populates it). Either source reporting a failed SMS shows the icon
+  // (OR): a failed SMS is a latch — once flagged it never clears — so detail can only ADD the
+  // icon (when the list row has not caught up yet), never turn it off.
+  const { data: cachedDetail } = useQuery<OrderDetailDto>({
+    queryKey: ['orders', 'detail', order.id],
+    queryFn: () => getOrder(order.id),
+    enabled: false,
+  })
+  const showFailedSms = order.hasFailedSms === true || hasFailedSms(cachedDetail?.notifications)
 
   function handleConflict() {
     setConflictMsg(true)
@@ -339,6 +362,11 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
           priceDisplay.type === 'fixed'
             ? <FixedBadge>{t('board.order.fixedPriceBadge', { price: priceDisplay.value })}</FixedBadge>
             : <EstimateLabel>{t('board.order.estimatedPrice', { price: priceDisplay.value })}</EstimateLabel>
+        )}
+        {showFailedSms && (
+          <FailedSmsIcon role="img" aria-label={t('notifications.failedSmsIcon')}>
+            ✉︎⚠
+          </FailedSmsIcon>
         )}
       </CardRow>
 

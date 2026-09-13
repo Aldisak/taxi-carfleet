@@ -1,67 +1,55 @@
 {
   "version": 1,
-  "uc_id": "UC-006",
-  "title": "Common routes, zones & pricing",
+  "uc_id": "UC-005",
+  "title": "Notifications (SMS + Web Push)",
   "stack": "mixed",
-  "lanes": { "A": "api zones/routes/places/pricing", "B": "web dispatcher Trasy a zóny + customer verify" },
+  "lanes": { "A": "api notification engine/outbox/channels/templates/cost/log/subscriptions", "B": "web dispatcher Notifikace + service-worker push + subscription wiring" },
   "complexity_tag": "novel",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "standing user directive renewed 2026-09-12 ('continue autonomously until you finish whole project, i changed the agents so use them'): gates A-E pre-approved, parallel lanes, backend-developer (api) / frontend-developer (web) agents (dispatched via general-purpose carrying the role verbatim while the registry is stale), interrupt only on 3-round blocks / quality-gate failures / undecidable scope. No git remote → ship = local commit on a feature branch (reversible); no push/PR.",
+  "autonomous_mode_authority": "standing user directive renewed 2026-09-12 ('continue autonomously until you finish whole project, i changed the agents so use them'): gates A-E pre-approved, parallel lanes, backend-developer (api) / frontend-developer (web) agents dispatched via general-purpose carrying the role verbatim (registry stale), interrupt only on 3-round blocks / quality-gate failures / undecidable scope. No git remote → ship = local commit on a feature branch. LESSON: long opus subagents hit stream-idle timeouts (~6min); for e2e/long runs the conductor runs the harness itself. Keep agent scopes bounded.",
   "phase": "done",
-  "spec_path": "docs/specs/in-progress/006_UC_006_routes-zones-pricing.md",
-  "gates_passed": ["A (auto)", "B (auto): 12 WIs (7 api + 5 web)", "C (round 1, blocks_merge=false): geometry/matching/price-lock/migrations verified sound; 2 major + 3 minor folded into dev briefs"],
+  "spec_path": "docs/specs/in-progress/005_UC_005_notifications.md",
+  "gates_passed": ["A (auto)", "B (auto): 8 WIs", "C (round 1, blocks_merge=false): conductor-performed (design-reviewer subagent timed out 4th time); AC#3 outbox boundary + PushSubscription/endpoint existence + FleetSettings + single-migration verified against source"],
   "design_review_round": 1,
-  "design_review_amendments": {
-    "A6-pricing-matching": ["M-01: widen pricing/quote via AllowAnonymous() + (CurrentTenant.FleetId is null -> 400) guard per ListCommonRoutesEndpoint precedent; DROP the AuthorizationPolicies.cs edit (every existing policy uses RequireAuthenticatedUser which 401s anonymous-by-slug)", "Zone-no-dropoff: matcher MUST run even when dropoff is null (remove the old 'if toLat.HasValue && toLng.HasValue' guard) so AC#2 'anywhere in KH -> Fixed 110' passes", "O-02: POST body {pickupLat,pickupLng,dropoffLat?,dropoffLng?,at?} byte-identical with B1 client"],
-    "B1-quote-client-migration": ["M-02: add web/src/features/customer/order/CustomOrderPage.test.tsx to files_touched and migrate its getPriceQuote mock to the new discriminated-union 'type' shape (Fixed|Estimate|Meter) + pickupLat/dropoffLat args", "O-02: request body field names byte-identical with A6"],
-    "A7-price-lock-and-override": ["O-03 confirmed correct as written: priceOverrideReason trailing-optional on OrderDetailDto, GetOrderEndpoint-only caller sound"],
-    "observed_O-01": "routes/common valid-now window does not wrap midnight (A6 matcher does); do NOT make A5 touch ListCommonRoutesEndpoint; optional follow-up only (AC#5 uses non-wrapping 03:00-04:00)"
+  "in_progress": [],
+  "quality_gate": {
+    "backend_build_warnaserror": "0 warnings", "backend_test": "420 passed", "backend_format": "clean",
+    "web_lint": "clean", "web_tsc": "clean", "web_test": "1005 passed",
+    "web_build": "ok (injectManifest sw.js generated)", "web_size": "227.38 kB brotli < 260 kB",
+    "web_e2e": "10/10 (no regression from UC-005 board/client/subscription/SW changes)"
   },
+  "gates_passed_final": ["A", "B", "C (conductor-verified)", "D(per-batch)", "E"],
+  "red_icon_gap_resolved": "laneA5b (hasFailedSms on OrderSummaryDto) + laneB5b (board card reads it) — §5 at-a-glance failed-SMS icon now works without opening each order.",
+  "laneA5b_done": "420 backend tests (+1). OrderSummaryDto on GET /api/v1/orders gains hasFailedSms (bool, camelCase, additive) via correlated EXISTS over notification_log (Channel==Sms && Status==Failed), tenant-scoped, no N+1. Web contract: ListOrdersResponse.Items[].hasFailedSms.",
+  "laneA5_review": "PASSED blocks_merge=false, 0 crit/high/medium, 2 low. All 9 points verified vs source: AC#3 atomic outbox (rollback test asserts order+outbox both roll back), AC#7 two-layer dedup, AC#5 symmetric token shortening preserves UC-004, AC#2/#4/#6 + both advisor fixes tested, one migration, logging clean, OpenAPI allowlist updated. All 8 UC-005 WIs DONE+REVIEWED.",
+  "laneA5_done": "419 backend tests (+46), build 0/0, format clean. All 6 api WIs. WebPush 1.0.13 (no fallback). Fixes: (1) AC#5 false-green — real ~72-char token made OrderCreated SMS 181 chars; right-sized TrackingTokenService (dropped outer base64 wrapper + HMAC sig→128 bits) → ~33-char token → SMS ~144 chars, symmetric Mint+Validate, UC-004 PublicTrack tests green; (2) 90% cap warning push wired. Transactional outbox pre-commit in OrderService + CreateOrderEndpoint; claim-then-execute send dedup; RunTickAsync job. Deferred: 90-day push prune, ScheduledOrderReminder scan job, per-fleet matrix override. Review pending.",
+  "laneB5a_review": "PASSED blocks_merge=false, 0 crit/high/medium, 2 low (useEffect placement; red-icon data gap — both documented). SW injectManifest switch verified (NavigationRoute+SKIP_WAITING regression fixed, devOptions.enabled false); subscription wiring feature-detected, no hardcoded VAPID; B2 Notifikace + Settings SMS panel; notificationStatus in shared/; i18n parity 694/694. Red-icon verdict: acceptable, fold Lane A list-DTO flag post-laneA5. B1+B2 DONE+REVIEWED.",
+  "laneB5a_done": "1001 web tests (+61), gates green, size 227.45kB<260kB. B1 SW switched generateSW→injectManifest (custom src/sw.ts: push display, notificationclick focus, OfferToDriver requireInteraction; NavigationRoute+SKIP_WAITING re-added; devOptions.enabled false). usePushSubscription wired: driver mandatory in DriverHomePage (PermissionPriming unused), customer via PushPrompt. VAPID from import.meta.env.VITE_VAPID_PUBLIC_KEY (pushConfig.ts). B2 Notifikace section in features/orders/ + notificationStatus.ts promoted to src/shared/notifications. Contracts ASSUMED (Lane A parallel): POST/DELETE /push/subscriptions {endpoint,p256dh,auth,userAgent?}; OrderDetailDto.notifications {event,channel,recipient,status,error?,createdAt,sentAt?}.",
+  "uc005_ac_gap_red_icon": "AC/§5 gap: failed-SMS red icon on the BOARD card only shows after an order's detail loads once (A6 added notifications to OrderDetailDto but NOT a hasFailedSms flag on the list OrderSummaryDto). Assignment §5 wants it at-a-glance on the board. FIX: fold a Lane A addition (OrderSummaryDto.hasFailedSms computed from notification_log) + board card reads the list flag — dispatch after laneA5 lands (like the UC-004 laneA4b AC fix). Also: SW postMessage('push-offer') has no client listener (dead; sound owned by in-app useOfferSound via SignalR) — minor.",
   "work_items_summary": {
-    "order": ["A1-route-columns", "A2-places", "A3-zone-service", "A4-zones-crud", "A5-routes-crud", "A6-pricing-matching", "A7-price-lock-and-override", "B1-quote-client-migration", "B2-settings-zones-tab", "B3-settings-routes-tab", "B4-settings-places-tab", "E2E-zone-route-quote"],
-    "cross_lane_edge": "A6 → B1 (client mirrors new POST QuoteResponse); E2E deps A6/A7/B3/B4",
-    "key_decisions": "routes/common canonical (no routes client migration); pricing/quote GET→POST with real matcher + Meter fallback + at? + widened policy (forces B1 client migration: interpretQuote Meter branch + un-stub Zone/ZoneToZone ordering); A6 trap: matcher runs with null dropoff (Zone-on-pickup); ZoneService pure haversine/ray-cast jsonb-in-memory; migrations A1(Route ALTER)→A2(Place CREATE); AC#3 price-lock = integration test only; OrderDetailDto +priceOverrideReason additive"
+    "order": ["A1-notification-schema", "A2-push-subscriptions", "A3-routing-and-templates", "A4-notification-engine", "A5-channels-and-dispatch-job", "A6-order-detail-notifikace", "B1-service-worker-push-and-subscription", "B2-dispatcher-notifikace-section"],
+    "deps": "A2/A3 after A1; A4 after A2+A3; A5 after A4; A6 after A4; B1 after A2; B2 after A6. Lane A/B parallel on disjoint files.",
+    "key_decisions": "Outbox insert BEFORE OrderService SaveChangesAsync (line 68) via same scoped DbContext (AC#3 atomic); 2nd call-site CreateOrderEndpoint ~line 206. WebPush 1.0.13 (+Lib.Net.Http.WebPush 3.3.1 fallback), needs_library_research A5 only. PushSubscription already exists (UserId-scoped, no migration) — A2 adds POST/DELETE endpoints. ONE migration A1 (notification_outbox + notification_log + dedup unique index + FleetSettings cap cols). AC#7 dedup at SEND boundary via claim-then-execute (log claim before sender, 23505→skip). Additive OrderSource? Source on CreateOrderRequest for Phone orders (AC#1). 90-day subscription prune = follow-up."
   },
   "work_items": [],
   "completed_wis": [],
-  "in_progress": [],
-  "phase_note": "UC-006 shipping with 11/12 WIs fully done+reviewed+gated. E2E-zone-route-quote (WI 12, AC#4 dispatcher draw-zone→route→Otestovat→enable + AC#5 customer valid-now browser automation) DEFERRED: 3 subagent attempts hit infra stream-timeouts; inline authoring of the multi-Leaflet-map draw flow is disproportionately flaky/costly. All 6 functional ACs covered by 373 backend tests (AC#1 matching, AC#2 seeded quotes, AC#3 price-lock, AC#6 override as integration tests) + 940 web unit/component tests (tabs, Otestovat, validitySummary, zoneDraw, customer valid-now via useCommonRoutes). Existing 10-spec e2e suite passes (no regression; conductor fixed a cross-UC seed-name coupling: UC-006 renamed route1 'Nádraží → Centrum'→'Nádraží Kutná Hora → Centrum', widened customer.spec matcher to /Nádraží.*Centrum/). Documented follow-up: author the AC#4/#5 Playwright specs in a fresh session (conductor runs the harness to avoid the subagent timeout).",
-  "quality_gate": {
-    "backend_build_warnaserror": "0 warnings",
-    "backend_test": "373 passed",
-    "backend_format": "clean",
-    "web_lint": "clean", "web_tsc": "clean", "web_test": "940 passed",
-    "web_build": "ok", "web_size": "225.28 kB brotli < 260 kB",
-    "web_e2e": "10/10 (chromium 2 + mobile-driver 3 + mobile-customer 5); no regression from UC-006 web changes; AC#4/#5 new specs DEFERRED (see phase_note)"
-  },
-  "gates_passed_final": ["A", "B", "C", "D(per-batch)", "E (with documented E2E deferral)"],
-  "laneB6b_review": "PASSED blocks_merge=false, 0 crit/high/medium, 2 low (map-pin AC deviation accepted as follow-up; 2 inline styles). Envelope fix verified vs real records; regression test mocks fetch. shared/pricing promotion no cross-feature import. All feature WIs (B1-B4) DONE+REVIEWED.",
-  "laneB6b_done": "940 web tests (+50), gates green, size 225.28kB<260kB. Envelope fix (getZones .items→.zones; getRoutes{routes}/getPlaces{places} added) + fetch-mocked regression test. B3 Trasy tab (validitySummary, drag-reorder via accessible move buttons, Otestovat panel reusing shared pricing), B4 Místa tab. interpretQuote/PriceQuoteView promoted to src/shared/pricing (no cross-feature import). AC deviation (minor follow-up): PointToPoint route editor is map-pin only, no address autocomplete (RouteAdminDto stores no address; AC#4 uses a Zone route so unaffected).",
-  "uc006_ac_followup": "B3 PointToPoint route editor: add shared AddressAutocomplete over getGeoSuggest to satisfy the assignment's 'point pickers use address autocomplete + map pin' to the letter. Non-blocking (map-pin sets coords; AC#4 E2E is a Zone route).",
-  "laneB6a_review": "PASSED blocks_merge=false (conditional), 1 HIGH F1 getZones {items}→{zones} deferred to laneB6b + 1 LOW. Every quote consumer migrated (no UC-004 test broken). Deferral safe because UC-006 ships as ONE commit (B6a+B6b together) so the empty Zóny tab never reaches a user. Confirmed contracts: ListZonesResponse{zones}, ListRoutesResponse{routes}(admin), ListPlacesResponse{places}.",
-  "completed_wis_running": ["B1-quote-client-migration", "B2-settings-zones-tab", "A1-route-columns", "A2-places", "A3-zone-service", "A4-zones-crud", "A5-routes-crud", "A6-pricing-matching", "A7-price-lock-and-override"],
-  "envelope_bug_confirmed": "CONFIRMED by conductor against source: backend ListZonesResponse(Zones)→{zones}, ListRoutesResponse(Routes)→{routes} (admin), ListPlacesResponse(Places)→{places}. B2 getZones reads data.items (WRONG → empty Zóny tab at runtime; mocked tests hid it). FIX getZones + add getRoutes/getPlaces with correct envelopes in laneB6b (B3/B4), with a fetch-mocked contract regression test. pricing/quote B1↔A6 field names MATCH; A6 emits null union fields so discriminate on type (B1's interpretQuote does).",
-  "laneA6_done": "373 backend tests (+44), build 0/0, format clean. pricing/quote POST union final. Review PASSED blocks_merge=false, 0 crit/high/medium, 2 low (ZonePolygonMapper 2-types-in-file nit; inert night-Zone-route FromLat/Lng=0). Geometry+matcher sound, no tenant leak (Tariff fleet-filtered), migrations non-destructive. All 7 api WIs DONE+REVIEWED.",
-  "batch_status": {
-    "laneB6a": "DONE (B1+B2): 890 web tests, gates green. B1 quote POST union (all 6 consumers + M-02 CustomOrderPage.test + RouteOrderPage zone un-stub, usePriceQuote allowAnonymous opt-in for logged-out zone ordering). B2 Zóny tab hand-rolled Leaflet draw (react-leaflet@4.2.1, no new lib, lazy chunk, pure zoneDraw.ts). Review pending. INTEGRATION-VERIFY: getZones assumes {items} envelope — reconcile against A4 ListZonesResponse once laneA6 lands ({routes}/{items} class bug). Meter field names baseCzk/perKmCzk/minimumCzk (UI ignores, non-breaking)."
-  },
-  "b3b4_held": "B3-settings-routes-tab + B4-settings-places-tab held until laneA6 lands so the real zones/routes/places response envelopes + getRoutes/getPlaces contracts are confirmed in one pass (avoid the getZones {items}-assumption class of bug).",
-  "predecessors": "UC-001/002 on main; UC-003 shipped branch uc-003-driver-pwa commit 14fb448; UC-004 shipped branch uc-004-customer-pwa commit 46db3b0 (backend 329 tests, web 869 unit + 10 e2e). Currently on branch uc-004-customer-pwa; UC-006 branches from here.",
-  "decisions_this_run": [
-    "UC-006 REPLACES the UC-004 tariff-only pricing/quote stub with the real route-matching service; must reconcile routes/common (UC-004, Anonymous) vs routes/available (assignment 06) into one canonical endpoint + migrate the UC-004 customer client",
-    "Dynamic/surge pricing + promo codes out of scope"
+  "predecessors": "UC-001/002 on main; UC-003 uc-003-driver-pwa 14fb448; UC-004 uc-004-customer-pwa 46db3b0; UC-006 uc-006-routes-zones-pricing 51ab4c5 (backend 373 tests, web 940 unit + 10 e2e). Currently on branch uc-006-routes-zones-pricing; UC-005 branches from here.",
+  "resolves_deferrals": [
+    "UC-003 AC#3 background Web Push (offer wakes a backgrounded PWA) — server push pipeline built here",
+    "UC-004 customer push-subscription server side + the after-first-order prompt wiring"
   ],
-  "uc004_followups_still_open": [
-    "B3e-1/B3f-F1/B3e-2 from UC-003 (DisconnectBanner→shared; patchOrder envelope; bottom-nav on ride); AC#6 Lighthouse manual; Web Push send→05; ETA-minute refresh→this UC-006 (OSRM)",
-    "UC-004 AC#2 car-marker live-move documented best-effort (DEMO.md §14)"
+  "open_followups_from_prior_ucs": [
+    "UC-006 AC#4/#5 Playwright browser automation (deferred, decisions.md §7)",
+    "UC-006 dispatcher PointToPoint route editor address autocomplete",
+    "UC-003 B3e-1 DisconnectBanner→shared; B3f-F1 patchOrder envelope; B3e-2 ride bottom-nav"
   ],
-  "test_count_backend": 329,
-  "test_count_web": 869,
+  "test_count_backend": 373,
+  "test_count_web": 940,
   "environment": {
     "dotnet_sdk": "10.0.401 user-local; prefix every dotnet command with: export PATH=\"/c/Users/alesm/AppData/Local/Microsoft/dotnet:$PATH\" && ",
-    "node": "v20.0.0 (pins: Vite 5.4, eslint 8.57.1, ts-eslint 7.18, vitest 2.1.9; idb, fake-indexeddb, vite-plugin-pwa 0.20.5, pngjs, leaflet lazy)",
+    "node": "v20.0.0 (pins: Vite 5.4, eslint 8.57.1, ts-eslint 7.18, vitest 2.1.9; idb, fake-indexeddb, vite-plugin-pwa 0.20.5, pngjs, react-leaflet 4.2.1 lazy); WebPush NuGet must be version-checked for .NET 10",
     "docker": "26.1.1",
-    "playwright": "harness scripts/e2e-api.mjs; projects chromium(dispatcher, testIgnore driver+customer), mobile-driver(Pixel5 driver.spec), mobile-customer(Pixel5 customer.spec)"
+    "playwright": "harness scripts/e2e-api.mjs; projects chromium(dispatcher), mobile-driver, mobile-customer; 10 specs green"
   },
-  "updated_at": "2026-09-12"
+  "updated_at": "2026-09-13"
 }

@@ -839,5 +839,46 @@
       "priceUnknown": "—",
       "offline": "Jste offline – zobrazujeme poslední známá data."
     }
+  },
+  "notifications": {
+    "title": "Notifikace",
+    "empty": "Zatím žádné notifikace.",
+    "failedSmsIcon": "SMS se nepodařila odeslat – zavolejte zákazníkovi",
+    "statusOf": "Stav: {{status}}",
+    "status": {
+      "sent": "Odesláno",
+      "failed": "Selhalo",
+      "queued": "Ve frontě",
+      "skippedCap": "Přeskočeno (limit)",
+      "skippedNoChannel": "Přeskočeno (bez kanálu)",
+      "unknown": "Neznámý stav"
+    },
+    "channel": {
+      "sms": "SMS",
+      "push": "Push",
+      "unknown": "Kanál"
+    },
+    "event": {
+      "OrderCreatedForCustomer": "Objednávka přijata",
+      "DriverAssigned": "Přiřazen řidič",
+      "DriverArrived": "Řidič na místě",
+      "RideStarted": "Jízda zahájena",
+      "RideCompleted": "Jízda dokončena",
+      "OrderCancelledByFleet": "Zrušeno dispečinkem",
+      "OrderCancelledByCustomer": "Zrušeno zákazníkem",
+      "OfferToDriver": "Nabídka řidiči",
+      "DriverDeclined": "Řidič odmítl",
+      "DriverTimedOut": "Řidič nereagoval",
+      "NewAppOrderForDispatch": "Nová objednávka z aplikace",
+      "ScheduledOrderReminder": "Připomínka plánované jízdy"
+    },
+    "settings": {
+      "title": "SMS notifikace",
+      "monthlyCount": "Odeslané SMS tento měsíc",
+      "estimatedCost": "Odhadovaná cena",
+      "cap": "Měsíční limit",
+      "nearCap": "Blížíte se měsíčnímu limitu SMS.",
+      "overCap": "Měsíční limit SMS byl vyčerpán – posílají se jen SMS o příjezdu řidiče."
+    }
   }
 }

@@ -11,6 +11,7 @@ using Serilog.Formatting.Compact;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common;
 using Taxi.Api.Common.Features;
+using Taxi.Api.Common.Notifications;
 using Taxi.Api.Common.Orders;
 using Taxi.Api.Common.Tenancy;
 using Taxi.Api.Common.Tracking;
@@ -157,6 +158,9 @@ try
 
     // ── Order state machine service ────────────────────────────────────────────
     builder.Services.AddOrders();
+
+    // ── Notifications (engine + channels + dispatch job, UC-005) ─────────────
+    builder.Services.AddNotifications(builder.Configuration);
 
     // ── Realtime publisher (SignalR-backed, wired in WI-13) ──────────────────
     builder.Services.AddRealtime();

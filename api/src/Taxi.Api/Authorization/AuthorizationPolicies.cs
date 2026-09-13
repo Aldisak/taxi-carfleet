@@ -37,6 +37,10 @@ public static class AuthorizationPolicies
     /// which the customer PWA needs for pickup entry alongside the dispatcher UI.</summary>
     public const string CustomerOrStaff = nameof(CustomerOrStaff);
 
+    /// <summary>Policy that allows ANY authenticated user regardless of role. Used for push-subscription
+    /// management, which every role (Customer/Driver/Dispatcher/FleetAdmin) performs for their own devices.</summary>
+    public const string AuthenticatedOnly = nameof(AuthenticatedOnly);
+
     /// <summary>Registers all authorization policies in the service collection.</summary>
     /// <param name="options">The <see cref="AuthorizationOptions"/> to register policies into.</param>
     public static void RegisterPolicies(AuthorizationOptions options)
@@ -81,5 +85,8 @@ public static class AuthorizationPolicies
                       nameof(UserRole.Customer),
                       nameof(UserRole.Dispatcher),
                       nameof(UserRole.FleetAdmin)));
+
+        options.AddPolicy(AuthenticatedOnly, policy =>
+            policy.RequireAuthenticatedUser());
     }
 }

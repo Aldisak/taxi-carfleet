@@ -305,3 +305,42 @@ describe('admin CRUD envelope unwrap (getZones / getRoutes / getPlaces)', () => 
     expect(places[1]!.sortOrder).toBe(1)
   })
 })
+
+describe('getOrders — hasFailedSms list flag (UC-005 §5, laneA5b contract, laneB5b)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  // CONTRACT: laneA5b added an additive `hasFailedSms: boolean` to each OrderSummaryDto in the
+  // { items, total, page, pageSize } ListOrdersResponse. The dispatcher board card reads it to
+  // show the at-a-glance failed-SMS red icon WITHOUT a per-order detail fetch. This locks the
+  // field through the typed client so a drift (dropping it) is caught here, not only in the UI.
+  it('carries hasFailedSms on each item in the { items } envelope', async () => {
+    const realPayload = {
+      items: [
+        { id: 'o1', publicCode: 'AAA111', status: 'New', source: 'Phone', customerPhone: '+420777000111', customerName: null, pickupAddress: 'A', dropoffAddress: null, scheduledAt: null, passengers: 1, priceType: 'Meter', estimatedPriceCzk: null, fixedPriceCzk: null, driverId: null, createdAt: '2026-09-13T09:00:00Z', hasFailedSms: true },
+        { id: 'o2', publicCode: 'BBB222', status: 'New', source: 'Phone', customerPhone: '+420777000222', customerName: null, pickupAddress: 'B', dropoffAddress: null, scheduledAt: null, passengers: 1, priceType: 'Meter', estimatedPriceCzk: null, fixedPriceCzk: null, driverId: null, createdAt: '2026-09-13T09:01:00Z', hasFailedSms: false },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 20,
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue(realPayload),
+    }))
+
+    const { getOrders } = await import('./client')
+    const res = await getOrders()
+
+    expect(res.items).toHaveLength(2)
+    expect(res.items[0]!.hasFailedSms).toBe(true)
+    expect(res.items[1]!.hasFailedSms).toBe(false)
+  })
+})

@@ -61,6 +61,12 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
     /// <summary>Idempotency records for driver transition requests (claim-then-execute deduplication).</summary>
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
+    /// <summary>Transactional outbox for pending notifications (drained by NotificationDispatchJob).</summary>
+    public DbSet<NotificationOutbox> NotificationOutbox => Set<NotificationOutbox>();
+
+    /// <summary>Delivery log for notifications; the unique index also serves as the send-time dedup claim.</summary>
+    public DbSet<NotificationLog> NotificationLog => Set<NotificationLog>();
+
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -101,6 +107,8 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
         modelBuilder.Entity<Tariff>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<FleetSettings>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<AuditLog>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
+        modelBuilder.Entity<NotificationOutbox>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
+        modelBuilder.Entity<NotificationLog>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
 
         // Nullable FleetId entities: include rows with null FleetId (customers/superadmin are tenant-agnostic)
         // plus rows belonging to the current fleet.

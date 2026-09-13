@@ -1,0 +1,28 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB5a (B1+B2)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "file": "web/src/features/driver/home/DriverHomePage.tsx",
+      "rule": "rules/web-architecture.md#state-tiers",
+      "title": "ensureSubscribed useEffect spliced mid-hook-sequence",
+      "detail": "The new usePushSubscription()/useEffect pair is inserted between useDriverMe/useMySummary and the useGoOnline hooks. Hook order is stable so no React-rules violation; purely a readability nit that push-wiring interleaves the data hooks.",
+      "recommendation": "Optional: group the push useEffect with the component's other effects. Not blocking."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "file": "web/src/features/board/OrderCard.tsx",
+      "rule": "assignment 05 section 5",
+      "title": "Board red icon only appears after an order-detail cache load (cross-lane data gap)",
+      "detail": "showFailedSms reads the ['orders','detail',id] cache via useQuery enabled:false (reactive, no refetch storm - correct per web-performance#query-keys). But OrderSummaryDto (the list projection feeding the board) carries no hasFailedSms/notifications, so the icon is absent until that order's detail is loaded once (drawer/assign-picker populates the cache). At-a-glance-across-the-whole-board needs a Lane A list-DTO flag not present in A6.",
+      "recommendation": "Confirm the conductor's planned post-laneA5 fold (add OrderSummaryDto.hasFailedSms + card reads it). Acceptable to ship B5a as-is; see red_icon_verdict. Not blocking."
+    }
+  ],
+  "summary": "B1+B2 web changes are clean and conventions-compliant; no CRITICAL/HIGH findings; nothing blocks merge. SW injectManifest switch is correct: custom src/sw.ts precaches __WB_MANIFEST, renders {title,body,url,tag,priority}, notificationclick focuses/opens url, OfferToDriver (priority high / tag offer) sets requireInteraction:true. The advisor-caught generateSW regression is FIXED - NavigationRoute(createHandlerBoundToURL('/index.html')) with denylist [/^\/api/,/^\/hubs/] preserves offline deep-route reload (spec 11); SKIP_WAITING message listener present for registerType:'prompt'; devOptions.enabled:false keeps the SW out of dev/Playwright; no /api or /hubs runtime caching introduced. Subscription wiring is feature-detected (jsdom-safe no-op), POSTs on grant, DELETEs on unsubscribe, VAPID key read from import.meta.env via isolated pushConfig (no hardcoded key), pure vapidKeyToApplicationServerKey (test asserts decoded bytes + url-safe -_ substitution, genuinely exercises the conversion); driver mandatory (DriverHomePage useEffect) + customer-after-first-order (PushPrompt accept->ensureSubscribed) both wired. B2 NotificationsSection renders status->tone/label (Czech, role=status not color-alone, Europe/Prague time, failed item shows provider error); axe test uses the preconfigured shared/test/axe helper + toHaveNoViolations. Failed-SMS red icon on OrderCard with i18n aria-label; notificationStatus.ts correctly promoted to src/shared/notifications (consumed by both features/orders and features/board - no cross-feature import); OrderCard reads detail cache via useQuery enabled:false (reactive, not a board refetch storm). B2 Settings SMS panel VERIFIED in smsCostDisplay.ts + FleetTab.tsx: estimatedCost = count*unitCost (integer x integer, no float), formatCzk uses Intl.NumberFormat('cs-CZ', currency CZK, 0 fraction digits) per web-react-style#dates-and-money, near>=90%/over>=100% with cap-disabled (<=0) degrading to ok, cap warning rendered with role='alert', and the whole panel hidden unless all three fields (smsSentThisMonth/smsUnitCostCzk/smsMonthlyCapCzk) are present - matching the handoff claim. client.ts extended additively (not forked); OrderNotificationDto single-sourced in shared and re-exported; FleetSettingsDto extended additive-optional. i18n cs/en parity verified programmatically (694/694 keys, zero drift). No tsbuildinfo staged; only web/ files in this lane's scope (api/ files belong to the concurrent Lane A and are out of scope).",
+  "red_icon_verdict": "ACCEPTABLE for B5a - the conductor's plan to fold the fix post-laneA5 is the RIGHT call, NOT a blocker. The web side is wired correctly (reactive, zero-fetch cache read, and the drawer NotificationsSection always shows failed-SMS on open). The only limitation is at-a-glance coverage on the board: the card icon shows only after an order's detail is loaded, because A6 added `notifications` to OrderDetailDto but not a `hasFailedSms` flag to the LIST OrderSummaryDto. Full at-a-glance requires a Lane A list-DTO addition that is out of B5a's scope and cannot be done purely in web. The B2 AC as written ('OrderCard shows a red icon when the order has at least one Failed Sms notification') is satisfied for any order whose detail is in cache. Recommend the conductor track OrderSummaryDto.hasFailedSms as a follow-up after laneA5; it does not gate this merge."
+}

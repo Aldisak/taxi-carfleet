@@ -94,6 +94,13 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | GET | `/public/track/{code}` | Track an order via the public SMS link | Anonymous |
 | GET | `/public/fleet` | Get public fleet branding | Anonymous |
 
+## Push
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| DELETE | `/push/subscriptions` | Remove a Web Push subscription | Bearer |
+| POST | `/push/subscriptions` | Register a Web Push subscription | Bearer |
+
 ## Routes
 
 | Method | Route | Summary | Auth |

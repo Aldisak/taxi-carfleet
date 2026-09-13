@@ -25,4 +25,11 @@ public class FleetSettings : ITenantEntity
 
     /// <summary>Welcome text sent to new customers.</summary>
     public string? WelcomeText { get; set; }
+
+    /// <summary>Monthly SMS cost cap in CZK. When reached, SMS is skipped except DriverArrived.
+    /// Defaults to 500.</summary>
+    public int SmsMonthlyCapCzk { get; set; } = 500;
+
+    /// <summary>Cost of a single SMS in CZK, used to count spend against the cap. Defaults to 1.</summary>
+    public int SmsUnitCostCzk { get; set; } = 1;
 }

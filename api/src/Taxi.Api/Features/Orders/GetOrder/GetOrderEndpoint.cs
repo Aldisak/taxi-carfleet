@@ -109,6 +109,14 @@ internal sealed class GetOrderEndpoint(TaxiDbContext dbContext)
             .Select(t => t.ToString().ToLowerInvariant())
             .ToList();
 
+        // Load the order's notification log (tenant-scoped, AsNoTracking, ordered by CreatedAt) for the
+        // dispatcher Notifikace section (A6). Dispatchers/FleetAdmins see it; for others it is harmless.
+        var notifications = await dbContext.NotificationLog.AsNoTracking()
+            .Where(l => l.OrderId == order.Id)
+            .OrderBy(l => l.CreatedAt)
+            .ThenBy(l => l.Id)
+            .ToListAsync(ct);
+
         var detail = new OrderDetailDto(
             order.Id,
             order.PublicCode,
@@ -139,7 +147,8 @@ internal sealed class GetOrderEndpoint(TaxiDbContext dbContext)
             order.RatingStars,
             order.RatingComment,
             order.RatedAt,
-            order.PriceOverrideReason);
+            order.PriceOverrideReason,
+            OrderDetailMapper.ToNotificationDtos(notifications));
 
         await Send.OkAsync(new GetOrderResponse(detail), ct);
     }
