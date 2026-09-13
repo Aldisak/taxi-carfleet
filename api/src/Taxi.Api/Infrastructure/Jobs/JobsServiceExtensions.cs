@@ -16,6 +16,7 @@ internal static class JobsServiceExtensions
         services.AddHostedService<OfferTimeoutJob>();
         services.AddHostedService<StalePositionJob>();
         services.AddHostedService<NotificationDispatchJob>();
+        services.AddHostedService<RetentionJob>();
         return services;
     }
 }

@@ -10,6 +10,7 @@ using Serilog;
 using Serilog.Formatting.Compact;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common;
+using Taxi.Api.Common.Admin;
 using Taxi.Api.Common.Features;
 using Taxi.Api.Common.Notifications;
 using Taxi.Api.Common.Orders;
@@ -171,6 +172,9 @@ try
     // ── TimeProvider ──────────────────────────────────────────────────────────
     builder.Services.AddSingleton(TimeProvider.System);
 
+    // ── SuperAdmin CLI bootstrapper (resolved by the create-superadmin args intercept below) ──
+    builder.Services.AddScoped<SuperAdminBootstrapper>();
+
     // ── Tracking token (customer SMS link) ──────────────────────────────────
     // Dev HMAC key lives in appsettings.Development.json; prod key wiring deferred to assignment 08.
     builder.Services.Configure<TrackingOptions>(
@@ -184,11 +188,35 @@ try
     if (builder.Environment.IsDevelopment())
     {
         builder.Services.AddSingleton<DevelopmentSeeder>();
+        builder.Services.AddSingleton<ReportSeedScript>();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     var app = builder.Build();
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ── CLI: create-superadmin --email <email> --password <password> ──────────
+    // Intercept before the web host boots. Runs the bootstrapper in a scope, then returns.
+    if (args.Length > 0 && args[0] == "create-superadmin")
+    {
+        var cliEmail = GetArgValue(args, "--email");
+        var cliPassword = GetArgValue(args, "--password");
+        if (string.IsNullOrWhiteSpace(cliEmail) || string.IsNullOrWhiteSpace(cliPassword))
+        {
+            Log.Error("create-superadmin requires --email and --password");
+            return;
+        }
+
+        await using var cliScope = app.Services.CreateAsyncScope();
+        var cliDb = cliScope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+        await cliDb.Database.MigrateAsync();
+        var bootstrapper = cliScope.ServiceProvider.GetRequiredService<SuperAdminBootstrapper>();
+        var created = await bootstrapper.CreateAsync(cliEmail, cliPassword);
+        Log.Information(created
+            ? "SuperAdmin created {Email}"
+            : "SuperAdmin already exists {Email}", cliEmail);
+        return; // never boot the web host for a CLI command
+    }
 
     // ── Startup: migrate + seed (Development only) ────────────────────────────
     // Apply EF Core migrations at startup in Development so docker compose up is self-contained.
@@ -260,4 +288,17 @@ finally
 }
 
 /// <summary>Entry point partial class — required for WebApplicationFactory in integration tests.</summary>
-public partial class Program { }
+public partial class Program
+{
+    /// <summary>Reads the value following a named flag in the CLI args (e.g. <c>--email x</c> → <c>x</c>).
+    /// Returns null when the flag is absent or has no following value.</summary>
+    private static string? GetArgValue(string[] args, string flag)
+    {
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == flag) return args[i + 1];
+        }
+
+        return null;
+    }
+}

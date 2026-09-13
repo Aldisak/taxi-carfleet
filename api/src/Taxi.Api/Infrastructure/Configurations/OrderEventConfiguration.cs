@@ -21,6 +21,9 @@ internal sealed class OrderEventConfiguration : IEntityTypeConfiguration<OrderEv
         builder.HasIndex(x => x.ActorUserId);
         builder.HasIndex(x => new { x.OrderId, x.At });
 
+        // Audit-merge paging index (UC-007 A1): the unified audit timeline orders by (FleetId, At desc).
+        builder.HasIndex(x => new { x.FleetId, x.At });
+
         builder.HasOne<Fleet>().WithMany().HasForeignKey(x => x.FleetId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Order>().WithMany().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<User>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);

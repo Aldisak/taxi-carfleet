@@ -344,3 +344,158 @@ describe('getOrders — hasFailedSms list flag (UC-005 §5, laneA5b contract, la
     expect(res.items[1]!.hasFailedSms).toBe(false)
   })
 })
+
+describe('reports + audit client (UC-007 B1/B2 — REAL laneA7 contracts)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  // REAL: GetDriverReportResponse = { driverId, driverName, avgRating, days, totals }. avgRating is
+  // TOP-LEVEL; `totals` is a DriverReportDayDto with `date: 'Celkem'` (same money fields, NO avgRating).
+  // Per-day money fields are cashCzk/cardCzk/invoiceCzk (NOT *TotalCzk), day field is `date` (NOT `day`).
+  it('getDriverReport returns { driverId, driverName, avgRating, days, totals } with real field names', async () => {
+    const realPayload = {
+      driverId: 'd1',
+      driverName: 'Jan Novák',
+      avgRating: 4.5,
+      days: [
+        { date: '2026-09-01', ridesCompleted: 3, ridesCancelled: 1, cashCzk: 300, cardCzk: 200, invoiceCzk: 0, totalCzk: 500, hoursOnline: 6, priceOverrideCount: 1 },
+      ],
+      totals: { date: 'Celkem', ridesCompleted: 3, ridesCancelled: 1, cashCzk: 300, cardCzk: 200, invoiceCzk: 0, totalCzk: 500, hoursOnline: 6, priceOverrideCount: 1 },
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue(realPayload),
+    }))
+
+    const { getDriverReport } = await import('./client')
+    const res = await getDriverReport({ driverId: 'd1', from: '2026-09-01', to: '2026-09-30' })
+
+    expect(res.driverName).toBe('Jan Novák')
+    expect(res.avgRating).toBe(4.5)
+    expect(res.days).toHaveLength(1)
+    expect(res.days[0]!.date).toBe('2026-09-01')
+    expect(res.days[0]!.cashCzk).toBe(300)
+    expect(res.days[0]!.totalCzk).toBe(500)
+    expect(res.totals.date).toBe('Celkem')
+    expect(res.totals.totalCzk).toBe(500)
+  })
+
+  // REAL: FleetKpiDto carries RAW COUNTS appOrders/phoneOrders/fixedRouteOrders (NOT shares), and
+  // avgTime* are nullable seconds. ridesPerDay rows are { date, count } (NOT { day, rides }).
+  it('getFleetReport returns { kpis, ridesPerDay, topRoutes } with raw counts + { date, count } series', async () => {
+    const realPayload = {
+      kpis: { rides: 10, revenueCzk: 5000, avgPriceCzk: 500, avgTimeToAssignSeconds: 120, avgTimeToPickupSeconds: null, cancellationRate: 0.1, appOrders: 6, phoneOrders: 4, fixedRouteOrders: 3, smsCount: 4, smsCostCzk: 4 },
+      ridesPerDay: [{ date: '2026-09-01', count: 4 }, { date: '2026-09-02', count: 6 }],
+      topRoutes: [{ routeId: 'r1', name: 'KH → Kolín', count: 7 }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue(realPayload),
+    }))
+
+    const { getFleetReport } = await import('./client')
+    const res = await getFleetReport({ from: '2026-09-01', to: '2026-09-30' })
+
+    expect(res.kpis.rides).toBe(10)
+    expect(res.kpis.appOrders).toBe(6)
+    expect(res.kpis.phoneOrders).toBe(4)
+    expect(res.kpis.fixedRouteOrders).toBe(3)
+    expect(res.kpis.avgTimeToPickupSeconds).toBeNull()
+    expect(res.ridesPerDay).toHaveLength(2)
+    expect(res.ridesPerDay[0]!.date).toBe('2026-09-01')
+    expect(res.ridesPerDay[0]!.count).toBe(4)
+    expect(res.topRoutes[0]!.name).toBe('KH → Kolín')
+  })
+
+  // REAL: GetRatingsResponse is the { items } envelope (NOT { ratings }); rangeless (no from/to).
+  // RatingDto = { orderPublicCode, driverName(null-able), stars, comment, ratedAt }.
+  it('getRatings unwraps the { items: [...] } envelope (NOT { ratings }) and is rangeless', async () => {
+    const realPayload = {
+      items: [
+        { orderPublicCode: 'AAA111', driverName: 'Jan Novák', stars: 5, comment: 'Super', ratedAt: '2026-09-13T10:00:00Z' },
+        { orderPublicCode: 'BBB222', driverName: null, stars: 3, comment: null, ratedAt: null },
+      ],
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue(realPayload),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { getRatings } = await import('./client')
+    const ratings = await getRatings()
+
+    expect(ratings).toHaveLength(2)
+    expect(ratings[0]!.orderPublicCode).toBe('AAA111')
+    expect(ratings[0]!.stars).toBe(5)
+    expect(ratings[1]!.driverName).toBeNull()
+    expect(ratings[1]!.comment).toBeNull()
+    // Rangeless: the URL carries no from/to query params.
+    const calledUrl = fetchMock.mock.calls[0]![0] as string
+    expect(calledUrl).toBe('/api/v1/reports/ratings')
+  })
+
+  it('fetchDriverReportCsv returns the server blob + Content-Disposition filename', async () => {
+    const blob = new Blob(['﻿a;b;c\r\n'], { type: 'text/csv' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      blob: vi.fn().mockResolvedValue(blob),
+      headers: new Headers({ 'Content-Disposition': 'attachment; filename="report-2026-09.csv"' }),
+    }))
+
+    const { fetchDriverReportCsv } = await import('./client')
+    const res = await fetchDriverReportCsv({ driverId: 'd1', from: '2026-09-01', to: '2026-09-30' })
+
+    expect(res.blob).toBe(blob)
+    expect(res.filename).toBe('report-2026-09.csv')
+  })
+
+  it('parseContentDispositionFilename handles RFC 5987 and missing headers', async () => {
+    const { parseContentDispositionFilename } = await import('./client')
+    expect(parseContentDispositionFilename("attachment; filename*=UTF-8''report%20KH.csv")).toBe('report KH.csv')
+    expect(parseContentDispositionFilename('attachment; filename="x.csv"')).toBe('x.csv')
+    expect(parseContentDispositionFilename(null)).toBeNull()
+  })
+
+  // REAL: GetAuditResponse = { items, total, page(1-based), pageSize }. AuditEntryDto fields are
+  // { source, actorUserId, entity, action, orderCode, at } — NO `actor`/`event` (B7a assumptions).
+  it('getAudit returns the { items, total, page, pageSize } envelope and builds filter params', async () => {
+    const realPayload = {
+      items: [
+        { source: 'OrderEvent', actorUserId: 'u1', entity: 'Order', action: 'Completed', orderCode: 'AAA111', at: '2026-09-13T10:00:00Z' },
+      ],
+      total: 1,
+      page: 2,
+      pageSize: 50,
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue(realPayload),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { getAudit } = await import('./client')
+    const res = await getAudit({ actor: 'u1', orderCode: 'AAA111', page: 2 })
+
+    expect(res.items[0]!.action).toBe('Completed')
+    expect(res.items[0]!.actorUserId).toBe('u1')
+    expect(res.total).toBe(1)
+    expect(res.page).toBe(2)
+    expect(res.pageSize).toBe(50)
+    const calledUrl = fetchMock.mock.calls[0]![0] as string
+    expect(calledUrl).toContain('actor=u1')
+    expect(calledUrl).toContain('orderCode=AAA111')
+    expect(calledUrl).toContain('page=2')
+  })
+})

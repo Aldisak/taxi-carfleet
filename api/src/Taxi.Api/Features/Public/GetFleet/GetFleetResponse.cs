@@ -6,9 +6,13 @@ namespace Taxi.Api.Features.Public.GetFleet;
 /// <param name="PrimaryColorHex">Optional brand color (#RRGGBB). Null means the client uses its theme token.</param>
 /// <param name="Currency">ISO 4217 currency code (e.g. CZK).</param>
 /// <param name="TimeZone">IANA time zone identifier (e.g. Europe/Prague).</param>
+/// <param name="WelcomeText">Optional fleet welcome text for the customer PWA; null when unset.</param>
+/// <param name="LogoUrl">Optional logo URL with a ?v=ticks cache-bust; null when no logo is uploaded.</param>
 public record GetFleetResponse(
     string Name,
     string Phone,
     string? PrimaryColorHex,
     string Currency,
-    string TimeZone);
+    string TimeZone,
+    string? WelcomeText,
+    string? LogoUrl);

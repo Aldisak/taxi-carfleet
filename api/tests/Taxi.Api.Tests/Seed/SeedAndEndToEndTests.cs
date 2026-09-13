@@ -390,6 +390,7 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
         {
             // Auth
             "POST /api/v1/auth/staff/login",
+            "POST /api/v1/auth/admin/login",
             "POST /api/v1/auth/customer/request-code",
             "POST /api/v1/auth/customer/verify-code",
             "POST /api/v1/auth/refresh",
@@ -439,6 +440,20 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "POST /api/v1/staff/{id}/reset-password",
             // Fleet
             "GET /api/v1/fleet/settings",
+            "PUT /api/v1/fleet/settings",
+            "POST /api/v1/fleet/logo",
+            // Reports (UC-007)
+            "GET /api/v1/reports/drivers",
+            "GET /api/v1/reports/fleet",
+            "GET /api/v1/reports/ratings",
+            // Audit (UC-007)
+            "GET /api/v1/audit",
+            // Admin — SuperAdmin onboarding (UC-007)
+            "POST /api/v1/admin/fleets",
+            "GET /api/v1/admin/fleets",
+            "POST /api/v1/admin/fleets/{id}/deactivate",
+            // Customers — GDPR self-deletion (UC-007)
+            "DELETE /api/v1/customers/me",
             // Geo
             "GET /api/v1/geo/suggest",
             "GET /api/v1/geo/route",

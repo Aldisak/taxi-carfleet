@@ -74,6 +74,9 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.HasIndex("FleetId")
                         .HasDatabaseName("ix_audit_logs_fleet_id");
 
+                    b.HasIndex("FleetId", "At")
+                        .HasDatabaseName("ix_audit_logs_fleet_id_at");
+
                     b.ToTable("audit_logs", (string)null);
                 });
 
@@ -198,6 +201,10 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<DateTimeOffset?>("LogoUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("logo_updated_at");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -693,6 +700,12 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.HasIndex("FleetId", "Status")
                         .HasDatabaseName("ix_orders_fleet_id_status");
 
+                    b.HasIndex("FleetId", "DriverId", "CreatedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_driver_id_created_at");
+
+                    b.HasIndex("FleetId", "Status", "CreatedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_status_created_at");
+
                     b.ToTable("orders", (string)null);
                 });
 
@@ -753,6 +766,9 @@ namespace Taxi.Api.Infrastructure.Migrations
 
                     b.HasIndex("OrderId")
                         .HasDatabaseName("ix_order_events_order_id");
+
+                    b.HasIndex("FleetId", "At")
+                        .HasDatabaseName("ix_order_events_fleet_id_at");
 
                     b.HasIndex("OrderId", "At")
                         .HasDatabaseName("ix_order_events_order_id_at");

@@ -5,13 +5,61 @@
     "error": "An error occurred",
     "offline": "Offline – showing last known state"
   },
+  "admin": {
+    "login": {
+      "title": "System administrator sign-in",
+      "email": "Email",
+      "emailPlaceholder": "superadmin@demo.local",
+      "password": "Password",
+      "submit": "Sign in",
+      "loading": "Signing in…",
+      "invalidCredentials": "Invalid credentials. Please try again.",
+      "networkError": "Cannot reach the server. Check your internet connection.",
+      "unknownError": "An unexpected error occurred. Please try again.",
+      "validation": {
+        "emailRequired": "Email is required.",
+        "emailInvalid": "Enter a valid email address.",
+        "passwordRequired": "Password is required."
+      }
+    },
+    "fleets": {
+      "title": "Fleet administration",
+      "createTitle": "Create a new fleet",
+      "listTitle": "Existing fleets",
+      "create": "Create fleet",
+      "creating": "Creating…",
+      "createFailed": "Could not create the fleet. Check the details and try again.",
+      "loading": "Loading fleets…",
+      "loadFailed": "Could not load the fleet list.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "passwordWarning": "One-time admin password for {{email}}. Shown only once — copy it and hand it over securely.",
+      "fields": {
+        "slug": "Identifier (slug)",
+        "name": "Name",
+        "phone": "Phone",
+        "adminEmail": "Admin email",
+        "status": "Status"
+      },
+      "validation": {
+        "slugRequired": "The identifier is required.",
+        "slugInvalid": "The identifier may contain only lowercase letters, digits, and hyphens.",
+        "nameRequired": "The name is required.",
+        "phoneRequired": "The phone is required.",
+        "emailRequired": "The admin email is required.",
+        "emailInvalid": "Enter a valid email address."
+      }
+    }
+  },
   "nav": {
     "board": "Dispatch",
     "orders": "Orders",
     "settings": "Settings",
     "logout": "Log out",
     "mute": "Mute sound",
-    "unmute": "Unmute sound"
+    "unmute": "Unmute sound",
+    "reports": "Reports",
+    "audit": "Audit"
   },
   "login": {
     "title": "Sign in",
@@ -258,10 +306,35 @@
       "title": "Fleet",
       "name": "Fleet name",
       "phone": "Fleet phone",
+      "primaryColor": "Brand color",
+      "primaryColorHex": "Color code",
+      "welcomeText": "Welcome text",
       "offerTimeout": "Offer timeout (s)",
+      "smsCap": "Monthly SMS cap (CZK)",
       "autoDispatch": "Auto-dispatch",
       "autoDispatchHint": "Available in v1.1",
-      "loading": "Loading settings..."
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Settings saved.",
+      "saveFailed": "Could not save settings. Please try again.",
+      "loading": "Loading settings...",
+      "logo": {
+        "label": "Fleet logo",
+        "hint": "PNG, 200 KB maximum.",
+        "previewAlt": "Fleet logo preview",
+        "notPng": "The logo must be a PNG image.",
+        "tooLarge": "The logo exceeds the 200 KB limit.",
+        "uploaded": "Logo uploaded.",
+        "uploadFailed": "Could not upload the logo. Check the format and size."
+      },
+      "validation": {
+        "nameRequired": "Fleet name is required.",
+        "phoneRequired": "Fleet phone is required.",
+        "colorInvalid": "Enter a valid color code in #RRGGBB format.",
+        "offerTimeoutRange": "Offer timeout must be between 10 and 600 seconds.",
+        "smsCapInvalid": "The SMS cap must be a non-negative integer.",
+        "welcomeTooLong": "The welcome text may be at most 2000 characters."
+      }
     },
     "routes": {
       "title": "Routes",
@@ -684,6 +757,9 @@
   },
   "customer": {
     "appName": "Taxi",
+    "footer": {
+      "gdpr": "Privacy policy"
+    },
     "call": "Call",
     "callAria": "Call dispatch {{phone}}",
     "callUnavailableAria": "The dispatch phone number is not available yet",
@@ -879,6 +955,100 @@
       "cap": "Monthly cap",
       "nearCap": "You are approaching the monthly SMS cap.",
       "overCap": "The monthly SMS cap is reached – only driver-arrival SMS are still sent."
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "driverReport": {
+      "title": "Driver report",
+      "driver": "Driver",
+      "allDrivers": "All drivers",
+      "from": "From",
+      "to": "To",
+      "downloadCsv": "Download CSV",
+      "downloading": "Downloading...",
+      "selectDriver": "Select a driver to view their report."
+    },
+    "table": {
+      "day": "Day",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "cash": "Cash",
+      "card": "Card",
+      "invoice": "Invoice",
+      "total": "Total",
+      "hoursOnline": "Hours online",
+      "priceOverrides": "Price overrides",
+      "totalsRow": "Total",
+      "avgRating": "Average rating",
+      "noRating": "–",
+      "empty": "No data for the selected period"
+    },
+    "fleet": {
+      "title": "Fleet report",
+      "rides": "Rides",
+      "revenue": "Revenue",
+      "avgPrice": "Average price",
+      "timeToAssign": "Time to assign",
+      "timeToPickup": "Time to pickup",
+      "cancellationRate": "Cancellation rate",
+      "appShare": "App share",
+      "phoneShare": "Phone share",
+      "fixedRouteShare": "Fixed-route share",
+      "smsCount": "SMS count",
+      "smsCost": "Estimated SMS cost"
+    },
+    "chart": {
+      "title": "Rides per day",
+      "empty": "No rides in period",
+      "barLabel": "{{day}}: {{rides}} rides"
+    },
+    "topRoutes": {
+      "title": "Top routes",
+      "count": "{{count}}×",
+      "empty": "No routes"
+    },
+    "ratings": {
+      "title": "Ratings",
+      "stars": "{{stars}} of 5",
+      "order": "Order",
+      "driver": "Driver",
+      "noComment": "No comment",
+      "empty": "No ratings"
+    },
+    "loading": "Loading report...",
+    "error": "Failed to load the report.",
+    "accessDenied": "You do not have access to this page."
+  },
+  "audit": {
+    "title": "Audit",
+    "filters": {
+      "actor": "Actor",
+      "entity": "Entity",
+      "from": "From",
+      "to": "To",
+      "orderCode": "Order code",
+      "apply": "Filter",
+      "clear": "Clear filter",
+      "allEntities": "All entities"
+    },
+    "table": {
+      "time": "Time",
+      "actor": "Actor",
+      "entity": "Entity",
+      "event": "Event",
+      "order": "Order"
+    },
+    "empty": "No records",
+    "loading": "Loading audit...",
+    "error": "Failed to load audit.",
+    "accessDenied": "You do not have access to this page.",
+    "page": "Page {{page}}",
+    "prev": "Previous",
+    "next": "Next",
+    "event": {
+      "StatusOverride": "Manual status change",
+      "Unknown": "Unknown event"
     }
   }
 }

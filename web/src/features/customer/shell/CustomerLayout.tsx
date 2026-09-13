@@ -27,6 +27,19 @@ const Header = styled.header`
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
 `
 
+const Brand = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+  min-width: 0;
+`
+
+const Logo = styled.img`
+  height: 32px;
+  max-width: 120px;
+  object-fit: contain;
+`
+
 const FleetName = styled.h1`
   margin: 0;
   font-size: ${({ theme }) => theme.typography.fontSizeLg};
@@ -39,6 +52,22 @@ const Content = styled.main`
   display: flex;
   flex-direction: column;
   overflow: auto;
+`
+
+const Footer = styled.footer`
+  padding: ${({ theme }) => theme.spacing.md};
+  text-align: center;
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+`
+
+const FooterLink = styled.a`
+  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  color: ${({ theme }) => theme.colors.textSecondary};
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline-offset: 2px;
+  }
 `
 
 /**
@@ -78,12 +107,22 @@ export function CustomerLayout() {
     <ThemeProvider theme={brandedTheme}>
       <Shell>
         <Header>
-          <FleetName>{fleet?.name ?? t('customer.appName')}</FleetName>
+          <Brand>
+            {fleet?.logoUrl && (
+              <Logo src={fleet.logoUrl} alt={fleet.name ?? t('customer.appName')} />
+            )}
+            <FleetName>{fleet?.name ?? t('customer.appName')}</FleetName>
+          </Brand>
           <CallButton phone={fleet?.phone} />
         </Header>
         <Content>
           <Outlet />
         </Content>
+        <Footer>
+          <FooterLink href="/gdpr.md" target="_blank" rel="noopener noreferrer">
+            {t('customer.footer.gdpr')}
+          </FooterLink>
+        </Footer>
       </Shell>
     </ThemeProvider>
   )

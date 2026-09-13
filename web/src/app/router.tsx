@@ -14,6 +14,25 @@ import { CompletePage } from '../features/driver/complete/CompletePage'
 import { HistoryPage } from '../features/driver/history/HistoryPage'
 import { DriverSettingsPage } from '../features/driver/settings/DriverSettingsPage'
 
+// ── Dispatcher reports + audit (lazy-loaded /x chunks — FleetAdmin only) ───────
+const ReportsPage = lazy(() =>
+  import('../features/reports/ReportsPage').then(m => ({ default: m.ReportsPage })),
+)
+const AuditPage = lazy(() =>
+  import('../features/audit/AuditPage').then(m => ({ default: m.AuditPage })),
+)
+
+// ── SuperAdmin /admin (lazy-loaded — SuperAdmin only, cross-tenant ops) ─────────
+const AdminFleetsPage = lazy(() =>
+  import('../features/admin/AdminFleetsPage').then(m => ({ default: m.AdminFleetsPage })),
+)
+const AdminGuard = lazy(() =>
+  import('../features/admin/AdminGuard').then(m => ({ default: m.AdminGuard })),
+)
+const AdminLoginPage = lazy(() =>
+  import('../features/admin/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })),
+)
+
 // ── Customer /c (lazy-loaded chunk — no /x or /d code ships to customers) ──────
 const CustomerLayout = lazy(() =>
   import('../features/customer/shell/CustomerLayout').then(m => ({ default: m.CustomerLayout })),
@@ -42,6 +61,11 @@ function lazyCustomer(node: ReactNode): ReactNode {
   return <Suspense fallback={null}>{node}</Suspense>
 }
 
+/** Suspense boundary for the lazy dispatcher report/audit chunks. */
+function lazyDispatch(node: ReactNode): ReactNode {
+  return <Suspense fallback={null}>{node}</Suspense>
+}
+
 export const router = createBrowserRouter([
   // ── Dispatcher /x ──────────────────────────────────────────────────────────
   {
@@ -63,7 +87,22 @@ export const router = createBrowserRouter([
       },
       { path: 'orders', element: <SearchPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'reports', element: lazyDispatch(<ReportsPage />) },
+      { path: 'audit', element: lazyDispatch(<AuditPage />) },
     ],
+  },
+
+  // ── SuperAdmin /admin ────────────────────────────────────────────────────────
+  // Standalone (NOT under the fleet-scoped AppLayout): SuperAdmin has no fleet.
+  // The guard redirects non-SuperAdmins to /admin/login (fleetless SuperAdmin auth — A7b).
+  // Lazy chunk — no /x/d/c code ships here.
+  {
+    path: '/admin/login',
+    element: lazyDispatch(<AdminLoginPage />),
+  },
+  {
+    path: '/admin',
+    element: lazyDispatch(<AdminGuard>{lazyDispatch(<AdminFleetsPage />)}</AdminGuard>),
   },
 
   // ── Driver /d ──────────────────────────────────────────────────────────────

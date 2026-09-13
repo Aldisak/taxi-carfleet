@@ -8,6 +8,20 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 
 ---
 
+## Admin
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/admin/fleets` | List fleets (SuperAdmin) | Bearer |
+| POST | `/admin/fleets` | Create fleet (SuperAdmin) | Bearer |
+| POST | `/admin/fleets/{id}/deactivate` | Deactivate fleet (SuperAdmin) | Bearer |
+
+## Audit
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/audit` | Audit timeline (FleetAdmin) | Bearer |
+
 ## Auth
 
 | Method | Route | Summary | Auth |
@@ -17,6 +31,13 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | POST | `/auth/customer/request-code` | Request customer SMS code | Anonymous |
 | POST | `/auth/refresh` | Refresh token rotation | Anonymous |
 | POST | `/auth/logout` | Logout | Bearer |
+| POST | `/auth/admin/login` | SuperAdmin login | Anonymous |
+
+## Customers
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| DELETE | `/customers/me` | Delete my account (Customer, SMS-confirmed) | Bearer |
 
 ## Drivers
 
@@ -34,6 +55,8 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
+| POST | `/fleet/logo` | Upload fleet logo (FleetAdmin) | Bearer |
+| PUT | `/fleet/settings` | Update fleet settings (FleetAdmin) | Bearer |
 | GET | `/fleet/settings` | Get fleet settings | Bearer |
 
 ## Geo
@@ -100,6 +123,14 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 |--------|-------|---------|------|
 | DELETE | `/push/subscriptions` | Remove a Web Push subscription | Bearer |
 | POST | `/push/subscriptions` | Register a Web Push subscription | Bearer |
+
+## Reports
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/reports/ratings` | Ratings list (FleetAdmin) | Bearer |
+| GET | `/reports/fleet` | Fleet report (FleetAdmin) | Bearer |
+| GET | `/reports/drivers` | Driver report (FleetAdmin) | Bearer |
 
 ## Routes
 

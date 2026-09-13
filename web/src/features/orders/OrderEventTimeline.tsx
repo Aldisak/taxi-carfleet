@@ -1,6 +1,7 @@
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { formatEventTime } from './eventTimeline'
+import { auditEventLabelKey } from '../../shared/audit/auditEventLabel'
 import type { OrderEventDto } from '../../shared/api/client'
 
 const TimelineList = styled.ol`
@@ -81,7 +82,7 @@ export function EventTimeline({ events }: EventTimelineProps) {
       {sorted.map((event, idx) => {
         const { relative, absolute } = formatEventTime(event.at)
         const actor = t(`orders.timeline.actor.${event.actorRole}`, { defaultValue: event.actorRole })
-        const label = t(`orders.timeline.event.${event.type}`, { defaultValue: event.type })
+        const label = t(auditEventLabelKey(event.type), { defaultValue: event.type })
 
         // Extract notable payload fields
         const reason = event.payload?.['reason'] as string | undefined

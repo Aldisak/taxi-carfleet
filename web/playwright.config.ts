@@ -35,8 +35,11 @@ export default defineConfig({
 
   projects: [
     {
-      // Desktop dispatcher project — dispatcher.spec.ts only (runs first, serially).
-      // Ignore BOTH the driver and the customer mobile specs so they never double-run here.
+      // Desktop project — dispatcher.spec.ts + onboarding.spec.ts (UC-007 AC#3/AC#4,
+      // a dispatcher/admin + customer-branding desktop flow). Runs first, serially.
+      // Ignore BOTH the driver and the customer MOBILE specs so they never double-run here;
+      // the mobile projects below use testMatch (driver/customer only), so onboarding.spec.ts —
+      // matched by neither testMatch — runs ONLY in this desktop project (no double-run).
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       testIgnore: [/driver\.spec\.ts/, /customer\.spec\.ts/],

@@ -35,4 +35,9 @@
     <ProjectReference Include="..\..\src\Taxi.Api\Taxi.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Byte-exact CSV report fixtures (UC-007 A2). Copied verbatim so tests can byte-compare. -->
+    <Content Include="Reports\*.csv" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

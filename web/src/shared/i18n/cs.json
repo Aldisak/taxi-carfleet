@@ -5,13 +5,61 @@
     "error": "Nastala chyba",
     "offline": "Offline – zobrazuji poslední známý stav"
   },
+  "admin": {
+    "login": {
+      "title": "Přihlášení správce systému",
+      "email": "E-mail",
+      "emailPlaceholder": "superadmin@demo.local",
+      "password": "Heslo",
+      "submit": "Přihlásit se",
+      "loading": "Přihlašuji…",
+      "invalidCredentials": "Nesprávné přihlašovací údaje. Zkuste to znovu.",
+      "networkError": "Nelze se připojit k serveru. Zkontrolujte připojení k internetu.",
+      "unknownError": "Nastala neočekávaná chyba. Zkuste to znovu.",
+      "validation": {
+        "emailRequired": "E-mail je povinný.",
+        "emailInvalid": "Zadejte platnou e-mailovou adresu.",
+        "passwordRequired": "Heslo je povinné."
+      }
+    },
+    "fleets": {
+      "title": "Správa flotil",
+      "createTitle": "Vytvořit novou flotilu",
+      "listTitle": "Existující flotily",
+      "create": "Vytvořit flotilu",
+      "creating": "Vytvářím…",
+      "createFailed": "Flotilu se nepodařilo vytvořit. Zkontrolujte údaje a zkuste to znovu.",
+      "loading": "Načítám flotily…",
+      "loadFailed": "Seznam flotil se nepodařilo načíst.",
+      "active": "Aktivní",
+      "inactive": "Neaktivní",
+      "passwordWarning": "Jednorázové heslo správce pro {{email}}. Zobrazí se pouze jednou – zkopírujte ho a bezpečně předejte.",
+      "fields": {
+        "slug": "Identifikátor (slug)",
+        "name": "Název",
+        "phone": "Telefon",
+        "adminEmail": "E-mail správce",
+        "status": "Stav"
+      },
+      "validation": {
+        "slugRequired": "Identifikátor je povinný.",
+        "slugInvalid": "Identifikátor smí obsahovat jen malá písmena, číslice a pomlčky.",
+        "nameRequired": "Název je povinný.",
+        "phoneRequired": "Telefon je povinný.",
+        "emailRequired": "E-mail správce je povinný.",
+        "emailInvalid": "Zadejte platnou e-mailovou adresu."
+      }
+    }
+  },
   "nav": {
     "board": "Dispečink",
     "orders": "Objednávky",
     "settings": "Nastavení",
     "logout": "Odhlásit se",
     "mute": "Ztlumit zvuk",
-    "unmute": "Zapnout zvuk"
+    "unmute": "Zapnout zvuk",
+    "reports": "Reporty",
+    "audit": "Audit"
   },
   "login": {
     "title": "Přihlášení",
@@ -258,10 +306,35 @@
       "title": "Flotila",
       "name": "Název flotily",
       "phone": "Telefon flotily",
+      "primaryColor": "Barva značky",
+      "primaryColorHex": "Barevný kód",
+      "welcomeText": "Uvítací text",
       "offerTimeout": "Časový limit nabídky (s)",
+      "smsCap": "Měsíční limit SMS (Kč)",
       "autoDispatch": "Automatické přidělování",
       "autoDispatchHint": "Dostupné ve verzi 1.1",
-      "loading": "Načítám nastavení..."
+      "save": "Uložit",
+      "saving": "Ukládám…",
+      "saved": "Nastavení uloženo.",
+      "saveFailed": "Nastavení se nepodařilo uložit. Zkuste to prosím znovu.",
+      "loading": "Načítám nastavení...",
+      "logo": {
+        "label": "Logo flotily",
+        "hint": "PNG, maximálně 200 KB.",
+        "previewAlt": "Náhled loga flotily",
+        "notPng": "Logo musí být ve formátu PNG.",
+        "tooLarge": "Logo překračuje limit 200 KB.",
+        "uploaded": "Logo nahráno.",
+        "uploadFailed": "Logo se nepodařilo nahrát. Zkontrolujte formát a velikost."
+      },
+      "validation": {
+        "nameRequired": "Název flotily je povinný.",
+        "phoneRequired": "Telefon flotily je povinný.",
+        "colorInvalid": "Zadejte platný barevný kód ve formátu #RRGGBB.",
+        "offerTimeoutRange": "Časový limit nabídky musí být mezi 10 a 600 sekundami.",
+        "smsCapInvalid": "Limit SMS musí být nezáporné celé číslo.",
+        "welcomeTooLong": "Uvítací text může mít nejvýše 2000 znaků."
+      }
     },
     "routes": {
       "title": "Trasy",
@@ -684,6 +757,9 @@
   },
   "customer": {
     "appName": "Taxi",
+    "footer": {
+      "gdpr": "Ochrana osobních údajů"
+    },
     "call": "Zavolat",
     "callAria": "Zavolat na dispečink {{phone}}",
     "callUnavailableAria": "Telefonní číslo dispečinku zatím není k dispozici",
@@ -879,6 +955,100 @@
       "cap": "Měsíční limit",
       "nearCap": "Blížíte se měsíčnímu limitu SMS.",
       "overCap": "Měsíční limit SMS byl vyčerpán – posílají se jen SMS o příjezdu řidiče."
+    }
+  },
+  "reports": {
+    "title": "Reporty",
+    "driverReport": {
+      "title": "Report řidičů",
+      "driver": "Řidič",
+      "allDrivers": "Všichni řidiči",
+      "from": "Od",
+      "to": "Do",
+      "downloadCsv": "Stáhnout CSV",
+      "downloading": "Stahuji...",
+      "selectDriver": "Vyberte řidiče pro zobrazení jeho reportu."
+    },
+    "table": {
+      "day": "Den",
+      "completed": "Dokončené",
+      "cancelled": "Zrušené",
+      "cash": "Hotovost",
+      "card": "Karta",
+      "invoice": "Fakturace",
+      "total": "Celkem",
+      "hoursOnline": "Hodin online",
+      "priceOverrides": "Úpravy ceny",
+      "totalsRow": "Celkem",
+      "avgRating": "Průměrné hodnocení",
+      "noRating": "–",
+      "empty": "Žádná data za zvolené období"
+    },
+    "fleet": {
+      "title": "Report flotily",
+      "rides": "Jízdy",
+      "revenue": "Tržby",
+      "avgPrice": "Průměrná cena",
+      "timeToAssign": "Čas do přiřazení",
+      "timeToPickup": "Čas k vyzvednutí",
+      "cancellationRate": "Míra zrušení",
+      "appShare": "Podíl z aplikace",
+      "phoneShare": "Podíl po telefonu",
+      "fixedRouteShare": "Podíl pevných tras",
+      "smsCount": "Počet SMS",
+      "smsCost": "Odhadovaná cena SMS"
+    },
+    "chart": {
+      "title": "Jízdy po dnech",
+      "empty": "Žádné jízdy v období",
+      "barLabel": "{{day}}: {{rides}} jízd"
+    },
+    "topRoutes": {
+      "title": "Nejčastější trasy",
+      "count": "{{count}}×",
+      "empty": "Žádné trasy"
+    },
+    "ratings": {
+      "title": "Hodnocení",
+      "stars": "{{stars}} z 5",
+      "order": "Objednávka",
+      "driver": "Řidič",
+      "noComment": "Bez komentáře",
+      "empty": "Žádná hodnocení"
+    },
+    "loading": "Načítám report...",
+    "error": "Report se nepodařilo načíst.",
+    "accessDenied": "Na tuto stránku nemáte přístup."
+  },
+  "audit": {
+    "title": "Audit",
+    "filters": {
+      "actor": "Aktér",
+      "entity": "Entita",
+      "from": "Od",
+      "to": "Do",
+      "orderCode": "Kód objednávky",
+      "apply": "Filtrovat",
+      "clear": "Zrušit filtr",
+      "allEntities": "Všechny entity"
+    },
+    "table": {
+      "time": "Čas",
+      "actor": "Aktér",
+      "entity": "Entita",
+      "event": "Událost",
+      "order": "Objednávka"
+    },
+    "empty": "Žádné záznamy",
+    "loading": "Načítám audit...",
+    "error": "Audit se nepodařilo načíst.",
+    "accessDenied": "Na tuto stránku nemáte přístup.",
+    "page": "Strana {{page}}",
+    "prev": "Předchozí",
+    "next": "Další",
+    "event": {
+      "StatusOverride": "Ruční změna stavu",
+      "Unknown": "Neznámá událost"
     }
   }
 }

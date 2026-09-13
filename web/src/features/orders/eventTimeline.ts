@@ -1,24 +1,7 @@
-/**
- * All 13 OrderEventType members (mirrors C# OrderEventType enum).
- * Used by tests to ensure every type has an i18n key under orders.timeline.event.<Type>.
- */
-export const ALL_ORDER_EVENT_TYPES = [
-  'Created',
-  'Assigned',
-  'Accepted',
-  'Declined',
-  'Timeout',
-  'Arrived',
-  'Started',
-  'Completed',
-  'Cancelled',
-  'Reassigned',
-  'PriceOverridden',
-  'NoteAdded',
-  'Updated',
-] as const
-
-export type OrderEventType = (typeof ALL_ORDER_EVENT_TYPES)[number]
+// The canonical order-event set now lives in src/shared/audit/auditEventLabel.ts
+// (promoted for B2 so the orders drawer and the audit page share one source). Re-exported
+// here for back-compat with existing imports (OrderEventTimeline, tests).
+export { ALL_ORDER_EVENT_TYPES, type OrderEventType } from '../../shared/audit/auditEventLabel'
 
 /** Formats an ISO timestamp as a human-readable Czech relative + absolute time string. */
 export function formatEventTime(at: string): { relative: string; absolute: string } {

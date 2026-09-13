@@ -29,6 +29,12 @@ const SectionTitle = styled.h2`
   color: ${({ theme }) => theme.colors.textSecondary};
 `
 
+const WelcomeText = styled.p`
+  margin: 0;
+  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  color: ${({ theme }) => theme.colors.text};
+`
+
 const CustomAddressButton = styled.button`
   width: 100%;
   min-height: ${({ theme }) => theme.touchTargets.primary};
@@ -63,6 +69,8 @@ export function CustomerHomePage() {
 
   return (
     <Page>
+      {fleet?.welcomeText && <WelcomeText>{fleet.welcomeText}</WelcomeText>}
+
       {content.mode === 'activeOrder' && <ActiveOrderBanner activeOrder={content.activeOrder} />}
 
       <OfflineGate phone={fleet?.phone}>

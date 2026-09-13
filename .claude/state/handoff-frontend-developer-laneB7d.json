@@ -1,0 +1,32 @@
+{
+  "wi_id": "laneB7d",
+  "title": "admin login wiring + onboarding e2e update + Fleet-tab clobber fix",
+  "files_changed": [
+    "web/src/shared/api/client.ts",
+    "web/src/features/admin/adminLoginForm.ts",
+    "web/src/features/admin/adminLoginForm.test.ts",
+    "web/src/features/admin/useAdminLogin.ts",
+    "web/src/features/admin/AdminLoginPage.tsx",
+    "web/src/features/admin/AdminLoginPage.test.tsx",
+    "web/src/features/admin/AdminGuard.tsx",
+    "web/src/app/router.tsx",
+    "web/src/shared/i18n/cs.json",
+    "web/src/shared/i18n/en.json",
+    "web/src/features/settings/FleetTab.tsx",
+    "web/src/features/settings/FleetTab.test.tsx",
+    "web/src/features/settings/fleetSettingsMapper.ts",
+    "web/src/features/settings/resetPassword.test.ts",
+    "web/e2e/onboarding.spec.ts"
+  ],
+  "tests_added_or_changed": [
+    "admin/adminLoginForm.test.ts NEW (5: valid email+password, missing email, email without @, missing password, both empty)",
+    "admin/AdminLoginPage.test.tsx NEW (4: success stores SuperAdmin token with empty slug + routed guard opens admin heading; bad creds Czech error + no token + stays on login; empty fields block submit with no network call; axe)",
+    "settings/FleetTab.test.tsx UPDATED (prefill now reads color/welcome/smsCap from GET /fleet/settings settings() factory; PUT-null test drives null color/welcome from settings not publicFleet; added smsCap prefill assertion)",
+    "settings/resetPassword.test.ts UPDATED (+1: mapFleetSettings passes through A7b additive fields primaryColorHex/welcomeText/smsMonthlyCapCzk)"
+  ],
+  "tests_passing": 1097,
+  "e2e_run": "NOT RUN — conductor runs",
+  "hit_max_turns": false,
+  "notes": "ADMIN LOGIN (Part 1): chose a DEDICATED /admin/login route (not an inline form in AdminGuard) — AdminGuard reads authStorage.getUserRole() once at render, so a localStorage write from an inline form would NOT re-run the gate; a separate route means login success navigate('/admin') re-mounts the guard which then re-reads the freshly-stored SuperAdmin role. AdminGuard now redirects tokenless/non-SuperAdmin users to /admin/login (was /x/login — which structurally cannot mint a fleetless SuperAdmin token). adminLogin() added to client.ts: POST /auth/admin/login { email, password }, returns StaffLoginResponse (reused — same shape), skipAuthRedirect:true (same as verifyCustomerCode) so a 401 renders a form error instead of bouncing. useAdminLogin mirrors useLogin: 401->admin.login.invalidCredentials, success->authStorage.setTokens(access, refresh, '', 'SuperAdmin') then navigate('/admin'). EMPTY fleetSlug is deliberate: a SuperAdmin is fleetless, and an empty slug keeps getFleetSlug() falsy so no stale X-Fleet-Slug leaks onto the cross-tenant /admin/* calls (verified admin endpoints need no slug). AdminLoginPage mirrors the dispatcher LoginPage minus the slug field (email + password). New lazy route in router.tsx: /admin/login -> AdminLoginPage (separate entry before the /admin guard route). i18n: added admin.login.* to BOTH cs.json and en.json (title/email/emailPlaceholder/password/submit/loading/invalidCredentials/networkError/unknownError + validation.emailRequired/emailInvalid/passwordRequired) — parity test green.\n\nE2E SUPERADMIN AUTH (Part 2): added adminApiLogin(email,password) hitting POST /auth/admin/login (fleetless, no slug) and swapped the AC3 SuperAdmin step from the old apiLogin(...,NEW_FLEET.slug) to adminApiLogin — the blocker from B7c handoff #1 is resolved by laneA7b. The FleetAdmin login for the new fleet STAYS on apiLogin (POST /auth/staff/login with slug) — correct for a fleet-bound FleetAdmin. Rewrote the header comment block (lines 18-30) that described the now-resolved blocker. beforeAll create-superadmin CLI unchanged. SuperAdmin creds unchanged (superadmin@demo.local / Super1234!). Spec NOT run.\n\nFLEET-TAB CLOBBER FIX (Part 3): verified against api/.../GetFleetSettingsResponse.cs that GET /fleet/settings now returns PrimaryColorHex, WelcomeText, SmsMonthlyCapCzk (A7b) but NOT logoUrl. So: added primaryColorHex?/welcomeText? (string|null, optional for backward compat) to FleetSettingsDto; added both to FleetSettingsViewModel + mapFleetSettings passthrough. FleetTab now prefills color/welcome/smsCap from GET /fleet/settings DIRECTLY (removed the public/fleet color/welcome workaround AND the default-500 smsCap fallback-as-primary-source). getPublicFleet is RETAINED but ONLY for the logo preview <img> (logoUrl is not in the settings read, and the logo is a separate 204 upload not part of the PUT, so it is orthogonal to the clobber risk — dropping it would silently regress the preview). The seed useEffect dep array dropped publicFleet. smsMonthlyCapCzk default 500 is now only the last-resort ?? fallback when settings omits it (it no longer will).\n\nWATCH-ITEM (pre-existing, out of scope, for the conductor): token EXPIRY on an /admin/* API call (not the login call) still falls through apiRequest's dispatcher branch and does window.location.href='/x/login', NOT /admin/login — a SuperAdmin whose token expires mid-session bounces to the dispatcher login. The task's 401 concern was the LOGIN call (handled correctly via skipAuthRedirect), and this fallthrough is pre-existing apiRequest behavior, so it was not changed. If the conductor wants /admin sessions to re-login cleanly, apiRequest needs a path-aware redirect (/admin/* -> /admin/login).\n\nTEST MOCKING: AdminLoginPage.test.tsx mocks the api client module via vi.mock (adminLogin: vi.fn()) per rules/web-testing.md#network-mocking — NOT fetch stubs. importOriginal spread is kept so ApiResponseError stays the real class (useAdminLogin narrows on instanceof). Mirrors the sibling AdminFleetsPage.test.tsx / FleetTab.test.tsx precedent.",
+  "verification_output": "tsc (tsc --noEmit): EXIT 0. lint (eslint --max-warnings 0): EXIT 0. test --run: 170 files, 1097 tests passed (0 fail), up from 1087 (+10: adminLoginForm 5, AdminLoginPage 4, resetPassword +1). onboarding.spec.ts NOT collected (e2e/** excluded — 170 files, no onboarding). locales.parity.test.ts green. build: EXIT 0 (AdminLoginPage emits inside the admin lazy chunk; customer/dispatch chunks unaffected). size: 239.5 kB brotli < 260 kB budget, EXIT 0. Staged `git add web/ docs/`; verified no tsconfig.tsbuildinfo / node_modules / test-results / playwright-report staged. NOT committed. Playwright NOT run (conductor runs it)."
+}

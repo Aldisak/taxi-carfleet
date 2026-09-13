@@ -27,6 +27,11 @@ public class Fleet
     /// <summary>Whether the fleet is currently active.</summary>
     public bool IsActive { get; set; }
 
+    /// <summary>UTC timestamp the fleet logo was last uploaded. Null means no logo. Doubles as a
+    /// cache-bust signal: the derived logo URL carries <c>?v={LogoUpdatedAt.Ticks}</c>. The file itself
+    /// lives on disk at <c>{storageRoot}/fleets/{id}/logo.png</c> — no blob column.</summary>
+    public DateTimeOffset? LogoUpdatedAt { get; set; }
+
     /// <summary>UTC timestamp when the fleet record was created.</summary>
     public DateTimeOffset CreatedAt { get; set; }
 }

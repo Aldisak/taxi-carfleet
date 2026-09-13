@@ -1,0 +1,28 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneB7a+b+c (B1/B2/B3 web)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "file": "web/src/shared/api/client.ts:1657",
+      "rule": "rules/web-architecture.md#api-client",
+      "title": "Audit actor filter is free-text sent to a Guid-typed backend param",
+      "detail": "AuditFilters.actor is a free-text <Input> forwarded verbatim as ?actor=. The backend GetAuditRequest.Actor is Guid?; a non-Guid value (e.g. a typed name) fails model binding and returns 400, surfacing an error banner. Empty (the default) is fine. Already disclosed in the laneB7b handoff as a known limitation.",
+      "recommendation": "Future polish: replace the actor text input with a driver/user picker that yields a Guid, or validate the field as a GUID client-side before filtering."
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "file": "web/src/features/settings/FleetTab.tsx",
+      "rule": "rules/web-architecture.md#api-client",
+      "title": "Full-PUT clobber risk on smsMonthlyCapCzk from a fresh Fleet tab load",
+      "detail": "PUT /fleet/settings is a full replace, but neither GET /fleet/settings nor GET /public/fleet exposes smsMonthlyCapCzk; the form seeds it from the optional FleetSettingsDto field else the server default 500. A fleet whose real cap != 500 would be reset to 500 on the first save. Documented and advisor-caught in laneB7c; the real fix is api-side (add the field to the read DTO).",
+      "recommendation": "Conductor/api: add smsMonthlyCapCzk (ideally also primaryColorHex/welcomeText) to the GetFleetSettings read DTO; the web form already types it optional and will read it when present."
+    }
+  ],
+  "summary": "UC-007 web lane (B1 reports, B2 audit, B3 admin + Fleet tab + onboarding e2e) is correct and does NOT block merge. laneB7b genuinely reconciled the report/audit client contracts to the REAL laneA7 backend records: verified against api DTOs that AuditEntryDto=(Source,ActorUserId,Entity,Action,OrderCode,At), RatingDto=(OrderPublicCode,DriverName,Stars,Comment,RatedAt), RidesPerDayDto=(Date,Count), FleetKpiDto carries RAW COUNTS (AppOrders/PhoneOrders/FixedRouteOrders) + nullable double? AvgTime*Seconds + double CancellationRate, GetAuditResponse is 1-based {Items,Total,Page,PageSize}. The client types match byte-for-byte (per-day `date` not `day`, money cashCzk/cardCzk/invoiceCzk/totalCzk, ratings {items} envelope, audit item action/actorUserId, action label 'StatusOverride' singular). FleetKpiCards derives appShare=appOrders/(appOrders+phoneOrders) and fixedRouteShare=fixedRouteOrders/rides with a <=0 div-by-zero guard->'—', cancellationRate rendered as %, nullable seconds->formatDuration->'—' (never NaN). The 3 fetch-mocked client.test regressions assert the REAL field names (cashCzk, appOrders/phoneOrders raw counts, {items}, action/actorUserId, 1-based page+pageSize, date='Celkem'), so drift is locked. B1: driver report gated via useDriverReport enabled flag (empty driver selection never fires -> no 400), per-day table + totals row, server-CSV blob via dedicated fetchDriverReportCsv (client never builds CSV bytes), hand-rolled <svg> RidesChart (no chart lib; size 238.17kB<260kB), ratings list reading orderPublicCode/driverName??'—'. B2: paged 1-based filterable timeline, hasNext=serverPage*serverPageSize<total from the response (not a hardcoded 50), auditEventLabel lives in src/shared/audit (no cross-feature import), OrderEventTimeline rewired with a Czech PriceOverridden regression. B3: /admin is a standalone top-level lazy chunk guarded by AdminGuard (canAccessAdmin===SuperAdmin else redirect /x/login); create-fleet shows one-time password once; /x/settings Fleet tab editable with disabled auto-dispatch toggle + <=200KB PNG client pre-check; customer runtime branding (logo/welcome) additive; multipart logo upload uses a manual fetch with NO JSON Content-Type (browser sets the multipart boundary). Rules: i18n cs/en parity clean (812 keys, zero mismatch); no cross-feature imports; client.ts extended not forked; no tsconfig.tsbuildinfo staged; router /d and /c untouched; reports/audit/admin all separate lazy chunks. Only two LOW advisory findings, both pre-disclosed and both fundamentally api-side.",
+  "ac3_verdict": "CONFIRMED REAL GAP, web side otherwise correct. SuperAdmin cannot authenticate today: StaffLoginEndpoint resolves the user within a fleet by slug and only accepts Driver/Dispatcher/FleetAdmin, while a SuperAdmin has FleetId=null and belongs to no slug — structural, not a role-filter tweak. The /admin screen is therefore unreachable in production until the API adds a SuperAdmin auth branch (POST /auth/admin/login or a SuperAdmin path in StaffLogin that skips fleet resolution), which the conductor is fixing in api laneA7b. The web side is correct PENDING that endpoint: admin client fns point at the real existing /admin/* routes (tsc/build/unit green), AdminGuard + route wiring are in place, and the authored onboarding.spec.ts obtains a SuperAdmin token via an API login step that will light up once laneA7b lands plus a small web login-wiring follow-up. The developer correctly did NOT forge a JWT or invent a route. The onboarding e2e is authored but not yet run — conductor runs it after laneA7b + the web login-wiring follow-up, as expected. No web-side defect tied to AC#3."
+}

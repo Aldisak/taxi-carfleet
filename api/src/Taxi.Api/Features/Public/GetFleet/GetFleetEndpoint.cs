@@ -49,18 +49,31 @@ internal sealed class GetFleetEndpoint(TaxiDbContext dbContext, ICurrentTenant c
             return;
         }
 
-        // Query-filter-scoped projection to the resolved fleet's public fields.
-        var branding = await dbContext.Fleets.AsNoTracking()
-            .Where(f => f.Id == currentTenant.FleetId.Value)
-            .Select(f => new GetFleetResponse(f.Name, f.Phone, f.PrimaryColorHex, f.Currency, f.TimeZone))
+        var fleetId = currentTenant.FleetId.Value;
+
+        // Projection to the resolved fleet's public fields + logo-updated signal.
+        var row = await dbContext.Fleets.AsNoTracking()
+            .Where(f => f.Id == fleetId)
+            .Select(f => new { f.Name, f.Phone, f.PrimaryColorHex, f.Currency, f.TimeZone, f.LogoUpdatedAt })
             .FirstOrDefaultAsync(ct);
 
-        if (branding is null)
+        if (row is null)
         {
             await Send.NotFoundAsync(ct);
             return;
         }
 
-        await Send.OkAsync(branding, ct);
+        // WelcomeText from FleetSettings (tenant-scoped). Derive the logo URL with a cache-bust when set.
+        var welcomeText = await dbContext.FleetSettings.AsNoTracking()
+            .Where(s => s.FleetId == fleetId)
+            .Select(s => s.WelcomeText)
+            .FirstOrDefaultAsync(ct);
+
+        var logoUrl = row.LogoUpdatedAt is DateTimeOffset stamp
+            ? $"/fleets/{fleetId}/logo.png?v={stamp.UtcTicks}"
+            : null;
+
+        await Send.OkAsync(new GetFleetResponse(
+            row.Name, row.Phone, row.PrimaryColorHex, row.Currency, row.TimeZone, welcomeText, logoUrl), ct);
     }
 }

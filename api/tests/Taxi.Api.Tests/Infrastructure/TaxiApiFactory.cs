@@ -32,6 +32,11 @@ public class TaxiApiFactory : WebApplicationFactory<Program>
     /// before each call to control the geo upstream behaviour without real HTTP calls.</summary>
     public FakeGeoProvider FakeGeo { get; } = new FakeGeoProvider();
 
+    /// <summary>Per-factory temp directory used as the fleet-logo storage root so uploads in tests never
+    /// touch the production <c>/data</c> path.</summary>
+    public string LogoStorageRoot { get; } =
+        Path.Combine(Path.GetTempPath(), "taxi-test-logos", Guid.NewGuid().ToString("N"));
+
     /// <summary>Initializes the factory with the Postgres container connection string.</summary>
     /// <param name="connectionString">Connection string from <see cref="PostgresFixture.ConnectionString"/>.</param>
     public TaxiApiFactory(string connectionString)
@@ -50,6 +55,9 @@ public class TaxiApiFactory : WebApplicationFactory<Program>
 
         // Disable seed at startup — tests control seeding via DevelopmentSeeder directly.
         builder.UseSetting("Seed:Enabled", "false");
+
+        // Point fleet-logo storage at a per-factory temp dir so tests never write to the prod /data path.
+        builder.UseSetting("FleetLogo:StorageRoot", LogoStorageRoot);
 
         // Replace TimeProvider with the exposed FakeTimeProvider so tests can advance time.
         // Replace IGeoProvider with the FakeGeoProvider so tests avoid real HTTP calls.

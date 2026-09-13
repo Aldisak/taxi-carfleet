@@ -1,0 +1,41 @@
+{
+  "wi_id": "laneB7b",
+  "title": "reconcile B1/B2 report+audit client contracts to real A7 DTOs",
+  "files_changed": [
+    "web/src/shared/api/client.ts",
+    "web/src/shared/api/client.test.ts",
+    "web/src/features/reports/ReportsPage.tsx",
+    "web/src/features/reports/ReportsPage.test.tsx",
+    "web/src/features/reports/DriverReportTable.tsx",
+    "web/src/features/reports/FleetKpiCards.tsx",
+    "web/src/features/reports/RidesChart.tsx",
+    "web/src/features/reports/RidesChart.test.tsx",
+    "web/src/features/reports/RatingsList.tsx",
+    "web/src/features/reports/reportTotals.ts",
+    "web/src/features/reports/reportTotals.test.ts",
+    "web/src/features/reports/ridesChartGeometry.ts",
+    "web/src/features/reports/ridesChartGeometry.test.ts",
+    "web/src/features/reports/useReports.ts",
+    "web/src/features/reports/useReports.test.ts",
+    "web/src/features/audit/AuditPage.tsx",
+    "web/src/features/audit/AuditPage.test.tsx",
+    "web/src/shared/audit/auditEventLabel.ts",
+    "web/src/shared/audit/auditEventLabel.test.ts",
+    "web/src/shared/i18n/cs.json",
+    "web/src/shared/i18n/en.json"
+  ],
+  "tests_added_or_changed": [
+    "client.test.ts: rewrote the 3 report/audit fetch-mocked regressions to assert the REAL field names — getDriverReport now locks {driverId,driverName,avgRating(top-level),days[].date/cashCzk/cardCzk/invoiceCzk,totals.date='Celkem'}; getFleetReport locks raw counts appOrders/phoneOrders/fixedRouteOrders + nullable avgTime* + ridesPerDay[].date/count; getRatings locks the { items } envelope (NOT { ratings }), rangeless URL (no from/to), RatingDto.orderPublicCode/driverName(nullable)/ratedAt; getAudit locks { items, total, page, pageSize } with item.action/item.actorUserId (NOT event/actor) + 1-based page",
+    "reportTotals.test.ts: renamed money fields cash/card/invoiceCzk and day.date in the fixture + assertions",
+    "ridesChartGeometry.test.ts: RidesPerDayPoint is now { date, count } (was { day, rides })",
+    "RidesChart.test.tsx: helper data prop is { date, count }[]",
+    "auditEventLabel.test.ts: ASSUMED_AUDIT_ACTIONS -> KNOWN_AUDIT_ACTIONS; 'StatusOverridden' label test -> real 'StatusOverride'",
+    "useReports.test.ts: driver-report mock carries the real top-level shape; added a disabled-query test (useDriverReport(...,false) never fires); fleet kpi mock uses raw counts + null time; useRatings() called with no args",
+    "ReportsPage.test.tsx: seedHappyPath payloads moved to real shapes; added a 'pick-a-driver hint until a driver is selected' test; the 3 driver-table tests now await the 'Jan Novák' option then selectOptions before asserting the table",
+    "AuditPage.test.tsx: entry() helper uses action/actorUserId (no event/actor); added a page() builder returning {items,total,page,pageSize}; paging test expects page 1->2 (1-based); status-override test uses real 'StatusOverride'"
+  ],
+  "tests_passing": 1057,
+  "hit_max_turns": false,
+  "notes": "Each B7a ASSUMED mismatch fixed against the REAL laneA7 records (read in api/src/Taxi.Api/Features/{Reports,Audit}). (1) DAY FIELD: per-day + chart day field is `date` (not `day`); ridesPerDay is {date,count} (not {day,rides}) — fixed DriverReportTable, ridesChartGeometry (RidesPerDayPoint/ChartBar now date/count), RidesChart (feeds bar.date/bar.count into the unchanged {{day}}/{{rides}} barLabel placeholders to avoid i18n churn), and formatDay still splits real dates (totals row uses i18n totalsRow, never formatDay). (2) MONEY NAMES: per-day/ totals use cashCzk/cardCzk/invoiceCzk/totalCzk/hoursOnline/priceOverrideCount + ridesCompleted/ridesCancelled — fixed the table + reportTotals.sumDays. STRUCTURAL FIX the task didn't spell out (advisor-caught): GetDriverReportResponse is {driverId,driverName,avgRating(TOP-LEVEL),days,totals} and `totals` is a DriverReportDayDto with date='Celkem' (NO separate TotalsDto, NO avgRating inside totals) — deleted the invented DriverReportTotalsDto, added driverId/driverName/top-level avgRating to the client type. (3) RATINGS ENVELOPE: real is { items } (NOT { ratings }) and RANGELESS — getRatings()/useRatings() drop the from/to args; RatingDto is {orderPublicCode,driverName(nullable),stars,comment,ratedAt}; RatingsList reads orderPublicCode + driverName ?? '—'. (4) FLEET KPI: appOrders/phoneOrders/fixedRouteOrders/rides are RAW COUNTS — FleetKpiCards now derives appShare = appOrders/(appOrders+phoneOrders) and fixedRouteShare = fixedRouteOrders/rides with a div-by-zero guard (-> '—'); cancellationRate stays 0..1 rendered as %; avgTimeToAssignSeconds/avgTimeToPickupSeconds are nullable seconds -> formatDuration(null) returns '—'. (5) AUDIT PAGING BASE: CONFIRMED 1-BASED in api (GetAuditRequest.Page=1 default, PageSize=50 default, Skip((Page-1)*PageSize); GetAuditResponse doc 'The 1-based page number'). AuditPage state is now 1-based (initial page 1), audit.page shows `page` (not page+1), hasNext = serverPage*serverPageSize < total using the response's page+pageSize (NOT a hardcoded 50); AuditResponse type gained pageSize; request does NOT send pageSize (lets the server default). item.event->item.action, item.actor->item.actorUserId (shown ?? '—'). (6) AUDIT ACTION STRING: the ONLY audit_log writer is OverrideStatusEndpoint with Action='StatusOverride' (singular), Entity='Driver' — remapped auditEventLabel (ASSUMED_AUDIT_ACTIONS['StatusOverridden','DriverStatusOverridden'] -> KNOWN_AUDIT_ACTIONS['StatusOverride']) and collapsed the two i18n audit.event keys into one 'StatusOverride' in BOTH cs.json + en.json (parity test green). ENVELOPES THAT MATCHED: getFleetReport {kpis,ridesPerDay,topRoutes}, getAudit {items,total,page(,pageSize added)}. EXTRA FINDING beyond the six (advisor-flagged, fixed minimally): GetDriverReport validator requires DriverId NotEmpty -> Guid.Empty/empty selection = 400; B7a defaulted driverId to '' ('Všichni řidiči') which would show a permanent error banner on every load. Gated useDriverReport with an `enabled` flag (enabled only when driverId !== ''); the driver section shows a new reports.driverReport.selectDriver hint (added to both locales) until a driver is picked. DID NOT touch GetDriverMySummaryResponse / driver historyTotals (they legitimately use cashTotalCzk/cardTotalCzk/invoiceTotalCzk — only the REPORT DTOs get the *Czk names). No api/** touched. KNOWN LIMITATION (pre-existing B7a, outside the six, NOT fixed): the audit `actor` filter is a free-text <Input> but the backend param is Guid? — empty (the default) is fine and the actor column correctly shows actorUserId ?? '—' (a raw Guid, the honest consequence of the DTO dropping the role label), but typing a non-Guid name + Filtrovat yields actor=<text> -> Guid bind failure -> 400 -> error banner. Flagged for the reviewer; a future polish would make it a driver/user picker. Added a ReportsPage test asserting a null avg-time KPI + zero-denominator share render '—' and never 'NaN' (locks the highest-risk NaN branch).",
+  "verification_output": "tsc: EXIT 0. lint (eslint --max-warnings 0): EXIT 0. test --run: 164 files, 1057 tests passed (0 fail), up from 1054 (+1 pick-a-driver hint, +1 disabled-query, +1 null-KPI/zero-share NaN-guard; all other changed tests are field-name edits). build: EXIT 0 (ReportsPage + AuditPage still emit as separate lazy chunks). size: 233.76 kB brotli < 260 kB budget, EXIT 0. Staged `git add web/`; tsconfig.tsbuildinfo reset out of the index. NOT committed."
+}

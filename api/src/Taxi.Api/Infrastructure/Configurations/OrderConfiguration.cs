@@ -42,6 +42,11 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasIndex(x => new { x.FleetId, x.CreatedAt }).IsDescending(false, true);
         builder.HasIndex(x => new { x.FleetId, x.PublicCode }).IsUnique();
 
+        // Report aggregation indexes (UC-007 A1): driver report and fleet KPIs filter+group
+        // by fleet within a date window, often further scoped by driver or status.
+        builder.HasIndex(x => new { x.FleetId, x.DriverId, x.CreatedAt });
+        builder.HasIndex(x => new { x.FleetId, x.Status, x.CreatedAt });
+
         // FK constraints without navigation properties.
         builder.HasOne<Fleet>().WithMany().HasForeignKey(x => x.FleetId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(x => x.CustomerUserId).OnDelete(DeleteBehavior.SetNull);

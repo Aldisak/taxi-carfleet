@@ -118,6 +118,39 @@ public static class ErrorCodes
         /// <summary>The date value is not a valid yyyy-MM-dd date.</summary>
         public const string InvalidDateFormat = "Validation.InvalidDateFormat";
 
+        /// <summary>The 'from' date is required.</summary>
+        public const string FromDateRequired = "Validation.FromDateRequired";
+
+        /// <summary>The 'to' date is required.</summary>
+        public const string ToDateRequired = "Validation.ToDateRequired";
+
+        /// <summary>The 'to' date must be on or after the 'from' date.</summary>
+        public const string ToBeforeFrom = "Validation.ToBeforeFrom";
+
+        /// <summary>The driver id is required.</summary>
+        public const string DriverIdRequired = "Validation.DriverIdRequired";
+
+        /// <summary>The fleet slug is not a valid lowercase URL-safe identifier (a-z, 0-9, hyphen).</summary>
+        public const string FleetSlugInvalid = "Validation.FleetSlugInvalid";
+
+        /// <summary>The fleet name is required.</summary>
+        public const string FleetNameRequired = "Validation.FleetNameRequired";
+
+        /// <summary>The admin email is required.</summary>
+        public const string AdminEmailRequired = "Validation.AdminEmailRequired";
+
+        /// <summary>The primary color must be a #RRGGBB hex string.</summary>
+        public const string PrimaryColorInvalid = "Validation.PrimaryColorInvalid";
+
+        /// <summary>The offer timeout must be between 10 and 600 seconds.</summary>
+        public const string OfferTimeoutRange = "Validation.OfferTimeoutRange";
+
+        /// <summary>The SMS monthly cap must be zero or greater.</summary>
+        public const string SmsCapNonNegative = "Validation.SmsCapNonNegative";
+
+        /// <summary>The welcome text must not exceed 2000 characters.</summary>
+        public const string WelcomeTextTooLong = "Validation.WelcomeTextTooLong";
+
         /// <summary>The rating star count must be between 1 and 5.</summary>
         public const string RatingStarsRange = "Validation.RatingStarsRange";
 
@@ -251,6 +284,33 @@ public static class ErrorCodes
     {
         /// <summary>The tracking link is invalid, expired, tampered, or past the post-completion window (HTTP 410).</summary>
         public const string LinkExpired = "Tracking.LinkExpired";
+    }
+
+    /// <summary>Admin/onboarding error codes (SuperAdmin fleet provisioning).</summary>
+    public static class Admin
+    {
+        /// <summary>A fleet with the same slug already exists.</summary>
+        public const string DuplicateSlug = "Admin.DuplicateSlug";
+    }
+
+    /// <summary>Customer self-service (GDPR) error codes.</summary>
+    public static class Customer
+    {
+        /// <summary>The SMS confirmation code is invalid, expired, or already used.</summary>
+        public const string InvalidCode = "Customer.InvalidCode";
+    }
+
+    /// <summary>Fleet logo upload error codes.</summary>
+    public static class FleetLogo
+    {
+        /// <summary>The uploaded logo exceeds the 200 KB limit.</summary>
+        public const string TooLarge = "FleetLogo.TooLarge";
+
+        /// <summary>The uploaded logo is not a PNG image.</summary>
+        public const string NotPng = "FleetLogo.NotPng";
+
+        /// <summary>No file was supplied in the upload.</summary>
+        public const string Missing = "FleetLogo.Missing";
     }
 
     /// <summary>Idempotency error codes for driver transition deduplication.</summary>

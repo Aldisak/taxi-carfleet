@@ -50,7 +50,7 @@ describe('CustomerHomePage', () => {
     vi.clearAllMocks()
     localStorage.clear()
     localStorage.setItem('auth.accessToken', 'customer-token')
-    mockFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague' })
+    mockFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague', welcomeText: null, logoUrl: null })
   })
 
   it('renders common-route cards when routes are valid-now and no active order', async () => {

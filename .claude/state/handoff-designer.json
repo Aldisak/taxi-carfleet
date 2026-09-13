@@ -1,82 +1,330 @@
 {
-  "uc_id": "UC-005",
-  "spec_path": "docs/specs/in-progress/005_UC_005_notifications.md",
-  "work_items_doc": "docs/specs/in-progress/notifications-work-items.md",
+  "uc_id": "UC-007",
+  "spec_path": "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
+  "work_items_doc": "docs/specs/in-progress/reports-audit-onboarding-work-items.md",
   "work_items": [
     {
-      "id": "A1-notification-schema",
+      "id": "A1-report-indexes-and-fleet-logo",
       "lane": "api",
-      "title": "notification_outbox + notification_log entities (ITenantEntity, FleetId-scoped) + FleetSettings.SmsMonthlyCapCzk/SmsUnitCostCzk + dedup unique index + one migration",
-      "goal": "The single serialized Lane-A migration WI (UC-006 precedent: one coherent snapshot, all other Lane-A WIs depend on it). Add TWO new entities: NotificationOutbox (Id, FleetId, Event[enum], OrderId?, Channel[Sms|Push], RecipientUserId?, RecipientPhone?, RecipientEndpoint?, PayloadJson[jsonb], Attempts[int default 0], NextAttemptAt, Status[Queued|Sent|Failed|Skipped], CreatedAt) and NotificationLog (Id, FleetId, Event[enum], OrderId?, Channel, Recipient[string], Status[Queued|Sent|Failed|SkippedCap|SkippedNoChannel], ProviderMessageId?, Error?, CreatedAt, SentAt?). Both implement ITenantEntity (FleetId non-null, tenant-scoped via global query filter, mirroring Order). The DEDUP unique index (AC#7) lives on NotificationLog over (FleetId, Event, OrderId, Recipient, Channel). Add NotificationEvent + NotificationChannel + NotificationStatus enums under Infrastructure/Entities. Add FleetSettings.SmsMonthlyCapCzk (int, default 500) + SmsUnitCostCzk (int, default 1) via the SAME migration. Register both DbSets. PushSubscription already exists in the snapshot (verified InitialSchema) so NO push_subscription migration. Add global query filters for the two new tenant entities in TaxiDbContext.OnModelCreating. One migration AddNotificationTablesAndSmsCap via dotnet ef --output-dir Infrastructure/Migrations. No engine/endpoint logic here - schema only, so the snapshot lands cleanly before the parallel A2..A6 work.",
+      "title": "Report perf indexes + audit-merge indexes + Fleet.LogoUpdatedAt + ONE serialized migration (root of all Lane-A WIs)",
+      "goal": "The single serialized Lane-A migration WI (UC-004/005/006 precedent: one coherent snapshot; all other Lane-A WIs depend on it so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel). Add ONLY the genuinely-missing schema. SOURCE-VERIFIED that UserRole.SuperAdmin + UserRole.System already exist (enum, string-stored -> NO migration), the SuperAdminOnly/AuthenticatedOnly/FleetAdminOnly policies exist, Fleet.PrimaryColorHex exists, and FleetSettings.WelcomeText/AutoDispatchEnabled/OfferTimeoutSeconds/SmsMonthlyCapCzk/SmsUnitCostCzk/SmsSenderName all exist - DO NOT re-add any of these. The only persisted self-service field missing is the logo: add Fleet.LogoUpdatedAt (DateTimeOffset?, nullable) as a has-logo + cache-bust signal (the file path /data/fleets/{id}/logo.png is derivable from the id, so NO blob column). Add report perf indexes for AC#2 (<300ms @ 50k) up front because a later index = a forbidden second migration: Order (FleetId, CreatedAt), Order (FleetId, DriverId, CreatedAt), Order (FleetId, Status, CreatedAt). Add the audit-merge indexes OrderEvent (FleetId, At) and AuditLog (FleetId, At) for the A4 UNION paging. Configure Fleet.LogoUpdatedAt in FleetConfiguration. ONE migration AddReportIndexesAndFleetLogo via dotnet ef --output-dir Infrastructure/Migrations; review the up-SQL for non-destructive ops (index creates + one nullable column add). No endpoint/engine logic here - schema only.",
       "depends_on": [],
-      "estimated_complexity": "M",
+      "estimated_complexity": "S",
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationOutbox.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationLog.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationEvent.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationChannel.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationStatus.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/NotificationOutboxConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/NotificationLogConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/FleetSettingsConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Fleet.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/FleetConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/OrderEventConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/AuditLogConfiguration.cs",
         "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationSchemaTests.cs"
+        "api/tests/Taxi.Api.Tests/Reports/ReportSchemaTests.cs"
       ],
       "rule_citations": [
-        "rules/ef-core.md#entity-naming",
-        "rules/ef-core.md#primary-keys",
-        "rules/ef-core.md#dbset-registration",
         "rules/ef-core.md#indexes",
-        "rules/ef-core.md#enums-as-strings",
-        "rules/ef-core.md#date-types",
         "rules/ef-core.md#migrations",
+        "rules/ef-core.md#date-types",
         "rules/architecture.md#one-type-per-file",
-        "rules/csharp-style.md#guid-primary-keys",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#migrations",
-        "rules/naming.md#files-and-types",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/05-notifications.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "NotificationOutbox and NotificationLog both implement ITenantEntity (non-null FleetId); each gets a global query filter `e => e.FleetId == currentTenant.FleetId` in TaxiDbContext.OnModelCreating alongside the existing Order filter. DbSet<NotificationOutbox> and DbSet<NotificationLog> are registered. Enums (NotificationEvent: OrderCreatedForCustomer, DriverAssigned, DriverArrived, RideStarted, RideCompleted, OrderCancelledByFleet, OrderCancelledByCustomer, OfferToDriver, DriverDeclined, DriverTimedOut, NewAppOrderForDispatch, ScheduledOrderReminder; NotificationChannel: Sms, Push; NotificationStatus: Queued, Sent, Failed, SkippedCap, SkippedNoChannel) are stored as strings (global Enum convention already present).",
-        "A UNIQUE index on NotificationLog (FleetId, Event, OrderId, Recipient, Channel) enforces dedup (AC#7). PayloadJson on NotificationOutbox is jsonb (System.Text.Json.JsonDocument? mapped with HasColumnType('jsonb'), CLAUDE.md). FleetId and (Status, NextAttemptAt) on NotificationOutbox are indexed for the dispatch-job scan.",
-        "FleetSettings gains SmsMonthlyCapCzk (int, default 500) and SmsUnitCostCzk (int, default 1); FleetSettingsConfiguration sets both defaults via HasDefaultValue so existing rows backfill. A single migration AddNotificationTablesAndSmsCap is added with --output-dir Infrastructure/Migrations (CLAUDE.md); its up-SQL creates two tables + the unique dedup index + adds two non-null columns with defaults, and is reviewed for non-destructive ops (rules/ef-core.md#migrations).",
-        "NotificationSchema_OutboxAndLog_AreTenantScoped (fleet A cannot read fleet B's outbox/log rows - tenant isolation), NotificationSchema_DedupIndex_RejectsDuplicateLogRow (inserting a second NotificationLog with the same FleetId+Event+OrderId+Recipient+Channel throws a 23505 PostgresException), and NotificationSchema_FleetSettingsCapDefaults_Are500And1 pass."
+        "Fleet gains a nullable LogoUpdatedAt (DateTimeOffset?) configured in FleetConfiguration (no default, backfills null on existing rows). NO blob/bytes column is added. UserRole, the policies, Fleet.PrimaryColorHex, and the FleetSettings self-service columns are NOT re-added (they already exist in the snapshot - verified).",
+        "Composite indexes exist after migration: Order (FleetId, CreatedAt), Order (FleetId, DriverId, CreatedAt), Order (FleetId, Status, CreatedAt), OrderEvent (FleetId, At), AuditLog (FleetId, At). These back the report aggregation (A2/A3) and the audit UNION paging (A4).",
+        "A single migration AddReportIndexesAndFleetLogo is added with --output-dir Infrastructure/Migrations (CLAUDE.md); its up-SQL creates the indexes + adds one nullable column and is non-destructive (rules/ef-core.md#migrations). All other Lane-A WIs depend_on A1 so the snapshot is never regenerated concurrently.",
+        "ReportSchema_FleetLogoUpdatedAt_DefaultsNull, ReportSchema_OrderReportIndexes_Exist, ReportSchema_AuditMergeIndexes_Exist, and ReportSchema_Migration_IsNonDestructive pass."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.NotificationSchema"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.ReportSchema"
       }
     },
     {
-      "id": "A2-push-subscriptions",
+      "id": "A2-driver-report-and-csv",
       "lane": "api",
-      "title": "POST/DELETE /api/v1/push/subscriptions (all authenticated roles, multi-device, UserId-scoped, upsert + prune)",
-      "goal": "Resolve the UC-004 push-subscription-server deferral. Vertical-slice endpoints under Features/Push over the EXISTING PushSubscription entity (verified: Id, FleetId?, UserId, Endpoint, P256dh, Auth, UserAgent?, CreatedAt, LastUsedAt?; UserId-scoped, NOT ITenantEntity, nullable FleetId - mirrors RefreshToken; query filter already admits null FleetId). POST push/subscriptions upserts by (UserId, Endpoint) so re-subscribing the same browser is idempotent and one user may register several devices; it stamps FleetId from the JWT fleet_id claim when present (null for Customer). DELETE push/subscriptions removes by Endpoint for the calling user. Allowed for ANY authenticated role (Customer/Driver/Dispatcher/FleetAdmin). NOTE: there is no existing 'any authenticated' policy (verified policies: CustomerOnly, DriverOnly, DispatcherOnly, FleetAdminOnly, SuperAdminOnly, DispatcherOrCustomer, DispatcherOrDriver, CustomerOrStaff). Add an AuthenticatedOnly policy (RequireAuthenticatedUser) to AuthorizationPolicies and use it here, OR reuse CustomerOrStaff if it already covers all roles - pick the one that admits every role and document the choice. Reads/writes are UserId-scoped (the caller's sub claim), never cross-user. No new migration (PushSubscription already in the snapshot).",
+      "title": "GET reports/drivers SQL per-Prague-day aggregation + byte-exact UTF-8-BOM ';' CSV export (AC#1, AC#7)",
+      "goal": "The driver report (assignment section 1) + the CSV byte-exactness (AC#7). GET /api/v1/reports/drivers?driverId&from&to (FleetAdminOnly, tenant-scoped via the Order query filter). SQL aggregation - NOT ToList-then-group (AC#2 rule): per-Prague-day rows with rides completed, cancelled (no-show = CancelledByRole/CancelReason no-show), cash/card/invoice/total CZK (conditional SUM(CASE WHEN PaymentType=...)), price-override count (PriceOverrideReason != null). Prague-day bucketing (AC#1 correctness + translation risk, SOURCE-VERIFIED): Order.CreatedAt is UTC DateTimeOffset; a naive GroupBy(o => o.CreatedAt.Date) buckets in UTC and may not translate. Group by a Prague-local day key expressed as date_trunc('day', created_at AT TIME ZONE 'Europe/Prague') (verify Npgsql translation); if a specific aggregate/key will not translate, fall back to a single FromSql/SqlQuery aggregation - still server-side (AC#2 holds), NEVER ToList-then-group. The date-range FILTER reuses the GetDayWindow UTC-boundary pattern from GetMySummaryEndpoint (already in the codebase). Hours-online is a SEPARATE small bounded query over driver_shifts (clamp shifts to the Prague window in memory, mirroring GetMySummaryEndpoint's sum) merged into the per-day rows - NOT folded into the 50k GROUP BY. avg rating per driver (AVG(RatingStars) over completed+rated). A totals row. CSV export variant via ?format=csv: a pure Common/Reports/DriverReportCsv writer (NO FastEndpoints dep, NO CsvHelper) producing UTF-8 WITH BOM (EF BB BF) + ';' separator + CRLF (AC#7, Czech Excel), streamed as the response body with a download filename. Commit a hand-computed expected CSV fixture; AC#1 orders are seeded at mid-day so UTC and Prague fall on the same date (tz cannot shift a bucket) and the match is deterministic.",
       "depends_on": [
-        "A1-notification-schema"
+        "A1-report-indexes-and-fleet-logo"
       ],
-      "estimated_complexity": "M",
+      "estimated_complexity": "L",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Push/PushFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeEndpoint.cs",
-        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeRequest.cs",
-        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeResponse.cs",
-        "api/src/Taxi.Api/Features/Push/Subscribe/SubscribeValidator.cs",
-        "api/src/Taxi.Api/Features/Push/Unsubscribe/UnsubscribeEndpoint.cs",
-        "api/src/Taxi.Api/Features/Push/Unsubscribe/UnsubscribeRequest.cs",
-        "api/src/Taxi.Api/Features/Push/Unsubscribe/UnsubscribeValidator.cs",
-        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
+        "api/src/Taxi.Api/Features/Reports/ReportsFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportEndpoint.cs",
+        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportRequest.cs",
+        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportResponse.cs",
+        "api/src/Taxi.Api/Features/Reports/GetDriverReport/DriverReportDayDto.cs",
+        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportValidator.cs",
+        "api/src/Taxi.Api/Common/Reports/DriverReportCsv.cs",
         "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/PushSubscriptionTests.cs"
+        "api/tests/Taxi.Api.Tests/Reports/DriverReportTests.cs",
+        "api/tests/Taxi.Api.Tests/Reports/DriverReportExpected.csv"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#banned-patterns",
+        "rules/architecture.md#one-type-per-file",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#n-plus-one",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET reports/drivers aggregates in SQL (conditional SUMs + COUNTs grouped by a Prague-local day key via date_trunc AT TIME ZONE, or a FromSql fallback that is still server-side) - there is NO ToList-then-GroupBy of raw order rows. The date range is filtered by a UTC [start,end) window computed from the Prague day (GetMySummaryEndpoint pattern). Hours-online is a separate bounded driver_shifts query clamped to the window and merged in memory. Per-day rows carry rides completed, cancelled(no-show), cash/card/invoice/total CZK, price-override count, hours online; a totals row sums them; avg rating per driver is included.",
+        "AC#1: DriverReport_SeededData_MatchesHandComputedTable seeds a known set of mid-day orders and asserts the per-day + totals numbers equal a hand-computed table. DriverReport_PragueDayBucketing_MidDayOrdersStable proves mid-day orders land on the same day under UTC and Prague.",
+        "AC#7: DriverReport_Csv_MatchesExpectedBytes asserts the ?format=csv body bytes begin with the UTF-8 BOM EF BB BF, use ';' as the separator and CRLF line endings, and equal a committed expected-CSV fixture exactly (byte comparison). DriverReportCsv is a pure writer with no FastEndpoints/CsvHelper dependency.",
+        "Tenant + authz: cross-fleet driverId -> 404 (no leak); non-FleetAdmin -> 403; bad/absent date or to<from -> 400 via a Validator<T> with stable error codes. DriverReport_CrossTenant_Returns404 and DriverReport_NonFleetAdmin_Returns403 pass.",
+        "DriverReport_HoursOnline_ClampsToWindow and DriverReport_PriceOverrideCount pass. No PII beyond ids/aggregates in logs (rules/logging.md)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.DriverReport"
+      }
+    },
+    {
+      "id": "A3-fleet-report-and-50k-seed",
+      "lane": "api",
+      "title": "GET reports/fleet SQL KPIs + rides-per-day series + top routes + ratings list + 50k fleet-scoped seeding script (AC#2 <300ms)",
+      "goal": "The fleet report (assignment section 2+3) + the AC#2 perf budget. GET /api/v1/reports/fleet?from&to (FleetAdminOnly, tenant-scoped). SQL KPIs computed server-side (NOT ToList-then-group): rides, revenue (SUM FinalPriceCzk), avg price, avg time-to-assign (AVG over AssignedAt-CreatedAt), avg time-to-pickup (AVG over ArrivedAt-AcceptedAt), cancellation rate (cancelled/total), app-vs-phone share (GROUP BY Order.Source), fixed-route share (PriceType Fixed / RouteId not null), SMS count + est cost (COUNT notification_log where Channel=Sms within window * FleetSettings.SmsUnitCostCzk), rides-per-Prague-day series (same date_trunc AT TIME ZONE key as A2, for the B1 SVG chart), top common routes by count (GROUP BY RouteId, join route name, order by count desc, take N). GET /api/v1/reports/ratings (FleetAdminOnly) returns a list of ratings (RatingComment, order PublicCode, driver name) for completed+rated orders in range. SEEDING SCRIPT for AC#2: a dev/test ReportSeedScript (NOT the demo seeder - keep it separate, fleet-scoped, idempotent by a marker fleet/slug) that inserts 50000 completed orders for one fleet with varied Source/PaymentType/RouteId/timestamps, used ONLY by the perf test (and runnable in dev). AC#2 test seeds 50k and asserts the fleet endpoint responds <300ms. Confirm the GroupBy/AVG/conditional-SUM translate to SQL against Npgsql (date_trunc AT TIME ZONE key); fall back to FromSql if a specific aggregate will not translate (still server-side). Append a docs/decisions.md note (reports are SQL-aggregated; 50k seed is a dev/test script, not the demo seeder).",
+      "depends_on": [
+        "A1-report-indexes-and-fleet-logo"
+      ],
+      "estimated_complexity": "XL",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Reports/ReportsFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportEndpoint.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportRequest.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportResponse.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/FleetKpiDto.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/RidesPerDayDto.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/TopRouteDto.cs",
+        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportValidator.cs",
+        "api/src/Taxi.Api/Features/Reports/GetRatings/GetRatingsEndpoint.cs",
+        "api/src/Taxi.Api/Features/Reports/GetRatings/GetRatingsResponse.cs",
+        "api/src/Taxi.Api/Features/Reports/GetRatings/RatingDto.cs",
+        "api/src/Taxi.Api/Infrastructure/Seed/ReportSeedScript.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "docs/decisions.md",
+        "api/tests/Taxi.Api.Tests/Reports/FleetReportTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#banned-patterns",
+        "rules/architecture.md#one-type-per-file",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#n-plus-one",
+        "rules/ef-core.md#indexes",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/decisions.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET reports/fleet returns all KPIs (rides, revenue, avg price, avg time-to-assign, avg time-to-pickup, cancellation rate, app-vs-phone share, fixed-route share, SMS count + est cost), a rides-per-Prague-day series, and top routes by count - ALL computed in SQL (GROUP BY + AVG + conditional SUM, or a FromSql fallback that is still server-side). FleetReport_Kpis_ComputedInSql_NoInMemoryGrouping proves no raw-order ToList-then-group.",
+        "AC#2: a separate fleet-scoped idempotent ReportSeedScript (NOT the demo seeder) inserts 50000 orders; FleetReport_50kOrders_RespondsUnder300ms seeds 50k and asserts the endpoint responds under 300 ms, backed by the A1 (FleetId, CreatedAt)/(FleetId, Status, CreatedAt) indexes.",
+        "FleetReport_AppVsPhoneShare, FleetReport_TimeToAssignAndPickup, and FleetReport_TopRoutesByCount assert the respective KPI computations. GET reports/ratings returns comment + order code + driver (Ratings_List_IncludesCommentCodeDriver).",
+        "Tenant + authz: tenant-scoped so a FleetAdmin only ever sees their own fleet's data (FleetReport_CrossTenant_OnlyCallerFleet); non-FleetAdmin -> 403; bad date -> 400. docs/decisions.md gains the reports-SQL-aggregation + 50k-seed-script note."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.FleetReport"
+      }
+    },
+    {
+      "id": "A4-audit-merge-endpoint",
+      "lane": "api",
+      "title": "GET audit paged UNION-ALL merge of order_events + audit_log (read-only, tenant-scoped, filterable)",
+      "goal": "The unified audit timeline (assignment section Audit). GET /api/v1/audit?actor&entity&from&to&orderCode&page (FleetAdminOnly, tenant-scoped, read-only). Merge order_events + audit_log into ONE paged timeline. SOURCE-VERIFIED: both entities are ITenantEntity with a global query filter, so the merge is auto-tenant-scoped; audit_log is near-empty today (only OverrideStatusEndpoint writes it) so the timeline is order_events-dominated, but paging correctness still matters. Design (assumption 6): project order_events and audit_log into ONE shared AuditEntryDto shape (Source [OrderEvent|AuditLog], ActorUserId?, Entity, Action/EventType string, OrderCode?, At), .Concat(...) the two projections -> SQL UNION ALL, then OrderByDescending(At).ThenByDescending(Id-or-At tiebreaker).Skip(page*size).Take(size). VERIFY EF translates the union+orderby+skip+take; if it does NOT, fall back to two windowed queries merged in memory over an explicitly-bounded page window (documented in the goal). Apply the actor/entity/from/to/orderCode filters BEFORE paging. Do NOT project the jsonb Payload/Diff columns inside the SQL Select (CLAUDE.md WI-10) - if a diff/payload summary is surfaced, load rows then read in memory. Read-only: no writes, no state-machine calls.",
+      "depends_on": [
+        "A1-report-indexes-and-fleet-logo"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Audit/AuditFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditEndpoint.cs",
+        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditRequest.cs",
+        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditResponse.cs",
+        "api/src/Taxi.Api/Features/Audit/GetAudit/AuditEntryDto.cs",
+        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditValidator.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Reports/AuditTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#one-type-per-file",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/ef-core.md#indexes",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "GET audit returns a paged descending-by-At merged list of order_events + audit_log projected into one AuditEntryDto shape via Concat -> UNION ALL -> OrderByDescending(At).Skip().Take() (or a documented in-memory merge fallback if EF cannot translate the union+paging). jsonb Payload/Diff are NOT projected inside the SQL Select. Audit_MergesOrderEventsAndAuditLog_SortedByAtDesc and Audit_Paging_IsStableAcrossUnion pass.",
+        "Filters actor, entity, from/to, orderCode are applied before paging: Audit_FilterByActor, Audit_FilterByOrderCode, Audit_FilterByEntityAndDate pass.",
+        "Tenant isolation: the merge is auto-scoped by both entities' global query filters; a FleetAdmin sees only their fleet's events. Audit_CrossTenant_OnlyCallerFleet passes.",
+        "Authz: non-FleetAdmin -> 403 (Audit_NonFleetAdmin_Returns403); bad date/page -> 400. Endpoint is read-only (no writes)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.Audit"
+      }
+    },
+    {
+      "id": "A5-superadmin-fleets-and-cli",
+      "lane": "api",
+      "title": "SuperAdmin /admin/fleets create(+seed settings/tariff/admin)/list/deactivate (the ONE cross-tenant write) + create-superadmin CLI bootstrapper (AC#3 server half)",
+      "goal": "SuperAdmin onboarding (assignment section 1) - the AC#3 server half + the ONE cross-tenant write (guard hard). Vertical-slice endpoints under Features/Admin, all Policies(nameof(AuthorizationPolicies.SuperAdminOnly)) (policy ALREADY exists - verified). POST /api/v1/admin/fleets { slug, name, phone, adminEmail } -> creates the Fleet + seeds FleetSettings defaults + a default Tariff + the FleetAdmin User (BCrypt-hashed one-time password) and returns the one-time password once. GET /api/v1/admin/fleets lists ALL fleets (cross-fleet by design - SuperAdmin). POST /api/v1/admin/fleets/{id:guid}/deactivate sets IsActive=false. CROSS-TENANT WRITE (assumption 7, CLAUDE.md WI-04, load-bearing): the create writes rows (FleetSettings/Tariff/User) for a fleet that is NOT the caller's tenant, so it trips the SaveChanges tenant guard. Reuse the DevelopmentSeeder's technique: set the scope's CurrentTenant.FleetId to the NEW fleet id (or use a null-tenant scope) before SaveChanges so the guard passes; this is the only endpoint permitted to write cross-tenant, and it is hard-guarded by SuperAdminOnly. CLI (assumption 9): add a testable SuperAdminBootstrapper (Common/Admin/SuperAdminBootstrapper) with CreateAsync(email, password, ct) that inserts a UserRole.SuperAdmin user (no FleetId); in Program.cs add an args intercept AFTER builder.Build() that, when args[0]=='create-superadmin' with --email/--password, resolves the bootstrapper from a scope, runs it, and return;s BEFORE app.Run() (never boots the web host). The bootstrapper is integration-tested directly against a DbContext.",
+      "depends_on": [
+        "A1-report-indexes-and-fleet-logo"
+      ],
+      "estimated_complexity": "XL",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Admin/AdminFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetEndpoint.cs",
+        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetRequest.cs",
+        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetResponse.cs",
+        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetValidator.cs",
+        "api/src/Taxi.Api/Features/Admin/ListFleets/ListFleetsEndpoint.cs",
+        "api/src/Taxi.Api/Features/Admin/ListFleets/ListFleetsResponse.cs",
+        "api/src/Taxi.Api/Features/Admin/ListFleets/AdminFleetDto.cs",
+        "api/src/Taxi.Api/Features/Admin/DeactivateFleet/DeactivateFleetEndpoint.cs",
+        "api/src/Taxi.Api/Common/Admin/SuperAdminBootstrapper.cs",
+        "api/src/Taxi.Api/Common/Admin/FleetProvisioning.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Reports/AdminFleetsTests.cs"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#banned-patterns",
+        "rules/architecture.md#one-type-per-file",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#dbset-registration",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#guid-primary-keys",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
+        "rules/naming.md#test-naming",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "CLAUDE.md#cross-cutting-invariants",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "POST admin/fleets creates the Fleet and ALSO seeds FleetSettings defaults + a default Tariff + a FleetAdmin User with a BCrypt-hashed one-time password, returning that password once in the response. This is the ONE cross-tenant write: it sets the scope's CurrentTenant.FleetId to the new fleet (or uses a null-tenant scope) so the SaveChanges tenant guard passes (CLAUDE.md WI-04). AdminFleets_Create_SeedsSettingsTariffAndAdmin and AdminFleets_Create_ReturnsOneTimePassword pass.",
+        "AC#3 guard: all three endpoints use Policies(nameof(AuthorizationPolicies.SuperAdminOnly)); AdminFleets_Create_NonSuperAdmin_Returns403 proves a non-SuperAdmin (e.g. FleetAdmin) cannot create/cross-tenant-write. A duplicate slug -> 409 (AdminFleets_Create_DuplicateSlug_Returns409). GET admin/fleets lists all fleets (AdminFleets_List_ReturnsAllFleets); deactivate sets IsActive=false (AdminFleets_Deactivate_SetsInactive).",
+        "CLI: Program.cs intercepts args create-superadmin --email --password after builder.Build(), runs SuperAdminBootstrapper.CreateAsync, and returns before app.Run() (never boots the host). SuperAdminBootstrapper_CreatesSuperAdminUser (a UserRole.SuperAdmin user with no FleetId is inserted) and SuperAdminBootstrapper_DuplicateEmail_IsIdempotentOrRejects pass, testing the bootstrapper directly against a DbContext.",
+        "No raw passwords are logged (rules/logging.md); the one-time password is returned in the HTTP response body only. malformed body -> 400 via a Validator<T>."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.AdminFleets"
+      }
+    },
+    {
+      "id": "A6-fleet-self-service-and-logo",
+      "lane": "api",
+      "title": "PUT fleet/settings + POST fleet/logo (<=200KB PNG -> disk + LogoUpdatedAt) + public/fleet welcomeText/logoUrl extension (AC#4 server half)",
+      "goal": "Fleet self-service (assignment section 2) + the AC#4 runtime-branding server half. PUT /api/v1/fleet/settings (FleetAdminOnly, tenant-scoped) persists the self-service set onto the caller's Fleet + FleetSettings rows: Fleet.Name, Fleet.Phone, Fleet.PrimaryColorHex (validate #RRGGBB); FleetSettings.WelcomeText, OfferTimeoutSeconds, SmsMonthlyCapCzk, AutoDispatchEnabled (persisted but v1.1-disabled in UI). All target columns ALREADY exist (verified) - this is a write endpoint, no migration. POST /api/v1/fleet/logo (FleetAdminOnly): accepts a multipart PNG upload, rejects >200 KB (400) and non-PNG (400), writes the file to /data/fleets/{FleetId}/logo.png (create dir if needed), and stamps Fleet.LogoUpdatedAt = now (A1 column). Extend GetFleetResponse (the existing anonymous GET public/fleet, Features/Public/GetFleet) ADDITIVELY with welcomeText (from FleetSettings) and logoUrl (derived: /fleets/{FleetId}/logo.png?v={LogoUpdatedAt.Ticks} when LogoUpdatedAt != null, else null) - name/primaryColorHex already returned. A read (GetFleetSettingsEndpoint) already exists for loading current values; do NOT break it. Caddy serves the static logo file in prod (infra 08); the API only stores the file + exposes the derived URL.",
+      "depends_on": [
+        "A1-report-indexes-and-fleet-logo"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsEndpoint.cs",
+        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsRequest.cs",
+        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsValidator.cs",
+        "api/src/Taxi.Api/Features/Fleet/UploadLogo/UploadLogoEndpoint.cs",
+        "api/src/Taxi.Api/Features/Fleet/UploadLogo/UploadLogoRequest.cs",
+        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetResponse.cs",
+        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetEndpoint.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Reports/FleetSettingsTests.cs"
       ],
       "rule_citations": [
         "rules/architecture.md#vertical-slice-layout",
@@ -95,174 +343,45 @@
         "rules/error-handling.md#send-for-expected-errors",
         "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#guid-primary-keys",
+        "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#error-codes",
-        "rules/naming.md#files-and-types",
-        "rules/logging.md#property-names",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/05-notifications.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/specs/done/customer-pwa-work-items.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "POST push/subscriptions accepts { endpoint, p256dh, auth, userAgent? }; a validator requires endpoint/p256dh/auth non-empty (missing field -> 400 with a stable error code, NOT 500 - use plain properties + NotEmpty per the CLAUDE.md 'required on STJ-deserialized request properties' trap). The endpoint upserts by (UserId from the sub claim, Endpoint): a second POST with the same endpoint updates P256dh/Auth/UserAgent/LastUsedAt in place rather than inserting a duplicate. FleetId is stamped from the fleet_id JWT claim when present, left null for Customer. Returns 200/204.",
-        "DELETE push/subscriptions accepts { endpoint } and removes the calling user's subscription with that endpoint; a non-existent endpoint is a no-op 204 (idempotent, no 404 leak). Both endpoints require authentication for ALL roles via the chosen all-roles policy (new AuthenticatedOnly or an existing all-role policy); an anonymous request is 401.",
-        "A user may hold multiple subscriptions (different endpoints = different devices); subscriptions are UserId-scoped so one user never sees or deletes another user's subscription. Timestamps use the injected TimeProvider (CreatedAt on insert, LastUsedAt left for the push sender to bump).",
-        "PushSubscribe_NewEndpoint_Inserts, PushSubscribe_SameEndpointTwice_Upserts (no duplicate row), PushSubscribe_MultipleDevices_AllPersist, PushSubscribe_MissingEndpoint_Returns400, PushUnsubscribe_RemovesOwnEndpoint, PushUnsubscribe_Unknown_Returns204NoLeak, PushSubscribe_Anonymous_Returns401, and PushSubscribe_CustomerAndDriver_BothAllowed pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.PushSubscription"
-      }
-    },
-    {
-      "id": "A3-routing-and-templates",
-      "lane": "api",
-      "title": "Pure routing matrix (Source + has-push) + GSM-7 Czech templates (build-time <=160 test, AC#5) + dedup-key helper - all unit-tested, no DbContext",
-      "goal": "The pure, testable core (no DbContext, no IO) that the engine (A4) and dispatch job (A5) share. THREE pure pieces under Common/Notifications: (1) NotificationRouting.Resolve(NotificationEvent evt, OrderSource source, bool customerHasPush) -> a list of (Recipient role, NotificationChannel) resolved from a STATIC in-code matrix exactly matching assignment section 1: Push preferred, SMS only when the matrix says so; PHONE orders (Source=Phone) get the SMS subset (OrderCreatedForCustomer + DriverArrived only); App+push -> push only; App+no-push -> SMS per the matrix (DriverArrived is SMS-ALWAYS regardless of push, AC#2; RideStarted/RideCompleted are push-only, AC#2). Model it so a per-fleet override is trivial later but DO NOT build the override. (2) SmsTemplates: Czech GSM-7 (no diacritics) render functions for OrderCreated ('Taxi {fleet}: objednavka {code} prijata. Sledujte: {link}') and DriverArrived ('Taxi {fleet}: ridic {driver} je na miste, {plate} {color}.'), plus push title/body templates (DriverAssigned push MAY use diacritics). A GsmSevenValidator.IsGsm7AndWithinLimit(string) -> bool checks every char is in the GSM-7 basic+extension set AND rendered length <= 160. (3) NotificationDedupKey.For(evt, orderId, recipient, channel) -> the canonical string used for the NotificationLog dedup. All three are stateless static/pure classes. TEST-CLASS NAMING: the GSM-7 build-time test class MUST be named NotificationSmsTemplateTests (NOT SmsTemplateGsm7Tests) so its FQN contains the substring 'Notifications.Notification' and is caught by this WI's single-token verification filter - a class named SmsTemplateGsm7Tests would NOT match and the AC#5 build-time test would silently not run in the gate.",
-      "depends_on": [
-        "A1-notification-schema"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Common/Notifications/NotificationRouting.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationRecipientChannel.cs",
-        "api/src/Taxi.Api/Common/Notifications/SmsTemplates.cs",
-        "api/src/Taxi.Api/Common/Notifications/PushTemplates.cs",
-        "api/src/Taxi.Api/Common/Notifications/GsmSevenValidator.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationDedupKey.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/Templates/cs/OrderCreated.txt",
-        "api/src/Taxi.Api/Infrastructure/Notifications/Templates/cs/DriverArrived.txt",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationRoutingTests.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationSmsTemplateTests.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationDedupKeyTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#one-type-per-file",
-        "rules/architecture.md#banned-patterns",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#expression-bodied",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#pattern-matching",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#test-naming",
-        "rules/naming.md#files-and-types",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/05-notifications.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "NotificationRouting.Resolve returns the correct (recipient, channel) set for every NotificationEvent from the static matrix. Key cases asserted: DriverArrived -> customer gets BOTH push AND SMS (SMS always, AC#2) when a push subscription exists; RideStarted -> customer gets push ONLY (no SMS, AC#2); RideCompleted -> push only; Phone-source order -> customer gets SMS for OrderCreatedForCustomer and DriverArrived ONLY, and nothing for RideStarted/RideCompleted; App+no-push -> OrderCreatedForCustomer resolves to SMS (tracking link); OfferToDriver -> driver push; DriverDeclined/DriverTimedOut/NewAppOrderForDispatch/OrderCancelledByCustomer -> dispatcher push. The matrix is a static table with no DbContext/IO.",
-        "GsmSevenValidator.IsGsm7AndWithinLimit returns true for a rendered SMS of valid GSM-7 chars <=160 and false for a diacritic char or >160 chars. SmsTemplates renders OrderCreated and DriverArrived with placeholder substitution ({fleet},{code},{link} / {fleet},{driver},{plate},{color}).",
-        "AC#5 build-time test SmsTemplateGsm7Tests renders EVERY SMS template with the LONGEST realistic values (a 30-char fleet name, a 6-char public code, a realistic absolute tracking URL, a long driver name + plate + color) and asserts each rendered message IsGsm7AndWithinLimit (GSM-7 and <=160). This fails the build if any template can exceed 160 GSM-7 chars.",
-        "NotificationDedupKey.For is deterministic and identical for the same (evt, orderId, recipient, channel) and differs when any component differs.",
-        "NotificationRouting_DriverArrived_SmsEvenWithPush, NotificationRouting_RideStarted_PushOnly, NotificationRouting_PhoneOrder_OnlyCreatedAndArrivedSms, NotificationRouting_AppNoPush_CreatedIsSms, SmsTemplates_AllTemplates_Fit160Gsm7WithLongestValues, SmsTemplates_DiacriticInput_FailsGsm7, and NotificationDedupKey_SameInputs_SameKey pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.Notification"
-      }
-    },
-    {
-      "id": "A4-notification-engine",
-      "lane": "api",
-      "title": "INotificationService.Notify enqueues notification_outbox rows in the SAME DbContext/transaction (AC#3) - wired into OrderService.TransitionAsync (pre-commit) AND CreateOrderEndpoint + pure monthly cost-cap counter (AC#6)",
-      "goal": "The load-bearing transactional-outbox core (AC#3). INotificationService.Notify(NotificationEvent evt, Order order, CancellationToken ct) resolves recipients via A3 NotificationRouting (loading the customer's push-subscription presence + applying the monthly cap), renders payloads via A3 templates, and ADDS NotificationOutbox rows to the SAME scoped TaxiDbContext change-tracker - it does NOT call SaveChanges and does NOT open its own scope/context. Atomicity comes from the caller's existing single SaveChangesAsync. CRITICAL CALL-SITES (both verified): (1) OrderService.TransitionAsync - inject INotificationService and call Notify AFTER OrderStateMachine.Apply succeeds and events are added but BEFORE the `await dbContext.SaveChangesAsync(ct)` at line 68 (NOT in the post-commit publish block at lines 77-95 where OrderChanged/NewOrderOffered fire); the outbox rows then commit atomically with the order + order_events. Map the transition result to the event(s): Assign/Reassign -> OfferToDriver; Accept -> DriverAssigned; Arrive -> DriverArrived; Start -> RideStarted; Complete -> RideCompleted; Cancel -> OrderCancelledByFleet/ByCustomer (by actor role); Decline -> DriverDeclined; Timeout -> DriverTimedOut. (2) CreateOrderEndpoint - inject INotificationService and call Notify(OrderCreatedForCustomer or NewAppOrderForDispatch) BEFORE the SaveChangesAsync inside the public-code retry loop (line 206) so the outbox row shares the create transaction; the re-save on a public-code collision re-saves the already-tracked outbox rows harmlessly. PURE cost-cap: NotificationCostCap.Decide(int sentThisMonthCzk, int capCzk, int unitCostCzk, NotificationEvent evt, NotificationChannel channel) -> Allow | SkipCap (100% reached AND not DriverArrived -> SkipCap; DriverArrived always Allow, AC#6; 90% -> a FleetAdmin warning flag). The engine reads the current-month SMS count from notification_log (SentAt within the TimeProvider month window) to feed the pure cap. Do NOT re-price or mutate the order.",
-      "depends_on": [
-        "A2-push-subscriptions",
-        "A3-routing-and-templates"
-      ],
-      "estimated_complexity": "XL",
-      "files_touched": [
-        "api/src/Taxi.Api/Common/Notifications/INotificationService.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationCostCap.cs",
-        "api/src/Taxi.Api/Common/Notifications/CapDecision.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationsServiceExtensions.cs",
-        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
-        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderEndpoint.cs",
-        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderRequest.cs",
-        "api/src/Taxi.Api/Common/Tracking/TrackingOptions.cs",
-        "api/src/Taxi.Api/appsettings.Development.json",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationOutboxTransactionTests.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationCostCapTests.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationDedupTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#one-type-per-file",
-        "rules/architecture.md#banned-patterns",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#asnotracking",
-        "rules/error-handling.md#core-principle",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#async-await",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#style-message-templates",
-        "rules/logging.md#property-names",
-        "rules/logging.md#what-must-not-appear-in-logs",
         "rules/naming.md#test-naming",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/05-notifications.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "INotificationService.Notify ADDS NotificationOutbox rows to the injected scoped TaxiDbContext (the same instance the caller uses) WITHOUT calling SaveChangesAsync and WITHOUT opening a new scope. AC#3: NotificationOutbox_WrittenInSameTransaction proves atomicity - simulate a failure of the caller's SaveChanges (e.g. a concurrency conflict or forced rollback) after Notify and assert NO outbox row is persisted; on success the outbox row and the order/order_events commit together. The outbox insert is BEFORE OrderService line 68 and BEFORE CreateOrderEndpoint line 206, never in the post-commit SignalR publish block.",
-        "Notify resolves recipients via A3 NotificationRouting keyed on (event, Order.Source, customerHasPush) where customerHasPush is computed from PushSubscriptions for Order.CustomerUserId. Each outbox row stores INTENT (Event, OrderId, Channel, RecipientUserId?/RecipientPhone?/RecipientEndpoint?) - it does NOT store a pre-rendered SMS body. The SMS body (with the absolute tracking link) is rendered at SEND time by the dispatch job (A5) from the order's then-final PublicCode; this avoids the CreateOrderEndpoint public-code RETRY LOOP (lines 202-216) regenerating PublicCode AFTER a body was already rendered (AC#1 'working tracking link' would otherwise embed a stale code on a rare 23505 collision). The absolute link is built in A5 via TrackingTokenService.Mint(order.Id, now + lifetime) + a new dev-config PublicBaseUrl (added to appsettings.Development.json + an options type here in A4; prod wiring deferred to 08, documented).",
-        "CreateOrderRequest gains an additive `OrderSource? Source` (plain property, no `required`); CreateOrderEndpoint sets Source = isCustomer ? App : (req.Source ?? Dispatcher) so a dispatcher can create a Phone-source order. A Phone-source order enqueues exactly ONE OrderCreatedForCustomer SMS outbox row (AC#1).",
-        "Dedup (AC#7) - enforcement lives at SEND time in A5, NOT at enqueue: the outbox may contain two rows for the same (event,order,recipient,channel) after a duplicate Notify, and that is fine; the dispatch job (A5) CLAIMS the NotificationLog row via the unique-index insert (claim-then-execute, the existing IdempotencyRecord pattern) BEFORE calling the sender, so a 23505 means 'already sent/claimed' -> skip the send entirely. A4 therefore does NOT attempt to dedup at enqueue; it only ensures Notify enqueues outbox intent. A4's NotificationDedup_DuplicateNotify_EnqueuesButSendGuardedByA5 documents the hand-off (the send-once assertion itself is A5's NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce).",
-        "PURE NotificationCostCap.Decide (AC#6): with cap=2 and unit cost=1, after 2 SMS already sent this month a third NON-arrival SMS decides SkipCap (logged SkippedCap, no send) while a DriverArrived SMS decides Allow (still sends). NotificationCostCap_ThirdNonArrival_SkipsCap, NotificationCostCap_ArrivalAlwaysAllowed, and NotificationCostCap_At90Percent_FlagsWarning pass (pure unit tests, no DB).",
-        "Tenant safety: outbox/log rows carry the order's FleetId and are written through the tenant-scoped context. NotificationOutbox_IsWrittenForCorrectFleet (an order in fleet A never enqueues an outbox row readable by fleet B) passes. No raw phone numbers or tokens are logged (rules/logging.md) - use Reason/Phase discriminators and OrderId/FleetId."
+        "PUT fleet/settings (FleetAdminOnly, tenant-scoped) persists Fleet.Name/Phone/PrimaryColorHex + FleetSettings.WelcomeText/OfferTimeoutSeconds/SmsMonthlyCapCzk/AutoDispatchEnabled; no migration (all columns exist). FleetSettings_Put_PersistsAllFields passes. An invalid color hex -> 400 via the validator.",
+        "POST fleet/logo accepts a <=200 KB PNG, writes /data/fleets/{FleetId}/logo.png, and stamps Fleet.LogoUpdatedAt. FleetLogo_Upload_StoresFileAndStampsLogoUpdatedAt and FleetLogo_Over200kb_Returns400 pass; a non-PNG -> 400.",
+        "AC#4 server half: GET public/fleet additively returns welcomeText + logoUrl (derived with a ?v=ticks cache-bust, null when no logo); PublicFleet_ReturnsWelcomeAndLogoUrl_WhenLogoSet passes. PublicFleet_SecondFleetBySlug_ReturnsOwnBranding proves a second fleet resolved by slug returns ITS OWN name/color/logo/welcome (anonymous, tenant-safe by slug) - no rebuild per tenant.",
+        "Authz: non-FleetAdmin -> 403 (FleetSettings_NonFleetAdmin_Returns403). The existing GetFleetSettingsEndpoint read is unchanged."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.Notification"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.FleetSettings"
       }
     },
     {
-      "id": "A5-channels-and-dispatch-job",
+      "id": "A7-retention-job-and-anonymizer",
       "lane": "api",
-      "title": "ISmsSender (Console/GoSms/SMSbrana, config-selected) + IPushSender (WebPush 1.0.13 VAPID, 410->delete, AC#4) + NotificationDispatchJob RunTickAsync shell (retry 3x, AC#1/#3) + notification_log writes",
-      "goal": "The channel adapters + the background drain job (mirrors OfferTimeoutJob's RunTickAsync testable-shell, CLAUDE.md WI-14). CHANNELS: ISmsSender with ConsoleSmsSender (DEFAULT in dev/test - writes the message via the injected logger so AC#1 can assert it; the <=80-line GoSmsSender (HTTP) and SMSbranaSmsSender behind config are ALSO written but untested against live API, config selects one via a Notifications:SmsProvider setting). IPushSender using WebPush 1.0.13 (author coryjthompson, the web-push-csharp lib; targets netstandard2.1/net8.0, compatible with .NET 10; VAPID via VapidDetails; 410 detected via WebPushException.StatusCode == Gone) with a NoOpPushSender for tests; payload <=3KB { title, body, url, tag, priority }; on HttpStatusCode.Gone (410) the sender DELETES the matching PushSubscription (AC#4). VAPID keys are dev-config only (appsettings.Development.json; prod -> 08, documented). JOB: NotificationDispatchJob : BackgroundService with a thin ExecuteAsync PeriodicTimer shell and all logic in public RunTickAsync(ct) (tests call it directly, no timer waits). Per tick: scan NotificationOutbox cross-tenant (IgnoreQueryFilters) for Status=Queued/Failed-retryable with NextAttemptAt<=now; per row open a FRESH scope, set CurrentTenant.FleetId = row.FleetId (so notification_log writes pass the tenant guard + query filter). AC#7 SEND-ONCE via CLAIM-THEN-EXECUTE (the existing IdempotencyRecord pattern): INSERT the NotificationLog row (Status=Queued) FIRST as a claim - if the unique dedup index rejects it (23505), another outbox row already claimed this (event,order,recipient,channel) so SKIP the send entirely (no second sender call); only on a successful claim does the job call the channel sender. RENDER AT SEND TIME: the SMS body (OrderCreated absolute tracking link) is rendered here from the order's then-final PublicCode via A3 SmsTemplates + TrackingTokenService.Mint + PublicBaseUrl - NOT at enqueue (avoids the CreateOrder public-code retry-loop staleness). RETRY COMPATIBILITY INVARIANT: a row's OWN failed send must stay retryable - the claim is keyed so a row can re-attempt its own send (match the claim to the outbox row / keep the log row non-terminal until Sent), while a DIFFERENT duplicate outbox row is blocked. After the send, update the claimed log row to Sent (+ProviderMessageId/SentAt) or on failure bump Attempts + NextAttemptAt (backoff via TimeProvider); after 3 failed attempts mark the outbox row + the log row Status=Failed. Register the job in JobsServiceExtensions.AddJobs.",
+      "title": "RetentionJob RunTickAsync shell (anonymize >24mo orders, prune sms_codes/refresh_tokens) + shared CustomerAnonymizer + gdpr.md (AC#5)",
+      "goal": "Data retention (assignment section Data retention). RetentionJob : BackgroundService mirroring OfferTimeoutJob (CLAUDE.md WI-14, SOURCE-VERIFIED): a thin ExecuteAsync PeriodicTimer(interval, timeProvider) shell + a public RunTickAsync(ct) holding all logic (tests call RunTickAsync directly - deterministic, no timer waits; time-advancing tests create their OWN TaxiApiFactory per CLAUDE.md WI-13). Per tick: (1) scan orders cross-tenant via IgnoreQueryFilters for CreatedAt older than 24 months (timeProvider.GetUtcNow() - 24 months) where not already anonymized; per order open a fresh scope, set CurrentTenant.FleetId = order.FleetId, and anonymize via the shared Common/Gdpr/CustomerAnonymizer (null CustomerUserId, CustomerPhone='+420000000000', CustomerName='Anonymizovano' - order row KEPT). (2) delete sms_codes with ExpiresAt (or CreatedAt) older than 1 day. (3) delete refresh_tokens expired more than 30 days ago. Driver-position history retention is NOT in v1 (document in docs/decisions.md). Register the job in JobsServiceExtensions.AddJobs. The shared CustomerAnonymizer is a pure-ish helper (mutates a passed Order's customer fields) reused by A8 - A8 depends_on A7 to serialize that shared file. Write docs/gdpr.md (cs + en: what is stored, why, how long) suitable for the customer-app footer link.",
       "depends_on": [
-        "A4-notification-engine"
+        "A1-report-indexes-and-fleet-logo"
       ],
-      "estimated_complexity": "XL",
+      "estimated_complexity": "L",
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Notifications/ISmsSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/ConsoleSmsSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/GoSmsSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/SmsbranaSmsSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/IPushSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/WebPushSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/NoOpPushSender.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/NotificationOptions.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/NotificationDispatchJob.cs",
+        "api/src/Taxi.Api/Infrastructure/Jobs/RetentionJob.cs",
         "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationsServiceExtensions.cs",
-        "api/src/Taxi.Api/appsettings.Development.json",
-        "api/src/Taxi.Api/Program.cs",
-        "api/src/Taxi.Api/Taxi.Api.csproj",
-        "api/tests/Taxi.Api.Tests/Notifications/NotificationDispatchJobTests.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/PushSenderGoneTests.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/PhoneOrderSmsEndToEndTests.cs"
+        "api/src/Taxi.Api/Common/Gdpr/CustomerAnonymizer.cs",
+        "docs/decisions.md",
+        "docs/gdpr.md",
+        "api/tests/Taxi.Api.Tests/Reports/RetentionJobTests.cs"
       ],
       "rule_citations": [
         "rules/architecture.md#common-infrastructure",
@@ -279,185 +398,276 @@
         "rules/csharp-style.md#xml-documentation",
         "rules/logging.md#style-message-templates",
         "rules/logging.md#property-names",
-        "rules/logging.md#levels",
         "rules/logging.md#what-must-not-appear-in-logs",
         "rules/naming.md#test-naming",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/05-notifications.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
         "docs/decisions.md"
       ],
-      "needs_library_research": true,
+      "needs_library_research": false,
       "acceptance_criteria": [
-        "ISmsSender has ConsoleSmsSender (default, logs the rendered message so tests assert it), GoSmsSender (HTTP, <80 lines), and SmsbranaSmsSender, selected by Notifications:SmsProvider config (default Console in dev/test). IPushSender has WebPushSender (WebPush 1.0.13, VAPID from dev-config NotificationOptions; prod keys -> 08 documented) and NoOpPushSender (tests). The WebPush package reference is added to Taxi.Api.csproj at the pinned version 1.0.13.",
-        "NotificationDispatchJob mirrors OfferTimeoutJob: a thin ExecuteAsync PeriodicTimer(timeProvider) shell + a public RunTickAsync(ct) with all logic; tests construct the job and call RunTickAsync directly (no timer waits, CLAUDE.md WI-14). The scan uses IgnoreQueryFilters cross-tenant; each row is dispatched in a fresh scope with CurrentTenant.FleetId set from the row before writing notification_log. Registered via AddJobs.",
-        "AC#1: PhoneOrderSmsEndToEnd creates a Phone-source order (A4 Source field), runs RunTickAsync once with ConsoleSmsSender, and asserts EXACTLY ONE SMS was produced, its body contains a working ABSOLUTE tracking link, and a single NotificationLog row Status=Sent exists (ConsoleSmsSender output asserted).",
-        "AC#3: NotificationDispatchJob_SendFailsThreeTimes_MarksFailed - with a sender stubbed to throw, after 3 RunTickAsync passes the outbox row + the NotificationLog are Status=Failed (and the dispatcher board red icon surfaces via the A6 Notifikace list carrying a Failed SMS). Backoff uses TimeProvider; the test advances its own FakeTime (own factory per the CLAUDE.md TaxiApiFactory.FakeTime note).",
-        "AC#4: PushSender_Returns410_DeletesSubscription - a push send whose provider returns 410 Gone causes the matching PushSubscription row to be deleted. AC#7: NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce - with a RECORDING sender, two outbox rows for the same (event,order,recipient,channel) result in the sender being invoked EXACTLY ONCE (the claim-then-execute NotificationLog insert rejects the second BEFORE its send) and exactly one Sent log row. This asserts the SEND boundary (not just the log count) - the claim happens before the sender call.",
-        "notification_log and outbox are written tenant-scoped; a dispatch for fleet A never writes a log row visible to fleet B (tenant isolation). No raw phone/token/VAPID key is logged - only Reason/Phase/OrderId/FleetId/ProviderMessageId (rules/logging.md)."
+        "RetentionJob mirrors OfferTimeoutJob: thin ExecuteAsync PeriodicTimer(timeProvider) shell + public RunTickAsync(ct); tests construct the job and call RunTickAsync directly. The scan uses IgnoreQueryFilters cross-tenant; each order is anonymized in a fresh scope with CurrentTenant.FleetId set from the order. Registered via AddJobs.",
+        "AC#5: RetentionJob_AnonymizesOrderOlderThan24Months anonymizes a 25-month-old order (CustomerUserId null, phone '+420000000000', name 'Anonymizovano', order row kept); RetentionJob_LeavesOrderUnder24Months leaves a 23-month-old order intact. Both use the injected TimeProvider for 'now'.",
+        "RetentionJob_DeletesExpiredSmsCodes (sms_codes >1 day removed) and RetentionJob_DeletesOldRefreshTokens (refresh_tokens expired >30 days removed) pass. RetentionJob_IsTenantScopedPerFleet proves per-fleet scope isolation during anonymization.",
+        "The shared CustomerAnonymizer is used here and by A8 (no duplicated logic); CustomerAnonymizer_SetsSentinelPhoneAndName_KeepsOrderRow passes. docs/gdpr.md (cs + en) and a docs/decisions.md note (driver-position retention deferred) are added. No PII beyond ids in logs."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.RetentionJob"
       }
     },
     {
-      "id": "A6-order-detail-notifikace",
+      "id": "A8-customer-self-deletion",
       "lane": "api",
-      "title": "OrderDetailDto gains an additive notifications list (sent/failed) + GetOrderEndpoint projection so the dispatcher sees delivery status (AC#3 red icon source)",
-      "goal": "Close the visibility gap (assignment section 5). OrderDetailDto/OrderDetailMapper gains an additive `notifications` list (each item: { event, channel, recipient, status, error?, createdAt, sentAt? }) projected from NotificationLog for the order. GetOrderEndpoint (and the shared OrderDetailMapper used by CreateOrder/transition detail responses) populates it - load the NotificationLog rows for the order with AsNoTracking (tenant-scoped) and map in memory (no jsonb in the projection). This is the server half of the dispatcher 'Notifikace' section + the failed-SMS red-icon signal (a Failed Sms log row = the red icon). Additive only: existing OrderDetailDto fields, callers, and the { order } envelope are unchanged. No state-machine change, no new migration.",
+      "title": "DELETE customers/me SMS-code-confirmed GDPR self-deletion (anonymize orders via shared CustomerAnonymizer, delete User) (AC#6)",
+      "goal": "Customer GDPR self-deletion (assignment section Data retention). New slice Features/Customers/DeleteMe: DELETE /api/v1/customers/me (Policies CustomerOnly), confirmed by an SMS code. SOURCE-VERIFIED the existing SMS flow: Features/Auth/RequestCode + VerifyCode use the SmsCode entity (Phone, CodeHash, ExpiresAt, Attempts, UsedAt). The delete endpoint accepts a body { code } (the SMS code the customer already requested via the existing RequestCode flow for their phone), validates it against the SmsCode row (hash match, not expired, not used) exactly as VerifyCode does, and on success: (1) anonymize ALL of the caller's orders via the shared Common/Gdpr/CustomerAnonymizer from A7 (orders KEPT, customer fields sentinel-ized) so they remain in reports anonymized (AC#6); (2) delete the User row (and their refresh_tokens/push_subscriptions). Resolve the caller's UserId from the sub claim and their phone from the User row to find the SmsCode. Depends_on A7 to reuse CustomerAnonymizer (serializes the shared file). No migration.",
       "depends_on": [
-        "A5-channels-and-dispatch-job"
+        "A7-retention-job-and-anonymizer"
       ],
       "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailDto.cs",
-        "api/src/Taxi.Api/Features/Orders/Shared/OrderNotificationDto.cs",
-        "api/src/Taxi.Api/Features/Orders/Shared/OrderDetailMapper.cs",
-        "api/src/Taxi.Api/Features/Orders/GetOrder/GetOrderEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Notifications/OrderDetailNotificationsTests.cs"
+        "api/src/Taxi.Api/Features/Customers/CustomersFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Customers/DeleteMe/DeleteMeEndpoint.cs",
+        "api/src/Taxi.Api/Features/Customers/DeleteMe/DeleteMeRequest.cs",
+        "api/src/Taxi.Api/Features/Customers/DeleteMe/DeleteMeValidator.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Reports/DeleteMeTests.cs"
       ],
       "rule_citations": [
         "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
         "rules/architecture.md#one-type-per-file",
         "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#n-plus-one",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/api-design.md#routes",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#validator-class",
+        "rules/error-handling.md#send-for-expected-errors",
         "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#error-codes",
         "rules/naming.md#test-naming",
-        "rules/naming.md#files-and-types",
+        "rules/logging.md#what-must-not-appear-in-logs",
         "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/05-notifications.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "OrderDetailDto gains an additive `notifications` array (OrderNotificationDto record: Event, Channel, Recipient, Status, Error?, CreatedAt, SentAt?). OrderDetailMapper/GetOrderEndpoint populate it from NotificationLog rows for the order (AsNoTracking, tenant-scoped, ordered by CreatedAt). Existing fields + the { order } envelope are unchanged (purely additive).",
-        "A completed order whose customer SMS went to Status=Failed surfaces that Failed Sms item in `notifications` so the dispatcher UI (B2) can render the red icon and call the customer (AC#3 server half). A Sent item shows SentAt.",
-        "Tenant isolation: GetOrder for an order in fleet A only returns fleet A notification rows; a cross-fleet order id is a no-leak 404 (existing behavior unchanged).",
-        "OrderDetail_IncludesSentAndFailedNotifications and OrderDetail_NotificationsAreTenantScoped pass."
+        "DELETE customers/me (CustomerOnly) accepts a { code } body, validates it against the caller's SmsCode row (hash + not expired + not used, mirroring VerifyCode), and on success anonymizes the caller's orders via the shared CustomerAnonymizer (orders KEPT) and deletes the User row (+ their refresh_tokens/push_subscriptions). DeleteMe_ValidSmsCode_AnonymizesOrdersAndDeletesUser passes.",
+        "AC#6: DeleteMe_OrdersRemainInReportsAnonymized proves the customer's past orders still appear in the fleet report after deletion, with anonymized customer fields (phone '+420000000000', name 'Anonymizovano', CustomerUserId null).",
+        "A wrong/expired code -> 400 (DeleteMe_WrongCode_Returns400); an anonymous request -> 401 (DeleteMe_Anonymous_Returns401); no customer user -> 404. No raw phone/code is logged (rules/logging.md - use ids/Reason).",
+        "Reuses A7's CustomerAnonymizer (no duplicated anonymization logic)."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Notifications.OrderDetailNotifications"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.DeleteMe"
       }
     },
     {
-      "id": "B1-service-worker-push-and-subscription",
+      "id": "B1-reports-screen",
       "lane": "web",
-      "title": "Service-worker push display + click-to-open url + subscription wiring to A2 (driver mandatory, customer after first order) + client.ts subscribe/unsubscribe",
-      "goal": "The PWA push half (resolves UC-003 driver-priming + UC-004 customer-prompt deferrals on the client side). The /web service worker shows the push notification ({ title, body, url, tag, priority }) and on notificationclick opens/focuses `url`; OfferToDriver uses requireInteraction:true + the driver app sound (reuse UC-003 offer sound infra). Add pushSubscribe/pushUnsubscribe to client.ts POSTing/DELETEing /push/subscriptions with the browser PushSubscription JSON (endpoint, keys.p256dh, keys.auth, userAgent). Wire the subscription lifecycle: a pure subscription-manager module (request permission, subscribe via the VAPID public key from config, POST to the API) called for the DRIVER mandatorily at login (UC-003 PermissionPriming) and for the CUSTOMER after the first order (UC-004 PushPrompt, already present - wire its accept to pushSubscribe). VAPID public key is a dev build-config value (prod -> 08). Pure logic (payload->display mapping, subscription-manager decisioning) extracted and unit-tested; SW + browser Push API are thin shells.",
+      "title": "/x/reports (FleetAdmin): driver report + totals + CSV download, fleet KPI cards + rides-per-day plain-SVG bar chart + top routes, ratings list",
+      "goal": "The reports UI (assignment Lane-B item 8). New /x feature slice src/features/reports. Driver report: filters (driver select + date range defaulting to this-month in Europe/Prague), a per-day table + totals row, and a CSV download button that fetches the ?format=csv variant and triggers a blob+filename download (reuse the B-lane download pattern). Fleet report: KPI cards + a rides-per-day bar chart as a HAND-ROLLED plain <svg> component (NO chart library - npm run size must stay green) + a top-routes list. Ratings list. All data via client.ts typed functions (DTOs mirror A2/A3/A4 JSON, named-envelope unwrap per the client.ts convention). Pure colocated modules with their own tests: reportTotals.ts (sum per-day rows), ridesChartGeometry.ts (map counts -> SVG bar x/y/height coords), csvDownload.ts (blob + filename trigger). Czech-first i18n; every new key in both cs.json + en.json (parity test). Lazy-load the route chunk (code splitting). Must not modify /d or /c routes.",
       "depends_on": [
-        "A2-push-subscriptions"
+        "A2-driver-report-and-csv",
+        "A3-fleet-report-and-50k-seed",
+        "A4-audit-merge-endpoint"
       ],
-      "estimated_complexity": "L",
+      "estimated_complexity": "XL",
       "files_touched": [
+        "web/src/features/reports/ReportsPage.tsx",
+        "web/src/features/reports/ReportsPage.test.tsx",
+        "web/src/features/reports/DriverReportTable.tsx",
+        "web/src/features/reports/FleetKpiCards.tsx",
+        "web/src/features/reports/RidesChart.tsx",
+        "web/src/features/reports/RidesChart.test.tsx",
+        "web/src/features/reports/RatingsList.tsx",
+        "web/src/features/reports/reportTotals.ts",
+        "web/src/features/reports/reportTotals.test.ts",
+        "web/src/features/reports/ridesChartGeometry.ts",
+        "web/src/features/reports/ridesChartGeometry.test.ts",
+        "web/src/features/reports/csvDownload.ts",
+        "web/src/features/reports/csvDownload.test.ts",
+        "web/src/features/reports/useReports.ts",
+        "web/src/features/reports/useReports.test.ts",
         "web/src/shared/api/client.ts",
-        "web/src/shared/push/pushSubscriptionManager.ts",
-        "web/src/shared/push/pushSubscriptionManager.test.ts",
-        "web/src/shared/push/pushPayload.ts",
-        "web/src/shared/push/pushPayload.test.ts",
-        "web/src/shared/push/usePushSubscription.ts",
-        "web/src/shared/push/usePushSubscription.test.ts",
-        "web/src/sw.ts",
-        "web/src/features/customer/tracking/PushPrompt.tsx",
+        "web/src/app/router.tsx",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "rule_citations": [
         "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#route-groups",
         "rules/web-architecture.md#api-client",
         "rules/web-architecture.md#pure-logic-modules",
         "rules/web-architecture.md#state-tiers",
-        "rules/web-realtime.md#offline-ux",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        "docs/specs/in-progress/005_UC_005_notifications.md",
-        ".claude/state/05-notifications.md",
-        "docs/specs/done/customer-pwa-work-items.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "client.ts gains pushSubscribe({ endpoint, p256dh, auth, userAgent }) -> POST /push/subscriptions and pushUnsubscribe(endpoint) -> DELETE /push/subscriptions, both via the typed client (no raw fetch), attaching the X-Fleet-Slug/JWT as the existing client does. Responses are unwrapped per the client.ts named-envelope convention.",
-        "The service worker push handler renders a notification from the { title, body, url, tag, priority } payload; notificationclick opens or focuses `url`. For a payload with priority high / tag offer it sets requireInteraction:true and triggers the driver sound. pushPayload.ts (pure) maps a raw push payload to the display options and is unit-tested (including the OfferToDriver requireInteraction branch).",
-        "pushSubscriptionManager.ts (pure) decides subscribe/skip from (permission state, existing subscription, role) and builds the API request from a browser PushSubscription; it is unit-tested with mocked permission/subscription. The driver login path subscribes mandatorily (UC-003 priming) and the customer PushPrompt accept calls pushSubscribe (UC-004). No /x, /d, or /c route owned by another group is modified beyond the shared push module + the customer PushPrompt.",
-        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; pushPayload.test.ts, pushSubscriptionManager.test.ts, usePushSubscription.test.ts (client mocked per rules/web-testing.md#network-mocking), and locales.parity.test.ts pass. New i18n keys land in both cs.json + en.json (formal 'vy' for customer, informal 'ty' for driver)."
-      ],
-      "verification": {
-        "tool": "vitest"
-      }
-    },
-    {
-      "id": "B2-dispatcher-notifikace-section",
-      "lane": "web",
-      "title": "Dispatcher order-detail 'Notifikace' section (sent/failed) + failed-SMS red icon on the order card + SMS cap/cost in settings",
-      "goal": "The dispatcher visibility half. In the /x order-detail view render a 'Notifikace' section listing the A6 `notifications` items (event, channel, recipient, status, time) with a clear sent/failed visual; a FAILED Sms item shows a red icon on the order card (so the dispatcher calls the customer). Add the monthly SMS count + estimated cost + cap-warning to the dispatcher Settings (reuse the FleetSettings surface; the cap numbers come from FleetSettings.SmsMonthlyCapCzk/SmsUnitCostCzk + the current-month count - a read-only display). Pure status->pill/icon mapping extracted and tested. Component-tested (+axe); no new e2e (the create-order/accept/customer flows are already e2e-covered and this is a display addition).",
-      "depends_on": [
-        "A6-order-detail-notifikace"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "web/src/features/board/orderDetail/NotificationsSection.tsx",
-        "web/src/features/board/orderDetail/NotificationsSection.test.tsx",
-        "web/src/features/board/orderDetail/notificationStatus.ts",
-        "web/src/features/board/orderDetail/notificationStatus.test.ts",
-        "web/src/features/board/OrderCard.tsx",
-        "web/src/features/board/OrderCard.test.tsx",
-        "web/src/features/settings/SettingsPage.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
+        "rules/web-architecture.md#banned-patterns",
         "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
         "rules/web-react-style.md#typescript-strict",
+        "rules/web-react-style.md#i18n-czech-first",
         "rules/web-react-style.md#dates-and-money",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-performance.md#bundle-budget",
+        "rules/web-performance.md#query-keys",
         "rules/web-accessibility.md#semantics",
         "rules/web-accessibility.md#touch-targets",
-        "rules/web-performance.md#query-keys",
         "rules/web-testing.md#a11y-assertion",
         "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#network-mocking",
         "rules/web-testing.md#i18n-parity",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        "docs/specs/in-progress/005_UC_005_notifications.md",
-        ".claude/state/05-notifications.md",
+        "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
         "docs/specs/done/dispatcher-web-work-items.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "The order-detail view renders a 'Notifikace' section listing each notification (translated event label, channel, recipient, status, time formatted Europe/Prague) from the A6 order DTO `notifications` field; the DTO type in client.ts is extended additively. A Failed Sms item renders with a clear failed state (role/aria, not color alone).",
-        "OrderCard shows a red icon (with an i18n'd aria-label, e.g. 'SMS se nepodarila odeslat') when the order has at least one Failed Sms notification, so the dispatcher knows to call the customer. notificationStatus.ts (pure) maps a status to its pill/icon descriptor and is unit-tested (Sent/Failed/Queued/SkippedCap).",
-        "Dispatcher Settings shows the current-month SMS count + estimated cost (count * SmsUnitCostCzk, Intl.NumberFormat cs-CZ) and a cap warning when near/over SmsMonthlyCapCzk (read-only display). Touch targets >= 48px; new i18n keys in both cs.json + en.json; the change does not modify /d or /c routes.",
-        "npm run tsc, npm run lint (--max-warnings 0), npm run test pass; notificationStatus.test.ts, a NotificationsSection render + axe assertion, an OrderCard red-icon test, and locales.parity.test.ts pass."
+        "/x/reports (FleetAdmin, lazy-loaded chunk) renders the driver report (driver + date-range filters default this-month Europe/Prague; per-day table + totals) and a CSV download button that downloads the ?format=csv blob with a filename; the fleet report (KPI cards + a plain-SVG rides-per-day bar chart + top routes); and a ratings list. All HTTP via client.ts typed functions (named-envelope unwrap); money formatted integer CZK via Intl.NumberFormat cs-CZ; dates Europe/Prague.",
+        "NO chart library is added - RidesChart is a hand-rolled <svg>; npm run size passes after npm run build. ridesChartGeometry.ts (pure) maps counts to bar coords and is unit-tested; reportTotals.ts and csvDownload.ts are pure + unit-tested.",
+        "reportTotals.test.ts, ridesChartGeometry.test.ts, csvDownload.test.ts, useReports.test.ts (client mocked per rules/web-testing.md#network-mocking), a ReportsPage render + axe assertion, a RidesChart render + axe assertion, and locales.parity.test.ts pass. New i18n keys land in both cs.json + en.json.",
+        "No /d or /c route or screen is modified. npm run tsc, npm run lint (--max-warnings 0), npm run test, npm run build, npm run size all pass."
       ],
       "verification": {
         "tool": "vitest"
       }
+    },
+    {
+      "id": "B2-audit-timeline",
+      "lane": "web",
+      "title": "/x/audit (FleetAdmin) paged filterable read-only timeline + unified Czech event labels reused in the order-detail drawer",
+      "goal": "The audit UI (assignment Lane-B item 9). New /x feature slice src/features/audit: a paged, filterable (actor, entity, date, order code) read-only timeline backed by A4's GET audit (client.ts typed function, named-envelope unwrap). Use @tanstack/react-virtual ONLY if the rendered list can exceed ~100 rows (rules/web-performance.md#virtualization) - otherwise plain map. A pure auditEventLabel.ts maps every order-event type + audit action to a Czech label (incl. price overrides + manual status overrides) and is unit-tested for exhaustiveness. VERIFY/EXTEND the existing UC-002 order-detail drawer timeline to render every event type using the SAME auditEventLabel map (so price/manual overrides get Czech labels there too). Czech-first i18n, both locales. Must not modify /d or /c routes.",
+      "depends_on": [
+        "A4-audit-merge-endpoint"
+      ],
+      "estimated_complexity": "L",
+      "files_touched": [
+        "web/src/features/audit/AuditPage.tsx",
+        "web/src/features/audit/AuditPage.test.tsx",
+        "web/src/features/audit/auditEventLabel.ts",
+        "web/src/features/audit/auditEventLabel.test.ts",
+        "web/src/features/audit/useAudit.ts",
+        "web/src/features/board/orderDetail/OrderTimeline.tsx",
+        "web/src/features/board/orderDetail/OrderTimeline.test.tsx",
+        "web/src/shared/api/client.ts",
+        "web/src/app/router.tsx",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
+      ],
+      "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#route-groups",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#typescript-strict",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-performance.md#virtualization",
+        "rules/web-performance.md#query-keys",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#network-mocking",
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        "docs/specs/done/dispatcher-web-work-items.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "/x/audit (FleetAdmin) renders a paged read-only timeline with actor/entity/date/order-code filters, backed by client.ts getAudit (named-envelope unwrap); timestamps Europe/Prague; virtualized only when >~100 rows.",
+        "auditEventLabel.ts (pure) maps EVERY order-event type and audit action to a Czech label (incl. price overrides + manual status overrides) and auditEventLabel.test.ts asserts exhaustiveness (no unlabeled type). The UC-002 order-detail drawer timeline uses the same map; OrderTimeline.test.tsx asserts price/manual-override events render their Czech labels.",
+        "AuditPage render + axe assertion, auditEventLabel.test.ts, an order-detail-timeline label regression test, and locales.parity.test.ts pass; new keys in both cs.json + en.json.",
+        "No /d or /c route modified. npm run tsc, npm run lint (--max-warnings 0), npm run test pass."
+      ],
+      "verification": {
+        "tool": "vitest"
+      }
+    },
+    {
+      "id": "B3-admin-fleet-tab-and-onboarding-e2e",
+      "lane": "web",
+      "title": "/admin SuperAdmin screen + /x/settings Fleet tab (logo/color/welcome) + customer runtime branding + runbook + AC#3 second-subdomain Playwright (AC#3, AC#4)",
+      "goal": "The onboarding + branding UI + the AC#3 E2E (assignment Lane-B items 10/11/12). (1) Minimal /admin (SuperAdmin route, lazy): list fleets (GET admin/fleets) + a create-fleet form (POST admin/fleets) that shows the returned one-time admin password once - 1 screen, no design effort. (2) /x/settings Fleet tab: a self-service form (name, phone, PNG logo upload <=200 KB with a preview, color picker for PrimaryColorHex, welcome text, offer timeout, SMS cap, auto-dispatch toggle rendered DISABLED per v1.1) wired to A6's PUT fleet/settings + POST fleet/logo. (3) Customer PWA runtime branding (AC#4): the customer app already loads GET public/fleet before login - apply name + primaryColorHex + logoUrl + welcomeText at runtime (theme/logo/heading), NO per-tenant rebuild; add a gdpr.md footer link ('Ochrana osobnich udaju'). (4) docs/runbook.md: Caddy wildcard *.{domain} -> web, API resolves tenant from Host, DNS, two local fleets demo.localhost + second.localhost. (5) AC#3 Playwright onboarding.spec.ts: as SuperAdmin create a fleet -> log in as its FleetAdmin -> add a driver -> create an order, driving a SECOND subdomain/slug end-to-end (seed/second fleet). DEMO.md manual Lighthouse a11y note. Depends_on A5 (admin endpoints) + A6 (settings/branding endpoints) + B1 (dispatcher reports build-integrity / shared client.ts regions). Playwright test-results/ + playwright-report/ stay gitignored; chromium pinned revision (CLAUDE.md).",
+      "depends_on": [
+        "A5-superadmin-fleets-and-cli",
+        "A6-fleet-self-service-and-logo",
+        "B1-reports-screen"
+      ],
+      "estimated_complexity": "XL",
+      "files_touched": [
+        "web/src/features/admin/AdminFleetsPage.tsx",
+        "web/src/features/admin/AdminFleetsPage.test.tsx",
+        "web/src/features/admin/useAdminFleets.ts",
+        "web/src/features/settings/FleetTab.tsx",
+        "web/src/features/settings/FleetTab.test.tsx",
+        "web/src/features/settings/fleetSettingsForm.ts",
+        "web/src/features/settings/fleetSettingsForm.test.ts",
+        "web/src/features/customer/branding/useFleetBranding.ts",
+        "web/src/shared/api/client.ts",
+        "web/src/app/router.tsx",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json",
+        "web/e2e/onboarding.spec.ts",
+        "docs/runbook.md",
+        "DEMO.md"
+      ],
+      "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#route-groups",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#typescript-strict",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#keyboard-focus",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#network-mocking",
+        "rules/web-testing.md#e2e-conventions",
+        "rules/web-testing.md#i18n-parity",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
+        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        "docs/specs/done/dispatcher-web-work-items.md",
+        "docs/specs/done/customer-pwa-work-items.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "/admin (SuperAdmin, lazy) lists fleets and creates a fleet, showing the one-time admin password once (AdminFleetsPage render + axe). /x/settings Fleet tab edits name/phone/logo(PNG <=200 KB + preview)/color/welcome/offer-timeout/SMS-cap with the auto-dispatch toggle DISABLED (v1.1), wired to A6 (FleetTab render + axe); fleetSettingsForm.ts (pure validation/shape) is unit-tested.",
+        "AC#4: the customer PWA applies name + primaryColorHex + logoUrl + welcomeText from GET public/fleet at runtime with no rebuild; a gdpr.md footer link is present. useFleetBranding logic is covered.",
+        "AC#3: e2e/onboarding.spec.ts drives a SECOND subdomain/slug: SuperAdmin creates a fleet -> logs in as its FleetAdmin -> adds a driver -> creates an order, end-to-end against the real harness with the second fleet. test-results/ + playwright-report/ gitignored; chromium pinned revision installed (CLAUDE.md).",
+        "docs/runbook.md (Caddy wildcard + Host tenant resolution + DNS + demo.localhost/second.localhost) and a DEMO.md Lighthouse a11y note are added. New i18n keys in both cs.json + en.json; locales.parity.test.ts passes. npm run tsc, lint (--max-warnings 0), test, build, size pass; playwright onboarding.spec.ts passes."
+      ],
+      "verification": {
+        "tool": "playwright"
+      }
     }
   ],
-  "notes": "UC-005 = 6 Lane A (api) WIs (A1..A6) + 2 Lane B (web) WIs (B1,B2) = 8 total. Array is topologically ordered and acyclic. Schema shape matches the operative UC-006 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter}). verification.tool enum used: dotnet-test | vitest; dotnet-test filter is a single-token FullyQualifiedName~Taxi.Api.Tests.Notifications[.<Area>] fragment. NO .claude/schemas/work-items.v1.json file exists (known scaffold gap, CLAUDE.md); this matches the UC-002/003/004/006 handoff shape the conductor consumes. ============ TRANSACTIONAL OUTBOX CALL-SITE (AC#3, load-bearing, SOURCE-VERIFIED): OrderService.TransitionAsync commits at the SINGLE `await dbContext.SaveChangesAsync(ct)` on line 68; it publishes OrderChanged/DriverStatusChanged/NewOrderOffered POST-COMMIT at lines 77-95. The notification_outbox insert MUST go BEFORE line 68 (after OrderStateMachine.Apply succeeds + dbContext.OrderEvents.AddRange(result.Events) at line 61, before order.Version++/SaveChanges), NOT in the post-commit publish block. Mechanism: INotificationService injects the SAME scoped TaxiDbContext and only ADDS outbox rows to the change-tracker (no SaveChanges, no new scope) so order + order_events + outbox commit in one implicit transaction. CreateOrderEndpoint is the SECOND call-site (OrderCreatedForCustomer / NewAppOrderForDispatch): it commits at the SaveChangesAsync inside the public-code retry loop (line 206) - Notify is called BEFORE that loop-save, and the public-code-collision re-save harmlessly re-persists the already-tracked outbox rows. WORDING RECONCILIATION: the assignment says 'Notify after each COMMITTED transition' but AC#3 says 'same transaction' - resolution: Notify = ENQUEUE the outbox row pre-commit (same tx); the actual SEND happens later in NotificationDispatchJob. Stated so the reviewer does not flag the apparent contradiction. ============ PUSH SUBSCRIPTION RECONCILIATION (SOURCE-VERIFIED): PushSubscription ENTITY already exists (Id, FleetId?, UserId, Endpoint, P256dh, Auth, UserAgent?, CreatedAt, LastUsedAt?) and is in TaxiDbContextModelSnapshot (InitialSchema) with a DbSet + a query filter that admits null FleetId (e => e.FleetId == null || e.FleetId == currentTenant.FleetId) + a SaveChanges guard clause - it is UserId-scoped, NOT ITenantEntity (mirrors RefreshToken), nullable FleetId. NO push_subscription migration. NO existing endpoint (grep found only entity/config/migration/DbContext references). A2 builds POST/DELETE /api/v1/push/subscriptions (all authenticated roles, multi-device upsert by (UserId,Endpoint), prune on DELETE; 410-prune is in A5's push sender; the 90-day-unused prune is a labeled follow-up, see below). ============ SOURCE (Phone vs App) DECISION (labeled best-judgment assumption, per advisor + plain reading): CreateOrderRequest has NO Source field and CreateOrderEndpoint hardcodes Source = isCustomer ? App : Dispatcher (verified) - so there is NO way today to create a Phone-source order, yet AC#1 requires 'Phone-SOURCE order' and the routing footnote says 'Phone orders (Source=Phone, no customer app)'. DECISION (A4): add an additive `OrderSource? Source` to CreateOrderRequest (plain property, no `required` - CLAUDE.md STJ trap) and set Source = isCustomer ? App : (req.Source ?? Dispatcher). The routing matrix (A3) keys on (event, Source, customerHasPush) so BOTH the literal Phone-source case AND the 'App order but no push subscription -> SMS' case are handled without Source being the only discriminator. This is decidable (spec text ties it down) - NOT an AskUserQuestion (spec renews the autonomous-batch directive: interrupt only on 3-round blocks / quality-gate failures / undecidable scope). ============ TRACKING LINK FOR SMS (AC#1 'working link', SOURCE-VERIFIED): the token is minted today ONLY under `if (isCustomer)` (CreateOrderEndpoint line 230) and returned in CreateOrderResponse; the stored path is RELATIVE (`/c/t/{code}?k={token}`, line 234) via TrackingTokenService.Mint(order.Id, now + 24h). For a Phone/Dispatcher order there is no returned link, and SMS needs an ABSOLUTE URL. DECISION (A4): the notification engine (or the SMS payload builder) calls TrackingTokenService.Mint ITSELF and prepends a NEW dev-config PublicBaseUrl (added to appsettings.Development.json + an options type) to the relative path. PublicBaseUrl prod wiring is deferred to 08 (documented). ============ WEBPUSH PACKAGE PIN (researched, needs_library_research=true on A5 only): WebPush 1.0.13 (NuGet id `WebPush`, author coryjthompson - the canonical web-push-libs/web-push-csharp library), last published 2026-04-28, target frameworks netstandard2.1 + net8.0 + net4.8, compatible with .NET 9/10 (verified on nuget.org). VAPID via VapidHelper.GenerateVapidKeys() + VapidDetails(subject, publicKey, privateKey). 410 Gone detected via WebPushException.StatusCode == HttpStatusCode.Gone (the lib surfaces the status on the exception). Alternatives considered: Lib.Net.Http.WebPush 3.3.1 (also VAPID, more modern API) - either works; the WI pins WebPush 1.0.13 as the primary and notes Lib.Net.Http.WebPush 3.3.1 as the fallback if a .NET 10 build warning appears under -warnaserror. A5 adds the PackageReference at the pinned version; if 1.0.13 emits a CS/NU warning-as-error on .NET 10, switch to Lib.Net.Http.WebPush 3.3.1 (documented in decisions.md). ============ MIGRATION SERIALIZATION: exactly ONE new migration (A1 AddNotificationTablesAndSmsCap): creates notification_outbox + notification_log (both new, ITenantEntity, FleetId-scoped, tenant-isolation test each) + the dedup unique index on notification_log + adds two FleetSettings columns - ONE coherent snapshot. All other Lane-A WIs depend_on A1 so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel (UC-004/006 precedent, CLAUDE.md). No push_subscription migration (already in snapshot). ============ BACKGROUND JOB PATTERN (A5, mirrors OfferTimeoutJob, CLAUDE.md WI-14, SOURCE-VERIFIED): NotificationDispatchJob : BackgroundService with a thin ExecuteAsync PeriodicTimer(TickInterval, timeProvider) shell + a public RunTickAsync(ct) holding all logic (tests construct the job and call RunTickAsync directly - deterministic, no timer waits). Scan outbox cross-tenant via IgnoreQueryFilters, project (OutboxId, FleetId), then per-row open a FRESH scope, set CurrentTenant.FleetId = row.FleetId (so notification_log writes pass the tenant guard + query filter), send, write the log, bump Attempts + NextAttemptAt via TimeProvider backoff, mark Failed after 3 attempts. Time-advancing tests create their OWN TaxiApiFactory (FakeTime is irreversible and would contaminate the shared fixture, CLAUDE.md WI-13). 410-delete (AC#4) runs in that tenant-set scope (PushSubscription query filter admits null FleetId so customer subs are reachable). ============ JSONB TRAP (A1 PayloadJson, cited): NotificationOutbox.PayloadJson is System.Text.Json.JsonDocument? mapped jsonb; never project it inside a LINQ-to-SQL Select - ToListAsync() then read in memory (CLAUDE.md WI-10). ============ POLICY GAP (A2): no existing 'any authenticated role' policy (verified: CustomerOnly/DriverOnly/DispatcherOnly/FleetAdminOnly/SuperAdminOnly/DispatcherOrCustomer/DispatcherOrDriver/CustomerOrStaff). A2 adds an AuthenticatedOnly policy (RequireAuthenticatedUser) OR reuses an existing all-role policy if one truly admits every role; the push endpoints use it. ============ LANE PARALLELISM + SHARED-FILE SERIALIZATION: Lane A stages api/ only; Lane B stages web/ only; neither commits (conductor gates commit). Within Lane A: A1 is the root (schema); A2/A3 depend_on A1 and run in parallel (disjoint files); A4 depends_on A2+A3 (engine needs the subscription presence read + routing/templates + it edits OrderService/CreateOrderEndpoint/Program.cs); A5 depends_on A4 (channels + job drain the outbox the engine fills; adds the WebPush package); A6 depends_on A5 (order detail reads notification_log the job writes). ErrorCodes.cs writers: A2 (Push.*) + potentially A4/A5 - serialized by the A2->A4->A5 chain (at most one concurrent writer). Program.cs writers: A4 (register INotificationService + JsonStringEnumConverter if a new request enum is added - note CreateOrderRequest.Source is an enum, see the FastEndpoints enum-serialization CLAUDE.md trap; the converter is ALREADY registered globally per WI-09, so no change needed, but the developer must confirm) + A5 (register senders + the job) - serialized by A4->A5. appsettings.Development.json writers: A4 (PublicBaseUrl) + A5 (VAPID + SmsProvider) - serialized by A4->A5. JobsServiceExtensions.cs sole new writer is A5. NotificationsServiceExtensions.cs written by A4 (create) + A5 (append senders/job) - serialized by A4->A5. Within Lane B: B1 depends_on A2 (subscribe client mirrors the A2 contract - cross-lane build/contract edge); B2 depends_on A6 (the Notifikace section reads A6's order DTO `notifications` field - cross-lane contract edge). B1 and B2 touch client.ts + cs.json/en.json but in DISJOINT regions (B1 = push subscribe/unsubscribe + push payload keys; B2 = order-notification DTO type + notifikace/settings keys) and have no depends_on between them; if the conductor cannot guarantee append-safety on a shared file for the B1/B2 concurrent pair, serialize them (no depends_on forced because regions are disjoint). SettingsPage.tsx is written only by B2. ============ AC MAPPING: AC#1 (Phone order -> exactly one SMS + working tracking link, ConsoleSmsSender asserted) -> A3 (routing Phone subset) + A4 (Source field + absolute link + single enqueue) + A5 (ConsoleSmsSender end-to-end assert). AC#2 (DriverArrived SMS even with push; RideStarted push-only) -> A3 routing matrix unit tests. AC#3 (outbox same transaction; 3x fail -> Failed + dispatcher red icon) -> A4 (same-transaction) + A5 (3x retry Failed) + A6 (Failed surfaced) + B2 (red icon). AC#4 (push 410 -> subscription deleted) -> A5 push sender. AC#5 (every SMS template <=160 GSM-7 with longest values) -> A3 build-time template test. AC#6 (cap=2 -> third non-arrival SkippedCap, arrival sends) -> A4 pure NotificationCostCap + engine. AC#7 (duplicate Notify -> sent once) -> A1 dedup unique index + A5 CLAIM-THEN-EXECUTE (insert the notification_log claim via the unique index BEFORE calling the sender; 23505 -> skip the send, so the sender is invoked exactly ONCE - asserted by A5 NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce with a recording sender, counting the SEND boundary not just the log row). Enqueue (A4) does NOT dedup; the outbox may hold a duplicate row harmlessly. ============ SEND-TIME RENDERING (AC#1 correctness + AC#7 seam, advisor fix): the outbox stores INTENT (event,orderId,channel,recipient), NOT a pre-rendered SMS body. The body (OrderCreated absolute tracking link) is rendered at SEND time in A5 from the order's then-final PublicCode, because CreateOrderEndpoint's public-code retry loop (lines 202-216) can REGENERATE PublicCode after a 23505 collision - rendering at enqueue would embed a stale code in the rare collision case. Send-time rendering + claim-before-send is one coherent A5 design. AC#5's GSM-7 test is unaffected (it tests the A3 render FUNCTION, independent of call timing). ============ A3 TEST-CLASS NAMING (advisor fix): the AC#5 build-time GSM-7 test class MUST be named NotificationSmsTemplateTests (files_touched: NotificationSmsTemplateTests.cs) so its FQN contains 'Notifications.Notification' and is executed by A3's single-token filter ~Taxi.Api.Tests.Notifications.Notification; a class named SmsTemplateGsm7Tests would NOT match the filter and AC#5 would silently never run in the gate. ============ DEFERRED / FOLLOW-UPS (labeled, per 00-PROJECT-CONTEXT DoD 'Follow-ups'): (1) the 90-day-unused push-subscription prune (assignment section 6) is NOT built now - it is a trivial later job/tick; noted as a follow-up (the 410-prune IS built in A5). (2) ScheduledOrderReminder (T-30 dispatch / T-15 driver) is in the NotificationEvent enum (A1) and routing matrix (A3) but its SCHEDULING TRIGGER (a time-based scan of ScheduledAt orders) is a follow-up job - the engine/routing support it, but no scheduled-reminder scan job is built in this UC (out-of-scope minimization; the 7 binding ACs do not require it). (3) per-fleet routing-matrix OVERRIDE is modeled-for but not built (assignment: 'overridable per fleet later'). (4) GoSmsSender/SmsbranaSmsSender are written but untested against live provider APIs (assignment + spec out-of-scope). (5) prod VAPID + SMS-provider + PublicBaseUrl secrets are dev-config only -> assignment 08 (documented in decisions.md by A5). These are recorded so the impl-reviewer does not flag them as gaps. ============ DECISIONS.MD: A5 appends the UC-005 decisions (WebPush pin + fallback, PublicBaseUrl, Source field, Notify-enqueue-vs-send wording, deferred reminder/prune). Lane B stages no docs; A5 stages docs/decisions.md."
+  "notes": "UC-007 = 8 Lane A (api) WIs (A1..A8) + 3 Lane B (web) WIs (B1..B3) = 11 total. Array is topologically ordered and acyclic. Schema shape matches the operative UC-005/006 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter?}). verification.tool enum used: dotnet-test | vitest | playwright; dotnet-test filter is a single-token FullyQualifiedName~Taxi.Api.Tests.Reports.<Area> fragment whose Area prefix matches each WI's test-class name so the gate actually runs it (UC-005 filter-gotcha). NO .claude/schemas/work-items.v1.json file exists (known scaffold gap, CLAUDE.md); this matches the UC-002/003/004/005/006 handoff shape the conductor consumes. ============ ALREADY-EXISTS (SOURCE-VERIFIED - do NOT re-build, A1 notes): UserRole.SuperAdmin + UserRole.System (enum, string-stored -> NO migration); AuthorizationPolicies.SuperAdminOnly + AuthenticatedOnly + FleetAdminOnly (all registered); Fleet.PrimaryColorHex; FleetSettings.WelcomeText/AutoDispatchEnabled/OfferTimeoutSeconds/MaxOfferRadiusKm/SmsSenderName/SmsMonthlyCapCzk/SmsUnitCostCzk. The ONLY missing persisted self-service field is the logo -> A1 adds Fleet.LogoUpdatedAt (nullable), NO blob column (path /data/fleets/{id}/logo.png is id-derivable). A read endpoint Features/Fleet/GetFleetSettings ALREADY exists (no PUT) -> A6 adds PUT fleet/settings additively and must not break the read. ============ MIGRATION SERIALIZATION: exactly ONE new migration (A1 AddReportIndexesAndFleetLogo): report perf indexes (Order (FleetId,CreatedAt)/(FleetId,DriverId,CreatedAt)/(FleetId,Status,CreatedAt)) + audit-merge indexes (OrderEvent (FleetId,At), AuditLog (FleetId,At)) + Fleet.LogoUpdatedAt - ONE coherent snapshot. ALL other Lane-A WIs depend_on A1 so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel (UC-004/005/006 precedent, CLAUDE.md). Indexes are in A1 (not a later WI) because AC#2 needs them and a later index = a forbidden second migration. ============ PRAGUE-DAY BUCKETING (AC#1 correctness + AC#2 perf, SOURCE-VERIFIED risk, advisor #3): Order.CreatedAt is UTC DateTimeOffset; owners read Europe/Prague days. A naive GroupBy(o => o.CreatedAt.Date) buckets in UTC (wrong day near midnight) AND may not translate in Npgsql. A2/A3 group by a Prague-local day key expressed as date_trunc('day', created_at AT TIME ZONE 'Europe/Prague'); the developer VERIFIES Npgsql translation, and if a specific key/aggregate will not translate, falls back to a single FromSql/SqlQuery aggregation - STILL server-side (AC#2 holds), NEVER ToList-then-group. The date-range FILTER reuses the verified GetDayWindow UTC-boundary helper from GetMySummaryEndpoint (Features/Drivers/GetMySummary - already in the codebase, uses TimeZoneInfo Europe/Prague + ConvertTimeToUtc). AC#1 de-risk: seed the hand-computed orders at mid-day so UTC and Prague fall on the same date and the tz choice cannot shift a bucket. ============ HOURS-ONLINE (advisor #3): computed as a SEPARATE small bounded driver_shifts query clamped to the Prague window in memory (mirrors GetMySummaryEndpoint's clamp-and-sum), merged into the per-day rows - NOT folded into the 50k GROUP BY (shifts cross midnight; interval sum is a translation snag and the cardinality is tiny, not the perf path). ============ AUDIT MERGE (advisor #4): A4 projects order_events + audit_log to one AuditEntryDto, .Concat(...) -> SQL UNION ALL, OrderByDescending(At).Skip().Take(); the developer VERIFIES EF translates the union+paging, else falls back to two windowed queries merged in memory over an explicitly-bounded page window (documented). Both entities are ITenantEntity so the merge is auto-tenant-scoped; audit_log is near-empty today (only OverrideStatusEndpoint writes it, SOURCE-VERIFIED). jsonb Payload/Diff are NEVER projected in the SQL Select (CLAUDE.md WI-10). ============ CROSS-TENANT WRITE (AC#3, carry-forward, load-bearing, advisor #6): A5 POST admin/fleets is the ONE cross-tenant write - it writes FleetSettings/Tariff/FleetAdmin-User for a fleet that is NOT the caller's tenant, tripping the SaveChanges tenant guard (CLAUDE.md WI-04). Reuse the DevelopmentSeeder technique (set the scope's CurrentTenant.FleetId to the NEW fleet id, or a null-tenant scope) so the guard passes; hard-guarded by SuperAdminOnly; AdminFleets_Create_NonSuperAdmin_Returns403 is the mandatory negative test. ============ CLI create-superadmin (advisor #5, assumption 9): a testable SuperAdminBootstrapper.CreateAsync + a Program.cs args intercept AFTER builder.Build() that runs it and return;s BEFORE app.Run() (never boots the web host, mirrors the jobs RunTick testable-shell); the bootstrapper is integration-tested directly against a DbContext. Program.cs uses top-level statements today (SOURCE-VERIFIED) with no args branch - the intercept is additive. ============ SHARED ANONYMIZER (advisor #6, assumption 8): ONE Common/Gdpr/CustomerAnonymizer used by BOTH RetentionJob (A7) and DELETE customers/me (A8): null CustomerUserId, CustomerPhone='+420000000000', CustomerName='Anonymizovano', order row KEPT (AC#6). A8 depends_on A7 to serialize that shared file (no duplicated logic). ============ RETENTION JOB PATTERN (A7, mirrors OfferTimeoutJob, CLAUDE.md WI-14, SOURCE-VERIFIED): RetentionJob : BackgroundService with a thin ExecuteAsync PeriodicTimer(interval, timeProvider) shell + a public RunTickAsync(ct); tests construct the job and call RunTickAsync directly (deterministic, no timer waits). Scan orders cross-tenant via IgnoreQueryFilters; per-order fresh scope with CurrentTenant.FleetId set before anonymizing. Time-advancing tests create their OWN TaxiApiFactory (FakeTime irreversible, CLAUDE.md WI-13). Registered in JobsServiceExtensions.AddJobs (NotificationDispatchJob/OfferTimeoutJob/StalePositionJob already there). ============ SMS-CONFIRMED DELETION (A8, SOURCE-VERIFIED): the SmsCode entity (Phone, CodeHash, ExpiresAt, Attempts, UsedAt) + Features/Auth/RequestCode + VerifyCode already implement request+verify; A8 reuses the same hash/expiry/used validation to confirm deletion. No new SMS infra. ============ CSV BYTE-EXACTNESS (AC#7, assumption 11): pure Common/Reports/DriverReportCsv writer (NO FastEndpoints, NO CsvHelper) -> UTF-8 WITH BOM (EF BB BF) + ';' separator + CRLF; DriverReport_Csv_MatchesExpectedBytes asserts on bytes against a committed fixture. ============ 50k SEED (AC#2, assumption): a dev/test ReportSeedScript (Infrastructure/Seed, fleet-scoped, idempotent, SEPARATE from DevelopmentSeeder) inserts 50000 orders for the perf test only. ============ CHART = PLAIN SVG (carry-forward): RidesChart is a hand-rolled <svg> (ridesChartGeometry.ts pure) - NO chart library; npm run size must pass after build. ============ CLIENT.TS ENVELOPE (carry-forward): all new reports/audit/admin list responses are unwrapped per the client.ts named-envelope convention. ============ TENANT ISOLATION TEST PER FEATURE (carry-forward): A2 (DriverReport_CrossTenant_Returns404), A3 (FleetReport_CrossTenant_OnlyCallerFleet), A4 (Audit_CrossTenant_OnlyCallerFleet), A6 (PublicFleet_SecondFleetBySlug_ReturnsOwnBranding), A7 (RetentionJob_IsTenantScopedPerFleet), A8 (DeleteMe anonymized-in-reports) each ship a tenant-scope assertion; A5 is the sole cross-tenant write, guarded + negatively tested. ============ LANE PARALLELISM + SHARED-FILE SERIALIZATION: Lane A stages api/ only; Lane B stages web/ only; neither commits (conductor gates commit). Within Lane A: A1 is the root (schema); A2/A3/A4/A5/A6/A7 depend_on A1 and run in parallel (disjoint feature folders). SHARED Lane-A files: ErrorCodes.cs (appended by A2/A3/A4/A5/A6/A8), Program.cs (A5 only adds the CLI intercept - NOTE Notifications/WI already edited it; A5 is the sole UC-007 Program.cs writer), JobsServiceExtensions.cs (A7 only), docs/decisions.md (A3 + A7 - serialize or append-merge), GetFleetResponse.cs/GetFleetEndpoint.cs (A6 only). If the conductor cannot guarantee append-safety on ErrorCodes.cs for the concurrent A2..A6 set, serialize those appends (no depends_on forced since the symbols are distinct). A8 depends_on A7 (shared CustomerAnonymizer). Within Lane B: B1 depends_on A2+A3+A4 (its three data contracts); B2 depends_on A4 (audit contract); B3 depends_on A5+A6 (admin+branding contracts) + B1 (shared client.ts/router.tsx regions + dispatcher build-integrity for the E2E). B1/B2/B3 all touch client.ts + router.tsx + cs/en.json but in DISJOINT regions (B1 reports, B2 audit, B3 admin/settings); if the conductor cannot guarantee append-safety, serialize the concurrent web pair(s). ============ AC MAPPING: AC#1 (driver report matches hand-computed CSV) -> A2 (SQL aggregation + hand-computed table + committed CSV fixture). AC#2 (fleet KPIs SQL <300ms @ 50k) -> A1 (indexes) + A3 (SQL KPIs + 50k seed script + perf test). AC#3 (SuperAdmin create-fleet -> admin-login -> add-driver -> create-order on a second subdomain) -> A5 (server: cross-tenant create + CLI) + B3 (Playwright e2e second subdomain). AC#4 (second fleet customer branding, no rebuild) -> A6 (public/fleet welcome/logo/color) + B3 (customer runtime branding). AC#5 (RetentionJob anonymizes 25-month, leaves 23-month) -> A7. AC#6 (customer self-deletion, orders remain anonymized in reports) -> A8 (+ shared A7 anonymizer). AC#7 (CSV BOM + ';' byte-tested) -> A2 (DriverReportCsv byte test). ============ DEFERRED / FOLLOW-UPS (labeled, per 00-PROJECT-CONTEXT DoD): (1) driver-position-history retention is NOT in v1 (documented by A7 in decisions.md). (2) Auto-dispatch stays v1.1-disabled (toggle persisted + rendered disabled, never acted on). (3) prod VAPID/SMS/PublicBaseUrl secrets + Caddy static logo serving + actual deploy are assignment 08 (B3 documents Caddy/DNS in runbook.md only). (4) accounting/invoicing/BI dashboards are out of scope. These are recorded so the impl-reviewer does not flag them as gaps. ============ UNDECIDABLE-SCOPE NOTE: no undecidable scope arose; all judgment calls (logo = derived path + LogoUpdatedAt column vs blob; Prague-day date_trunc-AT-TIME-ZONE with FromSql fallback; audit UNION-ALL merge shape with in-memory fallback; CLI bootstrapper + args intercept; one shared anonymizer) are decidable from source + spec and are recorded as labeled best-judgment assumptions here and in the work-items doc (autonomous-batch directive renewed in the spec Mode line: interrupt only on 3-round blocks / quality-gate failures / undecidable scope - so no AskUserQuestion)."
 }

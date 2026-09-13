@@ -32,26 +32,26 @@ describe('useFleetBranding', () => {
   })
 
   it('applies the fleet primary color as a theme override once loaded', async () => {
-    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: '#ff8800', currency: 'CZK', timeZone: 'Europe/Prague' })
+    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: '#ff8800', currency: 'CZK', timeZone: 'Europe/Prague', welcomeText: null, logoUrl: null })
     const { result } = renderHook(() => useFleetBranding(), { wrapper })
     await waitFor(() => expect(result.current.theme.colors.primary).toBe('#ff8800'))
   })
 
   it('falls back to the theme primary token when primaryColorHex is null', async () => {
-    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague' })
+    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague', welcomeText: null, logoUrl: null })
     const { result } = renderHook(() => useFleetBranding(), { wrapper })
     await waitFor(() => expect(result.current.fleet?.name).toBe('Acme'))
     expect(result.current.theme.colors.primary).toBe(theme.colors.primary)
   })
 
   it('exposes the fleet phone for the Zavolat button', async () => {
-    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague' })
+    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague', welcomeText: null, logoUrl: null })
     const { result } = renderHook(() => useFleetBranding(), { wrapper })
     await waitFor(() => expect(result.current.fleet?.phone).toBe('+420111222333'))
   })
 
   it('persists the fleet phone for the Zavolat fallback once loaded (F1)', async () => {
-    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague' })
+    mockGetPublicFleet.mockResolvedValue({ name: 'Acme', phone: '+420111222333', primaryColorHex: null, currency: 'CZK', timeZone: 'Europe/Prague', welcomeText: null, logoUrl: null })
     const { result } = renderHook(() => useFleetBranding(), { wrapper })
     await waitFor(() => expect(result.current.fleet?.phone).toBe('+420111222333'))
     expect(authStorage.getFleetPhone()).toBe('+420111222333')

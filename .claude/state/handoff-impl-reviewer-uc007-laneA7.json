@@ -1,0 +1,45 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA7 (8 api WIs)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "A2-avgRating-windowed",
+      "severity": "MEDIUM",
+      "file": "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportEndpoint.cs",
+      "rule": "handoff-designer.json A2 AC#1 ('avg rating per driver is included')",
+      "title": "Driver avgRating is windowed to from/to, AC does not specify a window",
+      "detail": "ComputeAvgRatingAsync (lines 158-165) averages RatingStars only for Completed orders with CreatedAt in [from,to). The A2 AC says 'avg rating per driver is included' without stating it is range-scoped; a driver's average rating is commonly all-time. This is an interpretation, not a contradiction of the AC — but it is a semantic choice the AC leaves open. Report-consumers expecting an all-time rating would see a range-limited number.",
+      "recommendation": "Confirm with the designer whether avgRating should be all-time or range-scoped; if all-time, drop the CreatedAt window from ComputeAvgRatingAsync. Non-blocking pending that clarification."
+    },
+    {
+      "id": "A1-FleetConfiguration-not-touched",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Infrastructure/Entities/Fleet.cs",
+      "rule": "handoff-designer.json A1 AC#1 ('configured in FleetConfiguration (no default, backfills null)')",
+      "title": "LogoUpdatedAt added to entity only; FleetConfiguration.cs (in files_touched) not modified",
+      "detail": "A1 files_touched lists Infrastructure/Configurations/FleetConfiguration.cs and the AC says LogoUpdatedAt is 'configured in FleetConfiguration'. The staged diff does not touch FleetConfiguration.cs; LogoUpdatedAt is only declared on Fleet.cs (nullable DateTimeOffset?). EF's nullable convention maps it to a nullable timestamptz with no default and existing rows backfill null — exactly the AC's intent — and the migration (1 nullable ADD COLUMN, no default) confirms it. Functionally equivalent; only the literal 'configure in FleetConfiguration' wording is unmet, and the ReportSchema_FleetLogoUpdatedAt_DefaultsNull test passes.",
+      "recommendation": "No code change required; the outcome matches the AC. Optionally add an explicit FleetConfiguration line for documentation parity."
+    },
+    {
+      "id": "A6-UploadLogoRequest-absent",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Features/Fleet/UploadLogo/UploadLogoEndpoint.cs",
+      "rule": "handoff-designer.json A6 files_touched (UploadLogoRequest.cs); design-reviewer MEDIUM#4",
+      "title": "UploadLogoRequest.cs (in files_touched) not created; endpoint uses EndpointWithoutRequest + Files[0]",
+      "detail": "A6 files_touched lists UploadLogoRequest.cs, but the endpoint is EndpointWithoutRequest reading Files[0] with size/PNG-magic endpoint guards. The design-reviewer explicitly accepted this (MEDIUM#4: 'endpoint guards are defensible for IFormFile; validation.md exempts non-trivial binding — confirm intended'). Developer confirmed intended. Not a dropped validator.",
+      "recommendation": "Accept as-is (design-reviewer-sanctioned). No change."
+    },
+    {
+      "id": "A3-smsUnitCost-default",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportEndpoint.cs",
+      "rule": "00-PROJECT-CONTEXT.md (money/KPI correctness)",
+      "title": "SMS unit cost falls back to 1 CZK when no FleetSettings row",
+      "detail": "ComputeKpisAsync defaults smsUnitCost to 1 when the FleetSettings row is missing (?? 1). Every provisioned fleet seeds FleetSettings (FleetProvisioning + DevelopmentSeeder), so unreachable in practice.",
+      "recommendation": "Acceptable as-is; not blocking."
+    }
+  ],
+  "summary": "PASS / blocks_merge=false. Reviewed all 8 UC-007 backend WIs against the AUTHORITATIVE ACs in handoff-designer.json (A1..A8) and the 4 amendments in handoff-design-reviewer.json (1 HIGH A8, 3 MEDIUM A5/A3/A6 — count confirmed, disposition 'Accept with 4 foldable amendments'), not merely the developer narrative. No CRITICAL or HIGH findings. AMENDMENTS ALL ADDRESSED: A8 HIGH — DeleteMe loads orders via IgnoreQueryFilters keyed on CustomerUserId==sub (customer JWT has no fleet_id), anonymizes+keeps orders, deletes user+refresh tokens+push subs as tracked RemoveRange in ONE SaveChanges (atomic), DeleteMe_OrdersRemainInReportsAnonymized present; A5 MEDIUM — ListFleets + duplicate-slug lookup + deactivate use IgnoreQueryFilters; A3 MEDIUM — GetRatings is rangeless EndpointWithoutRequest (documented); A6 MEDIUM — UploadLogo uses endpoint guards (sanctioned). AC VERIFICATION: (A1) LogoUpdatedAt nullable, sole migration AddReportIndexesAndFleetLogo is non-destructive (1 nullable ADD COLUMN + 4 CREATE INDEX, zero drops in Up); the 5 composite indexes match the AC. (A2) SQL Database.SqlQuery per-Prague-day GROUP BY + FILTER, no ToList-then-group; hours-online a separate bounded driver_shifts clamp-sum; CSV UTF-8 BOM+';'+CRLF byte-compared to DriverReportExpected.csv fixture; rides_cancelled uses cancelled_by_role='Driver' (aligns with AC's 'cancelled(no-show)'); avgRating is windowed (MEDIUM open question — see findings). (A3) SQL KPIs + rides-per-day + top routes (GroupBy+Join translatable); 50k ReportSeedScript is [Trait Category=Perf] + RUN_PERF_TESTS opt-in, off the normal suite; ratings list present. (A4) .Concat UNION ALL -> single OrderByDescending(At).ThenByDescending(Id).Skip/Take over the merged query (one paged set), CountAsync on merged set, jsonb never SQL-projected, tenant-scoped by both filters, read-only. (A5) POST/GET/deactivate SuperAdminOnly, AdminFleets_Create_NonSuperAdmin_Returns403 present, create seeds Fleet+FleetSettings+Tariff+FleetAdmin and sets CurrentTenant.FleetId to NEW fleet before SaveChanges, one-time BCrypt password returned once never logged, CLI create-superadmin intercepts args[0] after builder.Build() -> migrate -> testable SuperAdminBootstrapper -> return before app.Run(). (A6) PUT /fleet/settings additive FleetAdminOnly; POST /fleet/logo guards >200KB/non-PNG(magic-byte)/missing -> 400 + stamps LogoUpdatedAt; public/fleet gains welcomeText+logoUrl additively, tenant-scoped. (A7) RunTickAsync shell + PeriodicTimer(TimeProvider), 24mo anon cutoff (25mo/23mo = test boundaries), per-order fresh tenant scope, shared CustomerAnonymizer, prunes sms_codes+refresh_tokens. FILES: A1 omits FleetConfiguration.cs and A6 omits UploadLogoRequest.cs vs files_touched (both functionally equivalent / reviewer-sanctioned — LOW). All 10 routes in the OpenAPI allowlist + docs/api.md. Cross-tenant / 403 / 404 / anonymized-order tests present per feature (grep-confirmed test names match AC-mandated names). Logging carries only ids/counts (no PII). FastEndpoints REPR conventions (DontCatchExceptions, Policies(nameof), AsNoTracking, Validator<T>+WithErrorCode, TimeProvider, record DTOs, XML docs) followed. 1 MEDIUM (avgRating window — clarification, not a defect) + 3 LOW; none block merge."
+}

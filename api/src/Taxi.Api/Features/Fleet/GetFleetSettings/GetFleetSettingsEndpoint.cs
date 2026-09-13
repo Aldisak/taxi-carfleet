@@ -51,14 +51,19 @@ internal sealed class GetFleetSettingsEndpoint(TaxiDbContext dbContext, ICurrent
         var settings = await dbContext.FleetSettings.AsNoTracking()
             .FirstOrDefaultAsync(ct);
 
-        // Use defaults if no FleetSettings row exists.
+        // Use entity defaults if no FleetSettings row exists so the read round-trips honestly.
         var offerTimeout = settings?.OfferTimeoutSeconds ?? 45;
         var autoDispatch = settings?.AutoDispatchEnabled ?? false;
+        var welcomeText = settings?.WelcomeText;
+        var smsMonthlyCap = settings?.SmsMonthlyCapCzk ?? 500;
 
         await Send.OkAsync(new GetFleetSettingsResponse(
             fleet.Name,
             fleet.Phone,
             offerTimeout,
-            autoDispatch), ct);
+            autoDispatch,
+            fleet.PrimaryColorHex,
+            welcomeText,
+            smsMonthlyCap), ct);
     }
 }

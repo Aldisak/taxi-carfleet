@@ -85,6 +85,23 @@ internal static class AuthHelpers
         return client;
     }
 
+    /// <summary>Configures <paramref name="client"/> with a real SuperAdmin JWT (no fleet_id claim).</summary>
+    /// <param name="client">The HTTP client to configure.</param>
+    /// <param name="userId">Optional user id used as the <c>sub</c> claim. Defaults to a new Guid.</param>
+    /// <returns>The same <paramref name="client"/> for fluent chaining.</returns>
+    internal static HttpClient AsSuperAdmin(
+        this HttpClient client,
+        Guid? userId = null)
+    {
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(BearerScheme, MintToken(
+                userId ?? Guid.CreateVersion7(),
+                UserRole.SuperAdmin,
+                fleetId: null,
+                fleetSlug: null));
+        return client;
+    }
+
     /// <summary>Configures <paramref name="client"/> with a real customer JWT.
     /// The token carries <c>role=Customer</c> and a new random <c>sub</c>; no <c>fleet_id</c>.</summary>
     /// <param name="client">The HTTP client to configure.</param>

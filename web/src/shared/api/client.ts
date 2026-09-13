@@ -149,6 +149,27 @@ export function postStaffLogin(req: StaffLoginRequest): Promise<StaffLoginRespon
   })
 }
 
+/** Body of POST /auth/admin/login — fleetless SuperAdmin credentials (no slug). */
+export interface AdminLoginRequest {
+  email: string
+  password: string
+}
+
+/**
+ * POST /auth/admin/login (AllowAnonymous) — authenticate a fleetless SuperAdmin (UC-007 A7b).
+ * Returns the same shape as staff login (StaffLoginResponse) with user.role === 'SuperAdmin'
+ * and a token carrying NO fleet_id claim. skipAuthRedirect is MANDATORY: bad creds / a
+ * non-SuperAdmin return 401 uniformly, and without this flag client.ts would clear storage and
+ * bounce to /x/login, destroying the "invalid credentials" form error path.
+ */
+export function adminLogin(req: AdminLoginRequest): Promise<StaffLoginResponse> {
+  return apiRequest<StaffLoginResponse>('/auth/admin/login', {
+    method: 'POST',
+    body: JSON.stringify(req),
+    skipAuthRedirect: true,
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Public endpoints (AllowAnonymous — fleet resolved from X-Fleet-Slug)
 // ---------------------------------------------------------------------------
@@ -161,6 +182,16 @@ export interface PublicFleetResponse {
   primaryColorHex: string | null
   currency: string
   timeZone: string
+  /**
+   * Optional fleet welcome text for the customer PWA home (UC-007 A6, additive). Null when unset.
+   * Reconciled byte-for-byte against the backend GetFleetResponse record.
+   */
+  welcomeText: string | null
+  /**
+   * Optional logo URL with a ?v=ticks cache-bust (UC-007 A6, additive). Null when no logo uploaded.
+   * Served as a static file by Caddy in prod; the API only derives the path + exposes the URL.
+   */
+  logoUrl: string | null
 }
 
 /**
@@ -1078,6 +1109,14 @@ export interface FleetSettingsDto {
   offerTimeoutSeconds: number
   autoDispatchEnabled: boolean
   /**
+   * Brand primary color as #RRGGBB, or null to fall back to the default theme token (UC-007 A7b).
+   * GET /fleet/settings now round-trips the full editable set accepted by PUT, so the Fleet tab
+   * prefills color/welcome/smsCap from here directly (no public/fleet workaround).
+   */
+  primaryColorHex?: string | null
+  /** Fleet welcome text for the customer PWA home, or null when unset (UC-007 A7b). */
+  welcomeText?: string | null
+  /**
    * Monthly SMS cost cap in integer CZK (UC-005 §4, additive). Optional so the type compiles
    * whether or not the backend has exposed it on this endpoint; absent → the Settings SMS panel
    * is hidden. Default 500 server-side.
@@ -1389,4 +1428,404 @@ export function deletePlace(placeId: string): Promise<void> {
   return apiRequest<void>(`/places/${placeId}`, {
     method: 'DELETE',
   })
+}
+
+// ---------------------------------------------------------------------------
+// Reports endpoints (UC-007 — FleetAdmin)
+//
+// REAL CONTRACTS (reconciled byte-for-byte against the laneA7 backend records
+// GetDriverReportResponse / DriverReportDayDto / GetFleetReportResponse /
+// FleetKpiDto / RidesPerDayDto / TopRouteDto / GetRatingsResponse / RatingDto).
+// The named-envelope/field-name unwrap bug class (CLAUDE.md) has bitten 4× — each
+// getter below is locked by a fetch-mocked regression test in client.test.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * A single Prague-local day row in the driver report. Money fields are integer CZK.
+ * The totals row reuses this same shape with `date: 'Celkem'`.
+ */
+export interface DriverReportDayDto {
+  /** Prague-local calendar day as an ISO date string (yyyy-MM-dd); 'Celkem' on the totals row. */
+  date: string
+  ridesCompleted: number
+  ridesCancelled: number
+  cashCzk: number
+  cardCzk: number
+  invoiceCzk: number
+  totalCzk: number
+  hoursOnline: number
+  priceOverrideCount: number
+}
+
+/** GET /api/v1/reports/drivers response (byte-for-byte GetDriverReportResponse). */
+export interface DriverReportResponse {
+  driverId: string
+  driverName: string
+  /** Average rating over completed+rated orders in range, or null when none rated. */
+  avgRating: number | null
+  days: DriverReportDayDto[]
+  /** Summed totals row across the range — a DriverReportDayDto with `date: 'Celkem'`. */
+  totals: DriverReportDayDto
+}
+
+export interface DriverReportFilters {
+  driverId?: string | null
+  /** Inclusive Prague-local start day, ISO yyyy-MM-dd. */
+  from: string
+  /** Inclusive Prague-local end day, ISO yyyy-MM-dd. */
+  to: string
+}
+
+function driverReportParams(filters: DriverReportFilters): URLSearchParams {
+  const params = new URLSearchParams()
+  if (filters.driverId) params.set('driverId', filters.driverId)
+  params.set('from', filters.from)
+  params.set('to', filters.to)
+  return params
+}
+
+/**
+ * GET /api/v1/reports/drivers — per-Prague-day driver report for one driver, with a totals
+ * row, average rating, and driver name. Envelope `{ driverId, driverName, avgRating, days, totals }`.
+ */
+export function getDriverReport(filters: DriverReportFilters): Promise<DriverReportResponse> {
+  return apiRequest<DriverReportResponse>(`/reports/drivers?${driverReportParams(filters)}`)
+}
+
+/**
+ * A single KPI block for the fleet report. Money is integer CZK; the app/phone/fixed-route
+ * fields are RAW COUNTS (the UI derives shares client-side). Times are seconds and nullable.
+ */
+export interface FleetKpiDto {
+  rides: number
+  revenueCzk: number
+  avgPriceCzk: number
+  /** Average created→assigned time, in seconds; null when no orders were assigned. */
+  avgTimeToAssignSeconds: number | null
+  /** Average accepted→arrived time, in seconds; null when none. */
+  avgTimeToPickupSeconds: number | null
+  /** Cancellation rate as a fraction 0..1. */
+  cancellationRate: number
+  /** Count of orders placed via the app. */
+  appOrders: number
+  /** Count of orders placed by phone or dispatcher. */
+  phoneOrders: number
+  /** Count of orders priced by a common route. */
+  fixedRouteOrders: number
+  smsCount: number
+  smsCostCzk: number
+}
+
+/** A single Prague-local day bucket for the rides-per-day chart. */
+export interface RidesPerDayDto {
+  /** Prague-local calendar day, ISO yyyy-MM-dd. */
+  date: string
+  count: number
+}
+
+/** A top-route row by ride count. */
+export interface TopRouteDto {
+  routeId: string
+  name: string
+  count: number
+}
+
+/** GET /api/v1/reports/fleet response (byte-for-byte GetFleetReportResponse). */
+export interface FleetReportResponse {
+  kpis: FleetKpiDto
+  ridesPerDay: RidesPerDayDto[]
+  topRoutes: TopRouteDto[]
+}
+
+export interface FleetReportFilters {
+  from: string
+  to: string
+}
+
+/**
+ * GET /api/v1/reports/fleet — KPIs + rides-per-day series + top routes.
+ * Envelope `{ kpis, ridesPerDay, topRoutes }`.
+ */
+export function getFleetReport(filters: FleetReportFilters): Promise<FleetReportResponse> {
+  const params = new URLSearchParams({ from: filters.from, to: filters.to })
+  return apiRequest<FleetReportResponse>(`/reports/fleet?${params}`)
+}
+
+/** A single rating row (byte-for-byte RatingDto). */
+export interface RatingDto {
+  orderPublicCode: string
+  driverName: string | null
+  stars: number
+  comment: string | null
+  /** ISO UTC timestamp when the rating was left; null when unknown. */
+  ratedAt: string | null
+}
+
+/** GET /api/v1/reports/ratings response envelope (byte-for-byte GetRatingsResponse). */
+export interface ListRatingsResponse {
+  items: RatingDto[]
+}
+
+/**
+ * GET /api/v1/reports/ratings — rangeless list of all rated completed orders for the fleet,
+ * newest first (max 500). Envelope `{ items }`. Unwraps to a bare array.
+ */
+export async function getRatings(): Promise<RatingDto[]> {
+  const data = await apiRequest<ListRatingsResponse>('/reports/ratings')
+  return data.items
+}
+
+/**
+ * GET /api/v1/reports/drivers?format=csv — downloads the SERVER-generated CSV blob.
+ *
+ * The CSV bytes come FROM the server (UTF-8 BOM + ';' separator, AC#7) — the client
+ * NEVER rebuilds the CSV. This cannot use apiRequest (which does response.json());
+ * it attaches Authorization + X-Fleet-Slug exactly like apiRequest, reads the body as
+ * a Blob, and returns the server-provided filename from Content-Disposition when present.
+ */
+export async function fetchDriverReportCsv(
+  filters: DriverReportFilters,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const params = driverReportParams(filters)
+  params.set('format', 'csv')
+
+  const headers = new Headers()
+  const token = authStorage.getAccessToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const slug = authStorage.getFleetSlug()
+  if (slug) headers.set('X-Fleet-Slug', slug)
+
+  const response = await fetch(`${BASE_URL}/reports/drivers?${params}`, { headers })
+  if (!response.ok) {
+    let body: ApiError
+    try {
+      body = (await response.json()) as ApiError
+    } catch {
+      body = {
+        status: response.status,
+        title: response.statusText,
+        type: `https://httpstatuses.com/${response.status}`,
+      }
+    }
+    throw new ApiResponseError(response.status, body)
+  }
+
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition')
+  const filename = parseContentDispositionFilename(disposition)
+  return { blob, filename }
+}
+
+/** Extracts a filename from a Content-Disposition header, or null when absent/unparseable. */
+export function parseContentDispositionFilename(disposition: string | null): string | null {
+  if (!disposition) return null
+  // RFC 5987 filename*=UTF-8''... takes precedence over a plain filename="...".
+  const star = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(disposition)
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].replace(/^"|"$/g, ''))
+    } catch {
+      return star[1].replace(/^"|"$/g, '')
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(disposition)
+  return plain?.[1] ?? null
+}
+
+// ---------------------------------------------------------------------------
+// Audit endpoint (UC-007 — FleetAdmin, read-only)
+//
+// REAL CONTRACT (reconciled byte-for-byte against the laneA7 backend records
+// GetAuditResponse / AuditEntryDto). A UNION-ALL merge of order_events + audit_log
+// into one shape, descending by `at`, 1-based paging.
+// ---------------------------------------------------------------------------
+
+/** A single unified audit timeline item (byte-for-byte AuditEntryDto). */
+export interface AuditEntryDto {
+  /** "OrderEvent" | "AuditLog" — the source table the row was projected from. */
+  source: string
+  /** Actor user id, or null for system/unknown actors. */
+  actorUserId: string | null
+  /** Affected entity kind (e.g. "Order", "Driver"). */
+  entity: string
+  /** The action name — an OrderEventType (e.g. "Completed") or an audit-log action. */
+  action: string
+  /** The order's public code when the row relates to an order, else null. */
+  orderCode: string | null
+  /** ISO UTC timestamp. */
+  at: string
+}
+
+/** GET /api/v1/audit response (byte-for-byte GetAuditResponse). */
+export interface AuditResponse {
+  items: AuditEntryDto[]
+  total: number
+  /** 1-based page number returned. */
+  page: number
+  /** The page size the server used. */
+  pageSize: number
+}
+
+export interface AuditFilters {
+  /** Actor user id (Guid) filter. */
+  actor?: string | null
+  entity?: string | null
+  from?: string | null
+  to?: string | null
+  orderCode?: string | null
+  /** 1-based page number. */
+  page?: number
+}
+
+/**
+ * GET /api/v1/audit — paged, filterable, read-only unified timeline.
+ * Envelope `{ items, total, page, pageSize }`; 1-based paging, server default pageSize 50.
+ */
+export function getAudit(filters: AuditFilters = {}): Promise<AuditResponse> {
+  const params = new URLSearchParams()
+  if (filters.actor) params.set('actor', filters.actor)
+  if (filters.entity) params.set('entity', filters.entity)
+  if (filters.from) params.set('from', filters.from)
+  if (filters.to) params.set('to', filters.to)
+  if (filters.orderCode) params.set('orderCode', filters.orderCode)
+  if (filters.page != null) params.set('page', String(filters.page))
+  const qs = params.toString()
+  return apiRequest<AuditResponse>(`/audit${qs ? `?${qs}` : ''}`)
+}
+
+// ---------------------------------------------------------------------------
+// SuperAdmin fleets endpoint (UC-007 A5 — SuperAdminOnly, the ONE cross-tenant write)
+//
+// REAL CONTRACT reconciled byte-for-byte against the laneA5 backend records
+// (CreateFleetRequest/Response, AdminFleetDto, ListFleetsResponse).
+//
+// ⚠ HANDOFF #1 (api-lane dependency): there is NO SuperAdmin login path today.
+// StaffLoginEndpoint resolves a user WITHIN a fleet (by slug) and only accepts
+// Driver/Dispatcher/FleetAdmin — a fleetless SuperAdmin (FleetId=null) cannot obtain
+// a JWT. These functions hit real, existing routes (so tsc/build stay green), but
+// /admin is unreachable in production until the API adds a SuperAdmin auth branch.
+// ---------------------------------------------------------------------------
+
+/** A fleet row in the SuperAdmin list (byte-for-byte AdminFleetDto). */
+export interface AdminFleetDto {
+  id: string
+  slug: string
+  name: string
+  phone: string
+  isActive: boolean
+  /** ISO UTC creation timestamp. */
+  createdAt: string
+}
+
+/** GET /api/v1/admin/fleets response (byte-for-byte ListFleetsResponse — `items` envelope). */
+export interface ListFleetsResponse {
+  items: AdminFleetDto[]
+}
+
+/** Request body for POST /api/v1/admin/fleets (byte-for-byte CreateFleetRequest). */
+export interface CreateFleetRequest {
+  slug: string
+  name: string
+  phone: string
+  adminEmail: string
+}
+
+/**
+ * Response for POST /api/v1/admin/fleets (byte-for-byte CreateFleetResponse).
+ * `oneTimePassword` is the FleetAdmin's generated password — shown ONCE, never logged.
+ */
+export interface CreateFleetResponse {
+  fleetId: string
+  slug: string
+  adminEmail: string
+  oneTimePassword: string
+}
+
+/** GET /api/v1/admin/fleets — list all fleets across tenants (SuperAdmin). */
+export function getAdminFleets(): Promise<ListFleetsResponse> {
+  return apiRequest<ListFleetsResponse>('/admin/fleets')
+}
+
+/** POST /api/v1/admin/fleets — create a fleet; returns the one-time admin password once. */
+export function postCreateFleet(req: CreateFleetRequest): Promise<CreateFleetResponse> {
+  return apiRequest<CreateFleetResponse>('/admin/fleets', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+/** POST /api/v1/admin/fleets/{id}/deactivate — set IsActive=false (SuperAdmin). */
+export function postDeactivateFleet(id: string): Promise<void> {
+  return apiRequest<void>(`/admin/fleets/${id}/deactivate`, { method: 'POST' })
+}
+
+// ---------------------------------------------------------------------------
+// Fleet self-service write endpoints (UC-007 A6 — FleetAdmin, tenant-scoped)
+//
+// ⚠ FULL-PUT REPLACE: PUT /fleet/settings overwrites ALL fields. A null color/welcome
+// CLEARS them; smsMonthlyCapCzk overwrites. The form must pre-fill color + welcomeText
+// from GET /public/fleet (the read endpoint does NOT return them) to avoid wiping them.
+// ---------------------------------------------------------------------------
+
+/** Request body for PUT /api/v1/fleet/settings (byte-for-byte UpdateFleetSettingsRequest). */
+export interface UpdateFleetSettingsRequest {
+  name: string
+  phone: string
+  /** #RRGGBB, or null to clear. */
+  primaryColorHex: string | null
+  /** Welcome text, or null to clear. */
+  welcomeText: string | null
+  /** 10..600. */
+  offerTimeoutSeconds: number
+  /** >= 0. */
+  smsMonthlyCapCzk: number
+  /** Persisted; v1.1-disabled in the UI. */
+  autoDispatchEnabled: boolean
+}
+
+/** PUT /api/v1/fleet/settings — persist the self-service set. Returns 204. */
+export function putFleetSettings(req: UpdateFleetSettingsRequest): Promise<void> {
+  return apiRequest<void>('/fleet/settings', {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  })
+}
+
+/**
+ * POST /api/v1/fleet/logo — multipart PNG upload (<= 200 KB). Returns 204.
+ *
+ * Cannot use apiRequest: it force-sets Content-Type: application/json whenever a body
+ * is present, which breaks multipart (the browser must set the boundary). This attaches
+ * Authorization + X-Fleet-Slug exactly like apiRequest and sends FormData with NO
+ * explicit Content-Type (mirrors the fetchDriverReportCsv manual-headers pattern).
+ */
+export async function postFleetLogo(file: File): Promise<void> {
+  const headers = new Headers()
+  const token = authStorage.getAccessToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const slug = authStorage.getFleetSlug()
+  if (slug) headers.set('X-Fleet-Slug', slug)
+
+  const form = new FormData()
+  form.append('file', file)
+
+  const response = await fetch(`${BASE_URL}/fleet/logo`, {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+
+  if (!response.ok) {
+    let body: ApiError
+    try {
+      body = (await response.json()) as ApiError
+    } catch {
+      body = {
+        status: response.status,
+        title: response.statusText,
+        type: `https://httpstatuses.com/${response.status}`,
+      }
+    }
+    throw new ApiResponseError(response.status, body)
+  }
 }

@@ -111,4 +111,16 @@ describe('mapFleetSettings', () => {
     expect(vm.autoDispatchEnabled).toBe(true)
     // The UI renders this disabled — the mapper just passes it through
   })
+
+  it('passes through the A7b additive fields (color/welcome/smsCap)', () => {
+    const vm = mapFleetSettings({
+      ...dto,
+      primaryColorHex: '#E91E63',
+      welcomeText: 'Vítejte',
+      smsMonthlyCapCzk: 750,
+    })
+    expect(vm.primaryColorHex).toBe('#E91E63')
+    expect(vm.welcomeText).toBe('Vítejte')
+    expect(vm.smsMonthlyCapCzk).toBe(750)
+  })
 })

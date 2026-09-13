@@ -62,8 +62,11 @@ public sealed class FleetSettingsTests(PostgresFixture fixture)
 
         var fleet = BuildFleet(suffix, "Alpha Fleet");
         fleet.Phone = "+420777111222";
+        fleet.PrimaryColorHex = "#1A2B3C";
         var admin = BuildFleetAdmin(fleet.Id, suffix[..6]);
         var settings = BuildFleetSettings(fleet.Id, offerTimeout: 60, autoDispatch: true);
+        settings.WelcomeText = "Vítejte";
+        settings.SmsMonthlyCapCzk = 750;
 
         db.Fleets.Add(fleet);
         db.FleetSettings.Add(settings);
@@ -82,6 +85,9 @@ public sealed class FleetSettingsTests(PostgresFixture fixture)
         body.Phone.Should().Be("+420777111222");
         body.OfferTimeoutSeconds.Should().Be(60);
         body.AutoDispatchEnabled.Should().BeTrue();
+        body.PrimaryColorHex.Should().Be("#1A2B3C");
+        body.WelcomeText.Should().Be("Vítejte");
+        body.SmsMonthlyCapCzk.Should().Be(750);
     }
 
     // ── Tenant isolation ──────────────────────────────────────────────────────
@@ -152,5 +158,8 @@ public sealed class FleetSettingsTests(PostgresFixture fixture)
         string Name,
         string Phone,
         int OfferTimeoutSeconds,
-        bool AutoDispatchEnabled);
+        bool AutoDispatchEnabled,
+        string? PrimaryColorHex,
+        string? WelcomeText,
+        int SmsMonthlyCapCzk);
 }
