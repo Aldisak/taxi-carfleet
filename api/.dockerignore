@@ -1,0 +1,23 @@
+# Build outputs (rebuilt inside the image)
+**/bin/
+**/obj/
+
+# Tests are not part of the runtime image
+tests/
+**/*.Tests/
+
+# IDE / VCS
+.vs/
+.idea/
+.git/
+**/*.user
+**/*.DotSettings.user
+
+# Local config / secrets — never bake into an image
+**/appsettings.*.Local.json
+**/.env
+**/.env.*
+
+# Docker artifacts
+Dockerfile
+.dockerignore

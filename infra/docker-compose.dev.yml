@@ -1,3 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Development compose.
+#
+# CONTRACT (do not break): web/scripts/e2e-api.mjs runs `docker compose -f this
+# file up -d db`, waits on `pg_isready -U taxi -d taxi`, then runs the API on the
+# HOST at localhost:5249 against localhost:5432. So the `db` service MUST keep:
+# service name `db`, published 5432:5432, POSTGRES_USER/DB=taxi, this healthcheck.
+# The `api`/`web` services below are for a full-stack `docker compose up` and are
+# NOT required for `up -d db` to work.
+#
+# SMS in dev = console/logs only (Notifications:SmsProvider=Console).
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
   db:
     image: postgres:16-alpine
@@ -17,22 +30,54 @@ services:
       retries: 5
       start_period: 10s
 
+  # Hot-reloading API via `dotnet watch`. Uses the SDK image (not api/Dockerfile,
+  # which is the lean runtime image). Source is bind-mounted for reload.
   api:
-    build:
-      context: ..
-      dockerfile: api/Dockerfile
-    container_name: taxi_api
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    container_name: taxi_api_dev
+    working_dir: /src/api/src/Taxi.Api
+    command: ["dotnet", "watch", "run", "--no-launch-profile", "--urls", "http://+:8080"]
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"    # bind-mount file events on Win/Mac need polling
+      # In Development, Program.cs migrates + seeds on startup (Seed:Enabled default true).
+      Seed__Enabled: "true"
       ConnectionStrings__Db: "Host=db;Port=5432;Database=taxi;Username=taxi;Password=taxi_dev_password"
       Jwt__Key: "dev-jwt-signing-key-min-32-chars-00000000"
       Jwt__Issuer: "taxi-api"
       Jwt__Audience: "taxi-clients"
+      Cors__WebOrigin: "http://localhost:5173"
+      # Log-only SMS in dev — no real provider is called.
+      Notifications__SmsProvider: "Console"
+    volumes:
+      - ../api:/src/api
+      - dev_nuget:/root/.nuget/packages
     ports:
-      - "8080:8080"
+      - "5249:8080"
     depends_on:
       db:
         condition: service_healthy
 
+  # Vite dev server for the React SPA/PWA.
+  web:
+    image: node:20
+    container_name: taxi_web_dev
+    working_dir: /app
+    command: ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"]
+    environment:
+      # Vite proxies /api and /hubs during dev (see web vite config); the API base
+      # can also be pointed here explicitly if needed.
+      VITE_API_BASE: "http://localhost:5249"
+    volumes:
+      - ../web:/app
+      - dev_web_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
 volumes:
   taxi_pgdata:
+  dev_nuget:
+  dev_web_node_modules:

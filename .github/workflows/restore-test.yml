@@ -1,0 +1,98 @@
+name: Restore test
+
+# Weekly disaster-recovery drill: pull the latest nightly backup from object
+# storage, restore it into a throwaway Postgres, assert `SELECT count(*) FROM
+# orders` succeeds, and open a GitHub issue if anything fails.
+on:
+  schedule:
+    - cron: "0 4 * * 1"   # 04:00 UTC every Monday
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  restore-test:
+    name: Download latest backup + restore + count
+    runs-on: ubuntu-latest
+    services:
+      # Throwaway Postgres — destroyed with the runner.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: taxi
+          POSTGRES_USER: taxi
+          POSTGRES_PASSWORD: restore_test_pw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taxi -d taxi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install postgresql-client + rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client rclone
+
+      - name: Configure rclone (S3-compatible remote from secrets)
+        env:
+          RCLONE_CONFIG_S3_TYPE: s3
+          RCLONE_CONFIG_S3_PROVIDER: ${{ secrets.BACKUP_S3_PROVIDER }}
+          RCLONE_CONFIG_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          RCLONE_CONFIG_S3_REGION: ${{ secrets.BACKUP_S3_REGION }}
+          RCLONE_REMOTE: ${{ secrets.BACKUP_RCLONE_REMOTE }}
+        run: |
+          set -euo pipefail
+          # Newest db dump under daily/.
+          latest="$(rclone lsf "${RCLONE_REMOTE}/daily/" --files-only \
+            | grep -E '^taxi-.*\.dump\.gz$' | sort -r | head -n1)"
+          if [ -z "$latest" ]; then echo "no backup found" >&2; exit 1; fi
+          echo "[restore-test] latest=$latest"
+          rclone copyto "${RCLONE_REMOTE}/daily/${latest}" ./backup.dump.gz
+
+      - name: Restore into throwaway Postgres
+        env:
+          PGPASSWORD: restore_test_pw
+        run: |
+          set -euo pipefail
+          chmod +x infra/restore.sh
+          PGPASSWORD=restore_test_pw infra/restore.sh ./backup.dump.gz \
+            --host localhost --port 5432 --db taxi --user taxi --yes
+
+      - name: Verify orders table
+        env:
+          PGPASSWORD: restore_test_pw
+        run: |
+          set -euo pipefail
+          count="$(psql -h localhost -U taxi -d taxi -tAc 'SELECT count(*) FROM orders;')"
+          echo "[restore-test] orders count = $count"
+          # A successful SELECT (even 0 rows) proves schema + data restored.
+
+      - name: Open an issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly restore test FAILED (${new Date().toISOString().slice(0,10)})`,
+              labels: ['ops', 'backup'],
+              body: [
+                'The weekly backup restore test failed.',
+                '',
+                `Run: ${run}`,
+                '',
+                'This means the latest nightly backup could not be restored, or the',
+                '`orders` table was missing/empty after restore. Investigate immediately —',
+                'a failed restore test means backups may be unusable.',
+              ].join('\n'),
+            });

@@ -1,0 +1,49 @@
+{
+  "wi_id": "laneC8",
+  "title": "UC-008 infra: Dockerfiles, compose, Caddy, CI/CD, backups, runbook, costs",
+  "files_changed": [
+    "api/Dockerfile",
+    "api/.dockerignore",
+    "web/Dockerfile",
+    "web/.dockerignore",
+    "infra/web/Caddyfile",
+    "infra/docker-compose.dev.yml",
+    "infra/docker-compose.prod.yml",
+    "infra/Caddyfile",
+    "infra/caddy/Dockerfile",
+    "infra/ops/prometheus.yml",
+    "infra/.env.example",
+    "infra/backup/Dockerfile",
+    "infra/backup/backup.sh",
+    "infra/restore.sh",
+    ".github/workflows/ci.yml",
+    ".github/workflows/deploy.yml",
+    ".github/workflows/restore-test.yml",
+    "docs/runbook.md",
+    "docs/costs.md",
+    "docs/monitoring.md",
+    "docs/decisions.md"
+  ],
+  "verified_locally": [
+    "docker compose -f infra/docker-compose.dev.yml config  → OK (db service preserves e2e harness contract: name db, 5432:5432, user/db taxi, pg_isready healthcheck; `config db` resolves standalone)",
+    "docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.example config → OK (interpolates cleanly; db has NO published port; only caddy publishes 80/443/443udp; api limit 512M, db 1G; internal network internal:true)",
+    "workflow YAML parse (pyyaml safe_load) → OK for ci.yml, deploy.yml, restore-test.yml",
+    "infra/restore.sh local round-trip → seeded orders table, pg_dump -Fc | gzip, restore.sh --drop into throwaway postgres:16 container, SELECT count(*) FROM orders = correct count, exit 0",
+    "bash -n infra/restore.sh + sh -n infra/backup/backup.sh → syntax OK",
+    "git check-ignore: infra/.env IS ignored, infra/.env.example is trackable",
+    "web/package-lock.json confirmed present (npm ci in web/Dockerfile + ci.yml web/e2e jobs need it)",
+    "ci.yml e2e job: added a `ln -sf $(which dotnet) /usr/local/bin/dotnet` step because web/scripts/e2e-api.mjs spawns dotnet via that ABSOLUTE path (ignores PATH); setup-dotnet only puts dotnet on PATH, so the harness would ENOENT without it. web/scripts is out of scope so the fix lives in ci.yml."
+  ],
+  "operational_deferred": [
+    "fresh-VPS deploy < 45 min (AC#1) — runbook step 1-3, no VPS here",
+    "git push main deploy + auto-rollback on broken health check (AC#2) — deploy.yml artifact, no runner/VPS here",
+    "HTTPS + WebSockets on demo.{domain}/second.{domain} (AC#4) — Caddyfile artifact, needs real domain+DNS",
+    "Postgres not internet-reachable / nmap (AC#5) — enforced by compose topology, nmap needs real VPS",
+    "idle < 700 MB RAM (AC#6) — docker stats on real VPS",
+    "total cost < €10/mo (AC#7) — docs/costs.md uses published prices cited 2026-09-13, not measured invoice",
+    "nightly backup to real S3 + weekly restore-test green on real storage — scripts+workflow produced, need real bucket",
+    "caddy validate on the edge Caddyfile — DEFERRED: uses acme_dns + rate_limit which stock caddy binary rejects; validates only against the infra/caddy xcaddy build (structural review done instead)"
+  ],
+  "notes": "DEVIATIONS/DECISIONS (all recorded in docs/decisions.md UC-008 section): (1) aspnet:9.0 -> 10.0 corrected (project is net10.0) in api/Dockerfile comment + decisions.md. (2) api/Dockerfile also fixes two latent build problems the pre-existing stub had: it COPYs api/Directory.Build.props BEFORE dotnet restore (the EF-version MSB3277 pin was previously missed by the Docker context) and installs curl in the aspnet:10.0 runtime (base ships neither curl nor wget, so a HEALTHCHECK would always report unhealthy); uses USER $APP_UID (framework non-root user) + HEALTHCHECK /health/live. (3) IMAGE SIZE <120MB is aspirational on Debian aspnet base (~220MB); alpine base is the documented honest path (follow-up) — size marked operational-deferred. (4) EDGE Caddy REQUIRES a custom xcaddy build (infra/caddy/Dockerfile: caddy-dns/cloudflare + caddy-dns/hetzner + mholt/caddy-ratelimit) because stock caddy:2-alpine has neither DNS-01 TLS plugins nor rate_limit — this is why `caddy validate` is NOT claimed. The web container's INNER Caddyfile (infra/web/Caddyfile, static serve + /api+/hubs WS proxy) runs on stock caddy:2-alpine. (5) SCOPE-DEVIATION on web/Caddyfile: the designer listed web/Caddyfile in C1 files_touched, but my staging allow-list is /web/Dockerfile (not web/*). Resolved by putting the static Caddyfile at infra/web/Caddyfile and COPYing it in web/Dockerfile (build context = repo root) — nothing staged under web/ except Dockerfile + .dockerignore. (6) Wildcard DNS-01 TLS is primary (Cloudflare + Hetzner acme_dns variants documented); on-demand-TLS fallback documented as the trade-off. (7) Backups: rclone S3 (Hetzner Object Storage default, Backblaze B2 variant), postgres:16-alpine base so pg_dump major-version matches; restore.sh does NOT --exit-on-error and does NOT fail on pg_restore's rc — the SELECT count(*) FROM orders sanity check is authoritative (a cross-minor client emits benign SET transaction_timeout warnings). retain 14 daily + 8 weekly. (8) Migrations run out-of-band via `docker compose run --rm api migrate` (WI A1 subcommand) in deploy.yml BEFORE up -d; prod adds no startup-migrate (Production skips the Development-only startup MigrateAsync). (9) ops fleet is config-driven Ops:FleetSlug (default ops) for the 5xx pager (A3) + disk-alert SMS. (10) DEV compose: preserved the e2e-api.mjs harness contract EXACTLY (only `up -d db` is used by the harness; api/web services added for full-stack `up` do not claim 5432/5249 nor block db). (11) Optional Grafana+Prometheus behind compose --profile ops (not running by default); prometheus scrapes api:8080/metrics on the internal net only (Caddy does not proxy /metrics — enforces A2's internal-only AC). costs.md prices cited 2026-09-13: Hetzner CX22 EUR4.35/mo, Hetzner Object Storage EUR4.99/mo, .cz domain ~EUR0.60/mo, DNS/TLS/uptime free -> ~EUR9.94/mo fixed; SMS ~EUR18/mo variable (excluded from target); marginal per fleet = SMS only. DEPENDENCY on parallel A1 agent: the `migrate` and `send-sms` CLI subcommands in Program.cs are referenced by deploy.yml + monitoring.md/disk-alert but implemented by A1 (not touched here — api/src is the backend agent's scope). MINOR CALL-OUTS (advisor round 2): (a) deploy.yml uses secrets.VPS_USER in addition to the spec's stated 'only VPS_HOST/VPS_SSH_KEY/GHCR_TOKEN' — SSH needs a username; kept as a secret rather than hardcoding root. If strict 3-secret compliance is required, drop VPS_USER and set username: root. (b) deploy.yml rollback reverts the IMAGE to the previous SHA but does NOT un-apply the migration that ran this deploy — safe only for backward-compatible migrations; runbook step 7 now carries this caveat (destructive migration -> restore from backup, not image rollback). (c) The edge Caddyfile `rate_limit @auth { zone auth { key {remote_host} events 60 window 1m } }` directive shape must be confirmed against the mholt/caddy-ratelimit README when the xcaddy image is built — a wrong shape fails at edge startup, not at yaml-parse time (caddy validate is deferred to the xcaddy build).",
+  "hit_max_turns": false
+}

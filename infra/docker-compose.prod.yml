@@ -1,0 +1,212 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Production compose. Runs on the VPS from /opt/taxi with /opt/taxi/.env.
+#
+# Topology / security:
+#   - ONLY `caddy` publishes ports (80/443). Everything else is internal-only.
+#   - `db` has NO published port and lives on the `internal` network.
+#   - /metrics (prometheus, WI A2) is reachable only on the internal network —
+#     the edge Caddy does NOT proxy it (enforces A2's "internal-only" AC).
+#
+# Images come from GHCR (built + pushed by .github/workflows/deploy.yml). The
+# API_TAG / WEB_TAG vars select the deployed version; deploy.yml records the
+# previous tag for rollback. Locally you can `build:` instead (uncomment).
+#
+# MIGRATIONS run out-of-band, NOT at container start: deploy runs
+#   docker compose -f docker-compose.prod.yml run --rm api migrate
+# before `up -d`. In Production the Development-only startup MigrateAsync is
+# skipped, so the explicit `migrate` subcommand (WI A1) is the only migration path.
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"   # logrotate-equivalent per container (assignment §6)
+    max-file: "3"
+
+services:
+  caddy:
+    # Custom build: stock caddy:2-alpine has NEITHER DNS-challenge TLS plugins NOR
+    # rate_limit. infra/caddy/Dockerfile xcaddy-builds caddy with caddy-dns/cloudflare,
+    # caddy-dns/hetzner and mholt/caddy-ratelimit.
+    build:
+      context: caddy
+      dockerfile: Dockerfile
+    image: ${GHCR_OWNER:-local}/taxi-caddy:${CADDY_TAG:-latest}
+    container_name: taxi_caddy
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"   # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+      # DNS provider token for the wildcard DNS-01 challenge (Cloudflare or Hetzner).
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+      HETZNER_DNS_API_TOKEN: ${HETZNER_DNS_API_TOKEN:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      # Per-fleet static logo files (written by the API to /data/fleets), served by the edge.
+      - fleet_data:/srv/fleets:ro
+    depends_on:
+      - web
+      - api
+    networks:
+      - edge
+      - internal
+
+  web:
+    image: ${GHCR_OWNER:-local}/taxi-web:${WEB_TAG:-latest}
+    # build: { context: .., dockerfile: web/Dockerfile }   # uncomment for local build
+    container_name: taxi_web
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      API_UPSTREAM: "api:8080"
+    depends_on:
+      - api
+    networks:
+      - internal
+
+  api:
+    image: ${GHCR_OWNER:-local}/taxi-api:${API_TAG:-latest}
+    # build: { context: .., dockerfile: api/Dockerfile }   # uncomment for local build
+    container_name: taxi_api
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__Db: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Cors__WebOrigin: "https://${DOMAIN}"
+      Notifications__SmsProvider: ${SMS_PROVIDER}
+      Notifications__GoSms__ClientId: ${GOSMS_CLIENT_ID:-}
+      Notifications__GoSms__ClientSecret: ${GOSMS_CLIENT_SECRET:-}
+      Notifications__SmsBrana__Login: ${SMSBRANA_LOGIN:-}
+      Notifications__SmsBrana__Password: ${SMSBRANA_PASSWORD:-}
+      Push__Vapid__Subject: ${VAPID_SUBJECT}
+      Push__Vapid__PublicKey: ${VAPID_PUBLIC_KEY}
+      Push__Vapid__PrivateKey: ${VAPID_PRIVATE_KEY}
+      Tracking__HmacKey: ${TRACKING_HMAC_KEY}
+      Ops__FleetSlug: ${OPS_FLEET_SLUG:-ops}
+    volumes:
+      # Logo storage — shared read-only with caddy (served at the edge) and read by backup.
+      - fleet_data:/data/fleets
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  db:
+    image: postgres:16-alpine
+    container_name: taxi_db
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # NO published port — DB is internal-only.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Nightly pg_dump + logo backup → S3-compatible storage via rclone (see infra/backup/).
+  backup:
+    build:
+      context: backup
+      dockerfile: Dockerfile
+    image: ${GHCR_OWNER:-local}/taxi-backup:${BACKUP_TAG:-latest}
+    container_name: taxi_backup
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      TZ: Europe/Prague
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      # rclone remote config (S3-compatible: Hetzner Object Storage or Backblaze B2).
+      RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE}
+      RCLONE_CONFIG_S3_TYPE: s3
+      RCLONE_CONFIG_S3_PROVIDER: ${BACKUP_S3_PROVIDER}
+      RCLONE_CONFIG_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID}
+      RCLONE_CONFIG_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY}
+      RCLONE_CONFIG_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT}
+      RCLONE_CONFIG_S3_REGION: ${BACKUP_S3_REGION:-}
+      RETAIN_DAILY: "14"
+      RETAIN_WEEKLY: "8"
+    volumes:
+      - fleet_data:/data/fleets:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ── Optional metrics stack — only with `--profile ops` (assignment §6) ──────
+  grafana:
+    image: grafana/grafana-oss:11.2.0
+    container_name: taxi_grafana
+    restart: unless-stopped
+    profiles: ["ops"]
+    logging: *default-logging
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: "http://localhost:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - internal
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: taxi_prometheus
+    restart: unless-stopped
+    profiles: ["ops"]
+    logging: *default-logging
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - internal
+
+networks:
+  # Public-facing: only caddy is attached.
+  edge:
+    driver: bridge
+  # Internal-only: db, api, web, backup, metrics. No published ports.
+  internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+  fleet_data:
+  grafana_data:
+  prometheus_data:

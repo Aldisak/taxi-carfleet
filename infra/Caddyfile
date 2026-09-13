@@ -1,0 +1,113 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# EDGE Caddyfile (production). Terminates public HTTPS and reverse-proxies to the
+# internal `web` and `api` services.
+#
+# REQUIRES a custom Caddy build (infra/caddy/Dockerfile) — stock caddy:2-alpine
+# has NEITHER the DNS-challenge TLS plugins NOR the rate_limit module used below,
+# so `caddy validate` against a stock binary will FAIL on `dns ...` and `rate_limit`.
+# Validate against the xcaddy build instead.
+#
+# Env (from /opt/taxi/.env): DOMAIN, ACME_EMAIL, and ONE of CLOUDFLARE_API_TOKEN
+# / HETZNER_DNS_API_TOKEN for the wildcard DNS-01 challenge.
+# ═════════════════════════════════════════════════════════════════════════════
+
+{
+	email {$ACME_EMAIL}
+
+	# ── Wildcard TLS via DNS-01 challenge ────────────────────────────────────
+	# HTTP-01 CANNOT issue a `*.` certificate — a DNS challenge is mandatory for
+	# wildcard subdomains. Choose ONE provider block matching your DNS host and
+	# the plugin compiled into infra/caddy/Dockerfile:
+	#
+	#   Cloudflare (plugin: github.com/caddy-dns/cloudflare):
+	#     acme_dns cloudflare {$CLOUDFLARE_API_TOKEN}
+	#
+	#   Hetzner DNS (plugin: github.com/caddy-dns/hetzner):
+	#     acme_dns hetzner {$HETZNER_DNS_API_TOKEN}
+	#
+	# The line below defaults to Cloudflare; swap to hetzner if that is your DNS host.
+	acme_dns cloudflare {$CLOUDFLARE_API_TOKEN}
+
+	# ── FALLBACK: on-demand TLS (if wildcard DNS proves impractical) ──────────
+	# Trade-off: on-demand issues a SEPARATE per-subdomain cert via HTTP-01 on the
+	# FIRST request to each subdomain (small first-hit latency; no DNS token needed;
+	# subject to Let's Encrypt rate limits at scale). The `ask` endpoint MUST gate
+	# which hosts may request a cert (point it at an API route that confirms the
+	# fleet slug exists) or an attacker can exhaust your rate limit. To use it,
+	# comment out `acme_dns` above and the `*.{$DOMAIN}` site block below, and
+	# uncomment:
+	#   on_demand_tls {
+	#       ask http://api:8080/api/v1/public/tls-check
+	#   }
+	# then serve with a catch-all `https://` site that has `tls { on_demand }`.
+
+	# Do NOT expose Caddy's own admin API publicly.
+	admin off
+}
+
+# ── Reusable snippets ────────────────────────────────────────────────────────
+(security_headers) {
+	header {
+		# HSTS: 1 year, include subdomains, preload-eligible.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		# The API returns JSON; the SPA is same-origin. Keep CSP conservative but
+		# allow the app shell, OSM tiles and the API/hub origin (same host).
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self' https://*.tile.openstreetmap.org wss: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
+		-Server
+	}
+}
+
+(proxy_app) {
+	encode zstd gzip
+
+	# ── Global request body cap: 1 MB ────────────────────────────────────────
+	# The logo upload endpoint is capped tighter (300 KB) by the API validator;
+	# 1 MB here is the outer edge limit for everything else.
+	request_body {
+		max_size 1MB
+	}
+
+	# ── Auth rate limit: 60 requests / minute / IP on /api/v1/auth/* ─────────
+	# Requires the caddy-ratelimit plugin (mholt/caddy-ratelimit).
+	@auth path /api/v1/auth/*
+	rate_limit @auth {
+		zone auth {
+			key {remote_host}
+			events 60
+			window 1m
+		}
+	}
+
+	# ── API + SignalR hub → api service (WebSocket upgrade is automatic) ─────
+	@api path /api/* /hubs/*
+	reverse_proxy @api api:8080
+
+	# ── Per-fleet static logo files (written by the API to /data/fleets) ─────
+	handle_path /fleets/* {
+		root * /srv/fleets
+		file_server
+	}
+
+	# NOTE: /metrics is deliberately NOT proxied — prometheus scrape stays on the
+	# internal docker network only (satisfies WI A2 "internal-only").
+
+	# ── Everything else → the web (SPA/PWA) container ────────────────────────
+	reverse_proxy web:8080
+}
+
+# ── Apex domain ──────────────────────────────────────────────────────────────
+{$DOMAIN} {
+	import security_headers
+	import proxy_app
+}
+
+# ── Wildcard: every fleet subdomain (demo.{domain}, second.{domain}, …) ──────
+# Covered by the single wildcard cert from the DNS-01 challenge above — a NEW
+# fleet needs NO deploy and NO new cert.
+*.{$DOMAIN} {
+	import security_headers
+	import proxy_app
+}

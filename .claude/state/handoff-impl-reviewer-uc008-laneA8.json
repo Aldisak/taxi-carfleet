@@ -1,0 +1,27 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "laneA8 (A1/A2/A3 api hooks)",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "LOW",
+      "file": "api/src/Taxi.Api/Common/Ops/FiveHundredCounterMiddleware.cs:16",
+      "rule": "rules/error-handling.md#exceptions-for-infrastructure",
+      "title": "Alert send runs synchronously on the request thread and uses context.RequestAborted",
+      "detail": "On the single firing request per window the middleware awaits RecordServerErrorAsync -> DB lookup + fan-out push send inline after next(), adding tail latency to that one 5xx response. Passing context.RequestAborted also means that if the client that triggered the 500 disconnects, the alert send can be cancelled (OCE swallowed) and no page is sent. Only affects the one firing request per minute; alerter already swallows non-OCE errors so it cannot escalate a 500.",
+      "recommendation": "Acceptable for the cheapest-possible pager. Optionally use CancellationToken.None (or a linked app-lifetime token) for the alert send so a client disconnect cannot suppress the page, mirroring FleetHub.FlushPositionToDatabaseAsync (CLAUDE.md WI-14)."
+    },
+    {
+      "id": "F2",
+      "severity": "INFO",
+      "file": "api/src/Taxi.Api/Common/Ops/FiveHundredCounterMiddleware.cs",
+      "rule": "n/a (untested seam assessment)",
+      "title": "Middleware->alerter seam and outermost placement have no HTTP-500 integration test",
+      "detail": "The dev-flagged gap. The alerter decision logic + ops-fleet push path are well covered (11->1, <=10->0, window reset, 4-sub fan-out, missing-fleet no-op). The 2-line middleware (await next; if >=500 record) and its before-UseExceptionHandler placement are verified only by reasoning + doc-comment. No test provokes a real 500 to prove the handler-converted 500 is observed as StatusCode>=500 at the outermost layer.",
+      "recommendation": "JUDGED ACCEPTABLE for merge: the middleware is trivial and unbranched, and the placement rationale (must see the handler's converted 500, not the thrown exception) is sound and documented. A single integration test hitting a deliberately-throwing endpoint and asserting one push fires would fully close it and is worth adding as a follow-up, but is not a blocker."
+    }
+  ],
+  "summary": "laneA8 (A1 migrate+send-sms CLI, A2 /metrics, A3 5xx alert) is clean and merge-ready; blocks_merge=false. All designer ACs met. A1: thin Program.cs intercepts for `migrate` (MigrateAsync then return before app.Run, Dev startup-migrate left intact) and `send-sms` (resolves the NOTIFICATIONS Infrastructure.Notifications.ISmsSender real provider, not the OTP one; logic in testable static CliCommands; missing-arg guard returns false; phone masked to last-4 via Mask(); message body never logged; uses Reason discriminator per logging.md). A2: prometheus-net.AspNetCore 8.2.1 pinned, UseHttpMetrics after UseAuthorization, MapMetrics(\"/metrics\") next to health maps, anonymous by design (Caddy-isolated per cross-lane split), auth ordering untouched, smoke test present. A3: FiveHundredCounterMiddleware registered outermost before UseExceptionHandler; FiveHundredRateAlerter is a singleton with Lock-guarded count + single-fire flag, tumbling calendar-minute window via TimeProvider (no DateTime.Now), fires ONE IPushSender push (not INotificationService) to active FleetAdmin subscriptions of the Ops:FleetSlug fleet using IgnoreQueryFilters null-tenant reads, own async scope, send wrapped in try/catch(non-OCE)->Warning so it never cascades a 500; missing fleet/subs -> Warning + no-op. Rules pass: build -warnaserror 0 warnings (per handoff+build config), no PII in logs, DontCatchExceptions not implicated (middleware is outside FE), TimeProvider used throughout, alerter is resilient. Two non-blocking notes: F1 (LOW) inline synchronous send using RequestAborted; F2 (INFO) the middleware->alerter seam is untested but judged acceptable given the 2-line trivial middleware + sound documented placement — a throwing-endpoint integration test is a nice-to-have follow-up, not a merge blocker."
+}

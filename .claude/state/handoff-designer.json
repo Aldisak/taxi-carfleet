@@ -1,401 +1,109 @@
 {
-  "uc_id": "UC-007",
-  "spec_path": "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
-  "work_items_doc": "docs/specs/in-progress/reports-audit-onboarding-work-items.md",
+  "uc_id": "UC-008",
+  "spec_path": "docs/specs/in-progress/008_UC_008_infra-and-deployment.md",
+  "work_items_doc": "docs/specs/in-progress/infra-and-deployment-work-items.md",
   "work_items": [
     {
-      "id": "A1-report-indexes-and-fleet-logo",
+      "id": "A1-migrate-and-send-sms-cli",
       "lane": "api",
-      "title": "Report perf indexes + audit-merge indexes + Fleet.LogoUpdatedAt + ONE serialized migration (root of all Lane-A WIs)",
-      "goal": "The single serialized Lane-A migration WI (UC-004/005/006 precedent: one coherent snapshot; all other Lane-A WIs depend on it so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel). Add ONLY the genuinely-missing schema. SOURCE-VERIFIED that UserRole.SuperAdmin + UserRole.System already exist (enum, string-stored -> NO migration), the SuperAdminOnly/AuthenticatedOnly/FleetAdminOnly policies exist, Fleet.PrimaryColorHex exists, and FleetSettings.WelcomeText/AutoDispatchEnabled/OfferTimeoutSeconds/SmsMonthlyCapCzk/SmsUnitCostCzk/SmsSenderName all exist - DO NOT re-add any of these. The only persisted self-service field missing is the logo: add Fleet.LogoUpdatedAt (DateTimeOffset?, nullable) as a has-logo + cache-bust signal (the file path /data/fleets/{id}/logo.png is derivable from the id, so NO blob column). Add report perf indexes for AC#2 (<300ms @ 50k) up front because a later index = a forbidden second migration: Order (FleetId, CreatedAt), Order (FleetId, DriverId, CreatedAt), Order (FleetId, Status, CreatedAt). Add the audit-merge indexes OrderEvent (FleetId, At) and AuditLog (FleetId, At) for the A4 UNION paging. Configure Fleet.LogoUpdatedAt in FleetConfiguration. ONE migration AddReportIndexesAndFleetLogo via dotnet ef --output-dir Infrastructure/Migrations; review the up-SQL for non-destructive ops (index creates + one nullable column add). No endpoint/engine logic here - schema only.",
+      "title": "Program.cs CLI hooks: `migrate` arg-subcommand (run EF migrations then exit) + `send-sms` arg-subcommand (real ISmsSender) — root of all Program.cs-touching WIs",
+      "goal": "Two CLI arg-intercepts mirroring the existing create-superadmin pattern in Program.cs (SOURCE-VERIFIED lines 198-219: `if (args.Length > 0 && args[0] == ...)` after `builder.Build()`, run work in an async scope, `return;` before `app.Run()`; uses the existing private `GetArgValue(args, \"--flag\")` helper). (1) `dotnet run -- migrate`: resolve TaxiDbContext from a scope, call `await db.Database.MigrateAsync()`, log and `return;` before the web host boots. This is the deploy.yml migrate step (`compose run --rm api migrate` then `up`); LEAVE the existing Development-only startup MigrateAsync (lines 224-236) untouched — prod uses the explicit subcommand. (2) `dotnet run -- send-sms --to <e164> --message <text>`: resolve the NOTIFICATIONS ISmsSender (Taxi.Api.Infrastructure.Notifications.ISmsSender — the one with real GoSMS/SMSbrana providers, SendAsync(SmsMessage, ct) returning SmsSendResult — NOT the Infrastructure.Sms OTP sender), build an SmsMessage, send, log the outcome (never the message body or full phone — mask per rules/logging.md), `return;`. This WI is the ROOT of the Program.cs-touching chain: A2 (metrics) and A3 (5xx middleware) depend_on it so edits to Program.cs never collide (UC-007 ErrorCodes.cs-append precedent). No migration (no schema change). Test-first: the migrate subcommand is verified by the existing test harness still booting green + a documented `compose run` step; send-sms is unit/integration-tested by resolving a recording/console ISmsSender and asserting SendAsync was invoked with the parsed to/message, plus an arg-parsing test for missing flags.",
       "depends_on": [],
+      "estimated_complexity": "M",
+      "files_touched": [
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Infra/SendSmsCommandTests.cs",
+        "api/tests/Taxi.Api.Tests/Infra/MigrateCommandTests.cs"
+      ],
+      "rule_citations": [
+        "rules/csharp-style.md#async-await",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/logging.md#style-message-templates",
+        "rules/logging.md#property-names",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/naming.md#test-naming",
+        "CLAUDE.md#project-specific-facts"
+      ],
+      "required_reads": [
+        ".claude/state/08-infra-and-deployment.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
+      ],
+      "needs_library_research": false,
+      "acceptance_criteria": [
+        "`dotnet run -- migrate` intercepts args[0]==\"migrate\" after builder.Build(), runs `await db.Database.MigrateAsync()` in an async scope, logs a completion line, and returns before app.Run() (never boots the web host). The existing Development-only startup MigrateAsync block (Program.cs 224-236) is UNCHANGED. MigrateCommand_Intercepts_AndReturnsBeforeHostBoots is validated by the test harness booting green + documented `docker compose run --rm api migrate` runbook step.",
+        "`dotnet run -- send-sms --to <e164> --message <text>` resolves Taxi.Api.Infrastructure.Notifications.ISmsSender (the real-provider interface, SendAsync(SmsMessage, ct)), sends, logs the outcome, and returns before app.Run(). SendSms_ValidArgs_InvokesSmsSenderWithParsedToAndMessage passes by resolving a recording/console ISmsSender and asserting the SmsMessage carries the parsed --to/--message.",
+        "SendSms_MissingToOrMessage_LogsErrorAndReturns: absent --to or --message logs an error and returns (no send), mirroring create-superadmin's missing-flag guard. No message body or full phone number is logged (rules/logging.md — mask phone, use Reason).",
+        "dotnet build -warnaserror is clean and the full test suite stays green. No migration is added (no schema change)."
+      ],
+      "verification": {
+        "tool": "dotnet-test",
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Infra.SendSms"
+      }
+    },
+    {
+      "id": "A2-prometheus-metrics-endpoint",
+      "lane": "api",
+      "title": "prometheus-net `/metrics` endpoint (UseHttpMetrics + MapMetrics) + csproj package — internal-network only (enforced by Caddy/compose, not here)",
+      "goal": "Add prometheus-net.AspNetCore to Taxi.Api.csproj and expose a `/metrics` scrape endpoint. LIBRARY RESEARCH (done 2026-09-13, cite in notes): prometheus-net.AspNetCore 8.2.1 is the current release and supports .NET 10 (preview 4+) — it is ASP.NET-Core-10 compatible; integration is `app.UseHttpMetrics()` (after routing/auth) + `app.MapMetrics()` (maps GET /metrics). DEVELOPER MUST re-confirm 8.2.1 restores cleanly under net10.0 at implementation time and bump to the then-current 8.x if a patch exists; pin an explicit version in the csproj. Wire `UseHttpMetrics()` and `MapMetrics(\"/metrics\")` into Program.cs alongside the other app.Use*/Map* calls (place MapMetrics near the health-check Map* calls; UseHttpMetrics after UseAuthentication, consistent with existing middleware order). The endpoint returns 200 with Prometheus text-format body. SCOPE SPLIT (advisor): 'internal-network only' is NOT enforced in code — it is enforced by NOT proxying /metrics through Caddy and by compose network topology (that AC lives on C2, the Caddy/compose WI). The code AC here is only: endpoint served + scrapeable + default HTTP metrics registered. depends_on A1 to serialize Program.cs edits. No migration.",
+      "depends_on": [
+        "A1-migrate-and-send-sms-cli"
+      ],
       "estimated_complexity": "S",
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/Fleet.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/FleetConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderEventConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/AuditLogConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Migrations/",
-        "api/tests/Taxi.Api.Tests/Reports/ReportSchemaTests.cs"
-      ],
-      "rule_citations": [
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#migrations",
-        "rules/ef-core.md#date-types",
-        "rules/architecture.md#one-type-per-file",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#migrations",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "Fleet gains a nullable LogoUpdatedAt (DateTimeOffset?) configured in FleetConfiguration (no default, backfills null on existing rows). NO blob/bytes column is added. UserRole, the policies, Fleet.PrimaryColorHex, and the FleetSettings self-service columns are NOT re-added (they already exist in the snapshot - verified).",
-        "Composite indexes exist after migration: Order (FleetId, CreatedAt), Order (FleetId, DriverId, CreatedAt), Order (FleetId, Status, CreatedAt), OrderEvent (FleetId, At), AuditLog (FleetId, At). These back the report aggregation (A2/A3) and the audit UNION paging (A4).",
-        "A single migration AddReportIndexesAndFleetLogo is added with --output-dir Infrastructure/Migrations (CLAUDE.md); its up-SQL creates the indexes + adds one nullable column and is non-destructive (rules/ef-core.md#migrations). All other Lane-A WIs depend_on A1 so the snapshot is never regenerated concurrently.",
-        "ReportSchema_FleetLogoUpdatedAt_DefaultsNull, ReportSchema_OrderReportIndexes_Exist, ReportSchema_AuditMergeIndexes_Exist, and ReportSchema_Migration_IsNonDestructive pass."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.ReportSchema"
-      }
-    },
-    {
-      "id": "A2-driver-report-and-csv",
-      "lane": "api",
-      "title": "GET reports/drivers SQL per-Prague-day aggregation + byte-exact UTF-8-BOM ';' CSV export (AC#1, AC#7)",
-      "goal": "The driver report (assignment section 1) + the CSV byte-exactness (AC#7). GET /api/v1/reports/drivers?driverId&from&to (FleetAdminOnly, tenant-scoped via the Order query filter). SQL aggregation - NOT ToList-then-group (AC#2 rule): per-Prague-day rows with rides completed, cancelled (no-show = CancelledByRole/CancelReason no-show), cash/card/invoice/total CZK (conditional SUM(CASE WHEN PaymentType=...)), price-override count (PriceOverrideReason != null). Prague-day bucketing (AC#1 correctness + translation risk, SOURCE-VERIFIED): Order.CreatedAt is UTC DateTimeOffset; a naive GroupBy(o => o.CreatedAt.Date) buckets in UTC and may not translate. Group by a Prague-local day key expressed as date_trunc('day', created_at AT TIME ZONE 'Europe/Prague') (verify Npgsql translation); if a specific aggregate/key will not translate, fall back to a single FromSql/SqlQuery aggregation - still server-side (AC#2 holds), NEVER ToList-then-group. The date-range FILTER reuses the GetDayWindow UTC-boundary pattern from GetMySummaryEndpoint (already in the codebase). Hours-online is a SEPARATE small bounded query over driver_shifts (clamp shifts to the Prague window in memory, mirroring GetMySummaryEndpoint's sum) merged into the per-day rows - NOT folded into the 50k GROUP BY. avg rating per driver (AVG(RatingStars) over completed+rated). A totals row. CSV export variant via ?format=csv: a pure Common/Reports/DriverReportCsv writer (NO FastEndpoints dep, NO CsvHelper) producing UTF-8 WITH BOM (EF BB BF) + ';' separator + CRLF (AC#7, Czech Excel), streamed as the response body with a download filename. Commit a hand-computed expected CSV fixture; AC#1 orders are seeded at mid-day so UTC and Prague fall on the same date (tz cannot shift a bucket) and the match is deterministic.",
-      "depends_on": [
-        "A1-report-indexes-and-fleet-logo"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Reports/ReportsFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportEndpoint.cs",
-        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportRequest.cs",
-        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportResponse.cs",
-        "api/src/Taxi.Api/Features/Reports/GetDriverReport/DriverReportDayDto.cs",
-        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportValidator.cs",
-        "api/src/Taxi.Api/Common/Reports/DriverReportCsv.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Reports/DriverReportTests.cs",
-        "api/tests/Taxi.Api.Tests/Reports/DriverReportExpected.csv"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#banned-patterns",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#n-plus-one",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#test-naming",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET reports/drivers aggregates in SQL (conditional SUMs + COUNTs grouped by a Prague-local day key via date_trunc AT TIME ZONE, or a FromSql fallback that is still server-side) - there is NO ToList-then-GroupBy of raw order rows. The date range is filtered by a UTC [start,end) window computed from the Prague day (GetMySummaryEndpoint pattern). Hours-online is a separate bounded driver_shifts query clamped to the window and merged in memory. Per-day rows carry rides completed, cancelled(no-show), cash/card/invoice/total CZK, price-override count, hours online; a totals row sums them; avg rating per driver is included.",
-        "AC#1: DriverReport_SeededData_MatchesHandComputedTable seeds a known set of mid-day orders and asserts the per-day + totals numbers equal a hand-computed table. DriverReport_PragueDayBucketing_MidDayOrdersStable proves mid-day orders land on the same day under UTC and Prague.",
-        "AC#7: DriverReport_Csv_MatchesExpectedBytes asserts the ?format=csv body bytes begin with the UTF-8 BOM EF BB BF, use ';' as the separator and CRLF line endings, and equal a committed expected-CSV fixture exactly (byte comparison). DriverReportCsv is a pure writer with no FastEndpoints/CsvHelper dependency.",
-        "Tenant + authz: cross-fleet driverId -> 404 (no leak); non-FleetAdmin -> 403; bad/absent date or to<from -> 400 via a Validator<T> with stable error codes. DriverReport_CrossTenant_Returns404 and DriverReport_NonFleetAdmin_Returns403 pass.",
-        "DriverReport_HoursOnline_ClampsToWindow and DriverReport_PriceOverrideCount pass. No PII beyond ids/aggregates in logs (rules/logging.md)."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.DriverReport"
-      }
-    },
-    {
-      "id": "A3-fleet-report-and-50k-seed",
-      "lane": "api",
-      "title": "GET reports/fleet SQL KPIs + rides-per-day series + top routes + ratings list + 50k fleet-scoped seeding script (AC#2 <300ms)",
-      "goal": "The fleet report (assignment section 2+3) + the AC#2 perf budget. GET /api/v1/reports/fleet?from&to (FleetAdminOnly, tenant-scoped). SQL KPIs computed server-side (NOT ToList-then-group): rides, revenue (SUM FinalPriceCzk), avg price, avg time-to-assign (AVG over AssignedAt-CreatedAt), avg time-to-pickup (AVG over ArrivedAt-AcceptedAt), cancellation rate (cancelled/total), app-vs-phone share (GROUP BY Order.Source), fixed-route share (PriceType Fixed / RouteId not null), SMS count + est cost (COUNT notification_log where Channel=Sms within window * FleetSettings.SmsUnitCostCzk), rides-per-Prague-day series (same date_trunc AT TIME ZONE key as A2, for the B1 SVG chart), top common routes by count (GROUP BY RouteId, join route name, order by count desc, take N). GET /api/v1/reports/ratings (FleetAdminOnly) returns a list of ratings (RatingComment, order PublicCode, driver name) for completed+rated orders in range. SEEDING SCRIPT for AC#2: a dev/test ReportSeedScript (NOT the demo seeder - keep it separate, fleet-scoped, idempotent by a marker fleet/slug) that inserts 50000 completed orders for one fleet with varied Source/PaymentType/RouteId/timestamps, used ONLY by the perf test (and runnable in dev). AC#2 test seeds 50k and asserts the fleet endpoint responds <300ms. Confirm the GroupBy/AVG/conditional-SUM translate to SQL against Npgsql (date_trunc AT TIME ZONE key); fall back to FromSql if a specific aggregate will not translate (still server-side). Append a docs/decisions.md note (reports are SQL-aggregated; 50k seed is a dev/test script, not the demo seeder).",
-      "depends_on": [
-        "A1-report-indexes-and-fleet-logo"
-      ],
-      "estimated_complexity": "XL",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Reports/ReportsFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportEndpoint.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportRequest.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportResponse.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/FleetKpiDto.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/RidesPerDayDto.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/TopRouteDto.cs",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportValidator.cs",
-        "api/src/Taxi.Api/Features/Reports/GetRatings/GetRatingsEndpoint.cs",
-        "api/src/Taxi.Api/Features/Reports/GetRatings/GetRatingsResponse.cs",
-        "api/src/Taxi.Api/Features/Reports/GetRatings/RatingDto.cs",
-        "api/src/Taxi.Api/Infrastructure/Seed/ReportSeedScript.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "docs/decisions.md",
-        "api/tests/Taxi.Api.Tests/Reports/FleetReportTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#banned-patterns",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#indexes",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#test-naming",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET reports/fleet returns all KPIs (rides, revenue, avg price, avg time-to-assign, avg time-to-pickup, cancellation rate, app-vs-phone share, fixed-route share, SMS count + est cost), a rides-per-Prague-day series, and top routes by count - ALL computed in SQL (GROUP BY + AVG + conditional SUM, or a FromSql fallback that is still server-side). FleetReport_Kpis_ComputedInSql_NoInMemoryGrouping proves no raw-order ToList-then-group.",
-        "AC#2: a separate fleet-scoped idempotent ReportSeedScript (NOT the demo seeder) inserts 50000 orders; FleetReport_50kOrders_RespondsUnder300ms seeds 50k and asserts the endpoint responds under 300 ms, backed by the A1 (FleetId, CreatedAt)/(FleetId, Status, CreatedAt) indexes.",
-        "FleetReport_AppVsPhoneShare, FleetReport_TimeToAssignAndPickup, and FleetReport_TopRoutesByCount assert the respective KPI computations. GET reports/ratings returns comment + order code + driver (Ratings_List_IncludesCommentCodeDriver).",
-        "Tenant + authz: tenant-scoped so a FleetAdmin only ever sees their own fleet's data (FleetReport_CrossTenant_OnlyCallerFleet); non-FleetAdmin -> 403; bad date -> 400. docs/decisions.md gains the reports-SQL-aggregation + 50k-seed-script note."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.FleetReport"
-      }
-    },
-    {
-      "id": "A4-audit-merge-endpoint",
-      "lane": "api",
-      "title": "GET audit paged UNION-ALL merge of order_events + audit_log (read-only, tenant-scoped, filterable)",
-      "goal": "The unified audit timeline (assignment section Audit). GET /api/v1/audit?actor&entity&from&to&orderCode&page (FleetAdminOnly, tenant-scoped, read-only). Merge order_events + audit_log into ONE paged timeline. SOURCE-VERIFIED: both entities are ITenantEntity with a global query filter, so the merge is auto-tenant-scoped; audit_log is near-empty today (only OverrideStatusEndpoint writes it) so the timeline is order_events-dominated, but paging correctness still matters. Design (assumption 6): project order_events and audit_log into ONE shared AuditEntryDto shape (Source [OrderEvent|AuditLog], ActorUserId?, Entity, Action/EventType string, OrderCode?, At), .Concat(...) the two projections -> SQL UNION ALL, then OrderByDescending(At).ThenByDescending(Id-or-At tiebreaker).Skip(page*size).Take(size). VERIFY EF translates the union+orderby+skip+take; if it does NOT, fall back to two windowed queries merged in memory over an explicitly-bounded page window (documented in the goal). Apply the actor/entity/from/to/orderCode filters BEFORE paging. Do NOT project the jsonb Payload/Diff columns inside the SQL Select (CLAUDE.md WI-10) - if a diff/payload summary is surfaced, load rows then read in memory. Read-only: no writes, no state-machine calls.",
-      "depends_on": [
-        "A1-report-indexes-and-fleet-logo"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Audit/AuditFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditEndpoint.cs",
-        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditRequest.cs",
-        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditResponse.cs",
-        "api/src/Taxi.Api/Features/Audit/GetAudit/AuditEntryDto.cs",
-        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditValidator.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Reports/AuditTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/ef-core.md#indexes",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#test-naming",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "GET audit returns a paged descending-by-At merged list of order_events + audit_log projected into one AuditEntryDto shape via Concat -> UNION ALL -> OrderByDescending(At).Skip().Take() (or a documented in-memory merge fallback if EF cannot translate the union+paging). jsonb Payload/Diff are NOT projected inside the SQL Select. Audit_MergesOrderEventsAndAuditLog_SortedByAtDesc and Audit_Paging_IsStableAcrossUnion pass.",
-        "Filters actor, entity, from/to, orderCode are applied before paging: Audit_FilterByActor, Audit_FilterByOrderCode, Audit_FilterByEntityAndDate pass.",
-        "Tenant isolation: the merge is auto-scoped by both entities' global query filters; a FleetAdmin sees only their fleet's events. Audit_CrossTenant_OnlyCallerFleet passes.",
-        "Authz: non-FleetAdmin -> 403 (Audit_NonFleetAdmin_Returns403); bad date/page -> 400. Endpoint is read-only (no writes)."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.Audit"
-      }
-    },
-    {
-      "id": "A5-superadmin-fleets-and-cli",
-      "lane": "api",
-      "title": "SuperAdmin /admin/fleets create(+seed settings/tariff/admin)/list/deactivate (the ONE cross-tenant write) + create-superadmin CLI bootstrapper (AC#3 server half)",
-      "goal": "SuperAdmin onboarding (assignment section 1) - the AC#3 server half + the ONE cross-tenant write (guard hard). Vertical-slice endpoints under Features/Admin, all Policies(nameof(AuthorizationPolicies.SuperAdminOnly)) (policy ALREADY exists - verified). POST /api/v1/admin/fleets { slug, name, phone, adminEmail } -> creates the Fleet + seeds FleetSettings defaults + a default Tariff + the FleetAdmin User (BCrypt-hashed one-time password) and returns the one-time password once. GET /api/v1/admin/fleets lists ALL fleets (cross-fleet by design - SuperAdmin). POST /api/v1/admin/fleets/{id:guid}/deactivate sets IsActive=false. CROSS-TENANT WRITE (assumption 7, CLAUDE.md WI-04, load-bearing): the create writes rows (FleetSettings/Tariff/User) for a fleet that is NOT the caller's tenant, so it trips the SaveChanges tenant guard. Reuse the DevelopmentSeeder's technique: set the scope's CurrentTenant.FleetId to the NEW fleet id (or use a null-tenant scope) before SaveChanges so the guard passes; this is the only endpoint permitted to write cross-tenant, and it is hard-guarded by SuperAdminOnly. CLI (assumption 9): add a testable SuperAdminBootstrapper (Common/Admin/SuperAdminBootstrapper) with CreateAsync(email, password, ct) that inserts a UserRole.SuperAdmin user (no FleetId); in Program.cs add an args intercept AFTER builder.Build() that, when args[0]=='create-superadmin' with --email/--password, resolves the bootstrapper from a scope, runs it, and return;s BEFORE app.Run() (never boots the web host). The bootstrapper is integration-tested directly against a DbContext.",
-      "depends_on": [
-        "A1-report-indexes-and-fleet-logo"
-      ],
-      "estimated_complexity": "XL",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Admin/AdminFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetEndpoint.cs",
-        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetRequest.cs",
-        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetResponse.cs",
-        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetValidator.cs",
-        "api/src/Taxi.Api/Features/Admin/ListFleets/ListFleetsEndpoint.cs",
-        "api/src/Taxi.Api/Features/Admin/ListFleets/ListFleetsResponse.cs",
-        "api/src/Taxi.Api/Features/Admin/ListFleets/AdminFleetDto.cs",
-        "api/src/Taxi.Api/Features/Admin/DeactivateFleet/DeactivateFleetEndpoint.cs",
-        "api/src/Taxi.Api/Common/Admin/SuperAdminBootstrapper.cs",
-        "api/src/Taxi.Api/Common/Admin/FleetProvisioning.cs",
+        "api/src/Taxi.Api/Taxi.Api.csproj",
         "api/src/Taxi.Api/Program.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Reports/AdminFleetsTests.cs"
+        "api/tests/Taxi.Api.Tests/Infra/MetricsEndpointTests.cs"
       ],
       "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#banned-patterns",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#dbset-registration",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#guid-primary-keys",
-        "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
         "rules/naming.md#test-naming",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "CLAUDE.md#cross-cutting-invariants",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        ".claude/state/08-infra-and-deployment.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
-      "needs_library_research": false,
+      "needs_library_research": true,
       "acceptance_criteria": [
-        "POST admin/fleets creates the Fleet and ALSO seeds FleetSettings defaults + a default Tariff + a FleetAdmin User with a BCrypt-hashed one-time password, returning that password once in the response. This is the ONE cross-tenant write: it sets the scope's CurrentTenant.FleetId to the new fleet (or uses a null-tenant scope) so the SaveChanges tenant guard passes (CLAUDE.md WI-04). AdminFleets_Create_SeedsSettingsTariffAndAdmin and AdminFleets_Create_ReturnsOneTimePassword pass.",
-        "AC#3 guard: all three endpoints use Policies(nameof(AuthorizationPolicies.SuperAdminOnly)); AdminFleets_Create_NonSuperAdmin_Returns403 proves a non-SuperAdmin (e.g. FleetAdmin) cannot create/cross-tenant-write. A duplicate slug -> 409 (AdminFleets_Create_DuplicateSlug_Returns409). GET admin/fleets lists all fleets (AdminFleets_List_ReturnsAllFleets); deactivate sets IsActive=false (AdminFleets_Deactivate_SetsInactive).",
-        "CLI: Program.cs intercepts args create-superadmin --email --password after builder.Build(), runs SuperAdminBootstrapper.CreateAsync, and returns before app.Run() (never boots the host). SuperAdminBootstrapper_CreatesSuperAdminUser (a UserRole.SuperAdmin user with no FleetId is inserted) and SuperAdminBootstrapper_DuplicateEmail_IsIdempotentOrRejects pass, testing the bootstrapper directly against a DbContext.",
-        "No raw passwords are logged (rules/logging.md); the one-time password is returned in the HTTP response body only. malformed body -> 400 via a Validator<T>."
+        "prometheus-net.AspNetCore (version ~8.2.1, pinned explicitly; developer re-confirms net10.0 restore at impl time, bump within 8.x if a newer patch exists — cite version + date in the WI notes) is added to Taxi.Api.csproj and restores under -warnaserror.",
+        "Program.cs calls app.UseHttpMetrics() (after UseAuthentication, consistent with the existing middleware order) and app.MapMetrics(\"/metrics\"). Metrics_Endpoint_Returns200AndPrometheusTextFormat: GET /metrics returns 200 with a Prometheus text-format body that includes at least one default HTTP metric after a request is made.",
+        "No auth/tenant coupling on /metrics (it is network-isolated, not authz-isolated); the endpoint does not require a JWT. 'Not publicly routable' is DEFERRED to C2 (Caddy does not proxy /metrics; compose keeps it on the internal network) — it is NOT an AC of this code WI.",
+        "dotnet build -warnaserror clean; full suite green. No migration."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.AdminFleets"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Infra.Metrics"
       }
     },
     {
-      "id": "A6-fleet-self-service-and-logo",
+      "id": "A3-5xx-counter-ops-push-alert",
       "lane": "api",
-      "title": "PUT fleet/settings + POST fleet/logo (<=200KB PNG -> disk + LogoUpdatedAt) + public/fleet welcomeText/logoUrl extension (AC#4 server half)",
-      "goal": "Fleet self-service (assignment section 2) + the AC#4 runtime-branding server half. PUT /api/v1/fleet/settings (FleetAdminOnly, tenant-scoped) persists the self-service set onto the caller's Fleet + FleetSettings rows: Fleet.Name, Fleet.Phone, Fleet.PrimaryColorHex (validate #RRGGBB); FleetSettings.WelcomeText, OfferTimeoutSeconds, SmsMonthlyCapCzk, AutoDispatchEnabled (persisted but v1.1-disabled in UI). All target columns ALREADY exist (verified) - this is a write endpoint, no migration. POST /api/v1/fleet/logo (FleetAdminOnly): accepts a multipart PNG upload, rejects >200 KB (400) and non-PNG (400), writes the file to /data/fleets/{FleetId}/logo.png (create dir if needed), and stamps Fleet.LogoUpdatedAt = now (A1 column). Extend GetFleetResponse (the existing anonymous GET public/fleet, Features/Public/GetFleet) ADDITIVELY with welcomeText (from FleetSettings) and logoUrl (derived: /fleets/{FleetId}/logo.png?v={LogoUpdatedAt.Ticks} when LogoUpdatedAt != null, else null) - name/primaryColorHex already returned. A read (GetFleetSettingsEndpoint) already exists for loading current values; do NOT break it. Caddy serves the static logo file in prod (infra 08); the API only stores the file + exposes the derived URL.",
+      "title": "5xx-per-minute counter middleware + testable window alerter → ONE IPushSender push to FleetAdmins of the `ops` fleet when >10/min",
+      "goal": "The cheapest-possible pager (assignment section 6 error-alerting). A middleware registered in Program.cs counts HTTP 5xx responses; a testable Common/Ops/FiveHundredRateAlerter (TimeProvider-driven, injectable) holds the decision logic: count 5xx within a rolling one-minute window; when the count crosses >10 in a window, fire EXACTLY ONE alert for that window, reset at the next window, and fire nothing when <=10. CRITICAL (advisor correction): the alert path is IPushSender, NOT INotificationService. INotificationService.NotifyAsync(evt, Order, ct) is order-coupled (routing keys off event+order) and a 5xx alert has no Order — using it will not compile. The correct path (mirrors NotificationService's recipient lookup, CLAUDE.md/UC-005): resolve the ops fleet by slug → its active FleetAdmin Users (IgnoreQueryFilters, u.FleetId == opsFleet.Id && u.IsActive && u.Role == UserRole.FleetAdmin) → their PushSubscription rows → Taxi.Api.Infrastructure.Notifications.IPushSender.SendAsync(subscription, PushMessage, ct) directly for each. SCOPE GAP (assumption, labeled): there is NO `ops` fleet concept in code (Explore confirmed; lookup is by Fleet.Slug only). The alerter looks up a fleet whose Slug == config `Ops:FleetSlug` (default \"ops\"); if the fleet or its FleetAdmin subscriptions are absent, it logs a Warning and no-ops (never throws — infra-alert failure must not cascade). This keeps alerting self-contained and cheap. depends_on A2 to serialize Program.cs edits. No migration. Test-first: the alerter decision logic is unit-tested against a FakeTimeProvider (11-in-a-window → one alert; next window resets; <=10 → none) with a recording IPushSender; an integration test seeds an ops fleet + FleetAdmin + PushSubscription and asserts one push is sent.",
       "depends_on": [
-        "A1-report-indexes-and-fleet-logo"
+        "A2-prometheus-metrics-endpoint"
       ],
-      "estimated_complexity": "L",
+      "estimated_complexity": "M",
       "files_touched": [
-        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsEndpoint.cs",
-        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsRequest.cs",
-        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsValidator.cs",
-        "api/src/Taxi.Api/Features/Fleet/UploadLogo/UploadLogoEndpoint.cs",
-        "api/src/Taxi.Api/Features/Fleet/UploadLogo/UploadLogoRequest.cs",
-        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetResponse.cs",
-        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetEndpoint.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Reports/FleetSettingsTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#asnotracking",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#test-naming",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        ".claude/state/00-PROJECT-CONTEXT.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "PUT fleet/settings (FleetAdminOnly, tenant-scoped) persists Fleet.Name/Phone/PrimaryColorHex + FleetSettings.WelcomeText/OfferTimeoutSeconds/SmsMonthlyCapCzk/AutoDispatchEnabled; no migration (all columns exist). FleetSettings_Put_PersistsAllFields passes. An invalid color hex -> 400 via the validator.",
-        "POST fleet/logo accepts a <=200 KB PNG, writes /data/fleets/{FleetId}/logo.png, and stamps Fleet.LogoUpdatedAt. FleetLogo_Upload_StoresFileAndStampsLogoUpdatedAt and FleetLogo_Over200kb_Returns400 pass; a non-PNG -> 400.",
-        "AC#4 server half: GET public/fleet additively returns welcomeText + logoUrl (derived with a ?v=ticks cache-bust, null when no logo); PublicFleet_ReturnsWelcomeAndLogoUrl_WhenLogoSet passes. PublicFleet_SecondFleetBySlug_ReturnsOwnBranding proves a second fleet resolved by slug returns ITS OWN name/color/logo/welcome (anonymous, tenant-safe by slug) - no rebuild per tenant.",
-        "Authz: non-FleetAdmin -> 403 (FleetSettings_NonFleetAdmin_Returns403). The existing GetFleetSettingsEndpoint read is unchanged."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.FleetSettings"
-      }
-    },
-    {
-      "id": "A7-retention-job-and-anonymizer",
-      "lane": "api",
-      "title": "RetentionJob RunTickAsync shell (anonymize >24mo orders, prune sms_codes/refresh_tokens) + shared CustomerAnonymizer + gdpr.md (AC#5)",
-      "goal": "Data retention (assignment section Data retention). RetentionJob : BackgroundService mirroring OfferTimeoutJob (CLAUDE.md WI-14, SOURCE-VERIFIED): a thin ExecuteAsync PeriodicTimer(interval, timeProvider) shell + a public RunTickAsync(ct) holding all logic (tests call RunTickAsync directly - deterministic, no timer waits; time-advancing tests create their OWN TaxiApiFactory per CLAUDE.md WI-13). Per tick: (1) scan orders cross-tenant via IgnoreQueryFilters for CreatedAt older than 24 months (timeProvider.GetUtcNow() - 24 months) where not already anonymized; per order open a fresh scope, set CurrentTenant.FleetId = order.FleetId, and anonymize via the shared Common/Gdpr/CustomerAnonymizer (null CustomerUserId, CustomerPhone='+420000000000', CustomerName='Anonymizovano' - order row KEPT). (2) delete sms_codes with ExpiresAt (or CreatedAt) older than 1 day. (3) delete refresh_tokens expired more than 30 days ago. Driver-position history retention is NOT in v1 (document in docs/decisions.md). Register the job in JobsServiceExtensions.AddJobs. The shared CustomerAnonymizer is a pure-ish helper (mutates a passed Order's customer fields) reused by A8 - A8 depends_on A7 to serialize that shared file. Write docs/gdpr.md (cs + en: what is stored, why, how long) suitable for the customer-app footer link.",
-      "depends_on": [
-        "A1-report-indexes-and-fleet-logo"
-      ],
-      "estimated_complexity": "L",
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Jobs/RetentionJob.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
-        "api/src/Taxi.Api/Common/Gdpr/CustomerAnonymizer.cs",
-        "docs/decisions.md",
-        "docs/gdpr.md",
-        "api/tests/Taxi.Api.Tests/Reports/RetentionJobTests.cs"
+        "api/src/Taxi.Api/Common/Ops/FiveHundredRateAlerter.cs",
+        "api/src/Taxi.Api/Common/Ops/FiveHundredCounterMiddleware.cs",
+        "api/src/Taxi.Api/Common/Ops/OpsOptions.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Infra/FiveHundredAlerterTests.cs"
       ],
       "rule_citations": [
         "rules/architecture.md#common-infrastructure",
         "rules/architecture.md#one-type-per-file",
-        "rules/architecture.md#banned-patterns",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#n-plus-one",
-        "rules/error-handling.md#exceptions-for-infrastructure",
         "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#sealed-internal",
         "rules/csharp-style.md#guard-clauses",
         "rules/csharp-style.md#async-await",
-        "rules/csharp-style.md#sealed-internal",
         "rules/csharp-style.md#xml-documentation",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
         "rules/logging.md#style-message-templates",
         "rules/logging.md#property-names",
         "rules/logging.md#what-must-not-appear-in-logs",
@@ -404,270 +112,129 @@
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md"
-      ],
-      "needs_library_research": false,
-      "acceptance_criteria": [
-        "RetentionJob mirrors OfferTimeoutJob: thin ExecuteAsync PeriodicTimer(timeProvider) shell + public RunTickAsync(ct); tests construct the job and call RunTickAsync directly. The scan uses IgnoreQueryFilters cross-tenant; each order is anonymized in a fresh scope with CurrentTenant.FleetId set from the order. Registered via AddJobs.",
-        "AC#5: RetentionJob_AnonymizesOrderOlderThan24Months anonymizes a 25-month-old order (CustomerUserId null, phone '+420000000000', name 'Anonymizovano', order row kept); RetentionJob_LeavesOrderUnder24Months leaves a 23-month-old order intact. Both use the injected TimeProvider for 'now'.",
-        "RetentionJob_DeletesExpiredSmsCodes (sms_codes >1 day removed) and RetentionJob_DeletesOldRefreshTokens (refresh_tokens expired >30 days removed) pass. RetentionJob_IsTenantScopedPerFleet proves per-fleet scope isolation during anonymization.",
-        "The shared CustomerAnonymizer is used here and by A8 (no duplicated logic); CustomerAnonymizer_SetsSentinelPhoneAndName_KeepsOrderRow passes. docs/gdpr.md (cs + en) and a docs/decisions.md note (driver-position retention deferred) are added. No PII beyond ids in logs."
-      ],
-      "verification": {
-        "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.RetentionJob"
-      }
-    },
-    {
-      "id": "A8-customer-self-deletion",
-      "lane": "api",
-      "title": "DELETE customers/me SMS-code-confirmed GDPR self-deletion (anonymize orders via shared CustomerAnonymizer, delete User) (AC#6)",
-      "goal": "Customer GDPR self-deletion (assignment section Data retention). New slice Features/Customers/DeleteMe: DELETE /api/v1/customers/me (Policies CustomerOnly), confirmed by an SMS code. SOURCE-VERIFIED the existing SMS flow: Features/Auth/RequestCode + VerifyCode use the SmsCode entity (Phone, CodeHash, ExpiresAt, Attempts, UsedAt). The delete endpoint accepts a body { code } (the SMS code the customer already requested via the existing RequestCode flow for their phone), validates it against the SmsCode row (hash match, not expired, not used) exactly as VerifyCode does, and on success: (1) anonymize ALL of the caller's orders via the shared Common/Gdpr/CustomerAnonymizer from A7 (orders KEPT, customer fields sentinel-ized) so they remain in reports anonymized (AC#6); (2) delete the User row (and their refresh_tokens/push_subscriptions). Resolve the caller's UserId from the sub claim and their phone from the User row to find the SmsCode. Depends_on A7 to reuse CustomerAnonymizer (serializes the shared file). No migration.",
-      "depends_on": [
-        "A7-retention-job-and-anonymizer"
-      ],
-      "estimated_complexity": "M",
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Customers/CustomersFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Customers/DeleteMe/DeleteMeEndpoint.cs",
-        "api/src/Taxi.Api/Features/Customers/DeleteMe/DeleteMeRequest.cs",
-        "api/src/Taxi.Api/Features/Customers/DeleteMe/DeleteMeValidator.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Reports/DeleteMeTests.cs"
-      ],
-      "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#one-type-per-file",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#dbcontext-injection",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#validator-class",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#error-codes",
-        "rules/naming.md#test-naming",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "CLAUDE.md#cross-cutting-invariants",
-        "CLAUDE.md#project-specific-facts"
-      ],
-      "required_reads": [
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
+        ".claude/state/08-infra-and-deployment.md",
         ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "DELETE customers/me (CustomerOnly) accepts a { code } body, validates it against the caller's SmsCode row (hash + not expired + not used, mirroring VerifyCode), and on success anonymizes the caller's orders via the shared CustomerAnonymizer (orders KEPT) and deletes the User row (+ their refresh_tokens/push_subscriptions). DeleteMe_ValidSmsCode_AnonymizesOrdersAndDeletesUser passes.",
-        "AC#6: DeleteMe_OrdersRemainInReportsAnonymized proves the customer's past orders still appear in the fleet report after deletion, with anonymized customer fields (phone '+420000000000', name 'Anonymizovano', CustomerUserId null).",
-        "A wrong/expired code -> 400 (DeleteMe_WrongCode_Returns400); an anonymous request -> 401 (DeleteMe_Anonymous_Returns401); no customer user -> 404. No raw phone/code is logged (rules/logging.md - use ids/Reason).",
-        "Reuses A7's CustomerAnonymizer (no duplicated anonymization logic)."
+        "A middleware counts HTTP 5xx responses and feeds a testable Common/Ops/FiveHundredRateAlerter driven by the injected TimeProvider. FiveHundredAlerter_ElevenIn60s_FiresExactlyOneAlert, FiveHundredAlerter_NextWindow_ResetsAndCanFireAgain, and FiveHundredAlerter_TenOrFewer_FiresNothing pass against a FakeTimeProvider.",
+        "The alert path is IPushSender.SendAsync(PushSubscription, PushMessage, ct) — NOT INotificationService. Recipients are the active FleetAdmin Users of the fleet whose Slug == Ops:FleetSlug (default \"ops\", IgnoreQueryFilters), via their PushSubscription rows. FiveHundredAlerter_SendsPushToOpsFleetAdmins seeds an ops fleet + FleetAdmin + subscription and asserts exactly one push per subscription via a recording IPushSender.",
+        "ASSUMPTION (labeled): no `ops` fleet exists in code; the slug is config-driven (Ops:FleetSlug). FiveHundredAlerter_NoOpsFleet_LogsWarningAndNoOps: when the ops fleet or its FleetAdmin subscriptions are absent, the alerter logs a Warning and sends nothing (never throws — infra-alert failure must not cascade, rules/error-handling.md).",
+        "No PII beyond ids in logs (rules/logging.md). dotnet build -warnaserror clean; full suite green. No migration."
       ],
       "verification": {
         "tool": "dotnet-test",
-        "filter": "FullyQualifiedName~Taxi.Api.Tests.Reports.DeleteMe"
+        "filter": "FullyQualifiedName~Taxi.Api.Tests.Infra.FiveHundred"
       }
     },
     {
-      "id": "B1-reports-screen",
-      "lane": "web",
-      "title": "/x/reports (FleetAdmin): driver report + totals + CSV download, fleet KPI cards + rides-per-day plain-SVG bar chart + top routes, ratings list",
-      "goal": "The reports UI (assignment Lane-B item 8). New /x feature slice src/features/reports. Driver report: filters (driver select + date range defaulting to this-month in Europe/Prague), a per-day table + totals row, and a CSV download button that fetches the ?format=csv variant and triggers a blob+filename download (reuse the B-lane download pattern). Fleet report: KPI cards + a rides-per-day bar chart as a HAND-ROLLED plain <svg> component (NO chart library - npm run size must stay green) + a top-routes list. Ratings list. All data via client.ts typed functions (DTOs mirror A2/A3/A4 JSON, named-envelope unwrap per the client.ts convention). Pure colocated modules with their own tests: reportTotals.ts (sum per-day rows), ridesChartGeometry.ts (map counts -> SVG bar x/y/height coords), csvDownload.ts (blob + filename trigger). Czech-first i18n; every new key in both cs.json + en.json (parity test). Lazy-load the route chunk (code splitting). Must not modify /d or /c routes.",
+      "id": "C1-dockerfiles",
+      "lane": "api",
+      "title": "[INFRA] api/Dockerfile (multi-stage aspnet:10.0, non-root, HEALTHCHECK /health/live) + web/Dockerfile (Node build → caddy:2-alpine SPA serve + /api + /hubs proxy)",
+      "goal": "The two container images (assignment section 1). api/Dockerfile: multi-stage — SDK 10.0 build/publish stage → mcr.microsoft.com/dotnet/aspnet:10.0 runtime (DEVIATION from the assignment's aspnet:9.0 example — the project targets net10.0, SOURCE-VERIFIED in Taxi.Api.csproj; document the deviation in the Dockerfile comment + docs/decisions.md). Runs as a non-root USER, exposes the app port, and declares HEALTHCHECK hitting /health/live (SOURCE-VERIFIED the endpoint exists, Program.cs 266-269). Entrypoint runs the app; the `migrate` subcommand (A1) is invoked separately by deploy (compose run --rm api migrate). Small image (publish framework-dependent; target < ~120 MB documented as expectation, measured on real build). web/Dockerfile: Node build stage (npm ci + npm run build) → copy dist into a caddy:2-alpine image; the web Caddyfile serves the SPA with cache headers (index.html no-cache, hashed assets 1 year) and proxies /api/* and /hubs/* to the api service with WebSocket upgrade support. CONDUCTOR-VERIFIED INFRA (not dotnet/vitest): the AC is the artifact + a structural self-review of both Dockerfiles (+ `docker build` locally IF feasible in this environment, else documented expectation); image-size/HEALTHCHECK are asserted on a real build. No application code changes; depends_on A1 so the `migrate` entrypoint contract exists before the Dockerfiles reference it. verification.tool=dotnet-build is a placeholder — the real check is conductor-verified (docker build / Dockerfile structural review).",
       "depends_on": [
-        "A2-driver-report-and-csv",
-        "A3-fleet-report-and-50k-seed",
-        "A4-audit-merge-endpoint"
+        "A1-migrate-and-send-sms-cli"
       ],
-      "estimated_complexity": "XL",
+      "estimated_complexity": "M",
       "files_touched": [
-        "web/src/features/reports/ReportsPage.tsx",
-        "web/src/features/reports/ReportsPage.test.tsx",
-        "web/src/features/reports/DriverReportTable.tsx",
-        "web/src/features/reports/FleetKpiCards.tsx",
-        "web/src/features/reports/RidesChart.tsx",
-        "web/src/features/reports/RidesChart.test.tsx",
-        "web/src/features/reports/RatingsList.tsx",
-        "web/src/features/reports/reportTotals.ts",
-        "web/src/features/reports/reportTotals.test.ts",
-        "web/src/features/reports/ridesChartGeometry.ts",
-        "web/src/features/reports/ridesChartGeometry.test.ts",
-        "web/src/features/reports/csvDownload.ts",
-        "web/src/features/reports/csvDownload.test.ts",
-        "web/src/features/reports/useReports.ts",
-        "web/src/features/reports/useReports.test.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/app/router.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
+        "api/Dockerfile",
+        "api/.dockerignore",
+        "web/Dockerfile",
+        "web/.dockerignore",
+        "web/Caddyfile",
+        "docs/decisions.md"
       ],
       "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-performance.md#bundle-budget",
-        "rules/web-performance.md#query-keys",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#queries-over-testids",
-        "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#i18n-parity",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        "docs/specs/done/dispatcher-web-work-items.md"
+        ".claude/state/08-infra-and-deployment.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "/x/reports (FleetAdmin, lazy-loaded chunk) renders the driver report (driver + date-range filters default this-month Europe/Prague; per-day table + totals) and a CSV download button that downloads the ?format=csv blob with a filename; the fleet report (KPI cards + a plain-SVG rides-per-day bar chart + top routes); and a ratings list. All HTTP via client.ts typed functions (named-envelope unwrap); money formatted integer CZK via Intl.NumberFormat cs-CZ; dates Europe/Prague.",
-        "NO chart library is added - RidesChart is a hand-rolled <svg>; npm run size passes after npm run build. ridesChartGeometry.ts (pure) maps counts to bar coords and is unit-tested; reportTotals.ts and csvDownload.ts are pure + unit-tested.",
-        "reportTotals.test.ts, ridesChartGeometry.test.ts, csvDownload.test.ts, useReports.test.ts (client mocked per rules/web-testing.md#network-mocking), a ReportsPage render + axe assertion, a RidesChart render + axe assertion, and locales.parity.test.ts pass. New i18n keys land in both cs.json + en.json.",
-        "No /d or /c route or screen is modified. npm run tsc, npm run lint (--max-warnings 0), npm run test, npm run build, npm run size all pass."
+        "Artifact produced + conductor-verified: api/Dockerfile is multi-stage (SDK 10.0 build → mcr.microsoft.com/dotnet/aspnet:10.0 runtime — the 9.0→10.0 correction is documented in a Dockerfile comment + docs/decisions.md), runs as a non-root USER, and declares HEALTHCHECK against /health/live. Structurally reviewed; `docker build` succeeds IF Docker build is feasible here, else the expectation (build succeeds, image < ~120 MB, HEALTHCHECK present) is documented for the runbook. Image-size < 120 MB: artifact produced + runbook-documented; operational verification deferred to real infra.",
+        "web/Dockerfile builds the SPA with Node (npm ci + npm run build) and serves the static dist from caddy:2-alpine via web/Caddyfile with SPA cache headers (index.html no-cache, hashed assets 1y) and /api/* + /hubs/* reverse-proxy to the api service WITH WebSocket upgrade support. Structurally reviewed + build IF feasible, else documented expectation.",
+        "Both images are intended to be tagged git-SHA + latest and pushed to GHCR by CI (C3) — the Dockerfiles themselves carry no secrets and assume .env-provided config. .dockerignore excludes bin/obj/node_modules/.env.",
+        "The aspnet:9.0→10.0 deviation is recorded in docs/decisions.md with the reason (project targets net10.0)."
       ],
       "verification": {
-        "tool": "vitest"
+        "tool": "dotnet-build"
       }
     },
     {
-      "id": "B2-audit-timeline",
-      "lane": "web",
-      "title": "/x/audit (FleetAdmin) paged filterable read-only timeline + unified Czech event labels reused in the order-detail drawer",
-      "goal": "The audit UI (assignment Lane-B item 9). New /x feature slice src/features/audit: a paged, filterable (actor, entity, date, order code) read-only timeline backed by A4's GET audit (client.ts typed function, named-envelope unwrap). Use @tanstack/react-virtual ONLY if the rendered list can exceed ~100 rows (rules/web-performance.md#virtualization) - otherwise plain map. A pure auditEventLabel.ts maps every order-event type + audit action to a Czech label (incl. price overrides + manual status overrides) and is unit-tested for exhaustiveness. VERIFY/EXTEND the existing UC-002 order-detail drawer timeline to render every event type using the SAME auditEventLabel map (so price/manual overrides get Czech labels there too). Czech-first i18n, both locales. Must not modify /d or /c routes.",
+      "id": "C2-compose-caddy-env",
+      "lane": "api",
+      "title": "[INFRA] docker-compose.dev.yml + docker-compose.prod.yml + .env.example + prod Caddyfile (wildcard DNS-challenge TLS, security headers, rate-limit) — `docker compose config` validates",
+      "goal": "Compose topology + edge (assignment sections 2 & 3). infra/docker-compose.dev.yml: db (postgres:16, named volume) + api (dotnet watch hot-reload, Seed on start, log-only SMS — Notifications:SmsProvider=Console) + web (Vite dev server). infra/docker-compose.prod.yml: caddy, web, api, db, backup; resource limits api 512 MB / db 1 GB; restart: unless-stopped; ONLY caddy publishes ports 80/443; db has NO published port and lives on an internal network; /metrics (A2) is reachable only on the internal docker network (Caddy does not proxy it — this is where A2's 'internal-network only' AC is enforced). api entrypoint note: migrations run via the A1 `migrate` subcommand (deploy runs `compose run --rm api migrate` before `up`). .env.example documents EVERY variable (DB creds, Jwt:Key/Issuer/Audience, Cors:WebOrigin, Notifications SMS provider + keys, VAPID push keys, DOMAIN, DNS API token, S3/backup creds, Ops:FleetSlug) with no real secrets. infra/Caddyfile (prod): {$DOMAIN} + *.{$DOMAIN} wildcard cert via DNS challenge (document Cloudflare AND Hetzner DNS plugin variants; on-demand-TLS per-subdomain fallback documented as the trade-off); security headers (HSTS, X-Content-Type-Options, Referrer-Policy, frame-ancestors), gzip/zstd, 1 MB request body limit (logo upload 300 KB note), rate-limit on /api/v1/auth/* at 60/min/IP; proxies /api/* + /hubs/* (WebSocket) to api and everything else to the web container; serves the per-fleet static logo files from /data/fleets. CONDUCTOR-VERIFIED INFRA: the discriminating AC is `docker compose -f infra/docker-compose.{dev,prod}.yml config` validates (syntax + interpolation) and a `caddy validate` (if caddy available, else structural review). No application code; depends_on C1 (references the image build targets/healthcheck). verification.tool=dotnet-build is a placeholder — real check is `docker compose config` + caddy validate.",
       "depends_on": [
-        "A4-audit-merge-endpoint"
+        "C1-dockerfiles"
       ],
       "estimated_complexity": "L",
       "files_touched": [
-        "web/src/features/audit/AuditPage.tsx",
-        "web/src/features/audit/AuditPage.test.tsx",
-        "web/src/features/audit/auditEventLabel.ts",
-        "web/src/features/audit/auditEventLabel.test.ts",
-        "web/src/features/audit/useAudit.ts",
-        "web/src/features/board/orderDetail/OrderTimeline.tsx",
-        "web/src/features/board/orderDetail/OrderTimeline.test.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/app/router.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
+        "infra/docker-compose.dev.yml",
+        "infra/docker-compose.prod.yml",
+        "infra/Caddyfile",
+        "infra/.env.example"
       ],
       "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-performance.md#virtualization",
-        "rules/web-performance.md#query-keys",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#queries-over-testids",
-        "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#i18n-parity",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        "docs/specs/done/dispatcher-web-work-items.md"
+        ".claude/state/08-infra-and-deployment.md",
+        ".claude/state/00-PROJECT-CONTEXT.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "/x/audit (FleetAdmin) renders a paged read-only timeline with actor/entity/date/order-code filters, backed by client.ts getAudit (named-envelope unwrap); timestamps Europe/Prague; virtualized only when >~100 rows.",
-        "auditEventLabel.ts (pure) maps EVERY order-event type and audit action to a Czech label (incl. price overrides + manual status overrides) and auditEventLabel.test.ts asserts exhaustiveness (no unlabeled type). The UC-002 order-detail drawer timeline uses the same map; OrderTimeline.test.tsx asserts price/manual-override events render their Czech labels.",
-        "AuditPage render + axe assertion, auditEventLabel.test.ts, an order-detail-timeline label regression test, and locales.parity.test.ts pass; new keys in both cs.json + en.json.",
-        "No /d or /c route modified. npm run tsc, npm run lint (--max-warnings 0), npm run test pass."
+        "Artifact produced + conductor-verified: `docker compose -f infra/docker-compose.dev.yml config` AND `docker compose -f infra/docker-compose.prod.yml config` both validate (syntax + variable interpolation against .env.example). dev = db+api(watch,seed,Console SMS)+web(Vite); prod = caddy+web+api+db+backup with api 512 MB / db 1 GB limits, restart unless-stopped.",
+        "Network isolation (artifact + runbook-documented; operational nmap verification deferred to real infra): ONLY caddy publishes 80/443; db has no published port and sits on an internal network; /metrics (A2) is reachable only on the internal network (Caddy does not proxy /metrics) — this satisfies A2's deferred 'not publicly routable' requirement.",
+        "infra/Caddyfile: {$DOMAIN} + *.{$DOMAIN} wildcard via DNS challenge (Cloudflare + Hetzner variants documented, on-demand-TLS fallback noted), security headers + gzip/zstd + 1 MB body limit (300 KB logo note) + /api/v1/auth/* rate-limit 60/min/IP, /api/* + /hubs/* (WebSocket) proxied to api, SPA served from web, per-fleet logos served from /data/fleets. `caddy validate` passes if caddy is available, else a documented structural review. HTTPS on demo.{domain}/second.{domain} + WebSockets-through-Caddy: artifact produced + runbook-documented; operational verification deferred to real infra.",
+        "infra/.env.example documents every variable (DB, Jwt, Cors, Notifications SMS provider+keys, VAPID push keys, DOMAIN, DNS token, S3/backup creds, Ops:FleetSlug) with placeholder values only; no real secret is committed."
       ],
       "verification": {
-        "tool": "vitest"
+        "tool": "dotnet-build"
       }
     },
     {
-      "id": "B3-admin-fleet-tab-and-onboarding-e2e",
-      "lane": "web",
-      "title": "/admin SuperAdmin screen + /x/settings Fleet tab (logo/color/welcome) + customer runtime branding + runbook + AC#3 second-subdomain Playwright (AC#3, AC#4)",
-      "goal": "The onboarding + branding UI + the AC#3 E2E (assignment Lane-B items 10/11/12). (1) Minimal /admin (SuperAdmin route, lazy): list fleets (GET admin/fleets) + a create-fleet form (POST admin/fleets) that shows the returned one-time admin password once - 1 screen, no design effort. (2) /x/settings Fleet tab: a self-service form (name, phone, PNG logo upload <=200 KB with a preview, color picker for PrimaryColorHex, welcome text, offer timeout, SMS cap, auto-dispatch toggle rendered DISABLED per v1.1) wired to A6's PUT fleet/settings + POST fleet/logo. (3) Customer PWA runtime branding (AC#4): the customer app already loads GET public/fleet before login - apply name + primaryColorHex + logoUrl + welcomeText at runtime (theme/logo/heading), NO per-tenant rebuild; add a gdpr.md footer link ('Ochrana osobnich udaju'). (4) docs/runbook.md: Caddy wildcard *.{domain} -> web, API resolves tenant from Host, DNS, two local fleets demo.localhost + second.localhost. (5) AC#3 Playwright onboarding.spec.ts: as SuperAdmin create a fleet -> log in as its FleetAdmin -> add a driver -> create an order, driving a SECOND subdomain/slug end-to-end (seed/second fleet). DEMO.md manual Lighthouse a11y note. Depends_on A5 (admin endpoints) + A6 (settings/branding endpoints) + B1 (dispatcher reports build-integrity / shared client.ts regions). Playwright test-results/ + playwright-report/ stay gitignored; chromium pinned revision (CLAUDE.md).",
+      "id": "C3-cicd-backup-restore-docs",
+      "lane": "api",
+      "title": "[INFRA] GitHub Actions (ci + deploy-with-rollback + restore-test) + backup container + infra/restore.sh + runbook/costs/monitoring docs — YAML well-formed, restore.sh round-trips locally",
+      "goal": "CI/CD + backups + ops docs (assignment sections 4-8). .github/workflows/ci.yml (on PR): dotnet restore + build -warnaserror + dotnet test (Testcontainers, Docker) + npm ci/lint(--max-warnings 0)/vitest + Playwright smoke (3 flows) against compose; fails on any warning. .github/workflows/deploy.yml (on push to main): build + push api/web images to GHCR tagged git-SHA + latest → SSH to VPS → write previous image tag to a file → `docker compose pull` → run migrations via `docker compose run --rm api migrate` (A1) → `docker compose up -d` → poll /health/ready with a 60 s timeout → on failure, auto-rollback to the previous tag from the file. Secrets list: VPS_HOST, VPS_SSH_KEY, GHCR_TOKEN only (app secrets live in /opt/taxi/.env on the VPS). .github/workflows/restore-test.yml (weekly cron): download the latest backup, restore into a throwaway postgres container via restore.sh, run `SELECT count(*) FROM orders`, open a GitHub issue on failure. Backup: a `backup` service/container (in prod compose, wired here) running cron 02:30 Europe/Prague: `pg_dump -Fc` → gzip → upload to S3-compatible storage (Hetzner Object Storage / Backblaze B2) via rclone/aws-cli, 14 daily + 8 weekly retention, plus /data/fleets logos. infra/restore.sh <backup-file>: restore a pg_dump -Fc archive into a fresh DB. docs/runbook.md: EXTEND UC-007's (provision VPS Ubuntu 24.04 + docker + firewall 22/80/443 + fail2ban + unattended-upgrades → DNS A + wildcard + DNS API token → first deploy + create-superadmin + first fleet → add-a-fleet (10 min, no SSH) → rotate secrets → restore-from-backup exact commands → 'site is down' checklist: caddy logs→api health→db→disk→rollback → monthly cost). docs/costs.md: table (Hetzner CX22 VPS, object storage, domain, SMS estimate 300 rides×1.5×1 CZK, DNS) with real published prices CITED BY DATE, total <€10/mo for 1 fleet + marginal per-fleet (~SMS only). CONDUCTOR-VERIFIED INFRA: discriminating ACs = workflow YAML is well-formed (actionlint/yaml parse) and infra/restore.sh round-trips locally (pg_dump -Fc → restore into a throwaway postgres container → SELECT count(*) FROM orders succeeds). depends_on C2 (workflows + deploy reference the compose files, the migrate step, the backup service). verification.tool=dotnet-build is a placeholder — real checks are YAML lint + restore.sh local round-trip.",
       "depends_on": [
-        "A5-superadmin-fleets-and-cli",
-        "A6-fleet-self-service-and-logo",
-        "B1-reports-screen"
+        "C2-compose-caddy-env"
       ],
       "estimated_complexity": "XL",
       "files_touched": [
-        "web/src/features/admin/AdminFleetsPage.tsx",
-        "web/src/features/admin/AdminFleetsPage.test.tsx",
-        "web/src/features/admin/useAdminFleets.ts",
-        "web/src/features/settings/FleetTab.tsx",
-        "web/src/features/settings/FleetTab.test.tsx",
-        "web/src/features/settings/fleetSettingsForm.ts",
-        "web/src/features/settings/fleetSettingsForm.test.ts",
-        "web/src/features/customer/branding/useFleetBranding.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/app/router.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json",
-        "web/e2e/onboarding.spec.ts",
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy.yml",
+        ".github/workflows/restore-test.yml",
+        "infra/backup/Dockerfile",
+        "infra/backup/backup.sh",
+        "infra/restore.sh",
+        "infra/docker-compose.prod.yml",
         "docs/runbook.md",
-        "DEMO.md"
+        "docs/costs.md",
+        "docs/monitoring.md"
       ],
       "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#keyboard-focus",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#queries-over-testids",
-        "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#e2e-conventions",
-        "rules/web-testing.md#i18n-parity",
         "CLAUDE.md#project-specific-facts"
       ],
       "required_reads": [
-        "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
-        ".claude/state/07-reports-audit-tenant-onboarding.md",
-        "docs/specs/done/dispatcher-web-work-items.md",
-        "docs/specs/done/customer-pwa-work-items.md"
+        ".claude/state/08-infra-and-deployment.md",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        "docs/runbook.md"
       ],
       "needs_library_research": false,
       "acceptance_criteria": [
-        "/admin (SuperAdmin, lazy) lists fleets and creates a fleet, showing the one-time admin password once (AdminFleetsPage render + axe). /x/settings Fleet tab edits name/phone/logo(PNG <=200 KB + preview)/color/welcome/offer-timeout/SMS-cap with the auto-dispatch toggle DISABLED (v1.1), wired to A6 (FleetTab render + axe); fleetSettingsForm.ts (pure validation/shape) is unit-tested.",
-        "AC#4: the customer PWA applies name + primaryColorHex + logoUrl + welcomeText from GET public/fleet at runtime with no rebuild; a gdpr.md footer link is present. useFleetBranding logic is covered.",
-        "AC#3: e2e/onboarding.spec.ts drives a SECOND subdomain/slug: SuperAdmin creates a fleet -> logs in as its FleetAdmin -> adds a driver -> creates an order, end-to-end against the real harness with the second fleet. test-results/ + playwright-report/ gitignored; chromium pinned revision installed (CLAUDE.md).",
-        "docs/runbook.md (Caddy wildcard + Host tenant resolution + DNS + demo.localhost/second.localhost) and a DEMO.md Lighthouse a11y note are added. New i18n keys in both cs.json + en.json; locales.parity.test.ts passes. npm run tsc, lint (--max-warnings 0), test, build, size pass; playwright onboarding.spec.ts passes."
+        "Artifact produced + conductor-verified: all three workflow YAMLs are well-formed (actionlint / yaml parse). ci.yml runs restore+build -warnaserror + dotnet test + npm ci/lint/vitest + Playwright smoke and fails on any warning. deploy.yml builds+pushes GHCR images (git-SHA+latest), SSHes to the VPS, records the previous tag, pulls, runs `compose run --rm api migrate`, `up -d`, polls /health/ready 60 s, and auto-rolls-back to the previous tag on failure. Secrets limited to VPS_HOST/VPS_SSH_KEY/GHCR_TOKEN. push-to-deploy + rollback operational run: artifact produced + runbook-documented; operational verification deferred to real infra.",
+        "infra/restore.sh round-trips locally: it restores a `pg_dump -Fc` archive into a throwaway postgres container and `SELECT count(*) FROM orders` succeeds (conductor-verified here). The backup container (cron 02:30 Europe/Prague: pg_dump -Fc → gzip → S3 via rclone/aws-cli, 14 daily + 8 weekly, + /data/fleets) and restore-test.yml (weekly download+restore+count, open issue on failure) are produced; nightly-backup + weekly-restore-green on real storage: artifact produced + runbook-documented; operational verification deferred to real infra.",
+        "docs/runbook.md extends UC-007's with the full provision→DNS→deploy→add-fleet→rotate→restore→site-down→cost sequence in plain language. Fresh-VPS-to-running <45 min and add-a-fleet <10 min: artifact produced + runbook-documented; operational verification deferred to real infra. docs/monitoring.md documents the external uptime pinger, Serilog JSON + docker logs + logrotate 100 MB/container, /metrics scrape + optional Grafana --profile ops, and the disk-alert cron (>85% → `dotnet run -- send-sms`, A1).",
+        "docs/costs.md is filled with REAL published provider prices CITED BY DATE (Hetzner CX22, object storage, domain, SMS @ ~1 CZK, DNS) — not invented/measured — totalling <€10/mo excluding SMS for 1 fleet, with marginal per-additional-fleet ~SMS only. Idle <700 MB RAM + total-cost <€10/mo: artifact produced (price sheet from published rates) + runbook-documented; operational RAM/cost measurement deferred to real infra."
       ],
       "verification": {
-        "tool": "playwright"
+        "tool": "dotnet-build"
       }
     }
   ],
-  "notes": "UC-007 = 8 Lane A (api) WIs (A1..A8) + 3 Lane B (web) WIs (B1..B3) = 11 total. Array is topologically ordered and acyclic. Schema shape matches the operative UC-005/006 handoff (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter?}). verification.tool enum used: dotnet-test | vitest | playwright; dotnet-test filter is a single-token FullyQualifiedName~Taxi.Api.Tests.Reports.<Area> fragment whose Area prefix matches each WI's test-class name so the gate actually runs it (UC-005 filter-gotcha). NO .claude/schemas/work-items.v1.json file exists (known scaffold gap, CLAUDE.md); this matches the UC-002/003/004/005/006 handoff shape the conductor consumes. ============ ALREADY-EXISTS (SOURCE-VERIFIED - do NOT re-build, A1 notes): UserRole.SuperAdmin + UserRole.System (enum, string-stored -> NO migration); AuthorizationPolicies.SuperAdminOnly + AuthenticatedOnly + FleetAdminOnly (all registered); Fleet.PrimaryColorHex; FleetSettings.WelcomeText/AutoDispatchEnabled/OfferTimeoutSeconds/MaxOfferRadiusKm/SmsSenderName/SmsMonthlyCapCzk/SmsUnitCostCzk. The ONLY missing persisted self-service field is the logo -> A1 adds Fleet.LogoUpdatedAt (nullable), NO blob column (path /data/fleets/{id}/logo.png is id-derivable). A read endpoint Features/Fleet/GetFleetSettings ALREADY exists (no PUT) -> A6 adds PUT fleet/settings additively and must not break the read. ============ MIGRATION SERIALIZATION: exactly ONE new migration (A1 AddReportIndexesAndFleetLogo): report perf indexes (Order (FleetId,CreatedAt)/(FleetId,DriverId,CreatedAt)/(FleetId,Status,CreatedAt)) + audit-merge indexes (OrderEvent (FleetId,At), AuditLog (FleetId,At)) + Fleet.LogoUpdatedAt - ONE coherent snapshot. ALL other Lane-A WIs depend_on A1 so dotnet ef never regenerates TaxiDbContextModelSnapshot.cs in parallel (UC-004/005/006 precedent, CLAUDE.md). Indexes are in A1 (not a later WI) because AC#2 needs them and a later index = a forbidden second migration. ============ PRAGUE-DAY BUCKETING (AC#1 correctness + AC#2 perf, SOURCE-VERIFIED risk, advisor #3): Order.CreatedAt is UTC DateTimeOffset; owners read Europe/Prague days. A naive GroupBy(o => o.CreatedAt.Date) buckets in UTC (wrong day near midnight) AND may not translate in Npgsql. A2/A3 group by a Prague-local day key expressed as date_trunc('day', created_at AT TIME ZONE 'Europe/Prague'); the developer VERIFIES Npgsql translation, and if a specific key/aggregate will not translate, falls back to a single FromSql/SqlQuery aggregation - STILL server-side (AC#2 holds), NEVER ToList-then-group. The date-range FILTER reuses the verified GetDayWindow UTC-boundary helper from GetMySummaryEndpoint (Features/Drivers/GetMySummary - already in the codebase, uses TimeZoneInfo Europe/Prague + ConvertTimeToUtc). AC#1 de-risk: seed the hand-computed orders at mid-day so UTC and Prague fall on the same date and the tz choice cannot shift a bucket. ============ HOURS-ONLINE (advisor #3): computed as a SEPARATE small bounded driver_shifts query clamped to the Prague window in memory (mirrors GetMySummaryEndpoint's clamp-and-sum), merged into the per-day rows - NOT folded into the 50k GROUP BY (shifts cross midnight; interval sum is a translation snag and the cardinality is tiny, not the perf path). ============ AUDIT MERGE (advisor #4): A4 projects order_events + audit_log to one AuditEntryDto, .Concat(...) -> SQL UNION ALL, OrderByDescending(At).Skip().Take(); the developer VERIFIES EF translates the union+paging, else falls back to two windowed queries merged in memory over an explicitly-bounded page window (documented). Both entities are ITenantEntity so the merge is auto-tenant-scoped; audit_log is near-empty today (only OverrideStatusEndpoint writes it, SOURCE-VERIFIED). jsonb Payload/Diff are NEVER projected in the SQL Select (CLAUDE.md WI-10). ============ CROSS-TENANT WRITE (AC#3, carry-forward, load-bearing, advisor #6): A5 POST admin/fleets is the ONE cross-tenant write - it writes FleetSettings/Tariff/FleetAdmin-User for a fleet that is NOT the caller's tenant, tripping the SaveChanges tenant guard (CLAUDE.md WI-04). Reuse the DevelopmentSeeder technique (set the scope's CurrentTenant.FleetId to the NEW fleet id, or a null-tenant scope) so the guard passes; hard-guarded by SuperAdminOnly; AdminFleets_Create_NonSuperAdmin_Returns403 is the mandatory negative test. ============ CLI create-superadmin (advisor #5, assumption 9): a testable SuperAdminBootstrapper.CreateAsync + a Program.cs args intercept AFTER builder.Build() that runs it and return;s BEFORE app.Run() (never boots the web host, mirrors the jobs RunTick testable-shell); the bootstrapper is integration-tested directly against a DbContext. Program.cs uses top-level statements today (SOURCE-VERIFIED) with no args branch - the intercept is additive. ============ SHARED ANONYMIZER (advisor #6, assumption 8): ONE Common/Gdpr/CustomerAnonymizer used by BOTH RetentionJob (A7) and DELETE customers/me (A8): null CustomerUserId, CustomerPhone='+420000000000', CustomerName='Anonymizovano', order row KEPT (AC#6). A8 depends_on A7 to serialize that shared file (no duplicated logic). ============ RETENTION JOB PATTERN (A7, mirrors OfferTimeoutJob, CLAUDE.md WI-14, SOURCE-VERIFIED): RetentionJob : BackgroundService with a thin ExecuteAsync PeriodicTimer(interval, timeProvider) shell + a public RunTickAsync(ct); tests construct the job and call RunTickAsync directly (deterministic, no timer waits). Scan orders cross-tenant via IgnoreQueryFilters; per-order fresh scope with CurrentTenant.FleetId set before anonymizing. Time-advancing tests create their OWN TaxiApiFactory (FakeTime irreversible, CLAUDE.md WI-13). Registered in JobsServiceExtensions.AddJobs (NotificationDispatchJob/OfferTimeoutJob/StalePositionJob already there). ============ SMS-CONFIRMED DELETION (A8, SOURCE-VERIFIED): the SmsCode entity (Phone, CodeHash, ExpiresAt, Attempts, UsedAt) + Features/Auth/RequestCode + VerifyCode already implement request+verify; A8 reuses the same hash/expiry/used validation to confirm deletion. No new SMS infra. ============ CSV BYTE-EXACTNESS (AC#7, assumption 11): pure Common/Reports/DriverReportCsv writer (NO FastEndpoints, NO CsvHelper) -> UTF-8 WITH BOM (EF BB BF) + ';' separator + CRLF; DriverReport_Csv_MatchesExpectedBytes asserts on bytes against a committed fixture. ============ 50k SEED (AC#2, assumption): a dev/test ReportSeedScript (Infrastructure/Seed, fleet-scoped, idempotent, SEPARATE from DevelopmentSeeder) inserts 50000 orders for the perf test only. ============ CHART = PLAIN SVG (carry-forward): RidesChart is a hand-rolled <svg> (ridesChartGeometry.ts pure) - NO chart library; npm run size must pass after build. ============ CLIENT.TS ENVELOPE (carry-forward): all new reports/audit/admin list responses are unwrapped per the client.ts named-envelope convention. ============ TENANT ISOLATION TEST PER FEATURE (carry-forward): A2 (DriverReport_CrossTenant_Returns404), A3 (FleetReport_CrossTenant_OnlyCallerFleet), A4 (Audit_CrossTenant_OnlyCallerFleet), A6 (PublicFleet_SecondFleetBySlug_ReturnsOwnBranding), A7 (RetentionJob_IsTenantScopedPerFleet), A8 (DeleteMe anonymized-in-reports) each ship a tenant-scope assertion; A5 is the sole cross-tenant write, guarded + negatively tested. ============ LANE PARALLELISM + SHARED-FILE SERIALIZATION: Lane A stages api/ only; Lane B stages web/ only; neither commits (conductor gates commit). Within Lane A: A1 is the root (schema); A2/A3/A4/A5/A6/A7 depend_on A1 and run in parallel (disjoint feature folders). SHARED Lane-A files: ErrorCodes.cs (appended by A2/A3/A4/A5/A6/A8), Program.cs (A5 only adds the CLI intercept - NOTE Notifications/WI already edited it; A5 is the sole UC-007 Program.cs writer), JobsServiceExtensions.cs (A7 only), docs/decisions.md (A3 + A7 - serialize or append-merge), GetFleetResponse.cs/GetFleetEndpoint.cs (A6 only). If the conductor cannot guarantee append-safety on ErrorCodes.cs for the concurrent A2..A6 set, serialize those appends (no depends_on forced since the symbols are distinct). A8 depends_on A7 (shared CustomerAnonymizer). Within Lane B: B1 depends_on A2+A3+A4 (its three data contracts); B2 depends_on A4 (audit contract); B3 depends_on A5+A6 (admin+branding contracts) + B1 (shared client.ts/router.tsx regions + dispatcher build-integrity for the E2E). B1/B2/B3 all touch client.ts + router.tsx + cs/en.json but in DISJOINT regions (B1 reports, B2 audit, B3 admin/settings); if the conductor cannot guarantee append-safety, serialize the concurrent web pair(s). ============ AC MAPPING: AC#1 (driver report matches hand-computed CSV) -> A2 (SQL aggregation + hand-computed table + committed CSV fixture). AC#2 (fleet KPIs SQL <300ms @ 50k) -> A1 (indexes) + A3 (SQL KPIs + 50k seed script + perf test). AC#3 (SuperAdmin create-fleet -> admin-login -> add-driver -> create-order on a second subdomain) -> A5 (server: cross-tenant create + CLI) + B3 (Playwright e2e second subdomain). AC#4 (second fleet customer branding, no rebuild) -> A6 (public/fleet welcome/logo/color) + B3 (customer runtime branding). AC#5 (RetentionJob anonymizes 25-month, leaves 23-month) -> A7. AC#6 (customer self-deletion, orders remain anonymized in reports) -> A8 (+ shared A7 anonymizer). AC#7 (CSV BOM + ';' byte-tested) -> A2 (DriverReportCsv byte test). ============ DEFERRED / FOLLOW-UPS (labeled, per 00-PROJECT-CONTEXT DoD): (1) driver-position-history retention is NOT in v1 (documented by A7 in decisions.md). (2) Auto-dispatch stays v1.1-disabled (toggle persisted + rendered disabled, never acted on). (3) prod VAPID/SMS/PublicBaseUrl secrets + Caddy static logo serving + actual deploy are assignment 08 (B3 documents Caddy/DNS in runbook.md only). (4) accounting/invoicing/BI dashboards are out of scope. These are recorded so the impl-reviewer does not flag them as gaps. ============ UNDECIDABLE-SCOPE NOTE: no undecidable scope arose; all judgment calls (logo = derived path + LogoUpdatedAt column vs blob; Prague-day date_trunc-AT-TIME-ZONE with FromSql fallback; audit UNION-ALL merge shape with in-memory fallback; CLI bootstrapper + args intercept; one shared anonymizer) are decidable from source + spec and are recorded as labeled best-judgment assumptions here and in the work-items doc (autonomous-batch directive renewed in the spec Mode line: interrupt only on 3-round blocks / quality-gate failures / undecidable scope - so no AskUserQuestion)."
+  "notes": "UC-008 = INFRA/OPS UC. Does NOT decompose into vertical feature slices. 6 WIs total: 3 Lane-A api-CODE hooks (A1,A2,A3) + 3 INFRA config/docs WIs (C1,C2,C3). Topologically ordered, acyclic: A1 -> A2 -> A3 (serialized because ALL three edit Program.cs — advisor #3, UC-007 shared-file precedent) ; A1 -> C1 -> C2 -> C3 (each infra WI references the prior artifact). No migration in the whole UC (no schema change). Schema shape matches the UC-005/006/007 handoff exactly (per-WI: id, lane [api|web], title, goal, depends_on, estimated_complexity XS/S/M/L/XL, files_touched, rule_citations, required_reads, needs_library_research, acceptance_criteria, verification {tool, filter?}). NO .claude/schemas/work-items.v1.json exists (known scaffold gap, CLAUDE.md; glob confirmed none) — this mirrors the consumed shape. ============ LANE/TOOL MAPPING: all 6 WIs use lane=\"api\" (the enum has no 'infra' value); the 3 infra WIs are tagged [INFRA] in the title. verification.tool: A1/A2/A3 = dotnet-test (real gates; filter is a single-token FullyQualifiedName~Taxi.Api.Tests.Infra.<Area> fragment matching each WI's test-class prefix — UC-005 filter-gotcha). C1/C2/C3 = dotnet-build as a PLACEHOLDER only — the real check is conductor-verified infra (docker compose config / caddy validate / restore.sh local pg_dump round-trip / actionlint+yaml parse / docker build if feasible); dotnet-build verifies nothing on a yaml/Dockerfile-only WI and is used solely because the tool enum lacks an 'infra' value (per the designer directive). ============ SOURCE-VERIFIED FACTS (do NOT rediscover): Program.cs has the create-superadmin arg-intercept (lines 198-219) after builder.Build() with `return;` before app.Run() and a private GetArgValue helper — A1 mirrors it for `migrate` + `send-sms`. /health/live (Predicate _=>false) and /health/ready (tag 'ready' + AddNpgSql) BOTH exist (Program.cs 266-274) — C1 HEALTHCHECK targets /health/live, deploy.yml polls /health/ready. TWO ISmsSender interfaces exist: Infrastructure.Sms.ISmsSender (OTP, SendAsync(phone,message,ct)) and Infrastructure.Notifications.ISmsSender (real GoSMS/SMSbrana providers, SendAsync(SmsMessage,ct) -> SmsSendResult) — A1 send-sms resolves the NOTIFICATIONS one (real provider). UserRole has FleetAdmin + SuperAdmin + System; there is NO 'ops' fleet concept (lookup is by Fleet.Slug only). Taxi.Api.csproj TargetFramework=net10.0 (confirms aspnet:9.0->10.0 correction). No prometheus/OpenTelemetry package present today. Background-job pattern = BackgroundService + thin ExecuteAsync PeriodicTimer(timeProvider) shell + public RunTickAsync(ct) (OfferTimeoutJob; CLAUDE.md WI-14) — the 5xx alerter mirrors this testable-shell idea via FiveHundredRateAlerter. ============ ADVISOR CORRECTION #1 (load-bearing, changes the answer): the 5xx alert (A3) path is IPushSender.SendAsync(PushSubscription, PushMessage, ct) — NOT INotificationService.NotifyAsync(evt, Order, ct). NotifyAsync is ORDER-COUPLED (routing keys off event+order); a 5xx alert has no Order and would NOT compile. A3 resolves the ops fleet by slug -> active FleetAdmin Users (IgnoreQueryFilters, mirrors NotificationService recipient lookup) -> their PushSubscription rows -> IPushSender directly. ============ SCOPE GAP (labeled best-judgment assumption, advisor #2): there is NO `ops` fleet in code. A3 looks up the fleet whose Slug == config Ops:FleetSlug (default \"ops\"); if the fleet / its FleetAdmin subscriptions are absent, it logs a Warning and no-ops (never throws — an infra-alert failure must not cascade). Same config feeds the disk-alert send-sms recipient in the runbook. This was surfaced here and in the Assumptions section rather than via AskUserQuestion because the spec Mode line is autonomous-batch (gates pre-approved; interrupt only on 3-round blocks / gate failures / truly undecidable scope — this is decidable via a labeled assumption). ============ MIGRATE-ON-START MECHANISM (advisor + spec): chose a `migrate` arg-subcommand mirroring create-superadmin (MigrateAsync then return; before app.Run()) over a RUN_MIGRATIONS env gate — consistent with the existing CLI pattern, unit-testable, and pairs cleanly with deploy.yml's explicit `compose run --rm api migrate` before `up`. The existing Development-only startup MigrateAsync (Program.cs 224-236) is LEFT AS-IS; prod uses the explicit subcommand. ============ prometheus-net VERSION (A2 needs_library_research=true, researched 2026-09-13): prometheus-net.AspNetCore 8.2.1 is the current release and supports .NET 10 (preview 4+), ASP.NET-Core-10 compatible; integration = app.UseHttpMetrics() + app.MapMetrics(\"/metrics\"). Developer re-confirms net10.0 restore at impl time and pins an explicit 8.x version. Source: nuget.org/packages/prometheus-net.AspNetCore (8.2.1), github.com/prometheus-net/prometheus-net. A2 is the ONLY needs_library_research=true WI (all other pieces use APIs already present). ============ /metrics INTERNAL-ONLY is a CROSS-LANE split (advisor): A2 (code) only serves + scrapes the endpoint (200 + Prometheus text format); 'internal-network only / not publicly routable' is enforced by C2 (Caddy does NOT proxy /metrics + compose internal network), NOT by code. ============ aspnet:9.0 -> 10.0 CORRECTION (spec directive): the assignment's Dockerfile example says aspnet:9.0; the project is net10.0, so C1 uses mcr.microsoft.com/dotnet/aspnet:10.0 and records the deviation in a Dockerfile comment + docs/decisions.md. ============ OPERATIONAL ACs (NOT executable in this sandbox — no VPS/DNS/S3/pinger) are each marked verbatim 'artifact produced + runbook-documented; operational verification deferred to real infra': fresh-VPS-to-running <45 min (AC#1, C3), push-to-deploy + auto-rollback (AC#2, C3), HTTPS on demo/second subdomains + WebSockets-through-Caddy (AC#4, C2), Postgres-not-internet-reachable/nmap (AC#5, C2), idle <700 MB RAM (AC#6, C3), total cost <€10/mo (AC#7, C3). NONE of these ACs are phrased as a measured result. The cost sheet (docs/costs.md) uses PUBLISHED provider prices CITED BY DATE (Hetzner CX22, object storage, domain, SMS ~1 CZK, DNS), not invented/measured numbers. ============ CODE-VERIFIABLE-HERE (must pass before ship): A1/A2/A3 compile under -warnaserror + keep dotnet test green; C1 Dockerfiles structurally reviewed (+ docker build if feasible); C2 `docker compose config` validates both files + caddy validate; C3 workflow YAML well-formed (actionlint/yaml) + infra/restore.sh local pg_dump -Fc round-trip (SELECT count(*) FROM orders). ============ AC MAPPING: AC#1 fresh-VPS<45min -> C3 runbook (deferred). AC#2 deploy+rollback -> C3 deploy.yml (artifact; deferred op). AC#3 nightly backup + restore.sh + weekly restore-test -> C3 (restore.sh round-trips HERE; nightly/weekly-on-real-storage deferred). AC#4 HTTPS+WebSockets on subdomains -> C2 Caddyfile (deferred op). AC#5 Postgres-not-reachable -> C2 compose network (deferred nmap). AC#6 <700MB RAM -> C3 (deferred measurement). AC#7 cost <€10/mo -> C3 docs/costs.md (published prices). Backend-hook ACs (assignment §6): /metrics -> A2; send-sms CLI -> A1; 5xx->ops push -> A3; migrate-entrypoint -> A1. ============ DELIVERABLE-TO-WI: assignment §1 Containers -> C1. §2 Compose + .env.example -> C2. §3 Caddy -> C2. §4 CI/CD -> C3. §5 Backups + restore.sh + restore-test -> C3. §6 Monitoring (metrics A2, send-sms A1, 5xx-push A3, uptime/logs/logrotate/disk-alert docs C3/monitoring.md). §7 Runbook -> C3. §8 Cost sheet -> C3. ============ NO UNDECIDABLE SCOPE: the one real gap (no `ops` fleet) is resolved with a labeled config-driven assumption (Ops:FleetSlug). All other judgment calls (migrate arg-subcommand vs env; which ISmsSender; IPushSender vs INotificationService; /metrics code-vs-edge split; version pin) are decidable from source + the advisor and are recorded here and in the work-items doc."
 }

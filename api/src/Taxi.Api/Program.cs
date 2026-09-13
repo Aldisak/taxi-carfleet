@@ -6,18 +6,22 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Prometheus;
 using Serilog;
 using Serilog.Formatting.Compact;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common;
 using Taxi.Api.Common.Admin;
+using Taxi.Api.Common.Cli;
 using Taxi.Api.Common.Features;
 using Taxi.Api.Common.Notifications;
+using Taxi.Api.Common.Ops;
 using Taxi.Api.Common.Orders;
 using Taxi.Api.Common.Tenancy;
 using Taxi.Api.Common.Tracking;
 using Taxi.Api.Infrastructure;
 using Taxi.Api.Infrastructure.Jobs;
+using Taxi.Api.Infrastructure.Notifications;
 using Taxi.Api.Infrastructure.Seed;
 using Taxi.Api.Realtime;
 
@@ -175,6 +179,12 @@ try
     // ── SuperAdmin CLI bootstrapper (resolved by the create-superadmin args intercept below) ──
     builder.Services.AddScoped<SuperAdminBootstrapper>();
 
+    // ── Ops: 5xx-per-minute alerter (A3) ──────────────────────────────────────
+    // Singleton — the rolling-window state persists across requests. It resolves DbContext/IPushSender
+    // from its own scope. OpsOptions.FleetSlug selects the alert-recipient fleet.
+    builder.Services.Configure<OpsOptions>(builder.Configuration.GetSection(OpsOptions.SectionName));
+    builder.Services.AddSingleton<FiveHundredRateAlerter>();
+
     // ── Tracking token (customer SMS link) ──────────────────────────────────
     // Dev HMAC key lives in appsettings.Development.json; prod key wiring deferred to assignment 08.
     builder.Services.Configure<TrackingOptions>(
@@ -218,6 +228,29 @@ try
         return; // never boot the web host for a CLI command
     }
 
+    // ── CLI: migrate ──────────────────────────────────────────────────────────
+    // Deploy runs `compose run --rm api migrate` before `up`. Runs EF migrations then returns.
+    if (args.Length > 0 && args[0] == "migrate")
+    {
+        await using var cliScope = app.Services.CreateAsyncScope();
+        var cliDb = cliScope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+        var cliLogger = cliScope.ServiceProvider.GetRequiredService<ILogger<CliCommandsMarker>>();
+        await CliCommands.RunMigrateAsync(cliDb, cliLogger);
+        return; // never boot the web host for a CLI command
+    }
+
+    // ── CLI: send-sms --to <e164> --message <text> ────────────────────────────
+    // Used by the disk-alert cron. Resolves the config-selected real SMS provider, sends, returns.
+    if (args.Length > 0 && args[0] == "send-sms")
+    {
+        await using var cliScope = app.Services.CreateAsyncScope();
+        var smsSender = cliScope.ServiceProvider.GetRequiredService<ISmsSender>();
+        var cliLogger = cliScope.ServiceProvider.GetRequiredService<ILogger<CliCommandsMarker>>();
+        await CliCommands.RunSendSmsAsync(
+            smsSender, GetArgValue(args, "--to"), GetArgValue(args, "--message"), cliLogger);
+        return; // never boot the web host for a CLI command
+    }
+
     // ── Startup: migrate + seed (Development only) ────────────────────────────
     // Apply EF Core migrations at startup in Development so docker compose up is self-contained.
     // Tests bypass this by running MigrateAsync in PostgresFixture.InitializeDatabaseAsync instead.
@@ -235,6 +268,11 @@ try
         }
     }
 
+    // ── 5xx counter (A3) — outermost, before the exception handler ────────────
+    // Must sit before UseExceptionHandler: unhandled exceptions become 500 responses downstream, so this
+    // middleware observes them via context.Response.StatusCode after next() returns (see the middleware doc).
+    app.UseMiddleware<FiveHundredCounterMiddleware>();
+
     app.UseExceptionHandler();
 
     app.UseSerilogRequestLogging();
@@ -247,6 +285,12 @@ try
     app.UseMiddleware<TenantResolutionMiddleware>();
 
     app.UseAuthorization();
+
+    // ── Prometheus HTTP metrics (A2) ──────────────────────────────────────────
+    // Records default per-request HTTP metrics. Placed after UseAuthentication (consistent with the
+    // existing middleware order). The /metrics scrape endpoint (MapMetrics below) is anonymous — it is
+    // network-isolated by Caddy (C2 does NOT proxy /metrics), NOT by authorization.
+    app.UseHttpMetrics();
 
     // ── FastEndpoints middleware ───────────────────────────────────────────────
     app.UseFastEndpoints(c =>
@@ -272,6 +316,10 @@ try
     {
         Predicate = c => c.Tags.Contains("ready")
     });
+
+    // ── Prometheus scrape endpoint (A2) ───────────────────────────────────────
+    // Anonymous by design — reachable only on the internal docker network (Caddy does not proxy it).
+    app.MapMetrics("/metrics");
 
     // ── SignalR hub ───────────────────────────────────────────────────────────
     app.MapHub<FleetHub>("/hubs/fleet");

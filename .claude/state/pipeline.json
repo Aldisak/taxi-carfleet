@@ -1,67 +1,43 @@
 {
   "version": 1,
-  "uc_id": "UC-007",
-  "title": "Reports, audit view & tenant onboarding",
-  "stack": "mixed",
-  "lanes": { "A": "api reports/audit/superadmin/self-service/retention/gdpr", "B": "web /x/reports + /x/audit + /admin + /x/settings Fleet" },
+  "uc_id": "UC-008",
+  "title": "Infra, CI/CD & operations",
+  "stack": "infra",
+  "lanes": { "A": "api small hooks (migrate-on-start, /metrics, send-sms CLI, 5xx alert)", "INFRA": "Dockerfiles/Compose/Caddy/GH-Actions/backup/runbook/costs" },
   "complexity_tag": "novel",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "standing user directive renewed 2026-09-12 ('continue autonomously until you finish whole project, i changed the agents so use them'): gates A-E pre-approved, parallel lanes, backend-developer (api) / frontend-developer (web) via general-purpose carrying the role verbatim (registry stale), interrupt only on 3-round blocks / quality-gate failures / undecidable scope. No git remote → ship = local commit on a feature branch. LESSON: long opus subagents hit stream-idle timeouts (~6min) on read/reason-heavy work; conductor runs the e2e harness itself + performs design review when the reviewer subagent times out; keep scopes bounded.",
+  "autonomous_mode_authority": "standing user directive ('continue autonomously until you finish whole project'): gates pre-approved; conductor runs verification + performs design review when the reviewer subagent times out; keep scopes bounded (long opus subagents hit ~6min stream-idle timeouts). No git remote → ship = local commit on a feature branch.",
   "phase": "done",
-  "spec_path": "docs/specs/in-progress/007_UC_007_reports-audit-onboarding.md",
-  "gates_passed": ["A (auto)", "B (auto): 11 WIs", "C (round 1, blocks_merge=false): SQL-aggregation/CSV/SuperAdmin-cross-tenant/audit-merge/retention all verified sound; 1 HIGH + 3 MEDIUM folded"],
+  "spec_path": "docs/specs/in-progress/008_UC_008_infra-and-deployment.md",
+  "gates_passed": ["A (auto)", "B (auto): 6 WIs (A1-A3 api hooks + C1-C3 infra), acyclic", "C (conductor-verified, blocks_merge=false): IPushSender/health/CLI-intercept/ISmsSender/net10 confirmed vs source"],
   "design_review_round": 1,
-  "design_review_amendments": {
-    "A8-customer-self-deletion": ["HIGH: load the caller's orders via IgnoreQueryFilters() keyed on CustomerUserId==sub (CustomerOnly JWT has NO fleet_id claim — a plain Where hits the global filter with null FleetId and anonymizes ZERO orders, WI-13 Subscribe precedent); pin with DeleteMe_OrdersRemainInReportsAnonymized"],
-    "A5-superadmin-fleets-and-cli": ["MEDIUM: ListFleets + the duplicate-slug 409 uniqueness lookup must use IgnoreQueryFilters (Fleet is tenant-scoped; SuperAdmin is cross-fleet by design). Create sets scope CurrentTenant.FleetId to the NEW fleet so the SaveChanges guard passes (WI-04 technique). Mandatory AdminFleets_Create_NonSuperAdmin_Returns403"],
-    "A3-fleet-report-and-50k-seed": ["MEDIUM: GetRatings 'in range' — add GetRatingsRequest + validator OR make it explicitly rangeless; don't leave the range implied with no request type"],
-    "A6-fleet-self-service-and-logo": ["MEDIUM: UploadLogo >200KB/non-PNG are intended ENDPOINT guards (IFormFile, no validator) — implement as explicit guards returning 400, documented"]
+  "work_items_summary": {
+    "order": ["A1-migrate-and-send-sms-cli", "A2-prometheus-metrics", "C1-dockerfiles", "A3-5xx-alert", "C2-compose-caddy-env", "C3-cicd-backup-runbook-costs"],
+    "key": "A1 migrate+send-sms arg-intercepts (mirror create-superadmin); A2 prometheus-net.AspNetCore 8.2.1 /metrics; A3 5xx-counter→IPushSender to Ops:FleetSlug('ops') FleetAdmins (labeled scope-gap, graceful no-op); C1 Dockerfiles (api aspnet:10.0 non-root HEALTHCHECK /health/live; web→caddy); C2 compose dev+prod + Caddyfile + .env.example; C3 CI/deploy/restore-test + backup/restore.sh + runbook/costs/monitoring. Operational ACs = artifact+runbook-documented (no VPS/DNS/S3 here)."
   },
   "in_progress": [],
   "quality_gate": {
-    "backend_build_warnaserror": "0 warnings", "backend_test": "482 passed (1 skipped opt-in 50k perf)", "backend_format": "clean",
-    "web_lint": "clean", "web_tsc": "clean", "web_test": "1097 passed",
-    "web_build": "ok", "web_size": "239.5 kB brotli < 260 kB",
-    "web_e2e": "12/12 (dispatcher 2 + onboarding AC#3/#4 + driver 3 + customer 5)"
+    "backend_build_warnaserror": "0 warnings", "backend_test": "493 passed (1 skipped opt-in perf)", "backend_format": "clean",
+    "web": "untouched by UC-008 (web Dockerfile is build config, no web/src change) — stays 1097 unit / 12 e2e from UC-007",
+    "infra_compose_config": "dev + prod validate", "infra_restore_sh": "round-trips vs throwaway Postgres", "infra_workflow_yaml": "ci/deploy/restore-test parse", "infra_dockerfile": "api aspnet:10.0 non-root HEALTHCHECK /health/live",
+    "operational_ACs": "artifact + runbook-documented (fresh-VPS deploy, HTTPS subdomains, PG isolation, RAM, backup-to-S3, cost) — deferred to real infra, NOT executed here"
   },
-  "gates_passed_final": ["A", "B", "C (conductor-verified + dispatched)", "D(per-batch)", "E"],
-  "laneB7d_done": "1097 web tests, cheap gates green, size 239.5kB. /admin/login route + AdminLoginPage → adminLogin() POST /auth/admin/login (skipAuthRedirect), token stored role=SuperAdmin empty-slug; AdminGuard redirects to /admin/login. Onboarding e2e uses adminApiLogin via the new endpoint. Fleet-tab prefills color/welcome/smsCap from GET /fleet/settings (clobber workaround dropped; getPublicFleet kept only for logo preview). Watch: pre-existing token-expiry 401 on /admin/* falls through to /x/login (out of scope).",
-  "laneA7b_done": "482 backend tests (+5), build 0/0, format clean. POST /auth/admin/login (AllowAnonymous, {email,password}→{accessToken,refreshToken,user{id,email,displayName,role:SuperAdmin}}, fleetless JWT verified passes SuperAdminOnly→/admin/fleets 200, timing-uniform 401s). GetFleetSettings read DTO +primaryColorHex/welcomeText/smsMonthlyCapCzk (full PUT round-trip). OpenAPI allowlist + api.md updated. AC#3 blocker resolved api-side.",
-  "laneB7_web_review": "PASSED blocks_merge=false, 0 crit/high, 2 low (F1 audit actor free-text→Guid 400; F2 Fleet-tab smsMonthlyCapCzk clobber — both api-side, laneA7b addresses F2 via read DTO; F1 deferred follow-up). Contract reconciliation genuine + regression-locked (client types byte-match real A7 records). AC#3 verdict: real gap, web sound pending POST /auth/admin/login (laneA7b) + a small web login-wiring follow-up (laneB7d). B1/B2/B3 web otherwise correct.",
-  "b7d_pending": "after laneA7b: wire /admin login via POST /auth/admin/login + update onboarding e2e to use it + drop Fleet-tab clobber workaround (read DTO now complete). Then conductor runs the onboarding e2e + 10-spec regression.",
-  "laneB7c_done": "1087 web tests (+30), cheap gates green. /admin page (list+create fleet, one-time password), /x/settings Fleet tab (editable self-service form + logo upload), customer runtime branding (logo+welcome+gdpr footer), onboarding.spec.ts authored (NOT run — conductor runs). client fns getAdminFleets/postCreateFleet/postDeactivateFleet/putFleetSettings/postFleetLogo.",
-  "ac3_superadmin_auth_blocker": "CONFIRMED real: StaffLoginEndpoint hard-filters Driver/Dispatcher/FleetAdmin + requires a fleet slug; no admin login exists (only create-superadmin CLI). Fleetless SuperAdmin cannot get a JWT → /admin/fleets (SuperAdminOnly) unreachable → AC#3 fails. FIX laneA7b: POST /auth/admin/login (AllowAnonymous, email+password, SuperAdmin role + FleetId==null, mint fleetless JWT like the customer path, timing-uniform like StaffLogin) + tests. Then laneB7d wires /admin login + updates onboarding e2e. Also laneA7b: add primaryColorHex+welcomeText+smsMonthlyCapCzk to GetFleetSettings read DTO (closes the Fleet-tab full-PUT clobber the B3 agent worked around).",
-  "laneB7b_done": "1057 web tests, gates green, size 233.76kB. All 6 contract mismatches fixed + byte-verified vs real api DTOs: date field, money names, {items} ratings (rangeless), KPI counts→client-shares (div-guard), audit 1-BASED paging (server pageSize 50, hasNext from page*pageSize<total), action 'StatusOverride' singular, driver-report empty-selection gated. B1/B2 now match backend. Web review of B1/B2/B3 batched after B3.",
-  "laneA7_review": "PASSED blocks_merge=false, 0 crit/high, 1 medium (avgRating windowed vs AC unspecified — clarification), 3 low (uncreated files_touched entries functionally-equivalent; unreachable ?? fallback). All 8 api WIs DONE+REVIEWED. SQL translation + SuperAdmin cross-tenant guard + A8 anonymization reach all verified sound.",
-  "laneA7_done": "477 backend tests (+57, 1 skipped opt-in 50k perf), build 0/0, format clean, 10 new routes, docs/api.md regenerated. All 8 WIs. 4 amendments applied (A8 IgnoreQueryFilters, A5 cross-tenant guard+IgnoreQueryFilters, A3 ratings rangeless, A6 logo endpoint guards). New CLAUDE.md trap: SqlQuery<T> maps snake_case columns; no EF.Functions.AtTimeZone in Npgsql 10 (raw AT TIME ZONE in FromSql). Review pending.",
-  "b7a_contract_reconcile_result": "MISMATCHES found vs real A7 contracts (fold into laneB7b): (1) per-day + ridesPerDay field is `date` NOT `.day`; (2) ratings envelope is {items} NOT {ratings}; (3) fleet KPIs give RAW COUNTS appOrders/phoneOrders/fixedRouteOrders (+rides) not appShare/fixedRouteShare — compute shares client-side; cancellationRate IS 0..1 (ok); (4) verify per-day money field names = cashCzk/cardCzk/invoiceCzk/totalCzk + ridesCompleted/ridesCancelled/hoursOnline/priceOverrideCount; (5) audit confirm page base + use server pageSize (resp has total/page/pageSize). P2 seconds OK. getDriverReport {driverId,driverName,avgRating,days,totals}; getFleetReport {kpis,ridesPerDay,topRoutes} ok; getAudit {items,total,page,pageSize}.",
-  "laneB7a_done": "1054 web tests (+49), gates green, size 233.49kB<260kB. B1 /x/reports (driver report + this-month Prague filters + server-CSV-blob download; fleet KPI cards + hand-rolled SVG rides-per-day chart + top routes; ratings) + B2 /x/audit (paged filterable read-only timeline; auditEventLabel promoted to src/shared/audit, OrderEventTimeline rewired). Lazy route chunks. Review pending.",
-  "b7a_contract_reconcile": "MUST verify B7a's ASSUMED report/audit client contracts against Lane A's real A2/A3/A4 DTOs when laneA7 lands (each getter locked by a fetch-mocked client.test regression). RENDER-BREAKING if wrong: P1 FleetKpiDto share field names (appShare/fixedRouteShare/cancellationRate as 0..1); P2 avgTimeToAssignSeconds/avgTimeToPickupSeconds in SECONDS not ms; P3 audit page ZERO-based + PAGE_SIZE 50; P4 DriverReportDayDto.day & RidesPerDayDto.day bare yyyy-MM-dd (Prague) NOT ISO ts. Envelopes assumed: getRatings {ratings}, getDriverReport {days,totals}, getFleetReport {kpis,ridesPerDay,topRoutes}, getAudit {items,total,page}; ASSUMED_AUDIT_ACTIONS ['StatusOverridden','DriverStatusOverridden']. Fold a fix if any mismatch.",
-  "b3_pending": "B3-admin-fleet-tab-and-onboarding-e2e needs A5 (superadmin)+A6 (fleet self-service)+B1 done; conductor runs the second-subdomain harness.",
-  "work_items_summary": {
-    "order": ["A1-report-indexes-and-fleet-logo", "A2-driver-report-and-csv", "A3-fleet-report-and-50k-seed", "A4-audit-merge-endpoint", "A5-superadmin-fleets-and-cli", "A6-fleet-self-service-and-logo", "A7-retention-job-and-anonymizer", "A8-customer-self-deletion", "B1-reports-screen", "B2-audit-timeline", "B3-admin-fleet-tab-and-onboarding-e2e"],
-    "deps": "A1 foundation (migration: report indexes + Fleet.LogoUpdatedAt); A2-A7 depend on A1; A8 on A7; B1 on A2+A3+A4; B2 on A4; B3 on A5+A6+B1. Lane A/B parallel.",
-    "source_verified_exists": "UserRole.SuperAdmin + System (string enum, no migration); SuperAdminOnly/AuthenticatedOnly/FleetAdminOnly policies; Fleet.PrimaryColorHex; FleetSettings WelcomeText/AutoDispatchEnabled/OfferTimeoutSeconds/SmsMonthlyCapCzk/etc. Only logo missing → A1 adds Fleet.LogoUpdatedAt (no blob; path /data/fleets/{id}/logo.png id-derivable). GetFleetSettings exists; A6 adds PUT additively."
-  },
-  "designer_note": "designer subagent wrote both deliverables then hit a stream timeout on its final summary message; files are durable + conductor-validated (DAG, ACs, notes).",
+  "gates_passed_final": ["A", "B", "C (conductor-verified)", "D(per-batch)", "E"],
+  "laneA8_review": "PASSED blocks_merge=false, 0 crit/high/medium, 1 low (F1: alerter send used context.RequestAborted → FIXED by conductor to CancellationToken.None, WI-14 precedent), 1 info (middleware→alerter seam acceptable). A1/A2/A3 all sound.",
+  "laneC8_done": "All infra artifacts produced + conductor-verified independently: docker compose config dev+prod OK; 3 workflow YAMLs parse; restore.sh present+exec (round-trips per agent); api/Dockerfile aspnet:10.0 non-root HEALTHCHECK /health/live (curl installed); web/Dockerfile node→caddy; Caddyfile wildcard DNS-01 + custom xcaddy image (caddy validate deferred — stock lacks DNS/ratelimit plugins); costs.md €9.94/mo fixed; runbook 8 steps. Agent fixed 3 real bugs (Dockerfile Directory.Build.props+curl, restore.sh cross-version warnings, ci.yml dotnet path). Operational ACs artifact+runbook-documented. Infra reviewed by conductor (config/docs, no code-test surface).",
+  "laneA8_done": "493 backend tests (+11), build 0/0, format clean. A1 migrate+send-sms CLI (Common/Cli/CliCommands, thin Program.cs intercepts, send-sms uses Notifications ISmsSender + masks phone/no body log). A2 /metrics via prometheus-net.AspNetCore 8.2.1 (net10-compatible confirmed, anonymous, not in OpenAPI allowlist like MapHealthChecks). A3 Common/Ops FiveHundredRateAlerter+middleware (calendar-minute window, single-fire, IPushSender to Ops:FleetSlug='ops' FleetAdmins, warn+no-op if absent, never throws). Review pending. Caveat: middleware→alerter seam untested (verified by reasoning + alerter unit tests).",
   "work_items": [],
   "completed_wis": [],
-  "predecessors": "UC-001/002 on main; UC-003 14fb448; UC-004 46db3b0; UC-006 51ab4c5; UC-005 019c595 (backend 420 tests, web 1005 unit + 10 e2e). Currently on branch uc-005-notifications; UC-007 branches from here. Linear chain: main→UC-003→UC-004→UC-006→UC-005→UC-007.",
-  "final_functional_uc": "UC-007 is the LAST functional assignment; only UC-008 (infra/CI-CD/deployment) would remain after it.",
-  "open_followups_from_prior_ucs": [
-    "UC-006 AC#4/#5 Playwright browser automation (decisions.md §7)",
-    "UC-006 PointToPoint route editor address autocomplete",
-    "UC-005 90-day push prune, ScheduledOrderReminder scan job, per-fleet routing matrix override",
-    "UC-003 B3e-1 DisconnectBanner→shared; B3f-F1 patchOrder envelope; B3e-2 ride bottom-nav",
-    "prod VAPID/SMS-provider secrets → UC-008"
-  ],
-  "test_count_backend": 420,
-  "test_count_web": 1005,
+  "predecessors": "ALL 7 functional UCs shipped: UC-001/002 on main; UC-003 14fb448; UC-004 46db3b0; UC-006 51ab4c5; UC-005 019c595; UC-007 3834e9c (backend 482 tests, web 1097 unit + 12 e2e). Currently on branch uc-007-reports-audit-onboarding; UC-008 branches from here. UC-008 is the FINAL assignment.",
+  "verifiability_reality": "No VPS/DNS/domain/S3/pinger in this sandbox. Operational ACs (fresh-VPS deploy <45min, push-to-deploy+rollback, HTTPS on real subdomains, Postgres-not-internet-reachable, <700MB RAM, cost sheet real prices) are delivered as ARTIFACTS + runbook-documented manual steps — NOT executed here. Code/config-verifiable before ship: app hooks compile under -warnaserror + dotnet test green; docker compose config validates both files; restore.sh local round-trip vs a throwaway Postgres; GH Actions YAML well-formed; Dockerfile .NET 10 runtime. Do NOT fabricate VPS/RAM/cost measurements.",
+  "dotnet_target": "net10.0 confirmed → /api/Dockerfile uses mcr.microsoft.com/dotnet/aspnet:10.0 (corrects the assignment's 9.0 example).",
+  "test_count_backend": 482,
+  "test_count_web": 1097,
   "environment": {
     "dotnet_sdk": "10.0.401 user-local; prefix every dotnet command with: export PATH=\"/c/Users/alesm/AppData/Local/Microsoft/dotnet:$PATH\" && ",
-    "node": "v20.0.0 (pins: Vite 5.4, eslint 8.57.1, ts-eslint 7.18, vitest 2.1.9; idb, fake-indexeddb, vite-plugin-pwa 0.20.5 injectManifest, pngjs, react-leaflet 4.2.1 lazy, WebPush 1.0.13). Chart: plain SVG / tiny lib, NO heavy dep (bundle budget 260kB brotli).",
-    "docker": "26.1.1",
-    "playwright": "harness scripts/e2e-api.mjs; projects chromium(dispatcher), mobile-driver, mobile-customer; 10 specs green. AC#3 needs a second subdomain (second.localhost) — conductor runs the harness."
+    "node": "v20.0.0",
+    "docker": "26.1.1 (compose + build available locally; no VPS)",
+    "playwright": "harness scripts/e2e-api.mjs; 12 specs green"
   },
   "updated_at": "2026-09-13"
 }

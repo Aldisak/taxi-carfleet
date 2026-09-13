@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# INNER web-container Caddyfile (baked into the web image by web/Dockerfile).
+#
+# This runs on the internal docker network on :8080 with NO public TLS. The EDGE
+# Caddy (infra/Caddyfile) terminates HTTPS and forwards here. Stock caddy:2-alpine
+# is sufficient — no DNS/ratelimit plugins are used at this layer.
+#
+# Responsibilities:
+#   - serve the built SPA/PWA from /srv with SPA history fallback
+#   - cache: index.html + service worker never cached; hashed /assets/* 1y immutable
+#   - proxy /api/* and /hubs/* to the api service (SignalR WebSocket upgrade)
+# ─────────────────────────────────────────────────────────────────────────────
+
+{
+	admin off
+	# The edge terminates TLS; this server speaks plain HTTP on the internal network.
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+
+	# ── API + SignalR hub → api service ──────────────────────────────────────
+	# reverse_proxy forwards the Upgrade/Connection headers automatically, so
+	# WebSockets (SignalR) work without extra config.
+	@api path /api/* /hubs/*
+	reverse_proxy @api {$API_UPSTREAM:api:8080}
+
+	# ── Static SPA/PWA ───────────────────────────────────────────────────────
+	root * /srv
+
+	# Hashed build assets (vite emits /assets/<name>.<hash>.<ext>) — cache 1 year.
+	@hashed path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+	# The app shell and the service worker must always be revalidated.
+	@nocache path /index.html /sw.js /registerSW.js /manifest.webmanifest
+	header @nocache Cache-Control "no-cache, no-store, must-revalidate"
+
+	# SPA history fallback: unknown paths return index.html.
+	try_files {path} /index.html
+	file_server
+}

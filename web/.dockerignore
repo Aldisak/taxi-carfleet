@@ -1,0 +1,22 @@
+# Rebuilt inside the image
+node_modules/
+dist/
+.vite/
+
+# Test / report artifacts
+test-results/
+playwright-report/
+coverage/
+
+# IDE / VCS
+.vs/
+.idea/
+.git/
+
+# Local secrets
+.env
+.env.*
+
+# Docker artifacts
+Dockerfile
+.dockerignore
