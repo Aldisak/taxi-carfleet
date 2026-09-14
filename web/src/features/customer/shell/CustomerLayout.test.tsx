@@ -33,9 +33,9 @@ function renderLayout() {
   return render(
     <ThemeProvider theme={theme}>
       <I18nextProvider i18n={i18n}>
-        <MemoryRouter initialEntries={['/c']}>
+        <MemoryRouter initialEntries={['/customer']}>
           <Routes>
-            <Route path="/c" element={<CustomerLayout />} />
+            <Route path="/customer" element={<CustomerLayout />} />
           </Routes>
         </MemoryRouter>
       </I18nextProvider>
@@ -56,6 +56,6 @@ describe('CustomerLayout', () => {
 
   it('enables customer silent refresh on mount', () => {
     renderLayout()
-    expect(enableSilentRefresh).toHaveBeenCalledWith('/c/login')
+    expect(enableSilentRefresh).toHaveBeenCalledWith('/customer/login')
   })
 })

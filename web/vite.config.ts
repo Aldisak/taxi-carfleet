@@ -31,7 +31,7 @@ export default defineConfig({
         background_color: '#1e2a4a',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/d',
+        start_url: '/driver',
         scope: '/',
         icons: [
           {

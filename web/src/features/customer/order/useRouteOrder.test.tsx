@@ -15,7 +15,7 @@ const route: CommonRouteDto = {
 }
 
 /**
- * Renders useRouteOrder at /c/order/route/:routeId with a pre-seeded ['routes','common']
+ * Renders useRouteOrder at /customer/order/route/:routeId with a pre-seeded ['routes','common']
  * query cache and NO nav-state, exercising the cache-fallback branch (a soft refresh where
  * location.state is gone but the Home query cache is still warm).
  */
@@ -31,11 +31,11 @@ function renderWithCache(cached: CommonRouteDto[] | undefined) {
       { client },
       createElement(
         MemoryRouter,
-        { initialEntries: ['/c/order/route/r1'] },
+        { initialEntries: ['/customer/order/route/r1'] },
         createElement(
           Routes,
           null,
-          createElement(Route, { path: '/c/order/route/:routeId', element: children as never }),
+          createElement(Route, { path: '/customer/order/route/:routeId', element: children as never }),
         ),
       ),
     )

@@ -26,14 +26,14 @@ describe('parsePushPayload', () => {
     const raw = JSON.stringify({
       title: 'Nová nabídka',
       body: 'Václavské náměstí',
-      url: '/d',
+      url: '/driver',
       tag: 'offer',
       priority: 'high',
     })
     expect(parsePushPayload(raw)).toEqual<RawPushPayload>({
       title: 'Nová nabídka',
       body: 'Václavské náměstí',
-      url: '/d',
+      url: '/driver',
       tag: 'offer',
       priority: 'high',
     })
@@ -53,11 +53,11 @@ describe('parsePushPayload', () => {
 
 describe('toPushDisplay', () => {
   it('maps a normal payload without requireInteraction', () => {
-    const display = toPushDisplay({ title: 'Řidič dorazil', body: 'SPZ 1AB 2345', url: '/c/t/ABC', priority: 'normal' })
+    const display = toPushDisplay({ title: 'Řidič dorazil', body: 'SPZ 1AB 2345', url: '/customer/t/ABC', priority: 'normal' })
     expect(display).toEqual({
       title: 'Řidič dorazil',
       body: 'SPZ 1AB 2345',
-      url: '/c/t/ABC',
+      url: '/customer/t/ABC',
       tag: null,
       requireInteraction: false,
       isOffer: false,
@@ -65,7 +65,7 @@ describe('toPushDisplay', () => {
   })
 
   it('marks a high-priority payload as an offer requiring interaction', () => {
-    const display = toPushDisplay({ title: 'Nová nabídka', body: 'x', url: '/d', priority: 'high' })
+    const display = toPushDisplay({ title: 'Nová nabídka', body: 'x', url: '/driver', priority: 'high' })
     expect(display.requireInteraction).toBe(true)
     expect(display.isOffer).toBe(true)
   })
@@ -85,7 +85,7 @@ describe('toPushDisplay', () => {
 
 describe('resolveClickUrl', () => {
   it('returns the url when present', () => {
-    expect(resolveClickUrl('/c/t/ABC')).toBe('/c/t/ABC')
+    expect(resolveClickUrl('/customer/t/ABC')).toBe('/customer/t/ABC')
   })
 
   it('falls back to the app root when absent', () => {

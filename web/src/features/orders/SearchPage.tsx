@@ -137,7 +137,7 @@ function formatPrice(order: OrderSummaryDto): string {
   return `${prefix}${price} Kč`
 }
 
-/** The search/history page at /x/orders. */
+/** The search/history page at /dispatcher/orders. */
 export function SearchPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -165,7 +165,7 @@ export function SearchPage() {
   const currentPage = filters.page ?? 1
 
   const handleRowClick = useCallback((orderId: string) => {
-    navigate(`/x/orders/${orderId}`)
+    navigate(`/dispatcher/orders/${orderId}`)
   }, [navigate])
 
   const handleExportCsv = useCallback(() => {

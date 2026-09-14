@@ -1,6 +1,6 @@
 # Web Architecture Rules
 
-Apply to everything under `web/`. One React SPA/PWA codebase serves three role-based clients: dispatcher (`/x`), driver (`/d`), customer (`/c`). No SSR, no SEO — do not propose Next.js or server rendering.
+Apply to everything under `web/`. One React SPA/PWA codebase serves three role-based clients: dispatcher (`/dispatcher`), driver (`/driver`), customer (`/customer`). No SSR, no SEO — do not propose Next.js or server rendering.
 
 ## Feature folders
 
@@ -10,7 +10,7 @@ Every feature is a vertical slice under `src/features/<feature>/` — screens, h
 
 ## Route groups
 
-Role prefixes are hard boundaries: `/x/*` dispatcher, `/d/*` driver PWA, `/c/*` customer PWA. Routes and layouts live in `src/app/router.tsx`. A work item scoped to one role group must not modify another group's routes or screens.
+Role prefixes are hard boundaries: `/dispatcher/*` dispatcher, `/driver/*` driver PWA, `/customer/*` customer PWA. Routes and layouts live in `src/app/router.tsx`. A work item scoped to one role group must not modify another group's routes or screens.
 
 ## Api client
 

@@ -1,7 +1,7 @@
 /**
  * Shared audit/order-event label map. Lives in `src/shared` because it is consumed by
  * BOTH the orders feature (the order-detail drawer timeline) and the audit feature (the
- * /x/audit timeline) — a cross-feature import would violate rules/web-architecture.md,
+ * /dispatcher/audit timeline) — a cross-feature import would violate rules/web-architecture.md,
  * so the single source of truth is promoted here (B2).
  */
 

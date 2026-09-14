@@ -26,7 +26,7 @@ describe('apiRequest — 401 handling', () => {
     localStorage.clear()
   })
 
-  it('clears auth storage and redirects to /x/login on 401', async () => {
+  it('clears auth storage and redirects to /dispatcher/login on 401', async () => {
     // Seed some values in localStorage
     localStorage.setItem('auth.accessToken', 'some-token')
     localStorage.setItem('auth.refreshToken', 'some-refresh')
@@ -49,7 +49,7 @@ describe('apiRequest — 401 handling', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
 
     // Assert redirect happened
-    expect(window.location.href).toBe('/x/login')
+    expect(window.location.href).toBe('/dispatcher/login')
 
     // Assert storage was cleared
     expect(localStorage.getItem('auth.accessToken')).toBeNull()
@@ -83,7 +83,7 @@ describe('apiRequest — 401 handling', () => {
 
     // Should throw ApiResponseError, NOT redirect
     expect(thrown).toBeInstanceOf(ApiResponseError)
-    expect(window.location.href).not.toBe('/x/login')
+    expect(window.location.href).not.toBe('/dispatcher/login')
   })
 })
 

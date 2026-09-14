@@ -96,7 +96,7 @@ describe('CompletePage', () => {
       expect.objectContaining({ finalPriceCzk: 200, paymentType: 'Card' }),
     )
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/d',
+      '/driver',
       expect.objectContaining({ state: { toast: 'driver.complete.successOverlay' } }),
     )
   })

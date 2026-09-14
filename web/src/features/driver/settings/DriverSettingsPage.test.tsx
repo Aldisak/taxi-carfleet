@@ -58,11 +58,11 @@ describe('DriverSettingsPage', () => {
     expect(screen.getByText('0.0.1-test')).toBeInTheDocument()
   })
 
-  it('logout clears every session store and routes to /d/login', async () => {
+  it('logout clears every session store and routes to /driver/login', async () => {
     renderPage()
     await userEvent.click(screen.getByRole('button', { name: 'Odhlásit se' }))
 
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/d/login'))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/driver/login'))
     expect(authClear).toHaveBeenCalled()
     expect(idbAuthClear).toHaveBeenCalled()
     expect(queueClear).toHaveBeenCalled()

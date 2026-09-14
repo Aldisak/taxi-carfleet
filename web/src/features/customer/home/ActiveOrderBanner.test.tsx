@@ -28,7 +28,7 @@ describe('ActiveOrderBanner', () => {
     renderBanner()
     expect(screen.getByText(/K7F2A9/)).toBeInTheDocument()
     const link = screen.getByRole('link', { name: /sledovat|K7F2A9/i })
-    expect(link).toHaveAttribute('href', '/c/t/K7F2A9')
+    expect(link).toHaveAttribute('href', '/customer/t/K7F2A9')
   })
 
   it('has no axe violations', async () => {

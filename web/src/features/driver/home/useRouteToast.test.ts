@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
-const mockLocation = { pathname: '/d', state: null as unknown }
+const mockLocation = { pathname: '/driver', state: null as unknown }
 // Reproduce the real router behavior: navigate({ state: null }) clears location.state.
 const mockNavigate = vi.fn((_path: string, opts?: { state?: unknown }) => {
   mockLocation.state = opts?.state ?? null
@@ -33,7 +33,7 @@ describe('useRouteToast', () => {
     const { result } = renderHook(() => useRouteToast())
     expect(result.current).toBe('driver.ride.reassigned')
     // history state cleared so a back/refresh does not re-show it
-    expect(mockNavigate).toHaveBeenCalledWith('/d', { replace: true, state: null })
+    expect(mockNavigate).toHaveBeenCalledWith('/driver', { replace: true, state: null })
   })
 
   it('auto-dismisses after 2 seconds even after the router clears location.state', () => {

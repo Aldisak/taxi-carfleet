@@ -5,7 +5,7 @@
  *   1. Subdomain — `{slug}.{domain}` on a real multi-level production host
  *      (the canonical production source per spec §entry-points).
  *   2. `?fleet={slug}` query param — for localhost / preview where there is no subdomain.
- *   3. `/c/f/{slug}` path segment — an alternative localhost hint.
+ *   3. `/customer/f/{slug}` path segment — an alternative localhost hint.
  *   4. `'demo'` default — bare localhost with no hints, so the seeded demo fleet
  *      works out of the box for the Playwright harness.
  *
@@ -37,8 +37,8 @@ export function resolveFleetSlug(hostname: string, search: string, pathname: str
     return fromQuery
   }
 
-  // 3. /c/f/{slug} path segment.
-  const match = /\/c\/f\/([^/?#]+)/.exec(pathname)
+  // 3. /customer/f/{slug} path segment.
+  const match = /\/customer\/f\/([^/?#]+)/.exec(pathname)
   if (match) {
     return match[1]
   }

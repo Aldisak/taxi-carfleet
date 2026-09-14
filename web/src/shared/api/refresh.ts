@@ -19,9 +19,9 @@ let failureRedirectPath: string | null = null
 
 /**
  * Opt-in to silent refresh for the driver flow.
- * /x dispatcher flow never calls this, keeping its 401→clear→/x/login path unchanged.
+ * /x dispatcher flow never calls this, keeping its 401→clear→/dispatcher/login path unchanged.
  *
- * @param redirectPath Path to redirect on terminal refresh failure (e.g. '/d/login').
+ * @param redirectPath Path to redirect on terminal refresh failure (e.g. '/driver/login').
  */
 export function enableSilentRefresh(redirectPath: string): void {
   failureRedirectPath = redirectPath
@@ -39,7 +39,7 @@ export function isSilentRefreshEnabled(): boolean {
 
 /**
  * The configured redirect target for a terminal auth failure, or null if silent
- * refresh is not enabled. Role-aware: '/d/login' for drivers, '/c/login' for
+ * refresh is not enabled. Role-aware: '/driver/login' for drivers, '/customer/login' for
  * customers, etc. client.ts's double-401 branch reads this so it redirects to the
  * caller's login rather than a hardcoded path (F2).
  */

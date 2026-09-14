@@ -10,7 +10,7 @@ export interface TrackingModeInput {
 }
 
 /**
- * Selects the tracking mode for /c/t/:code (pure, unit-tested).
+ * Selects the tracking mode for /customer/t/:code (pure, unit-tested).
  *
  * - authed: the customer is logged in → live SignalR Subscribe(orderId). The token wins when
  *   both a customer token and a ?k= link token are present (the logged-in customer gets live

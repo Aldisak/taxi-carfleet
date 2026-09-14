@@ -43,7 +43,7 @@ export interface RouteCardProps {
 
 /**
  * A single common-route card on Home. One tap navigates to the preselected confirm
- * screen (/c/order/route/:routeId), passing the route in nav state so the confirm
+ * screen (/customer/order/route/:routeId), passing the route in nav state so the confirm
  * screen renders its type/name/price without a second fetch (there is no route-detail
  * endpoint pre-06). A native button for keyboard + a11y (rules/web-accessibility.md).
  */
@@ -53,7 +53,7 @@ export function RouteCard({ route }: RouteCardProps) {
   return (
     <Card
       type="button"
-      onClick={() => navigate(`/c/order/route/${route.id}`, { state: { route } })}
+      onClick={() => navigate(`/customer/order/route/${route.id}`, { state: { route } })}
     >
       <Name>{route.name}</Name>
       <Price>{formatCzk(route.priceCzk)}</Price>

@@ -85,7 +85,7 @@ export function useRideRestore(myDriverId: string | undefined) {
       } else {
         // 'terminal' or 'none' -> no active ride, go Home.
         clear()
-        navigate('/d', { replace: true })
+        navigate('/driver', { replace: true })
       }
     })
   }, [myDriverId]) // eslint-disable-line react-hooks/exhaustive-deps

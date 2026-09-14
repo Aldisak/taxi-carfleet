@@ -338,11 +338,11 @@ internal sealed class NotificationDispatchJob(
     private static string BuildPushUrl(NotificationOutbox outbox)
         => outbox.Event switch
         {
-            NotificationEvent.OfferToDriver or NotificationEvent.ScheduledOrderReminder => "/d",
+            NotificationEvent.OfferToDriver or NotificationEvent.ScheduledOrderReminder => "/driver",
             NotificationEvent.DriverDeclined or NotificationEvent.DriverTimedOut
                 or NotificationEvent.NewAppOrderForDispatch or NotificationEvent.OrderCancelledByCustomer
-                or NotificationEvent.SmsCapWarning => "/x",
-            _ => "/c"
+                or NotificationEvent.SmsCapWarning => "/dispatcher",
+            _ => "/customer"
         };
 
     private static string? ResolveRecipientKey(NotificationOutbox outbox)

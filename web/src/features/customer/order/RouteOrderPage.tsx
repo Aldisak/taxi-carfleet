@@ -92,7 +92,7 @@ const LoginPrompt = styled.p`
 const EMPTY: AddressValue = { address: '', lat: null, lng: null }
 
 /**
- * Confirm-route order screen (/c/order/route/:routeId). Route-type-driven: PointToPoint
+ * Confirm-route order screen (/customer/order/route/:routeId). Route-type-driven: PointToPoint
  * shows a locked journey + optional pickup note; Zone/ZoneToZone let the customer enter an
  * in-zone pickup (+ dropoff for ZoneToZone) and the server POST /pricing/quote validates
  * zone containment (UC-006: pricing/quote IS the zone-validation mechanism — no client-side
@@ -192,7 +192,7 @@ export function RouteOrderPage() {
 
     try {
       const created = await createOrder.mutateAsync(req)
-      navigate(`/c/t/${created.publicCode}`)
+      navigate(`/customer/t/${created.publicCode}`)
     } catch {
       setFormError('customer.order.errorCreateFailed')
     }
@@ -202,7 +202,7 @@ export function RouteOrderPage() {
   // route (no route-detail endpoint pre-06) — bounce back Home.
   useEffect(() => {
     if (route === null) {
-      navigate('/c', { replace: true })
+      navigate('/customer', { replace: true })
     }
   }, [route, navigate])
 

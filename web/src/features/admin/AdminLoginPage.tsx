@@ -101,7 +101,7 @@ const SubmitButton = styled.button`
 /**
  * SuperAdmin login screen (/admin/login — UC-007 A7b). A fleetless login: email + password only,
  * posting to /auth/admin/login. AdminGuard redirects tokenless/non-SuperAdmin users here (never to
- * the fleet-scoped /x/login, which structurally cannot mint a SuperAdmin token). On success the
+ * the fleet-scoped /dispatcher/login, which structurally cannot mint a SuperAdmin token). On success the
  * hook stores tokens and navigates to /admin.
  */
 export function AdminLoginPage() {

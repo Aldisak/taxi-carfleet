@@ -11,7 +11,7 @@ export interface UseMyActiveOrderResult {
 /**
  * Loads the caller's single active order for the Home sticky banner (GET orders/mine/active).
  * Gated on a stored token: active-order is inherently logged-in, and an ungated read from a
- * fresh visitor would 401 → silentRefresh → hard redirect to /c/login (advisor). Returns
+ * fresh visitor would 401 → silentRefresh → hard redirect to /customer/login (advisor). Returns
  * null when there is no active order (204) or the customer is logged out.
  *
  * Query key is hierarchical: ['orders','mine','active'] (rules/web-performance.md#query-keys).

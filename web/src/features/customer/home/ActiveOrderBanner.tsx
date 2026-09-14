@@ -37,7 +37,7 @@ export function ActiveOrderBanner({ activeOrder }: ActiveOrderBannerProps) {
 
   return (
     <Banner
-      to={`/c/t/${activeOrder.publicCode}`}
+      to={`/customer/t/${activeOrder.publicCode}`}
       aria-label={t('customer.home.activeOrderAria', { code: activeOrder.publicCode })}
     >
       {t('customer.home.activeOrderTitle', { code: activeOrder.publicCode })}

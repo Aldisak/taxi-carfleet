@@ -77,11 +77,11 @@ function lazyDispatch(node: ReactNode): ReactNode {
 export const router = createBrowserRouter([
   // ── Dispatcher /x ──────────────────────────────────────────────────────────
   {
-    path: '/x/login',
+    path: '/dispatcher/login',
     element: <LoginPage />,
   },
   {
-    path: '/x',
+    path: '/dispatcher',
     element: <AppLayout />,
     children: [
       {
@@ -89,7 +89,7 @@ export const router = createBrowserRouter([
         path: '',
         element: <BoardPage />,
         children: [
-          // /x/orders/:id opens the right-side drawer over the board
+          // /dispatcher/orders/:id opens the right-side drawer over the board
           { path: 'orders/:id', element: <OrderDrawer /> },
         ],
       },
@@ -104,7 +104,7 @@ export const router = createBrowserRouter([
   // ── SuperAdmin /admin ────────────────────────────────────────────────────────
   // Standalone (NOT under the fleet-scoped AppLayout): SuperAdmin has no fleet.
   // The guard redirects non-SuperAdmins to /admin/login (fleetless SuperAdmin auth — A7b).
-  // Lazy chunk — no /x/d/c code ships here.
+  // Lazy chunk — no /dispatcher/driver/c code ships here.
   {
     path: '/admin/login',
     element: lazyDispatch(<AdminLoginPage />),
@@ -120,11 +120,11 @@ export const router = createBrowserRouter([
 
   // ── Driver /d ──────────────────────────────────────────────────────────────
   {
-    path: '/d/login',
+    path: '/driver/login',
     element: <DriverLoginPage />,
   },
   {
-    path: '/d',
+    path: '/driver',
     element: <DriverLayout />,
     children: [
       { path: '', element: <DriverHomePage /> },
@@ -137,11 +137,11 @@ export const router = createBrowserRouter([
 
   // ── Customer /c ──────────────────────────────────────────────────────────────
   {
-    path: '/c/login',
+    path: '/customer/login',
     element: lazyCustomer(<CustomerLoginPage />),
   },
   {
-    path: '/c',
+    path: '/customer',
     element: lazyCustomer(<CustomerLayout />),
     children: [
       { path: '', element: lazyCustomer(<CustomerHomePage />) },
@@ -149,7 +149,7 @@ export const router = createBrowserRouter([
       { path: 'order/new', element: lazyCustomer(<CustomOrderPage />) },
       // Tracking is nested under CustomerLayout so the shell CallButton + slug persistence apply.
       // The logged-out public link hits only AllowAnonymous endpoints (public/track → 410/404,
-      // never 401), so CustomerLayout's silent-refresh-on-401 never redirects it to /c/login.
+      // never 401), so CustomerLayout's silent-refresh-on-401 never redirects it to /customer/login.
       { path: 't/:code', element: lazyCustomer(<TrackingPage />) },
       { path: 'history', element: lazyCustomer(<CustomerHistoryPage />) },
     ],
@@ -160,7 +160,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: null,
     loader: () => {
-      window.location.replace('/x')
+      window.location.replace('/dispatcher')
       return null
     },
   },

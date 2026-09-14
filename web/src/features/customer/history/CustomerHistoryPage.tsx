@@ -42,7 +42,7 @@ const List = styled.div`
 `
 
 /**
- * Customer ride history (/c/history). Read-only list of past orders from GET orders/mine
+ * Customer ride history (/customer/history). Read-only list of past orders from GET orders/mine
  * (A-my-orders, via useMyOrderHistory). Each row taps through to read-only tracking and offers
  * "Objednat znovu" (B-history). Offline shows the last known rows from cache plus a banner
  * (rules/web-realtime.md#last-known-state); an empty list shows "Zatím žádné jízdy". The list is

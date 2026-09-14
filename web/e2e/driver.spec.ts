@@ -47,12 +47,12 @@ let driverId: string
 
 /** Driver UI login: fill slug/email/password, submit, land on /d. */
 async function driverUiLogin(page: Page): Promise<void> {
-  await page.goto('/d/login')
+  await page.goto('/driver/login')
   await page.locator('#driver-fleet-slug').fill('demo')
   await page.locator('#driver-email').fill(DRIVER_EMAIL)
   await page.locator('#driver-password').fill(DRIVER_PASSWORD)
   await page.getByRole('button', { name: 'Přihlásit se' }).click()
-  await page.waitForURL('/d')
+  await page.waitForURL('/driver')
 }
 
 /**
@@ -117,9 +117,9 @@ test.describe.serial('Driver PWA', () => {
     await expect(offerDialog).toBeVisible({ timeout: 2000 })
     console.log(`[FullFlow] Offer takeover shown ~${Date.now() - assignStart}ms after assign`)
 
-    // ── Přijmout → navigates to /d/ride ──────────────────────────────────────
+    // ── Přijmout → navigates to /driver/ride ──────────────────────────────────────
     await offerDialog.getByRole('button', { name: 'Přijmout' }).click()
-    await page.waitForURL('/d/ride')
+    await page.waitForURL('/driver/ride')
 
     // ── Jsem na místě (arrive) ────────────────────────────────────────────────
     await page.getByRole('button', { name: 'Jsem na místě' }).click()
@@ -131,7 +131,7 @@ test.describe.serial('Driver PWA', () => {
 
     // ── Ukončit jízdu → complete screen (fixed price is locked) ───────────────
     await page.getByRole('button', { name: 'Ukončit jízdu' }).click()
-    await page.waitForURL('/d/ride/complete')
+    await page.waitForURL('/driver/ride/complete')
 
     // Fixed price is prefilled + locked; pick a payment and complete.
     await expect(page.getByText('Pevná cena')).toBeVisible()
@@ -139,7 +139,7 @@ test.describe.serial('Driver PWA', () => {
     await page.getByRole('button', { name: 'Dokončit' }).click()
 
     // ── Back Home with the "Hotovo ✓" confirmation ────────────────────────────
-    await page.waitForURL('/d')
+    await page.waitForURL('/driver')
     await expect(page.getByText('Hotovo ✓')).toBeVisible({ timeout: 3000 })
 
     // ── Server confirms the order is Completed with the fixed price ───────────
@@ -152,7 +152,7 @@ test.describe.serial('Driver PWA', () => {
     // serves the stale cache. A full reload rebuilds the QueryClient and forces a fresh
     // GET /drivers/me/summary that reflects the just-completed ride.
     await page.reload()
-    await page.waitForURL('/d')
+    await page.waitForURL('/driver')
     const ridesChip = page.getByText('Jízdy').locator('..')
     await expect(ridesChip).toContainText('1', { timeout: 5000 })
     const cashChip = page.getByText('Hotovost').locator('..')
@@ -204,7 +204,7 @@ test.describe.serial('Driver PWA', () => {
     const offerDialog = page.getByRole('dialog', { name: 'Nástup' })
     await expect(offerDialog).toBeVisible({ timeout: 2000 })
     await offerDialog.getByRole('button', { name: 'Přijmout' }).click()
-    await page.waitForURL('/d/ride')
+    await page.waitForURL('/driver/ride')
     await waitForOrderStatus(dispatcherToken, order.id, 'Accepted')
 
     // Wait for the ride screen to finish restoring the order (arrive button visible) BEFORE

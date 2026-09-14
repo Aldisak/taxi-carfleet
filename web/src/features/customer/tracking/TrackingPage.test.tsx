@@ -94,7 +94,7 @@ function renderPage(initialPath: string) {
         <I18nextProvider i18n={i18n}>
           <MemoryRouter initialEntries={[initialPath]}>
             <Routes>
-              <Route path="/c/t/:code" element={<TrackingPage />} />
+              <Route path="/customer/t/:code" element={<TrackingPage />} />
             </Routes>
           </MemoryRouter>
         </I18nextProvider>
@@ -120,7 +120,7 @@ describe('TrackingPage', () => {
     mockActive.mockResolvedValue(active)
     mockOrder.mockResolvedValue(detail)
 
-    renderPage('/c/t/ABC123')
+    renderPage('/customer/t/ABC123')
 
     expect(await screen.findByText(/řidič petr je na cestě/i)).toBeInTheDocument()
     // Public poll is NOT used when authed.
@@ -131,7 +131,7 @@ describe('TrackingPage', () => {
     mockToken.mockReturnValue(null)
     mockPublic.mockResolvedValue(dto)
 
-    renderPage('/c/t/ABC123?k=sometoken')
+    renderPage('/customer/t/ABC123?k=sometoken')
 
     expect(await screen.findByText(/řidič petr je na cestě/i)).toBeInTheDocument()
     expect(mockPublic).toHaveBeenCalledWith('ABC123', 'sometoken')
@@ -144,7 +144,7 @@ describe('TrackingPage', () => {
       new ApiResponseError(410, { status: 410, title: 'Gone', type: '' }),
     )
 
-    renderPage('/c/t/ABC123?k=expiredtoken')
+    renderPage('/customer/t/ABC123?k=expiredtoken')
 
     expect(await screen.findByText(/odkaz vypršel/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /zavolat/i })).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('TrackingPage', () => {
     mockCancel.mockResolvedValue({ order: {} as never })
     const user = userEvent.setup()
 
-    renderPage('/c/t/ABC123')
+    renderPage('/customer/t/ABC123')
     await screen.findByText(/řidič petr je na cestě/i)
 
     await user.click(screen.getByRole('button', { name: /zrušit objednávku/i }))
@@ -178,7 +178,7 @@ describe('TrackingPage', () => {
     mockCancel.mockRejectedValueOnce(new ApiResponseError(409, { status: 409, title: 'Conflict', type: '' }))
     const user = userEvent.setup()
 
-    renderPage('/c/t/ABC123')
+    renderPage('/customer/t/ABC123')
     await screen.findByText(/řidič petr je na cestě/i)
 
     await user.click(screen.getByRole('button', { name: /zrušit objednávku/i }))
@@ -194,7 +194,7 @@ describe('TrackingPage', () => {
     mockByCode.mockResolvedValue({ ...dto, status: 'Arrived' })
     mockActive.mockResolvedValue(null)
 
-    renderPage('/c/t/ABC123')
+    renderPage('/customer/t/ABC123')
     await screen.findByText(/řidič je na místě/i)
     expect(screen.queryByRole('button', { name: /zrušit objednávku/i })).not.toBeInTheDocument()
   })
@@ -205,7 +205,7 @@ describe('TrackingPage', () => {
     mockActive.mockResolvedValue(active)
     mockOrder.mockResolvedValue(detail)
 
-    const { container } = renderPage('/c/t/ABC123')
+    const { container } = renderPage('/customer/t/ABC123')
     await screen.findByText(/řidič petr je na cestě/i)
     expect(await axe(container)).toHaveNoViolations()
   })

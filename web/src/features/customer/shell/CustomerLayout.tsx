@@ -78,7 +78,7 @@ const FooterLink = styled.a`
  * child query's fetch effect), so the logged-out GET public/fleet call carries
  * X-Fleet-Slug and does not 404 on localhost. authStorage.clear() wipes the slug,
  * so it is re-resolved on every mount. Resolution order: subdomain → ?fleet= →
- * /c/f/{slug} → 'demo' (see resolveFleetSlug).
+ * /customer/f/{slug} → 'demo' (see resolveFleetSlug).
  *
  * Applies fleet branding as a nested styled-components theme override and keeps the
  * Zavolat button in the header on every /c screen. Re-enables customer silent refresh
@@ -94,7 +94,7 @@ export function CustomerLayout() {
   const { theme: brandedTheme, fleet } = useFleetBranding()
 
   useEffect(() => {
-    enableSilentRefresh('/c/login')
+    enableSilentRefresh('/customer/login')
     const token = authStorage.getAccessToken()
     if (token) {
       scheduleProactiveRefresh(token)

@@ -35,12 +35,12 @@ const Title = styled.h1`
   text-align: center;
 `
 
-/** Standalone customer login at /c/login. Lands on /c after authentication. */
+/** Standalone customer login at /customer/login. Lands on /c after authentication. */
 export function CustomerLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
-  // F-05: /c/login is NOT a child of CustomerLayout, so persist the slug here too
+  // F-05: /customer/login is NOT a child of CustomerLayout, so persist the slug here too
   // before the auth calls fire — otherwise a direct hit 404s on localhost.
   useState(ensureFleetSlug)
 
@@ -48,7 +48,7 @@ export function CustomerLoginPage() {
     <Wrapper>
       <Card>
         <Title>{t('customer.login.title')}</Title>
-        <CustomerLoginStep onAuthenticated={() => navigate('/c')} />
+        <CustomerLoginStep onAuthenticated={() => navigate('/customer')} />
       </Card>
     </Wrapper>
   )

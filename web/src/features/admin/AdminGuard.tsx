@@ -6,7 +6,7 @@ import { canAccessAdmin } from './adminRoleGating'
 /**
  * SuperAdmin route guard for /admin. Reads the persisted role and, for anyone other than a
  * SuperAdmin (including logged-out), redirects to the DEDICATED /admin/login (UC-007 A7b) —
- * never the fleet-scoped /x/login, which structurally cannot authenticate a fleetless SuperAdmin.
+ * never the fleet-scoped /dispatcher/login, which structurally cannot authenticate a fleetless SuperAdmin.
  * A dedicated login route also means a successful login navigates to /admin and re-mounts this
  * guard, which then re-reads the freshly-stored SuperAdmin role. SuperAdmin is fleetless, so
  * /admin lives outside the fleet-scoped AppLayout.

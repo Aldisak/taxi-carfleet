@@ -456,7 +456,7 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
         <ActionBtn
           type="button"
           aria-label={t('board.actions.detail')}
-          onClick={() => navigate(`/x/orders/${order.id}`)}
+          onClick={() => navigate(`/dispatcher/orders/${order.id}`)}
         >
           {t('board.actions.detail')}
         </ActionBtn>

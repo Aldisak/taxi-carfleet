@@ -167,7 +167,7 @@ internal sealed class WeeklyDigestJob(
         var message = new PushMessage(
             Title: title,
             Body: body,
-            Url: "/x/analytics",
+            Url: "/dispatcher/analytics",
             Tag: $"weekly-digest-{isoYear}-{isoWeek}",
             Priority: "normal");
 

@@ -6,7 +6,7 @@ interface ToastState {
 }
 
 /**
- * Reads a one-shot toast i18n key passed via `navigate('/d', { state: { toast } })`
+ * Reads a one-shot toast i18n key passed via `navigate('/driver', { state: { toast } })`
  * (F-04 "objednávka přeřazena", B-complete "Hotovo ✓"), surfaces it for 2s, and
  * clears the history state so a refresh/back does not replay it.
  *

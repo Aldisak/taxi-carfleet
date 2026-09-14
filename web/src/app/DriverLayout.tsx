@@ -73,7 +73,7 @@ export function DriverLayout() {
   // Boot: opt the driver session into silent refresh so the 401-retry pipeline and proactive
   // timer are active even after a page reload (module state is reset on every load).
   useEffect(() => {
-    enableSilentRefresh('/d/login')
+    enableSilentRefresh('/driver/login')
 
     const token = authStorage.getAccessToken()
     if (token) {
@@ -98,9 +98,9 @@ export function DriverLayout() {
         <Outlet />
       </Content>
       <BottomNav aria-label={t('driver.nav.label')}>
-        <NavItem to="/d" end>{t('driver.nav.home')}</NavItem>
-        <NavItem to="/d/history">{t('driver.nav.history')}</NavItem>
-        <NavItem to="/d/settings">{t('driver.nav.settings')}</NavItem>
+        <NavItem to="/driver" end>{t('driver.nav.home')}</NavItem>
+        <NavItem to="/driver/history">{t('driver.nav.history')}</NavItem>
+        <NavItem to="/driver/settings">{t('driver.nav.settings')}</NavItem>
       </BottomNav>
     </Shell>
   )

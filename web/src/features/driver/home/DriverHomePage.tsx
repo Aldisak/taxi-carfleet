@@ -186,7 +186,7 @@ export function DriverHomePage() {
     } else if (homeState.action === 'goOffline') {
       void goOffline()
     } else if (homeState.action === 'viewRide') {
-      navigate('/d/ride')
+      navigate('/driver/ride')
     }
   }
 
@@ -236,7 +236,7 @@ export function DriverHomePage() {
 
           {/* Ride in progress link for Busy/EnRoute */}
           {(status === 'Busy' || status === 'EnRoute') && (
-            <RideLink href="/d/ride">{t('driver.home.status.viewRide')} →</RideLink>
+            <RideLink href="/driver/ride">{t('driver.home.status.viewRide')} →</RideLink>
           )}
 
           {/* Vehicle selector when offline */}

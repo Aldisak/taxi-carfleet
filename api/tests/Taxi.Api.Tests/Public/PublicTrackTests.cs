@@ -326,7 +326,7 @@ public sealed class PublicTrackTests(PostgresFixture fixture)
         var body = await response.Content.ReadFromJsonAsync<CreateOrderResponse>(JsonOptions, ct);
         body!.TrackingCode.Should().NotBeNullOrEmpty();
         body.TrackingToken.Should().NotBeNullOrEmpty();
-        body.TrackingUrlPath.Should().Be($"/c/t/{body.TrackingCode}?k={body.TrackingToken}");
+        body.TrackingUrlPath.Should().Be($"/customer/t/{body.TrackingCode}?k={body.TrackingToken}");
 
         // The returned token must validate against the created order via the public track endpoint.
         var trackResponse = await client.GetAsync(

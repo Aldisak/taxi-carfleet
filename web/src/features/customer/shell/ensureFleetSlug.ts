@@ -7,8 +7,8 @@ import { resolveFleetSlug } from './resolveFleetSlug'
  * (client.ts attaches it automatically). Idempotent — safe to call on every mount.
  *
  * MUST run before any public/auth request fires. Both the /c shell (CustomerLayout)
- * and the standalone /c/login page (which is NOT a child of CustomerLayout) call this,
- * because authStorage.clear() wipes the slug and a direct hit to /c/login would
+ * and the standalone /customer/login page (which is NOT a child of CustomerLayout) call this,
+ * because authStorage.clear() wipes the slug and a direct hit to /customer/login would
  * otherwise 404 on localhost.
  *
  * @returns the resolved slug.

@@ -96,7 +96,7 @@ const ErrorMessage = styled.p`
   text-align: center;
 `
 
-/** Driver login page at /d/login. Fleet slug is prefillable from localStorage. */
+/** Driver login page at /driver/login. Fleet slug is prefillable from localStorage. */
 export function DriverLoginPage() {
   const { t } = useTranslation()
   const {

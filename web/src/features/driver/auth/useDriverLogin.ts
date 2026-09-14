@@ -25,7 +25,7 @@ export interface UseDriverLoginResult {
  * - Role=Driver → /d
  * - Role=Dispatcher|FleetAdmin → /x
  * - staySignedIn=true → refresh token also persisted to IndexedDB
- * - enableSilentRefresh('/d/login') called on success (driver flow opt-in)
+ * - enableSilentRefresh('/driver/login') called on success (driver flow opt-in)
  */
 export function useDriverLogin(): UseDriverLoginResult {
   const navigate = useNavigate()
@@ -60,13 +60,13 @@ export function useDriverLogin(): UseDriverLoginResult {
       }
 
       // Opt the driver flow into silent refresh (proactive + 401-retry pipeline)
-      enableSilentRefresh('/d/login')
+      enableSilentRefresh('/driver/login')
 
       // Schedule a proactive refresh at exp−2min
       scheduleProactiveRefresh(response.accessToken)
 
       // Role-based landing
-      const destination = response.user.role === 'Driver' ? '/d' : '/x'
+      const destination = response.user.role === 'Driver' ? '/driver' : '/dispatcher'
       navigate(destination)
     } catch (err) {
       const status = (err as { status?: number }).status

@@ -18,7 +18,7 @@ function renderLoginPage() {
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
           <MemoryRouter
-            initialEntries={['/x/login']}
+            initialEntries={['/dispatcher/login']}
             future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
           >
             <LoginPage />

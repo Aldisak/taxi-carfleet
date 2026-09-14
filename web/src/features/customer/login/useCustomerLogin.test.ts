@@ -96,7 +96,7 @@ describe('useCustomerLogin', () => {
     expect(mockVerify).toHaveBeenCalledWith('+420123456789', '654321')
     expect(mockAuthStorage.setTokens).toHaveBeenCalledWith('access-tok', 'refresh-tok', 'demo', 'Customer')
     expect(mockIdb.setRefreshToken).toHaveBeenCalledWith('refresh-tok')
-    expect(enableSilentRefresh).toHaveBeenCalledWith('/c/login')
+    expect(enableSilentRefresh).toHaveBeenCalledWith('/customer/login')
     expect(onAuthenticated).toHaveBeenCalledTimes(1)
   })
 

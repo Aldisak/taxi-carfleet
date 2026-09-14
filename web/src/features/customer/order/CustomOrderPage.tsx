@@ -85,7 +85,7 @@ const LoginPrompt = styled.p`
 const EMPTY: AddressValue = { address: '', lat: null, lng: null }
 
 /**
- * Custom order screen (/c/order/new). Pickup autocomplete (geo/suggest) + "Použít moji
+ * Custom order screen (/customer/order/new). Pickup autocomplete (geo/suggest) + "Použít moji
  * polohu" GPS pin + lazy map-pin drag fallback; optional dropoff. A live price preview
  * (usePriceQuote → PriceRangeBadge) shows a Fixed price or an Estimate RANGE, never a
  * single exact estimate (AC #4). When / passengers / note, then "Objednat": if logged out
@@ -168,7 +168,7 @@ export function CustomOrderPage() {
 
     try {
       const created = await createOrder.mutateAsync(req)
-      navigate(`/c/t/${created.publicCode}`)
+      navigate(`/customer/t/${created.publicCode}`)
     } catch {
       setFormError('customer.order.errorCreateFailed')
     }

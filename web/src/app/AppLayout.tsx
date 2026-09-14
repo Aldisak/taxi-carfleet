@@ -85,7 +85,7 @@ export function AppLayout() {
 
   function handleLogout() {
     authStorage.clear()
-    navigate('/x/login')
+    navigate('/dispatcher/login')
   }
 
   return (
@@ -93,12 +93,12 @@ export function AppLayout() {
       <Header>
         <FleetName>{t('app.title')}</FleetName>
         <Nav>
-          <NavLink to="/x">{t('nav.board')}</NavLink>
-          <NavLink to="/x/orders">{t('nav.orders')}</NavLink>
-          {isFleetAdmin && <NavLink to="/x/reports">{t('nav.reports')}</NavLink>}
-          {isFleetAdmin && <NavLink to="/x/audit">{t('nav.audit')}</NavLink>}
-          {isFleetAdmin && <NavLink to="/x/analytics">{t('nav.analytics')}</NavLink>}
-          {isFleetAdmin && <NavLink to="/x/settings">{t('nav.settings')}</NavLink>}
+          <NavLink to="/dispatcher">{t('nav.board')}</NavLink>
+          <NavLink to="/dispatcher/orders">{t('nav.orders')}</NavLink>
+          {isFleetAdmin && <NavLink to="/dispatcher/reports">{t('nav.reports')}</NavLink>}
+          {isFleetAdmin && <NavLink to="/dispatcher/audit">{t('nav.audit')}</NavLink>}
+          {isFleetAdmin && <NavLink to="/dispatcher/analytics">{t('nav.analytics')}</NavLink>}
+          {isFleetAdmin && <NavLink to="/dispatcher/settings">{t('nav.settings')}</NavLink>}
           <NavButton
             type="button"
             aria-label={isMuted ? t('nav.unmute') : t('nav.mute')}

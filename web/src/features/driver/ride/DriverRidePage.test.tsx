@@ -131,7 +131,7 @@ describe('DriverRidePage', () => {
     activeOrderResult.order = makeOrder({ status: 'InProgress' })
     renderPage()
     await userEvent.click(screen.getByRole('button', { name: 'Ukončit jízdu' }))
-    expect(mockNavigate).toHaveBeenCalledWith('/d/ride/complete')
+    expect(mockNavigate).toHaveBeenCalledWith('/driver/ride/complete')
   })
 
   it('Arrived: "Zákazník nepřišel" fires the no-show cancel once enabled', async () => {

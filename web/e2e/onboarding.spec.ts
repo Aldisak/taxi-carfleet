@@ -12,7 +12,7 @@
  * Production resolves the tenant from the Host subdomain ({slug}.{domain} — see
  * docs/runbook.md). Locally there is no *.localhost wildcard DNS, so this spec drives the
  * second fleet via the app's existing `?fleet={slug}` slug override, which resolveFleetSlug
- * supports as the localhost fallback (subdomain → ?fleet= → /c/f/{slug} → 'demo'). The
+ * supports as the localhost fallback (subdomain → ?fleet= → /customer/f/{slug} → 'demo'). The
  * branding path exercised is identical; only the slug SOURCE differs.
  *
  * ── How the SuperAdmin is obtained (A7b — now unblocked) ──────────────────────
@@ -241,7 +241,7 @@ test.describe.serial('Tenant onboarding + branding', () => {
 
   test('AC4_RuntimeBranding — the second fleet customer app shows its own name + color with no rebuild', async ({ page }: { page: Page }) => {
     // Drive the second fleet via ?fleet= (no *.localhost DNS locally — see header + runbook).
-    await page.goto(`/c?fleet=${NEW_FLEET.slug}`)
+    await page.goto(`/customer?fleet=${NEW_FLEET.slug}`)
 
     // The fleet name from GET /public/fleet renders in the header (h1), not the base app name.
     await expect(page.getByRole('heading', { level: 1, name: NEW_FLEET.name })).toBeVisible({ timeout: 10_000 })

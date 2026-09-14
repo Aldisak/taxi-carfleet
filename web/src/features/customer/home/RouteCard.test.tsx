@@ -21,10 +21,10 @@ function renderCard(r: CommonRouteDto = route) {
   return render(
     <ThemeProvider theme={theme}>
       <I18nextProvider i18n={i18n}>
-        <MemoryRouter initialEntries={['/c']}>
+        <MemoryRouter initialEntries={['/customer']}>
           <Routes>
-            <Route path="/c" element={<RouteCard route={r} />} />
-            <Route path="/c/order/route/:routeId" element={<LocationProbe />} />
+            <Route path="/customer" element={<RouteCard route={r} />} />
+            <Route path="/customer/order/route/:routeId" element={<LocationProbe />} />
           </Routes>
         </MemoryRouter>
       </I18nextProvider>
@@ -43,7 +43,7 @@ describe('RouteCard', () => {
     const user = userEvent.setup()
     renderCard()
     await user.click(screen.getByRole('button', { name: /Nádraží → Centrum/ }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/c/order/route/r1')
+    expect(screen.getByTestId('location')).toHaveTextContent('/customer/order/route/r1')
   })
 
   it('has no axe violations', async () => {

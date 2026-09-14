@@ -83,8 +83,8 @@ function makeWrapper(initialPath: string) {
             createElement(
               Routes,
               null,
-              createElement(Route, { path: '/x', element: createElement('div', { 'data-testid': 'board' }, 'Board') }),
-              createElement(Route, { path: '/x/orders/:id', element: children }),
+              createElement(Route, { path: '/dispatcher', element: createElement('div', { 'data-testid': 'board' }, 'Board') }),
+              createElement(Route, { path: '/dispatcher/orders/:id', element: children }),
             ),
           ),
         ),
@@ -98,11 +98,11 @@ beforeEach(() => {
 })
 
 describe('OrderDrawer — route open/close', () => {
-  it('renders the drawer when navigated to /x/orders/:id', async () => {
+  it('renders the drawer when navigated to /dispatcher/orders/:id', async () => {
     mockGetOrder.mockResolvedValue(makeOrder())
 
     render(createElement(OrderDrawer), {
-      wrapper: makeWrapper('/x/orders/order-abc'),
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
     })
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
@@ -113,7 +113,7 @@ describe('OrderDrawer — route open/close', () => {
     mockGetOrder.mockResolvedValue(makeOrder())
 
     render(createElement(OrderDrawer), {
-      wrapper: makeWrapper('/x/orders/order-abc'),
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
     })
 
     // Wait for drawer to render
@@ -137,7 +137,7 @@ describe('OrderDrawer — PATCH diff payload', () => {
     mockPatchOrder.mockResolvedValue(updated)
 
     render(createElement(OrderDrawer), {
-      wrapper: makeWrapper('/x/orders/order-abc'),
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
     })
 
     // Wait for drawer to load
@@ -169,7 +169,7 @@ describe('OrderDrawer — PATCH diff payload', () => {
     mockPatchOrder.mockResolvedValue({ ...order, scheduledAt: '2026-09-10T14:00:00Z', version: 2 })
 
     render(createElement(OrderDrawer), {
-      wrapper: makeWrapper('/x/orders/order-abc'),
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
     })
 
     await screen.findByText(/KH-001/i)
@@ -224,7 +224,7 @@ describe('OrderDrawer — address autocomplete edit', () => {
     mockPatchOrder.mockResolvedValue({ ...order, pickupAddress: 'Kolín nádraží', version: 2 })
 
     render(createElement(OrderDrawer), {
-      wrapper: makeWrapper('/x/orders/order-abc'),
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
     })
 
     // Wait for drawer to load
@@ -279,7 +279,7 @@ describe('OrderDrawer — cancel form inline', () => {
     const promptSpy = vi.spyOn(window, 'prompt')
 
     render(createElement(OrderDrawer), {
-      wrapper: makeWrapper('/x/orders/order-abc'),
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
     })
 
     await screen.findByText(/KH-001/i)

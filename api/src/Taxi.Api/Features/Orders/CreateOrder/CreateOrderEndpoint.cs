@@ -241,7 +241,7 @@ internal sealed class CreateOrderEndpoint(
         {
             trackingCode = order.PublicCode;
             trackingToken = trackingTokenService.Mint(order.Id, now + TrackingTokenLifetime);
-            trackingUrlPath = $"/c/t/{trackingCode}?k={trackingToken}";
+            trackingUrlPath = $"/customer/t/{trackingCode}?k={trackingToken}";
         }
 
         await Send.CreatedAtAsync<GetOrderEndpoint>(

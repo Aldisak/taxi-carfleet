@@ -53,7 +53,7 @@ const CustomAddressButton = styled.button`
 `
 
 /**
- * Customer PWA home (/c). Renders the active-order sticky banner OR the valid-now
+ * Customer PWA home (/customer). Renders the active-order sticky banner OR the valid-now
  * common-route cards (decided by homeContent.ts) and the always-present "Vlastní adresa"
  * button. Ordering entry points are wrapped by the OfflineGate so offline shows cached
  * reads + Zavolat. Must NOT import Leaflet (slow-3G budget, spec §Behavior rules).
@@ -83,7 +83,7 @@ export function CustomerHomePage() {
           </Section>
         )}
 
-        <CustomAddressButton type="button" onClick={() => navigate('/c/order/new')}>
+        <CustomAddressButton type="button" onClick={() => navigate('/customer/order/new')}>
           {t('customer.home.customAddress')}
         </CustomAddressButton>
       </OfflineGate>

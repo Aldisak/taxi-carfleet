@@ -41,10 +41,10 @@ function renderPage() {
     <QueryClientProvider client={client}>
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
-          <MemoryRouter initialEntries={['/c/order/new']}>
+          <MemoryRouter initialEntries={['/customer/order/new']}>
             <Routes>
-              <Route path="/c/order/new" element={<CustomOrderPage />} />
-              <Route path="/c/t/:code" element={<LocationProbe />} />
+              <Route path="/customer/order/new" element={<CustomOrderPage />} />
+              <Route path="/customer/t/:code" element={<LocationProbe />} />
             </Routes>
           </MemoryRouter>
         </I18nextProvider>
@@ -89,13 +89,13 @@ describe('CustomOrderPage', () => {
             <MemoryRouter
               initialEntries={[
                 {
-                  pathname: '/c/order/new',
+                  pathname: '/customer/order/new',
                   state: { reorder: { pickupAddress: 'Hlavní 1, Praha', dropoffAddress: 'Náměstí 5' } },
                 },
               ]}
             >
               <Routes>
-                <Route path="/c/order/new" element={<CustomOrderPage />} />
+                <Route path="/customer/order/new" element={<CustomOrderPage />} />
               </Routes>
             </MemoryRouter>
           </I18nextProvider>
@@ -140,7 +140,7 @@ describe('CustomOrderPage', () => {
     expect(payload.pickupLat).toBe(50.0875)
     expect(payload.pickupLng).toBe(14.4213)
     expect(payload.priceType).toBe('Estimate')
-    expect(await screen.findByTestId('location')).toHaveTextContent('/c/t/K7F2A9')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/customer/t/K7F2A9')
   })
 
   it('when logged out, Objednat shows the inline login WITHOUT losing the chosen pickup', async () => {
@@ -181,7 +181,7 @@ describe('CustomOrderPage', () => {
     await user.click(screen.getByRole('button', { name: /odeslat kód/i }))
     await user.type(await screen.findByLabelText(/ověřovací kód/i), '123456')
 
-    expect(await screen.findByTestId('location')).toHaveTextContent('/c/t/Z9Z9Z9')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/customer/t/Z9Z9Z9')
     expect(mockCreate.mock.calls[0][0].pickupLat).toBe(50.0875)
   })
 

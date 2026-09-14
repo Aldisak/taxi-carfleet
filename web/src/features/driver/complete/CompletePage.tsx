@@ -109,7 +109,7 @@ const EmptyState = styled.div`
 `
 
 /**
- * Complete ride screen (/d/ride/complete).
+ * Complete ride screen (/driver/ride/complete).
  * - Fixed price: locked + prefilled; "Změnit cenu" reveals a keypad + mandatory reason
  *   (>= 5 chars) sent as overrideReason ONLY when the price actually changed.
  * - Estimate/Meter: big numeric keypad prefilled with the estimate.
@@ -167,11 +167,11 @@ export function CompletePage() {
 
     const outcome = await complete(order!.id, payload)
     if (outcome.type === 'success') {
-      navigate('/d', { state: { toast: 'driver.complete.successOverlay' } })
+      navigate('/driver', { state: { toast: 'driver.complete.successOverlay' } })
     } else if (outcome.type === 'queued') {
       // Offline: the complete is queued (idempotency key minted) and replays on reconnect.
       // Go Home optimistically — the PendingBadge communicates it is still being sent.
-      navigate('/d', { state: { toast: 'driver.complete.queuedOverlay' } })
+      navigate('/driver', { state: { toast: 'driver.complete.queuedOverlay' } })
     } else if (outcome.type === 'stale') {
       // Definitive conflict: the queue already dropped this order's items and reconciled
       // from GET /orders/{id} (B3c-1); show a short note so the driver re-checks the ride.

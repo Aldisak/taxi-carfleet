@@ -104,7 +104,7 @@ public sealed class PhoneOrderSmsEndToEndTests(PostgresFixture fixture)
         factory.Sms.Sent.Should().ContainSingle("exactly one SMS is produced");
         factory.Sms.Sent.TryPeek(out var sms).Should().BeTrue();
         sms!.Body.Should().Contain("https://", "the SMS carries an absolute tracking link");
-        sms.Body.Should().Contain("/c/t/");
+        sms.Body.Should().Contain("/customer/t/");
         Taxi.Api.Common.Notifications.GsmSevenValidator.IsGsm7AndWithinLimit(sms.Body).Should().BeTrue(
             $"the real end-to-end SMS (real minted token) must fit one GSM-7 segment; was {sms.Body.Length}: {sms.Body}");
 

@@ -32,13 +32,13 @@ const SECTION_PROBIHAJICI = 'Probíhající'
 
 /** Login page: fill slug, email, password, submit. */
 async function performLogin(page: Page, slug = 'demo', email = 'dispatcher@demo.local', password = 'Demo1234!') {
-  await page.goto('/x/login')
+  await page.goto('/dispatcher/login')
   await page.locator('#fleetSlug').fill(slug)
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)
   await page.locator('button[type="submit"]').click()
   // Wait for board to be visible
-  await page.waitForURL('/x')
+  await page.waitForURL('/dispatcher')
 }
 
 /** Wait until the SignalR hub appears connected (no offline banner visible). */

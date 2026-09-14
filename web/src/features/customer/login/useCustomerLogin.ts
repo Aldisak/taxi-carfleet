@@ -11,8 +11,8 @@ export type CustomerLoginStep = 'phone' | 'code'
 /** Options for useCustomerLogin. */
 export interface UseCustomerLoginOptions {
   /**
-   * Continuation invoked after tokens are stored. Standalone /c/login passes a
-   * navigate('/c'); an order screen passes a resume-create callback so the inline
+   * Continuation invoked after tokens are stored. Standalone /customer/login passes a
+   * navigate('/customer'); an order screen passes a resume-create callback so the inline
    * login does not lose form state (the parent owns the form — login just calls back).
    */
   onAuthenticated?: () => void
@@ -44,7 +44,7 @@ export interface UseCustomerLoginResult {
 
 /**
  * Customer phone-code login. Embeddable: pass onAuthenticated to resume an order flow
- * inline without losing form state, or navigate standalone from /c/login. Reuses the
+ * inline without losing form state, or navigate standalone from /customer/login. Reuses the
  * existing authStorage + IndexedDB refresh infra (no fork) and opts the customer
  * session into silent refresh so the device is never re-asked unless refresh fails.
  */
@@ -120,7 +120,7 @@ export function useCustomerLogin(options: UseCustomerLoginOptions = {}): UseCust
       // Persist the refresh token for cross-session stay-signed-in (never re-ask on device).
       await idbAuthStore.setRefreshToken(res.refreshToken)
       // Opt the customer session into the silent-refresh pipeline.
-      enableSilentRefresh('/c/login')
+      enableSilentRefresh('/customer/login')
       scheduleProactiveRefresh(res.accessToken)
       onAuthenticated?.()
     } catch (err) {

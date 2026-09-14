@@ -110,7 +110,7 @@ const AccessDenied = styled.div`
   color: ${({ theme }) => theme.colors.textSecondary};
 `
 
-/** /x/reports — FleetAdmin reports screen (driver report + fleet report + ratings). */
+/** /dispatcher/reports — FleetAdmin reports screen (driver report + fleet report + ratings). */
 export function ReportsPage() {
   const { t } = useTranslation()
   const role = authStorage.getUserRole()

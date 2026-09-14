@@ -44,7 +44,7 @@ export function useLiveClear(myDriverId: string | undefined) {
 
       void idbRideStore.clear()
       clear()
-      navigate('/d', { replace: true, state: { toast: 'driver.ride.reassigned' } })
+      navigate('/driver', { replace: true, state: { toast: 'driver.ride.reassigned' } })
     }
 
     function handleOrderChanged(e: Event) {
@@ -55,7 +55,7 @@ export function useLiveClear(myDriverId: string | undefined) {
 
       void idbRideStore.clear()
       clear()
-      navigate('/d', { replace: true, state: { toast: 'driver.ride.reassigned' } })
+      navigate('/driver', { replace: true, state: { toast: 'driver.ride.reassigned' } })
     }
 
     window.addEventListener('driver:statusChanged', handleStatusChanged)

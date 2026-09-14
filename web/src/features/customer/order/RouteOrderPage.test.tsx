@@ -56,11 +56,11 @@ function renderPage(route: CommonRouteDto = p2p) {
     <QueryClientProvider client={client}>
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
-          <MemoryRouter initialEntries={[{ pathname: `/c/order/route/${route.id}`, state: { route } }]}>
+          <MemoryRouter initialEntries={[{ pathname: `/customer/order/route/${route.id}`, state: { route } }]}>
             <Routes>
-              <Route path="/c/order/route/:routeId" element={<RouteOrderPage />} />
-              <Route path="/c/t/:code" element={<LocationProbe />} />
-              <Route path="/c" element={<LocationProbe />} />
+              <Route path="/customer/order/route/:routeId" element={<RouteOrderPage />} />
+              <Route path="/customer/t/:code" element={<LocationProbe />} />
+              <Route path="/customer" element={<LocationProbe />} />
             </Routes>
           </MemoryRouter>
         </I18nextProvider>
@@ -115,7 +115,7 @@ describe('RouteOrderPage', () => {
     expect(payload.routeId).toBe('r2')
     expect(payload.fixedPriceCzk).toBe(110)
     expect(payload.pickupLat).toBe(49.948)
-    expect(await screen.findByTestId('location')).toHaveTextContent('/c/t/ZONE01')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/customer/t/ZONE01')
   })
 
   it('Zone route, LOGGED OUT: an in-zone pickup reaches the inline login (quote runs anonymously by slug)', async () => {
@@ -208,7 +208,7 @@ describe('RouteOrderPage', () => {
     expect(payload.dropoffLat).toBe(50.0801)
     expect(payload.dropoffLng).toBe(14.4289)
 
-    expect(await screen.findByTestId('location')).toHaveTextContent('/c/t/K7F2A9')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/customer/t/K7F2A9')
   })
 
   it('creates the order after completing the inline login (form state preserved)', async () => {
@@ -240,7 +240,7 @@ describe('RouteOrderPage', () => {
     await user.type(await screen.findByLabelText(/ověřovací kód/i), '123456')
 
     // Order is created with the preserved passenger count and we navigate to tracking.
-    expect(await screen.findByTestId('location')).toHaveTextContent('/c/t/Z9Z9Z9')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/customer/t/Z9Z9Z9')
     expect(mockCreate).toHaveBeenCalledTimes(1)
     expect(mockCreate.mock.calls[0][0].passengers).toBe(2)
   })

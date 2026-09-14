@@ -27,7 +27,7 @@ const mockHistory = vi.mocked(getMyOrderHistory)
 
 function TrackingProbe() {
   const { code } = useParams<{ code: string }>()
-  return <div>tracking /c/t/{code}</div>
+  return <div>tracking /customer/t/{code}</div>
 }
 
 /** Probe that renders the reorder draft passed via router state, proving the state shape. */
@@ -68,11 +68,11 @@ function renderPage() {
     <QueryClientProvider client={client}>
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
-          <MemoryRouter initialEntries={['/c/history']}>
+          <MemoryRouter initialEntries={['/customer/history']}>
             <Routes>
-              <Route path="/c/history" element={<CustomerHistoryPage />} />
-              <Route path="/c/t/:code" element={<TrackingProbe />} />
-              <Route path="/c/order/new" element={<CustomOrderProbe />} />
+              <Route path="/customer/history" element={<CustomerHistoryPage />} />
+              <Route path="/customer/t/:code" element={<TrackingProbe />} />
+              <Route path="/customer/order/new" element={<CustomOrderProbe />} />
             </Routes>
           </MemoryRouter>
         </I18nextProvider>
@@ -102,7 +102,7 @@ describe('CustomerHistoryPage', () => {
     renderPage()
 
     await user.click(await screen.findByRole('link', { name: /Zobrazit jízdu ABC123/ }))
-    await waitFor(() => expect(screen.getByText(/\/c\/t\/ABC123/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/\/customer\/t\/ABC123/)).toBeInTheDocument())
   })
 
   it('Objednat znovu navigates to the custom order screen prefilled', async () => {

@@ -77,7 +77,7 @@ describe('useDriverLogin', () => {
       await result.current.handleSubmit(fakeEvent)
     })
 
-    expect(mockNavigate).toHaveBeenCalledWith('/d')
+    expect(mockNavigate).toHaveBeenCalledWith('/driver')
   })
 
   it('Dispatcher role navigates to /x after successful login', async () => {
@@ -105,7 +105,7 @@ describe('useDriverLogin', () => {
       await result.current.handleSubmit(fakeEvent)
     })
 
-    expect(mockNavigate).toHaveBeenCalledWith('/x')
+    expect(mockNavigate).toHaveBeenCalledWith('/dispatcher')
   })
 
   it('staySignedIn=true stores refresh token in IndexedDB', async () => {
@@ -187,6 +187,6 @@ describe('useDriverLogin', () => {
       await result.current.handleSubmit(fakeEvent)
     })
 
-    expect(enableSilentRefresh).toHaveBeenCalledWith('/d/login')
+    expect(enableSilentRefresh).toHaveBeenCalledWith('/driver/login')
   })
 })

@@ -117,7 +117,7 @@ function formatAt(iso: string): string {
   return pragueTime.format(new Date(iso))
 }
 
-/** /x/audit — FleetAdmin read-only, paged, filterable unified audit timeline. */
+/** /dispatcher/audit — FleetAdmin read-only, paged, filterable unified audit timeline. */
 export function AuditPage() {
   const { t } = useTranslation()
   const role = authStorage.getUserRole()

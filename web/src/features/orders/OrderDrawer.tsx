@@ -449,7 +449,7 @@ export function OrderDrawer() {
   const cancelOrder = useCancelOrder()
 
   function handleClose() {
-    navigate('/x')
+    navigate('/dispatcher')
   }
 
   function handleStartEdit() {

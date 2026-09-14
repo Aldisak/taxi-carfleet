@@ -98,7 +98,7 @@ const BackLink = styled.a`
 `
 
 /**
- * Active ride screen (/d/ride). Status-driven big buttons, tap-to-call, collapsible map strip,
+ * Active ride screen (/driver/ride). Status-driven big buttons, tap-to-call, collapsible map strip,
  * nav handoff, and F-04 live-clear on mid-ride reassignment. State is restored on mount from
  * the server (authoritative) + IndexedDB.
  */
@@ -128,7 +128,7 @@ export function DriverRidePage() {
       <Page>
         <EmptyState>
           <p>{t('driver.ride.noRide')}</p>
-          <BackLink href="/d">{t('driver.ride.backHome')}</BackLink>
+          <BackLink href="/driver">{t('driver.ride.backHome')}</BackLink>
         </EmptyState>
       </Page>
     )
@@ -150,7 +150,7 @@ export function DriverRidePage() {
   function handlePrimary() {
     if (buttons.primaryAction === 'arrive') void runTransition(arrive)
     else if (buttons.primaryAction === 'start') void runTransition(start)
-    else if (buttons.primaryAction === 'complete') navigate('/d/ride/complete')
+    else if (buttons.primaryAction === 'complete') navigate('/driver/ride/complete')
   }
 
   function handleSecondary() {

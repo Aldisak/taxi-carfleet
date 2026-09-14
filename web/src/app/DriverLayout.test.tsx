@@ -46,9 +46,9 @@ import { authStorage } from '../shared/api/auth-storage'
 function renderDriverLayout() {
   return render(
     <ThemeProvider theme={theme}>
-      <MemoryRouter initialEntries={['/d']}>
+      <MemoryRouter initialEntries={['/driver']}>
         <Routes>
-          <Route path="/d" element={<DriverLayout />} />
+          <Route path="/driver" element={<DriverLayout />} />
         </Routes>
       </MemoryRouter>
     </ThemeProvider>,
@@ -61,10 +61,10 @@ describe('DriverLayout boot', () => {
     vi.mocked(authStorage.getAccessToken).mockReturnValue(null)
   })
 
-  it('calls enableSilentRefresh("/d/login") on mount', () => {
+  it('calls enableSilentRefresh("/driver/login") on mount', () => {
     renderDriverLayout()
 
-    expect(vi.mocked(enableSilentRefresh)).toHaveBeenCalledWith('/d/login')
+    expect(vi.mocked(enableSilentRefresh)).toHaveBeenCalledWith('/driver/login')
   })
 
   it('schedules proactive refresh when access token is present on mount', () => {

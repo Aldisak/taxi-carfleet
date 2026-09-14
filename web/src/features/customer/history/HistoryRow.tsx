@@ -99,10 +99,10 @@ interface HistoryRowProps {
 }
 
 /**
- * One past-order row: tapping the row navigates to /c/t/{code} (read-only tracking — the cold
+ * One past-order row: tapping the row navigates to /customer/t/{code} (read-only tracking — the cold
  * authed load renders the by-code DTO read-only, laneB4d contract note). "Objednat znovu" copies
  * the addresses into a custom-order draft (reorder.ts) passed via router state and navigates to
- * /c/order/new prefilled. Date in Europe/Prague, price in cs-CZ CZK.
+ * /customer/order/new prefilled. Date in Europe/Prague, price in cs-CZ CZK.
  */
 export function HistoryRow({ order }: HistoryRowProps) {
   const { t } = useTranslation()
@@ -112,12 +112,12 @@ export function HistoryRow({ order }: HistoryRowProps) {
   const route = [order.pickupAddress, order.dropoffAddress].filter(Boolean).join(' → ')
 
   function handleReorder() {
-    navigate('/c/order/new', { state: { [REORDER_STATE_KEY]: buildReorderDraft(order) } })
+    navigate('/customer/order/new', { state: { [REORDER_STATE_KEY]: buildReorderDraft(order) } })
   }
 
   return (
     <Card>
-      <RowLink to={`/c/t/${encodeURIComponent(order.publicCode)}`} aria-label={t('customer.history.openAria', { code: order.publicCode })}>
+      <RowLink to={`/customer/t/${encodeURIComponent(order.publicCode)}`} aria-label={t('customer.history.openAria', { code: order.publicCode })}>
         <TopLine>
           <DateText>{formatPrague(historyRowTimestamp(order))}</DateText>
           <Pill>{t(historyStatusKey(order.status))}</Pill>

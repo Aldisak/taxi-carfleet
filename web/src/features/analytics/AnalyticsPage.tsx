@@ -82,7 +82,7 @@ const TABS: TabKey[] = ['prehled', 'poptavka', 'provoz', 'trzby', 'ridici', 'zak
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-/** The /x/analytics page shell: tab nav + shared controls + routed tab content. */
+/** The /dispatcher/analytics page shell: tab nav + shared controls + routed tab content. */
 export function AnalyticsPage() {
   const { t } = useTranslation()
   const now = new Date()

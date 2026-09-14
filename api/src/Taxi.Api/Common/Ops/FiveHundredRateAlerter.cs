@@ -101,7 +101,7 @@ internal sealed class FiveHundredRateAlerter(
         var message = new PushMessage(
             Title: "Taxi API: 5xx spike",
             Body: "More than the tolerated number of server errors occurred in the last minute.",
-            Url: "/x",
+            Url: "/dispatcher",
             Tag: "ops-5xx-alert",
             Priority: "high");
 

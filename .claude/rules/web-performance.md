@@ -16,7 +16,7 @@ Any list that can realistically exceed ~100 rendered rows (order search results,
 
 ## Code splitting
 
-Role route groups (`/x`, `/d`, `/c`) are lazy-loaded at the router with `React.lazy` so no client downloads another role's bundle. Heavy dependencies (Leaflet) load only inside the chunks that use them.
+Role route groups (`/dispatcher`, `/driver`, `/customer`) are lazy-loaded at the router with `React.lazy` so no client downloads another role's bundle. Heavy dependencies (Leaflet) load only inside the chunks that use them.
 
 ## Bundle budget
 

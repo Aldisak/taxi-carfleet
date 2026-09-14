@@ -25,7 +25,7 @@ export class ApiResponseError extends Error {
 
 interface RequestOptions extends RequestInit {
   /**
-   * When true, a 401 response does NOT clear storage or redirect to /x/login.
+   * When true, a 401 response does NOT clear storage or redirect to /dispatcher/login.
    * Use this on the login endpoint itself so credential errors render as form errors.
    */
   skipAuthRedirect?: boolean
@@ -74,24 +74,24 @@ export async function apiRequest<T>(
         // Retry the original request with the new access token
         return apiRequest<T>(path, { ...options, _isRetry: true })
       }
-      // silentRefresh already cleared storage and redirected to /d/login
+      // silentRefresh already cleared storage and redirected to /driver/login
       return new Promise(() => undefined)
     }
 
     // Silent-refresh flow — retry itself got 401: clear both stores and redirect to the
     // caller's login. Role-aware via getFailureRedirectPath() (F2: previously hardcoded
-    // /d/login, which bounced a customer whose refresh failed to the DRIVER login).
+    // /driver/login, which bounced a customer whose refresh failed to the DRIVER login).
     // Must check BEFORE the dispatcher fallthrough so IDB is always cleaned up.
     if (_isRetry && isSilentRefreshEnabled()) {
       authStorage.clear()
       await idbAuthStore.clear()
-      window.location.href = getFailureRedirectPath() ?? '/d/login'
+      window.location.href = getFailureRedirectPath() ?? '/driver/login'
       return new Promise(() => undefined)
     }
 
-    // Dispatcher flow (unchanged): clear storage and redirect to /x/login
+    // Dispatcher flow (unchanged): clear storage and redirect to /dispatcher/login
     authStorage.clear()
-    window.location.href = '/x/login'
+    window.location.href = '/dispatcher/login'
     // Return a never-resolved promise — navigation is underway
     return new Promise(() => undefined)
   }
@@ -160,7 +160,7 @@ export interface AdminLoginRequest {
  * Returns the same shape as staff login (StaffLoginResponse) with user.role === 'SuperAdmin'
  * and a token carrying NO fleet_id claim. skipAuthRedirect is MANDATORY: bad creds / a
  * non-SuperAdmin return 401 uniformly, and without this flag client.ts would clear storage and
- * bounce to /x/login, destroying the "invalid credentials" form error path.
+ * bounce to /dispatcher/login, destroying the "invalid credentials" form error path.
  */
 export function adminLogin(req: AdminLoginRequest): Promise<StaffLoginResponse> {
   return apiRequest<StaffLoginResponse>('/auth/admin/login', {
@@ -235,7 +235,7 @@ export function requestCustomerCode(phone: string): Promise<void> {
 /**
  * POST auth/customer/verify-code — verify the OTP and return customer tokens.
  * skipAuthRedirect is MANDATORY: a wrong code returns 401, and without this flag
- * client.ts would clear storage / redirect (to /x/login or via silent refresh),
+ * client.ts would clear storage / redirect (to /dispatcher/login or via silent refresh),
  * destroying the "Kód nesouhlasí" error path. The 401 surfaces as an ApiResponseError.
  */
 export function verifyCustomerCode(phone: string, code: string): Promise<VerifyCustomerCodeResponse> {
@@ -587,7 +587,7 @@ export interface CreateOrderResponse {
   trackingCode?: string
   /** HMAC tracking token for the logged-out link (A-track). Optional pre-merge. */
   trackingToken?: string
-  /** Full tracking URL path /c/t/{code}?k={token} (A-track). Optional pre-merge. */
+  /** Full tracking URL path /customer/t/{code}?k={token} (A-track). Optional pre-merge. */
   trackingUrlPath?: string
 }
 

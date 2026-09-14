@@ -9,7 +9,7 @@ export interface UseRouteOrderResult {
 }
 
 /**
- * Resolves the route for the /c/order/route/:routeId confirm screen. Prefers the route
+ * Resolves the route for the /customer/order/route/:routeId confirm screen. Prefers the route
  * passed in nav-state from the Home card (no extra fetch). Falls back to the
  * ['routes','common'] query cache for a soft refresh where state survives.
  *

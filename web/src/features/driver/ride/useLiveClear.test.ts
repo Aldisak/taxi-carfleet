@@ -40,7 +40,7 @@ describe('useLiveClear', () => {
     })
 
     expect(clearFn).toHaveBeenCalled()
-    expect(mockNavigate).toHaveBeenCalledWith('/d', expect.objectContaining({ replace: true }))
+    expect(mockNavigate).toHaveBeenCalledWith('/driver', expect.objectContaining({ replace: true }))
   })
 
   it('F-04: DriverStatusChanged with different driverId is ignored', async () => {
@@ -77,7 +77,7 @@ describe('useLiveClear', () => {
     })
 
     expect(clearFn).toHaveBeenCalled()
-    expect(mockNavigate).toHaveBeenCalledWith('/d', expect.objectContaining({ replace: true }))
+    expect(mockNavigate).toHaveBeenCalledWith('/driver', expect.objectContaining({ replace: true }))
   })
 
   it('F-04: OrderChanged for active order with different driverId clears and navigates Home', async () => {
@@ -95,7 +95,7 @@ describe('useLiveClear', () => {
     })
 
     expect(clearFn).toHaveBeenCalled()
-    expect(mockNavigate).toHaveBeenCalledWith('/d', expect.objectContaining({ replace: true }))
+    expect(mockNavigate).toHaveBeenCalledWith('/driver', expect.objectContaining({ replace: true }))
   })
 
   it('F-04: OrderChanged for a different order is ignored', async () => {

@@ -174,7 +174,7 @@ function DetailsBlock({ code, vm, pickupAddress, scheduledAt }: DetailsBlockProp
 }
 
 /**
- * Two-mode customer tracking screen (/c/t/:code).
+ * Two-mode customer tracking screen (/customer/t/:code).
  *
  * - Authed (logged-in): reuses the single /hubs/fleet SignalR connection, Subscribe(orderId),
  *   live headline (cache-patch + stale guard) and moving car marker (useTrackingAuthed).

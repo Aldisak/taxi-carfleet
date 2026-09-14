@@ -51,7 +51,7 @@ const LogoutButton = styled.button`
  *
  * Logout clears ALL session state — localStorage tokens, the IndexedDB refresh-token
  * store, the offline transition queue, and the persisted active-ride store — then routes
- * to /d/login (outside the /d layout, so the position reporter + queue bar unmount cleanly).
+ * to /driver/login (outside the /d layout, so the position reporter + queue bar unmount cleanly).
  * Preference keys (nav app, silent mode) are intentionally left untouched.
  */
 export function DriverSettingsPage() {
@@ -64,7 +64,7 @@ export function DriverSettingsPage() {
     await idbAuthStore.clear()
     await transitionQueue.clear()
     await idbRideStore.clear()
-    navigate('/d/login')
+    navigate('/driver/login')
   }
 
   return (

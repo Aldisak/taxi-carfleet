@@ -46,7 +46,7 @@ public sealed class NotificationSmsTemplateTests
     public void SmsTemplates_DiacriticInput_FailsGsm7()
     {
         // A Czech diacritic message must be rejected by the GSM-7 validator.
-        var withDiacritics = SmsTemplates.OrderCreated("Příliš žluťoučký", Code, "https://t.cz/x");
+        var withDiacritics = SmsTemplates.OrderCreated("Příliš žluťoučký", Code, "https://t.cz/dispatcher");
 
         GsmSevenValidator.IsGsm7AndWithinLimit(withDiacritics).Should().BeFalse(
             "diacritics are not GSM-7 encodable");

@@ -54,7 +54,7 @@ const Message = styled.p<{ $error?: boolean }>`
 /**
  * Embeddable customer phone/code login. Drives the resend cooldown via a 1 s tick,
  * auto-submits the 6-digit code, and renders plain-Czech errors. Pass onAuthenticated
- * to resume an inline order flow; /c/login standalone passes navigate('/c').
+ * to resume an inline order flow; /customer/login standalone passes navigate('/customer').
  */
 export function CustomerLoginStep(props: UseCustomerLoginOptions) {
   const { t } = useTranslation()

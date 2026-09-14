@@ -203,7 +203,7 @@ The `AC1_CreateAndAssign` test uses exactly **5** scripted UI interactions (well
 With the stack running (`npm run dev` + API + DB), open Lighthouse in Chrome DevTools against the board:
 
 ```
-http://localhost:5173/x
+http://localhost:5173/dispatcher
 ```
 
 Target: **a11y score ≥ 90**. This is measured manually and documented here — it is not a blocking gate in the automated pipeline.
@@ -216,9 +216,9 @@ Target: **a11y score ≥ 90**. This is measured manually and documented here —
 
 ---
 
-# UC-003 — Driver PWA (`/d`)
+# UC-003 — Driver PWA (`/driver`)
 
-The driver PWA is a mobile-first React client served at the `/d/*` route group of the same Vite app. Login with a seeded driver (`driver1@demo.local` … `driver3@demo.local`, all `Demo1234!`).
+The driver PWA is a mobile-first React client served at the `/driver/*` route group of the same Vite app. Login with a seeded driver (`driver1@demo.local` … `driver3@demo.local`, all `Demo1234!`).
 
 ## 10. Driver PWA Playwright E2E suite (`npm run e2e`, mobile project)
 
@@ -257,12 +257,12 @@ npx vite preview          # serves the built app (with SW + manifest) on http://
 
 Then in Chrome:
 
-1. Open `http://localhost:4173/d`.
+1. Open `http://localhost:4173/driver`.
 2. DevTools → **Application** panel:
    - **Manifest**: name "Taxi Řidič", `display: standalone`, `theme_color` / `background_color` set, portrait orientation.
    - **Icons**: 192×192, 512×512, and a **maskable** 512 icon present (check the maskable icon renders inside the safe zone).
    - **Service Workers**: one registered, app-shell precache only; confirm `/api` and `/hubs` requests are **not** intercepted (Network tab → they go to the network, not the SW).
-3. Run **Lighthouse → PWA category** against `/d`: the "Installable" audit and maskable-icon audit should pass. Record the score here per DoD.
+3. Run **Lighthouse → PWA category** against `/driver`: the "Installable" audit and maskable-icon audit should pass. Record the score here per DoD.
 4. Use the address-bar install affordance (or the in-app install banner) to add the app to the home screen; confirm it launches standalone.
 
 ## 12. AC#3 — Push notifications (MANUAL; server half DEFERRED to assignment 05)
@@ -270,7 +270,7 @@ Then in Chrome:
 The **foreground** half of AC#3 (offer takeover within 2 s while the app is open) is covered automatically by `Driver_FullFlow_…` above. The **background push** half (Web Push so an offer wakes a backgrounded/closed PWA) is **deferred to assignment 05** — the backend push-subscription + VAPID send pipeline is not in this UC (see `docs/decisions.md`). Manual check of the foreground behaviour:
 
 1. Boot the harness (section 9) or run `npm run dev` + API + DB.
-2. Open `/d` on a phone (or the Pixel 5 device toolbar), log in as a driver, and ensure the connection dot is green.
+2. Open `/driver` on a phone (or the Pixel 5 device toolbar), log in as a driver, and ensure the connection dot is green.
 3. From a dispatcher session (or `curl`), create + assign an order to that driver.
 4. The full-screen offer takeover should appear within ~2 s with sound/vibration (subject to the per-driver "Tichý režim" setting) while the app is in the foreground.
 
@@ -284,15 +284,15 @@ Same harness as the E2E suite (section 9):
 cd web
 node scripts/e2e-api.mjs     # docker db + dotnet run (Development, Seed__Enabled=true) on :5249
 # in another shell:
-npm run dev                  # Vite on :5173  → open http://localhost:5173/d/login
+npm run dev                  # Vite on :5173  → open http://localhost:5173/driver/login
 ```
 
-## 14. UC-004 Customer PWA (/c) — E2E + manual checks
+## 14. UC-004 Customer PWA (/customer) — E2E + manual checks
 
 The customer specs run on the `mobile-customer` Playwright project (Pixel 5) alongside the existing
 `chromium` (dispatcher) and `mobile-driver` (driver) projects, reusing the one shared `webServer`
 harness (docker db + `dotnet run` with `Seed__Enabled=true`, then Vite). Boot it exactly as in
-section 13, then open `http://localhost:5173/c` (localhost defaults the fleet slug to `demo`).
+section 13, then open `http://localhost:5173/customer` (localhost defaults the fleet slug to `demo`).
 
 ### Automated (customer.spec.ts)
 
@@ -325,7 +325,7 @@ section 13, then open `http://localhost:5173/c` (localhost defaults the fleet sl
   ETA-minute count is **null pre-06** (OSRM ETA is assignment 06), so the headline omits "~min" and
   the assertion targets the headline *state change*, not a minute number.
 - **AC#3 — valid vs expired link** (`Customer_PublicTrackingLink_ValidVsExpired`): a logged-out
-  `/c/t/{code}?k={token}` with the **valid** token (from the customer create-order response) renders
+  `/customer/t/{code}?k={token}` with the **valid** token (from the customer create-order response) renders
   the public tracking view; a **tampered** token → "Odkaz vypršel" + the Zavolat call button
   (public/track returns 410 Tracking.LinkExpired).
 - **AC#5 — cancel in Accepted** (`Customer_CancelInAccepted_ReasonCustomer_DriverLosesOrder`): with
@@ -343,18 +343,18 @@ technique, not an api/ change. A fresh phone is used per login to avoid the per-
 
 ### AC#6 — Lighthouse (MANUAL; mobile Perf ≥ 85, PWA installable, A11y ≥ 90)
 
-Like the driver PWA, the `/c` service worker + manifest only activate on a **production build**
+Like the driver PWA, the `/customer` service worker + manifest only activate on a **production build**
 (`devOptions.enabled: false`), so Lighthouse is a manual step against a preview build:
 
 ```bash
 cd web
 npm run build
 npx vite preview                       # serves the built app (SW + manifest) on http://localhost:4173
-npx lighthouse http://localhost:4173/c --preset=desktop --only-categories=pwa,accessibility  # or mobile
+npx lighthouse http://localhost:4173/customer --preset=desktop --only-categories=pwa,accessibility  # or mobile
 ```
 
 In Chrome DevTools (mobile emulation) run **Lighthouse → Performance, Accessibility, PWA** against
-`/c`:
+`/customer`:
 
 - **Performance ≥ 85** (mobile). The Home/shell chunk must not import Leaflet (it is lazy-loaded only
   inside the custom-order + tracking chunks), keeping the slow-3G budget.

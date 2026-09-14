@@ -181,7 +181,7 @@ export function OfferTakeover({ dto, expiresAt, onDismiss }: OfferTakeoverProps)
     setOfflineHint(false)
     const outcome = await accept(dto.id)
     if (outcome.type === 'success') {
-      navigate('/d/ride')
+      navigate('/driver/ride')
       onDismiss()
     } else if (outcome.type === 'stale') {
       setStaleToast(true)

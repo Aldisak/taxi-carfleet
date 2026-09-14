@@ -1,5 +1,5 @@
 /**
- * Print stylesheet for the analytics /x/analytics page.
+ * Print stylesheet for the analytics /dispatcher/analytics page.
  * Hides the app navigation, sidebar, and controls; renders content A4 portrait.
  * Imported statically inside AnalyticsPage so it ships only in the analytics chunk.
  */

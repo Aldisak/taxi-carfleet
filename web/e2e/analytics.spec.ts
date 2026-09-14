@@ -3,8 +3,8 @@
  *
  * Two happy-path flows over the shared seeded harness:
  *
- *   1. FleetAdmin (admin@demo.local) logs in at /x/login, clicks the FleetAdmin-gated
- *      "Analytika" nav item, lands on /x/analytics. The Overview (Přehled) tab shows
+ *   1. FleetAdmin (admin@demo.local) logs in at /dispatcher/login, clicks the FleetAdmin-gated
+ *      "Analytika" nav item, lands on /dispatcher/analytics. The Overview (Přehled) tab shows
  *      populated KPI cards + the rides/revenue trend chart (a real <canvas role="img">).
  *      The FleetAdmin then switches the date-range preset AND switches to the Řidiči
  *      (drivers) tab, which renders a real data table from a successful API response.
@@ -71,14 +71,14 @@ function ensureSuperAdmin(): void {
   )
 }
 
-/** Fleet-scoped staff login via the /x/login UI (fill slug, email, password, submit → /x). */
+/** Fleet-scoped staff login via the /dispatcher/login UI (fill slug, email, password, submit → /x). */
 async function fleetAdminUiLogin(page: Page): Promise<void> {
-  await page.goto('/x/login')
+  await page.goto('/dispatcher/login')
   await page.locator('#fleetSlug').fill('demo')
   await page.locator('#email').fill('admin@demo.local')
   await page.locator('#password').fill('Demo1234!')
   await page.locator('button[type="submit"]').click()
-  await page.waitForURL('/x')
+  await page.waitForURL('/dispatcher')
 }
 
 /** SuperAdmin login via the /admin/login UI (email + password → /admin). */
@@ -103,7 +103,7 @@ test.describe.serial('Analytics', () => {
     const analytikaNav = page.getByRole('link', { name: 'Analytika' })
     await expect(analytikaNav).toBeVisible({ timeout: 10_000 })
     await analytikaNav.click()
-    await page.waitForURL('**/x/analytics')
+    await page.waitForURL('**/dispatcher/analytics')
 
     // ── Overview (Přehled) is the default tab; wait for the API-backed content ──
     // The trend chart is a real <canvas> that spreads aria-label onto role="img"

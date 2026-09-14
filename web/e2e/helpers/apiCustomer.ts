@@ -114,7 +114,7 @@ export interface CustomerOrder {
   id: string
   publicCode: string
   status: string
-  /** A-track: signed tracking token for the logged-out /c/t/{code}?k={token} link. */
+  /** A-track: signed tracking token for the logged-out /customer/t/{code}?k={token} link. */
   trackingCode: string
   trackingToken: string
   trackingUrlPath: string

@@ -4,7 +4,7 @@ import 'fake-indexeddb/auto'
 /**
  * Tests that the 401-retry pipeline in apiRequest correctly:
  * 1. When silent refresh is enabled (driver flow): retries the request once after refresh.
- * 2. When silent refresh is disabled (dispatcher flow): clears and redirects to /x/login (unchanged).
+ * 2. When silent refresh is disabled (dispatcher flow): clears and redirects to /dispatcher/login (unchanged).
  */
 
 beforeEach(() => {
@@ -60,7 +60,7 @@ describe('apiRequest — driver 401 retry pipeline', () => {
     }))
     vi.doMock('./refresh', async () => {
       const actual = await vi.importActual<typeof import('./refresh')>('./refresh')
-      actual.enableSilentRefresh('/d/login')
+      actual.enableSilentRefresh('/driver/login')
       return actual
     })
 
@@ -77,7 +77,7 @@ describe('apiRequest — driver 401 retry pipeline', () => {
 })
 
 describe('apiRequest — driver 401 retry still 401', () => {
-  it('when retry itself returns 401 (driver flow), clears both stores and redirects to /d/login', async () => {
+  it('when retry itself returns 401 (driver flow), clears both stores and redirects to /driver/login', async () => {
     let callCount = 0
     const fetchSpy = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/auth/refresh')) {
@@ -114,7 +114,7 @@ describe('apiRequest — driver 401 retry still 401', () => {
     }))
     vi.doMock('./refresh', async () => {
       const actual = await vi.importActual<typeof import('./refresh')>('./refresh')
-      actual.enableSilentRefresh('/d/login')
+      actual.enableSilentRefresh('/driver/login')
       return actual
     })
 
@@ -133,16 +133,16 @@ describe('apiRequest — driver 401 retry still 401', () => {
     // Both auth stores must be cleared
     expect(clearMock).toHaveBeenCalled()
     expect(idbClearMock).toHaveBeenCalled()
-    // Redirect must be to the DRIVER login page, NOT /x/login
-    expect(window.location.href).toBe('/d/login')
+    // Redirect must be to the DRIVER login page, NOT /dispatcher/login
+    expect(window.location.href).toBe('/driver/login')
     expect(settled).toBe(false) // never-resolved promise
     // Endpoint was called twice (initial + retry)
     expect(callCount).toBe(2)
   })
 })
 
-describe('apiRequest — customer 401 retry redirects to /c/login (F2)', () => {
-  it('when retry itself returns 401 (customer flow), redirects to /c/login, not /d/login', async () => {
+describe('apiRequest — customer 401 retry redirects to /customer/login (F2)', () => {
+  it('when retry itself returns 401 (customer flow), redirects to /customer/login, not /driver/login', async () => {
     let callCount = 0
     const fetchSpy = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/auth/refresh')) {
@@ -179,8 +179,8 @@ describe('apiRequest — customer 401 retry redirects to /c/login (F2)', () => {
     }))
     vi.doMock('./refresh', async () => {
       const actual = await vi.importActual<typeof import('./refresh')>('./refresh')
-      // Customer session opts into silent refresh with the /c/login redirect target.
-      actual.enableSilentRefresh('/c/login')
+      // Customer session opts into silent refresh with the /customer/login redirect target.
+      actual.enableSilentRefresh('/customer/login')
       return actual
     })
 
@@ -198,15 +198,15 @@ describe('apiRequest — customer 401 retry redirects to /c/login (F2)', () => {
 
     expect(clearMock).toHaveBeenCalled()
     expect(idbClearMock).toHaveBeenCalled()
-    // Redirect must be to the CUSTOMER login page — NOT the hardcoded /d/login.
-    expect(window.location.href).toBe('/c/login')
+    // Redirect must be to the CUSTOMER login page — NOT the hardcoded /driver/login.
+    expect(window.location.href).toBe('/customer/login')
     expect(settled).toBe(false)
     expect(callCount).toBe(2)
   })
 })
 
 describe('apiRequest — dispatcher 401 path unchanged', () => {
-  it('when silent refresh is NOT enabled, 401 clears storage and navigates to /x/login', async () => {
+  it('when silent refresh is NOT enabled, 401 clears storage and navigates to /dispatcher/login', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -259,7 +259,7 @@ describe('apiRequest — dispatcher 401 path unchanged', () => {
     await new Promise(r => setTimeout(r, 10))
 
     expect(clearMock).toHaveBeenCalled()
-    expect(window.location.href).toBe('/x/login')
+    expect(window.location.href).toBe('/dispatcher/login')
     expect(settled).toBe(false) // never resolved
   })
 })

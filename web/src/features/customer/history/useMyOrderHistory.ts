@@ -11,7 +11,7 @@ export interface UseMyOrderHistoryResult {
 }
 
 /**
- * Loads the customer's order history (GET orders/mine, first page) for the /c/history screen.
+ * Loads the customer's order history (GET orders/mine, first page) for the /customer/history screen.
  * Gated on a stored token (history is inherently logged-in; an ungated read from a fresh visitor
  * would 401 → silent-refresh → redirect, mirroring useMyActiveOrder). Shares the canonical
  * ['orders','mine','list', page] query key with useRateOrder so the rating lookup and the history

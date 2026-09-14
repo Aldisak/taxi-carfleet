@@ -120,7 +120,7 @@ test.describe.serial('Customer PWA', () => {
     const order = await createCustomerOrder(session)
 
     await injectCustomerSession(page, session)
-    await page.goto(`/c/t/${order.publicCode}`)
+    await page.goto(`/customer/t/${order.publicCode}`)
 
     // Initially "Hledáme řidiče…" (New).
     await expect(page.getByRole('heading', { name: 'Hledáme řidiče…' })).toBeVisible({ timeout: 10_000 })
@@ -168,13 +168,13 @@ test.describe.serial('Customer PWA', () => {
     const order: CustomerOrder = await createCustomerOrder(session)
 
     // VALID token (logged-out): the public tracking view renders (not expired).
-    await page.goto(`/c/t/${order.trackingCode}?k=${encodeURIComponent(order.trackingToken)}`)
+    await page.goto(`/customer/t/${order.trackingCode}?k=${encodeURIComponent(order.trackingToken)}`)
     await expect(page.getByText('Odkaz vypršel')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Hledáme řidiče…' })).toBeVisible({ timeout: 10_000 })
 
     // TAMPERED token → 410 Tracking.LinkExpired → "Odkaz vypršel" + the Zavolat call button.
     const tampered = order.trackingToken.slice(0, -3) + 'AAA'
-    await page.goto(`/c/t/${order.trackingCode}?k=${encodeURIComponent(tampered)}`)
+    await page.goto(`/customer/t/${order.trackingCode}?k=${encodeURIComponent(tampered)}`)
     await expect(page.getByRole('heading', { name: 'Odkaz vypršel' })).toBeVisible({ timeout: 10_000 })
     // The expired view renders its own Zavolat fallback in <main>, on top of the always-present
     // header Zavolat — so there are ≥2 matches (strict mode would fail a bare getByText). Assert the
@@ -194,7 +194,7 @@ test.describe.serial('Customer PWA', () => {
     await driveToAccepted(order.id)
 
     await injectCustomerSession(page, session)
-    await page.goto(`/c/t/${order.publicCode}`)
+    await page.goto(`/customer/t/${order.publicCode}`)
 
     // Headline is the Accepted state; the cancel button is offered.
     await expect(page.getByRole('heading', { name: /Řidič.*je na cestě/ })).toBeVisible({ timeout: 15_000 })
@@ -276,7 +276,7 @@ test.describe.serial('Customer PWA', () => {
 
     // Touch the page so the spec exercises the customer app at least once in this test.
     await injectCustomerSession(page, session)
-    await page.goto(`/c/t/${order.publicCode}`)
+    await page.goto(`/customer/t/${order.publicCode}`)
     await expect(page.getByRole('heading', { name: /Hotovo/ })).toBeVisible({ timeout: 10_000 })
   })
 
@@ -293,7 +293,7 @@ test.describe.serial('Customer PWA', () => {
     let tapsBeforePhone = 0
 
     // Fresh/logged-out visit to the customer home (localhost → slug 'demo').
-    await page.goto('/c')
+    await page.goto('/customer')
 
     // The seeded station→centre PointToPoint common-route card (price 100, valid all week).
     // Matched by a resilient pattern so a seed route-name tweak (UC-006 renamed it
@@ -301,10 +301,10 @@ test.describe.serial('Customer PWA', () => {
     const routeCard = page.getByRole('button', { name: /Nádraží.*Centrum/ })
     await expect(routeCard).toBeVisible({ timeout: 10_000 })
 
-    // TAP 1: the route card → navigates to the Confirm screen (/c/order/route/:id) preselected.
+    // TAP 1: the route card → navigates to the Confirm screen (/customer/order/route/:id) preselected.
     await routeCard.click()
     tapsBeforePhone += 1
-    await page.waitForURL(/\/c\/order\/route\//)
+    await page.waitForURL(/\/customer\/order\/route\//)
 
     // The Confirm screen shows the big fixed price + "Objednat".
     const objednat = page.getByRole('button', { name: 'Objednat' })
@@ -332,7 +332,7 @@ test.describe.serial('Customer PWA', () => {
     await codeInput.fill(DEV_SMS_CODE) // auto-submits on the 6th digit → verify-code → create order
 
     // Lands on Tracking showing "Hledáme řidiče…".
-    await page.waitForURL(/\/c\/t\//, { timeout: 15_000 })
+    await page.waitForURL(/\/customer\/t\//, { timeout: 15_000 })
     await expect(page.getByRole('heading', { name: 'Hledáme řidiče…' })).toBeVisible({ timeout: 10_000 })
   })
 })

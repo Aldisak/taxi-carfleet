@@ -32,11 +32,11 @@ function renderHome() {
     <QueryClientProvider client={client}>
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
-          <MemoryRouter initialEntries={['/c']}>
+          <MemoryRouter initialEntries={['/customer']}>
             <Routes>
-              <Route path="/c" element={<CustomerHomePage />} />
-              <Route path="/c/order/new" element={<LocationProbe />} />
-              <Route path="/c/order/route/:routeId" element={<LocationProbe />} />
+              <Route path="/customer" element={<CustomerHomePage />} />
+              <Route path="/customer/order/new" element={<LocationProbe />} />
+              <Route path="/customer/order/route/:routeId" element={<LocationProbe />} />
             </Routes>
           </MemoryRouter>
         </I18nextProvider>
@@ -97,6 +97,6 @@ describe('CustomerHomePage', () => {
     mockActive.mockResolvedValue(null)
     renderHome()
     await user.click(await screen.findByRole('button', { name: /vlastní adresa/i }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/c/order/new')
+    expect(screen.getByTestId('location')).toHaveTextContent('/customer/order/new')
   })
 })
