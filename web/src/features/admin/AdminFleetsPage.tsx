@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import styled from 'styled-components'
 import { useAdminFleets, useCreateFleet } from './useAdminFleets'
 import {
@@ -23,6 +24,27 @@ const Title = styled.h1`
   font-size: ${({ theme }) => theme.typography.fontSizeXl};
   font-weight: ${({ theme }) => theme.typography.fontWeightBold};
   margin: 0;
+`
+
+const TopBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.spacing.sm};
+`
+
+const PlatformLink = styled(Link)`
+  color: ${({ theme }) => theme.colors.primary};
+  min-height: ${({ theme }) => theme.touchTargets.min};
+  display: inline-flex;
+  align-items: center;
+  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline-offset: 2px;
+  }
 `
 
 const SubTitle = styled.h2`
@@ -196,7 +218,10 @@ export function AdminFleetsPage() {
 
   return (
     <Page>
-      <Title>{t('admin.fleets.title')}</Title>
+      <TopBar>
+        <Title>{t('admin.fleets.title')}</Title>
+        <PlatformLink to="/admin/platform">{t('admin.platform.title')}</PlatformLink>
+      </TopBar>
 
       <section aria-label={t('admin.fleets.createTitle')}>
         <SubTitle>{t('admin.fleets.createTitle')}</SubTitle>

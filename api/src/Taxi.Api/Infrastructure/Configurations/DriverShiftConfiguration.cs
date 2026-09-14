@@ -18,6 +18,9 @@ internal sealed class DriverShiftConfiguration : IEntityTypeConfiguration<Driver
         builder.HasIndex(x => x.DriverId);
         builder.HasIndex(x => x.VehicleId);
 
+        // Analytics index (UC-009): shift duration and activity aggregations by fleet within a date window.
+        builder.HasIndex(x => new { x.FleetId, x.StartedAt });
+
         builder.HasOne<Fleet>().WithMany().HasForeignKey(x => x.FleetId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Driver>().WithMany().HasForeignKey(x => x.DriverId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Vehicle>().WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);

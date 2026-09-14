@@ -49,6 +49,47 @@
         "emailRequired": "The admin email is required.",
         "emailInvalid": "Enter a valid email address."
       }
+    },
+    "platform": {
+      "title": "Platform overview",
+      "subtitle": "Fleet health across tenants",
+      "loading": "Loading the platform overview…",
+      "loadFailed": "Could not load the platform overview.",
+      "empty": "There are no fleets yet.",
+      "backToFleets": "Back to fleet administration",
+      "exportCsv": "Export CSV",
+      "csvFilename": "platform-overview.csv",
+      "noOrders": "No orders",
+      "sparklineLabel": "12-week ride trend for fleet {{name}}",
+      "columns": {
+        "fleet": "Fleet",
+        "ridesThisMonth": "Rides this month",
+        "ridesLastMonth": "Rides last month",
+        "momDelta": "MoM %",
+        "revenueThisMonth": "Revenue this month",
+        "activeDrivers": "Active drivers",
+        "activeCustomers": "Active customers",
+        "sms": "SMS",
+        "smsCost": "Est. SMS cost",
+        "lastOrder": "Last order",
+        "trend": "Trend (12 weeks)",
+        "health": "Health"
+      },
+      "health": {
+        "growing": "Growing",
+        "stable": "Stable",
+        "declining": "Declining",
+        "inactive": "Inactive"
+      },
+      "totals": {
+        "title": "Platform totals",
+        "fleets": "Total fleets",
+        "rides": "Rides this month",
+        "revenue": "Revenue this month",
+        "growing": "Growing fleets",
+        "declining": "Declining fleets",
+        "inactive": "Inactive fleets"
+      }
     }
   },
   "nav": {
@@ -59,7 +100,8 @@
     "mute": "Mute sound",
     "unmute": "Unmute sound",
     "reports": "Reports",
-    "audit": "Audit"
+    "audit": "Audit",
+    "analytics": "Analytics"
   },
   "login": {
     "title": "Sign in",
@@ -1049,6 +1091,344 @@
     "event": {
       "StatusOverride": "Manual status change",
       "Unknown": "Unknown event"
+    }
+  },
+  "analytics": {
+    "ranges": {
+      "dnes": "Today",
+      "7dni": "Last 7 days",
+      "tentoMesic": "This month",
+      "minulyMesic": "Last month",
+      "kvartal": "Quarter",
+      "rok": "Year",
+      "vlastni": "Custom"
+    },
+    "period": {
+      "label": "Period"
+    },
+    "granularity": {
+      "label": "Granularity",
+      "day": "Daily",
+      "week": "Weekly",
+      "month": "Monthly"
+    },
+    "compare": "Compare with previous period",
+    "revenue": {
+      "empty": "No data for the selected period",
+      "loading": "Loading revenue…",
+      "error": "Failed to load analytics data.",
+      "series": {
+        "title": "Revenue trend by payment type",
+        "tableCaption": "Revenue by period (available for screen readers)",
+        "tableBucket": "Period",
+        "tableCash": "Cash (CZK)",
+        "tableCard": "Card (CZK)",
+        "tableInvoice": "Invoice (CZK)",
+        "tableTotal": "Total (CZK)"
+      },
+      "source": {
+        "title": "Revenue share by order source",
+        "tableCaption": "Revenue by source (available for screen readers)",
+        "tableSource": "Source",
+        "tableRevenue": "Revenue (CZK)"
+      },
+      "priceType": {
+        "title": "Revenue share by price type",
+        "tableCaption": "Revenue by price type (available for screen readers)",
+        "tablePriceType": "Price type",
+        "tableRevenue": "Revenue (CZK)"
+      },
+      "aovTrend": {
+        "title": "Average Order Value (AOV) trend",
+        "tableCaption": "AOV by period (available for screen readers)",
+        "tableBucket": "Period",
+        "tableAov": "AOV (CZK)"
+      },
+      "priceOverride": {
+        "title": "Price override impact",
+        "count": "Override count",
+        "totalDelta": "Total impact (CZK)",
+        "reasonsTitle": "Top reasons",
+        "tableReason": "Reason",
+        "tableCount": "Count"
+      },
+      "topRoutes": {
+        "title": "Top revenue routes",
+        "tableCaption": "Revenue by route",
+        "tableFrom": "From",
+        "tableTo": "To",
+        "tableRides": "Rides",
+        "tableRevenue": "Revenue (CZK)",
+        "tableAov": "AOV (CZK)",
+        "csvLabel": "Export CSV"
+      },
+      "zoneRevenue": {
+        "title": "Revenue by zone",
+        "tableCaption": "Revenue by zone",
+        "tableZone": "Zone",
+        "tableRides": "Rides",
+        "tableRevenue": "Revenue (CZK)",
+        "tableAov": "AOV (CZK)",
+        "csvLabel": "Export CSV"
+      },
+      "smsCost": {
+        "title": "SMS costs",
+        "tableCaption": "SMS costs by period (available for screen readers)",
+        "tableBucket": "Period",
+        "tableSmsCount": "SMS count",
+        "tableCost": "Cost (CZK)"
+      }
+    },
+    "drivers": {
+      "loading": "Loading drivers…",
+      "error": "Failed to load analytics data.",
+      "empty": "No data for the selected period",
+      "league": {
+        "title": "Driver league table",
+        "tableCaption": "Driver statistics",
+        "tableDriver": "Driver",
+        "tableRides": "Rides",
+        "tableRevenue": "Revenue (CZK)",
+        "tableOnline": "Online (h)",
+        "tableUtil": "Utilisation (%)",
+        "tableRevenuePerHour": "Revenue/h",
+        "tableAcceptance": "Acceptance (%)",
+        "tableDeclines": "Declines",
+        "tableCancellations": "Cancellations",
+        "tableNoShows": "No-shows",
+        "tableRating": "Rating",
+        "sortAsc": "Sort ascending",
+        "sortDesc": "Sort descending",
+        "csvLabel": "Export CSV"
+      },
+      "retention": {
+        "title": "Driver retention (weekly)",
+        "tableCaption": "Driver retention by week (available for screen readers)",
+        "tableWeek": "Week",
+        "tableActive": "Active",
+        "tableNew": "Newly activated",
+        "tableChurned": "Churned",
+        "activeLabel": "Active",
+        "newLabel": "Newly activated",
+        "churnedLabel": "Churned"
+      },
+      "drilldown": {
+        "backLabel": "Back to table",
+        "weeklyTitle": "Weekly trend",
+        "weeklyCaption": "Driver weekly statistics (available for screen readers)",
+        "tableWeek": "Week",
+        "tableRides": "Rides",
+        "tableRevenue": "Revenue (CZK)",
+        "tableRating": "Rating",
+        "lowRatedTitle": "Low-rated orders (≤ 3 stars)",
+        "tableCode": "Code",
+        "tableCompleted": "Completed",
+        "tableStars": "Stars",
+        "tableComment": "Comment",
+        "tablePickup": "Pickup",
+        "tableDropoff": "Dropoff",
+        "noComment": "—",
+        "noLowRated": "No orders with rating ≤ 3 stars."
+      }
+    },
+    "customers": {
+      "loading": "Loading customers…",
+      "error": "Failed to load analytics data.",
+      "empty": "No data for the selected period",
+      "summary": {
+        "title": "Summary",
+        "totalRides": "Total rides",
+        "totalRevenue": "Total revenue (CZK)",
+        "newIdentities": "New customers",
+        "returningIdentities": "Returning customers",
+        "repeatRate": "Repeat rate (%)",
+        "freqOne": "Frequency 1×",
+        "freqTwoToFive": "Frequency 2–5×",
+        "freqSixPlus": "Frequency 6+×"
+      },
+      "newVsReturning": {
+        "title": "New vs returning customers",
+        "tableCaption": "New and returning customers by period (available for screen readers)",
+        "tableBucket": "Period",
+        "tableNew": "New",
+        "tableReturning": "Returning",
+        "newLabel": "New customers",
+        "returningLabel": "Returning customers"
+      },
+      "cohort": {
+        "title": "Customer cohort retention",
+        "tableCaption": "Cohort retention (customers active in month since acquisition)",
+        "tableAcqMonth": "Cohort",
+        "monthHeader": "Month {{n}}",
+        "csvLabel": "Export CSV"
+      },
+      "topCustomers": {
+        "title": "Top customers",
+        "tableCaption": "Top customers by ride count",
+        "tableCustomer": "Customer",
+        "tablePhone": "Phone",
+        "tableRides": "Rides",
+        "tableRevenue": "Revenue (CZK)",
+        "unknown": "Unknown"
+      },
+      "ratings": {
+        "title": "Customer ratings",
+        "avgRating": "Average rating",
+        "totalRated": "Rated rides",
+        "distribution": {
+          "title": "Rating distribution (1–5 stars)",
+          "tableCaption": "Rating distribution (available for screen readers)",
+          "tableStars": "Stars",
+          "tableCount": "Count",
+          "datasetLabel": "Number of ratings"
+        },
+        "trend": {
+          "title": "Average rating trend",
+          "tableCaption": "Rating trend by period (available for screen readers)",
+          "tableBucket": "Period",
+          "tableAvg": "Average",
+          "tableRides": "Rides"
+        },
+        "worstRated": {
+          "title": "Worst-rated orders (≤ 3 stars)",
+          "tableCaption": "Worst-rated orders",
+          "tableCode": "Code",
+          "tableCompleted": "Completed",
+          "tableStars": "Stars",
+          "tableComment": "Comment",
+          "tableDriver": "Driver",
+          "noComment": "—",
+          "empty": "No orders with rating ≤ 3."
+        }
+      }
+    },
+    "tabs": {
+      "prehled": "Overview",
+      "poptavka": "Demand",
+      "provoz": "Operations",
+      "trzby": "Revenue",
+      "ridici": "Drivers",
+      "zakaznici": "Customers",
+      "placeholder": "This tab will be available in a future version."
+    },
+    "overview": {
+      "title": "Overview",
+      "rides": "Rides",
+      "revenueCzk": "Revenue",
+      "aov": "Avg. order value",
+      "fulfillmentRate": "Fulfilment rate",
+      "cancellationRate": "Cancellation rate",
+      "activeCustomers": "Active customers",
+      "newCustomers": "New customers",
+      "activeDrivers": "Active drivers",
+      "onlineDriverHours": "Online hours",
+      "revenuePerOnlineHour": "Revenue / hour",
+      "avgRating": "Avg. rating",
+      "chartLabel": "Rides & revenue trend",
+      "chartTableCaption": "Rides and revenue trend (available for screen readers)",
+      "chartTableBucket": "Period",
+      "chartTableRides": "Rides",
+      "chartTableRevenue": "Revenue (CZK)",
+      "empty": "No data for the selected period",
+      "deltaPositive": "+{{value}}",
+      "deltaNegative": "{{value}}",
+      "loading": "Loading overview…",
+      "error": "Failed to load analytics data."
+    },
+    "demand": {
+      "loading": "Loading demand…",
+      "error": "Failed to load analytics data.",
+      "empty": "No data for the selected period",
+      "heatmap": {
+        "title": "Demand heatmap (hour × day)",
+        "tableCaption": "Demand by hour and day (available for screen readers)",
+        "tableHour": "Hour",
+        "csvLabel": "Export CSV"
+      },
+      "supplyDemand": {
+        "title": "Supply vs demand by hour",
+        "tableCaption": "Supply and demand by hour (available for screen readers)",
+        "tableHour": "Hour",
+        "tableOrders": "Demand (rides)",
+        "tableSupplyHours": "Supply (online hours)"
+      },
+      "unmetDemand": {
+        "title": "Unmet demand by hour",
+        "tableCaption": "Unmet demand by hour (available for screen readers)",
+        "tableHour": "Hour",
+        "tableCount": "Unmet"
+      },
+      "utilization": {
+        "title": "Fleet utilization",
+        "fleetLabel": "Fleet utilization",
+        "driverTableCaption": "Driver utilization (available for screen readers)",
+        "tableDriver": "Driver",
+        "tableBusyH": "Busy (hours)",
+        "tableOnlineH": "Online (hours)",
+        "tableUtil": "Utilization"
+      },
+      "zonePickups": {
+        "title": "Pickups by zone",
+        "tableCaption": "Pickups by zone",
+        "tableZone": "Zone",
+        "tableCount": "Pickups",
+        "csvLabel": "Export CSV"
+      },
+      "topRoutes": {
+        "title": "Top routes",
+        "tableCaption": "Top routes",
+        "tableFrom": "From",
+        "tableTo": "To",
+        "tableCount": "Count",
+        "csvLabel": "Export CSV"
+      }
+    },
+    "operations": {
+      "loading": "Loading operations…",
+      "error": "Failed to load analytics data.",
+      "sla": {
+        "title": "SLA metrics",
+        "tableCaption": "SLA metrics (available for screen readers)",
+        "tableMetric": "Metric",
+        "tableP50": "p50 (median)",
+        "tableP90": "p90",
+        "tableSampleCount": "Sample count"
+      },
+      "offerFunnel": {
+        "title": "Offer funnel",
+        "tableCaption": "Offer funnel (available for screen readers)",
+        "tableStage": "Stage",
+        "tableCount": "Count",
+        "labelOffersMade": "Offers made",
+        "labelAccepted": "Accepted",
+        "labelDeclined": "Declined",
+        "labelTimeouts": "Timeouts",
+        "avgOffersLabel": "Average offers per completed ride"
+      },
+      "lifecycle": {
+        "title": "Lifecycle funnel",
+        "tableCaption": "Order lifecycle (available for screen readers)",
+        "tableStage": "Stage",
+        "tableCount": "Count",
+        "labelCreated": "Created",
+        "labelAssigned": "Assigned",
+        "labelAccepted": "Accepted",
+        "labelArrived": "Arrived",
+        "labelInProgress": "In progress",
+        "labelCompleted": "Completed"
+      },
+      "cancellations": {
+        "title": "Cancellations",
+        "byRoleCaption": "Cancellations by role (available for screen readers)",
+        "byStatusCaption": "Cancellations by status at cancel",
+        "byHourTitle": "Cancellations by hour of day",
+        "byHourCaption": "Cancellations by hour of day",
+        "tableRole": "Role",
+        "tableStatus": "Status at cancel",
+        "tableHour": "Hour",
+        "tableCount": "Count",
+        "noShowShareLabel": "No-show share"
+      }
     }
   }
 }

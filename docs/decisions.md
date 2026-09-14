@@ -270,3 +270,26 @@ where a half is intentionally out of scope pre-05/06.
 6. **Migrations run out-of-band in production via the `migrate` subcommand (WI A1), never at container start.** Prod runs as `Production`, so Program.cs's Development-only startup `MigrateAsync` is skipped. `deploy.yml` runs `docker compose run --rm api migrate` before `up -d`. The prod compose adds no startup-migrate. (The `migrate` CLI arg-intercept itself is delivered by the parallel A1 backend WI.)
 
 7. **`ops` fleet is config-driven (`Ops:FleetSlug`, default `ops`).** No `ops` fleet exists in code; the 5xx-alert push recipients (WI A3) and the disk-alert SMS recipient (runbook) resolve the fleet whose `Slug == Ops:FleetSlug`. If absent, alerting logs a warning and no-ops (infra-alert failure must not cascade).
+
+---
+
+## 2026-09-13 — Charts: Chart.js 4 + react-chartjs-2 (analytics only)
+
+Added `chart.js@^4` and `react-chartjs-2@^5` for UC-009 admin analytics (WI-12).
+
+**Library choice:** Chart.js 4 (tree-shakeable, TypeScript-native) + react-chartjs-2 v5 React wrapper. No additional chart plugins (chartjs-chart-matrix, etc.) — the daily-hours heatmap tab (WI-14a) uses a Bar-based fallback which avoids a second dependency and keeps the bundle minimal.
+
+**Registered controllers (tree-shaken):** `LineController`, `BarController`, `DoughnutController` + their required elements/scales (`CategoryScale`, `LinearScale`, `PointElement`, `LineElement`, `BarElement`, `ArcElement`, `Filler`, `Legend`, `Tooltip`, `Title`). Module: `features/analytics/charts/registerCharts.ts`. Import only from within the lazy analytics chunk.
+
+**Chunk confinement:** Chart.js must land in `dist/assets/analytics-*.js` only. WI-12's scope excludes `router.tsx` (WI-13 adds the analytics route), so chart.js is currently tree-shaken from the build (not present in any chunk). The analytics chunk materialises when WI-13 wires `React.lazy(() => import('./features/analytics/AnalyticsDashboard'))` to `/admin/analytics` in `router.tsx`.
+
+**Provisional bundle budget (WI-12):** Analytics chunk budget was provisionally set at **75 KB (brotli)** — see WI-13 measurement note below for the actual value.
+
+**jsdom mock pattern:** `features/analytics/charts/chartMock.ts` exports `chartMockModule` for use as `vi.mock('react-chartjs-2', chartMockModule)`. Pure config-builder tests (`revenueChartConfig.test.ts`) use real chart.js imports (no canvas created; `Chart.register()` is a pure in-memory side-effect). Component tests (`RevenueChart.test.tsx`) use the mock — the `<Line>` renders as `<div role="img" aria-label="...">`. Accessibility is provided by an sr-only `<table>` in every chart component (WCAG 1.1.1).
+
+**Measurement at WI-12 time:** chart.js absent from build (tree-shaken); main bundle 239.75 KB brotli (under 260 KB).
+
+**WI-13 analytics chunk budget adjustment:** After wiring the `/x/analytics` route (React.lazy) and the Overview tab (Chart.js Line + KPI cards), the actual analytics chunk is **86.3 KB brotli** (84.27 KB raw brotli + CSS). This exceeds the WI-12 provisional 75 KB estimate because: (a) chart.js Line controller alone is ~55-60 KB brotli; (b) the Overview tab code + AnalyticsPage shell + AnalyticsControls + pure config builder adds ~25 KB. Budget updated to **90 KB** in `web/package.json` `"size-limit"` — 3.7 KB headroom over the WI-13 measurement, leaving room for small additions without requiring a budget bump on every tab WI (WI-14a–WI-15). Each subsequent tab WI re-runs `npm run size` and must re-justify if the 90 KB limit is exceeded. Eager bundle is 214.78 KB brotli (well under 260 KB); chart.js is confirmed absent from eager chunks.
+
+**2026-09-13 — WI-14b analytics chunk budget raised to 115 KB:** After WI-14a (Demand) and WI-14b (Operations), the analytics chunk stands at **89.59 KB brotli** against the 90 KB limit — only 0.41 KB headroom. Three more tab WIs remain (Tržby/Revenue, Řidiči/Drivers, Zákazníci/Customers); each adds chart config builders, a hook, a component, and i18n keys, historically contributing ~1–3 KB brotli per tab. Keeping the 90 KB limit guarantees an overflow on the first line of the next tab WI. Budget raised to **115 KB** — matching the WI-12 task's suggested 110–120 KB band — to provide ~25 KB runway for the remaining three tabs without forced mid-WI raises. The chart.js fixed cost (~60 KB) is already fully loaded; incremental growth is purely per-tab feature code. Eager bundle unchanged at ~215 KB brotli.
+

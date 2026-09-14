@@ -1542,6 +1542,650 @@ export interface FleetReportFilters {
   to: string
 }
 
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+/**
+ * KPI values for one analytics period (current or prior).
+ * Byte-for-byte mirror of OverviewKpiDto from the backend.
+ */
+export interface OverviewKpiDto {
+  rides: number
+  revenueCzk: number
+  aov: number
+  fulfillmentRate: number
+  cancellationRate: number
+  activeCustomers: number
+  newCustomers: number
+  activeDrivers: number
+  onlineDriverHours: number
+  revenuePerOnlineHour: number
+  avgRating: number | null
+}
+
+/**
+ * Absolute deltas (current − prior) for each KPI when compare=true.
+ * Byte-for-byte mirror of OverviewDeltaDto from the backend.
+ */
+export interface OverviewDeltaDto {
+  rides: number
+  revenueCzk: number
+  aov: number
+  fulfillmentRate: number
+  cancellationRate: number
+  activeCustomers: number
+  newCustomers: number
+  activeDrivers: number
+  onlineDriverHours: number
+  revenuePerOnlineHour: number
+  avgRating: number | null
+}
+
+/** One time-granularity bucket in the trend series. */
+export interface TrendBucketDto {
+  bucket: string
+  rides: number
+  revenueCzk: number
+}
+
+/**
+ * Response envelope for GET /api/v1/analytics/overview.
+ * Byte-for-byte mirror of GetOverviewResponse from the backend.
+ */
+export interface AnalyticsOverviewResponse {
+  current: OverviewKpiDto
+  prior: OverviewKpiDto | null
+  deltas: OverviewDeltaDto | null
+  series: TrendBucketDto[]
+}
+
+/** Query parameters for the analytics overview endpoint. */
+export interface AnalyticsOverviewParams {
+  from: string
+  to: string
+  granularity: 'day' | 'week' | 'month'
+  compare: boolean
+}
+
+/**
+ * GET /api/v1/analytics/overview — KPI cards + deltas + trend series.
+ * Returns the bare envelope `{ current, prior, deltas, series }`.
+ */
+export function getAnalyticsOverview(params: AnalyticsOverviewParams): Promise<AnalyticsOverviewResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsOverviewResponse>(`/analytics/overview?${qs}`)
+}
+
+// ── Analytics – Demand ────────────────────────────────────────────────────────
+
+/** One cell of the hour×DOW demand heatmap (Prague local time). */
+export interface HeatmapCellDto {
+  hour: number
+  dow: number
+  count: number
+}
+
+/** Supply vs demand for one Prague hour-of-day across the window. */
+export interface SupplyDemandBucketDto {
+  hour: number
+  ordersCreated: number
+  onlineSeconds: number
+  fulfillmentRate: number
+}
+
+/** Unmet demand (cancelled with no Accepted event) for one Prague hour-of-day. */
+export interface UnmetDemandBucketDto {
+  hour: number
+  unmetCount: number
+}
+
+/** Utilization for a single driver. */
+export interface DriverUtilizationDto {
+  driverId: string
+  busySeconds: number
+  onlineSeconds: number
+  utilization: number
+}
+
+/** Fleet-wide + per-driver utilization. */
+export interface UtilizationDto {
+  fleetUtilization: number
+  perDriver: DriverUtilizationDto[]
+}
+
+/** Pickup count for one zone. */
+export interface ZonePickupDto {
+  zoneId: string
+  zoneName: string
+  pickupCount: number
+}
+
+/** A frequently occurring pickup→dropoff address pair (demand analytics context). */
+export interface DemandTopRouteDto {
+  pickupAddress: string
+  dropoffAddress: string
+  count: number
+}
+
+/** Prior-period demand sections (all fields same as the main response, minus `prior`). */
+export interface DemandPriorDto {
+  heatmap: HeatmapCellDto[]
+  supplyDemand: SupplyDemandBucketDto[]
+  unmetDemand: UnmetDemandBucketDto[]
+  utilization: UtilizationDto
+  zonePickups: ZonePickupDto[]
+  topRoutes: DemandTopRouteDto[]
+}
+
+/**
+ * Response envelope for GET /api/v1/analytics/demand.
+ * Byte-for-byte mirror of GetDemandResponse from the backend.
+ */
+export interface AnalyticsDemandResponse {
+  heatmap: HeatmapCellDto[]
+  supplyDemand: SupplyDemandBucketDto[]
+  unmetDemand: UnmetDemandBucketDto[]
+  utilization: UtilizationDto
+  zonePickups: ZonePickupDto[]
+  topRoutes: DemandTopRouteDto[]
+  prior: DemandPriorDto | null
+}
+
+/** Query parameters for the analytics demand endpoint (same shape as overview). */
+export type AnalyticsDemandParams = AnalyticsOverviewParams
+
+/**
+ * GET /api/v1/analytics/demand — demand heatmap, supply/unmet, utilization, zones, routes.
+ */
+export function getAnalyticsDemand(params: AnalyticsDemandParams): Promise<AnalyticsDemandResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsDemandResponse>(`/analytics/demand?${qs}`)
+}
+
+// ── Analytics – Operations ────────────────────────────────────────────────────
+
+/**
+ * SLA percentiles for one metric (non-null values — entire object is null when no data).
+ * Byte-for-byte mirror of SlaPercentileDto from the backend.
+ */
+export interface SlaPercentileDto {
+  /** p50 (median) in seconds. */
+  median: number
+  /** p90 in seconds. */
+  p90: number
+  /** Number of qualifying orders the percentile was computed from. */
+  sampleCount: number
+}
+
+/**
+ * SLA metrics for the window — each field null when no qualifying rows exist.
+ * Byte-for-byte mirror of OperationsSlaDto from the backend.
+ */
+export interface OperationsSlaDto {
+  /** Created→assigned SLA; null when no orders were assigned in the window. */
+  timeToAssign: SlaPercentileDto | null
+  /** Assigned→accepted SLA; null when no offers were accepted. */
+  timeToAccept: SlaPercentileDto | null
+  /** Accepted→arrived SLA; null when no pickups were completed. */
+  timeToPickup: SlaPercentileDto | null
+  /** Started→completed SLA (ride duration); null when no rides completed. */
+  rideDuration: SlaPercentileDto | null
+}
+
+/**
+ * Offer funnel counts for the window.
+ * Byte-for-byte mirror of OfferFunnelDto from the backend.
+ */
+export interface OfferFunnelDto {
+  /** Total offers made (Assigned + Reassigned events). */
+  offersMade: number
+  accepted: number
+  declined: number
+  timeouts: number
+  /** Average number of offers made per completed ride. */
+  avgOffersPerCompleted: number
+}
+
+/**
+ * Lifecycle funnel counts for the window.
+ * Byte-for-byte mirror of LifecycleFunnelDto from the backend.
+ */
+export interface LifecycleFunnelDto {
+  created: number
+  assigned: number
+  accepted: number
+  arrived: number
+  inProgress: number
+  completed: number
+}
+
+/** Cancellations broken down by actor role. */
+export interface CancellationByRoleDto {
+  role: string
+  count: number
+}
+
+/** Cancellations broken down by order status at cancel time. */
+export interface CancellationByStatusDto {
+  status: string
+  count: number
+}
+
+/** Cancellations broken down by Prague hour-of-day. */
+export interface CancellationByHourDto {
+  hour: number
+  count: number
+}
+
+/**
+ * Cancellation breakdown for the window.
+ * Byte-for-byte mirror of CancellationBreakdownDto from the backend.
+ */
+export interface CancellationBreakdownDto {
+  byRole: CancellationByRoleDto[]
+  byStatusAtCancel: CancellationByStatusDto[]
+  byHour: CancellationByHourDto[]
+  /** Share of cancellations that happened after Arrived (no-shows), 0..1. */
+  noShowShare: number
+}
+
+/**
+ * Prior-period operations sections (compare=true only).
+ * Byte-for-byte mirror of GetOperationsPriorDto from the backend.
+ */
+export interface OperationsPriorDto {
+  sla: OperationsSlaDto
+  offerFunnel: OfferFunnelDto
+  lifecycle: LifecycleFunnelDto
+  cancellations: CancellationBreakdownDto
+}
+
+/**
+ * Response envelope for GET /api/v1/analytics/operations.
+ * Byte-for-byte mirror of GetOperationsResponse from the backend.
+ */
+export interface AnalyticsOperationsResponse {
+  sla: OperationsSlaDto
+  offerFunnel: OfferFunnelDto
+  lifecycle: LifecycleFunnelDto
+  cancellations: CancellationBreakdownDto
+  /** Prior-period data for delta badges; null when compare=false. */
+  prior: OperationsPriorDto | null
+}
+
+/** Query parameters for the analytics operations endpoint (same shape as overview). */
+export type AnalyticsOperationsParams = AnalyticsOverviewParams
+
+/**
+ * GET /api/v1/analytics/operations — SLA percentiles, offer funnel, lifecycle funnel, cancellations.
+ */
+export function getAnalyticsOperations(params: AnalyticsOperationsParams): Promise<AnalyticsOperationsResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsOperationsResponse>(`/analytics/operations?${qs}`)
+}
+
+// ── Analytics Revenue ─────────────────────────────────────────────────────────
+
+/** Revenue per time bucket, stacked by payment type and split by order source / price type. */
+export interface RevenueBucketDto {
+  /** Bucket start date (yyyy-MM-dd) from date_trunc. */
+  bucket: string
+  /** Total completed revenue in CZK for this bucket. */
+  totalCzk: number
+  /** Number of completed rides in this bucket. */
+  rides: number
+  /** Revenue from cash payment orders. */
+  cashCzk: number
+  /** Revenue from card payment orders. */
+  cardCzk: number
+  /** Revenue from invoice (account) payment orders. */
+  invoiceCzk: number
+  /** Revenue from app-source orders (OrderSource=App). */
+  appCzk: number
+  /** Revenue from phone-source orders (OrderSource=Phone). */
+  phoneCzk: number
+  /** Revenue from dispatcher-created orders (OrderSource=Dispatcher). */
+  dispatcherCzk: number
+  /** Revenue from meter-priced orders. */
+  meterCzk: number
+  /** Revenue from fixed-price orders. */
+  fixedCzk: number
+  /** Revenue from estimate-price orders (PriceType=Estimate). */
+  estimateCzk: number
+}
+
+/** Average order value for one time bucket. */
+export interface AovTrendBucketDto {
+  /** Bucket start date (yyyy-MM-dd). */
+  bucket: string
+  /** Average final_price_czk of completed orders in this bucket (0 when no completed orders). */
+  aovCzk: number
+}
+
+/** One price-override reason with its frequency count. */
+export interface OverrideReasonDto {
+  /** The override reason text. */
+  reason: string
+  /** Number of orders with this reason in the window. */
+  count: number
+}
+
+/** Aggregate impact of price overrides in the window. */
+export interface PriceOverrideImpactDto {
+  /** Number of completed orders where final price differed from the fixed/estimated price. */
+  count: number
+  /** Sum of (FinalPriceCzk − reference price) across overridden orders (positive = higher than quoted). */
+  totalDeltaCzk: number
+  /** Most common override reasons by frequency. */
+  topReasons: OverrideReasonDto[]
+}
+
+/** A top revenue-generating pickup→dropoff route. */
+export interface RevenueTopRouteDto {
+  /** Pickup address string. */
+  pickupAddress: string
+  /** Dropoff address string. */
+  dropoffAddress: string
+  /** Number of completed rides on this route in the window. */
+  rides: number
+  /** Total revenue (CZK) on this route in the window. */
+  revenueCzk: number
+  /** Average order value (CZK) on this route (0 when no rides). */
+  aovCzk: number
+}
+
+/** Revenue, ride count, and average value for one zone. */
+export interface ZoneRevenueDto {
+  /** Zone entity ID. */
+  zoneId: string
+  /** Zone display name. */
+  zoneName: string
+  /** Number of completed rides with a pickup inside the zone bounding box. */
+  rides: number
+  /** Total revenue from those rides. */
+  revenueCzk: number
+  /** Average order value across those rides (0 when no rides). */
+  aovCzk: number
+}
+
+/** SMS cost for one time bucket. */
+export interface SmsCostBucketDto {
+  /** Bucket start date (yyyy-MM-dd). */
+  bucket: string
+  /** Number of SMS notifications sent (Channel=Sms, Status=Sent) with CreatedAt in this bucket. */
+  smsCount: number
+  /** SmsCount × SmsUnitCostCzk from FleetSettings (1 CZK default if no FleetSettings row). */
+  costCzk: number
+}
+
+/** Prior-period revenue data (all 6 sections). */
+export interface AnalyticsRevenuePriorDto {
+  series: RevenueBucketDto[]
+  aovTrend: AovTrendBucketDto[]
+  priceOverride: PriceOverrideImpactDto
+  topRoutes: RevenueTopRouteDto[]
+  zoneRevenue: ZoneRevenueDto[]
+  smsCost: SmsCostBucketDto[]
+}
+
+/** Response envelope for GET /api/v1/analytics/revenue. */
+export interface AnalyticsRevenueResponse {
+  /** Revenue per bucket, stacked by payment type. */
+  series: RevenueBucketDto[]
+  /** AOV trend per bucket. */
+  aovTrend: AovTrendBucketDto[]
+  /** Price override aggregate impact. */
+  priceOverride: PriceOverrideImpactDto
+  /** Top pickup→dropoff routes by revenue. */
+  topRoutes: RevenueTopRouteDto[]
+  /** Revenue per zone (bounding-box pickup attribution). */
+  zoneRevenue: ZoneRevenueDto[]
+  /** SMS cost per bucket. */
+  smsCost: SmsCostBucketDto[]
+  /** Prior-period data; null when compare=false. */
+  prior: AnalyticsRevenuePriorDto | null
+}
+
+/** Query parameters for the analytics revenue endpoint (same shape as overview). */
+export type AnalyticsRevenueParams = AnalyticsOverviewParams
+
+/**
+ * GET /api/v1/analytics/revenue — revenue stacked by payment type, source/price-type splits,
+ * AOV trend, price override impact, top routes/zones, SMS cost line.
+ */
+export function getAnalyticsRevenue(params: AnalyticsRevenueParams): Promise<AnalyticsRevenueResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsRevenueResponse>(`/analytics/revenue?${qs}`)
+}
+
+// ── Analytics: Drivers ────────────────────────────────────────────────────────
+
+/** One driver's aggregate metrics across the analytics window. */
+export interface DriverLeagueRowDto {
+  driverId: string
+  name: string
+  ridesCompleted: number
+  revenueCzk: number
+  onlineHours: number
+  utilizationPct: number
+  revenuePerOnlineHour: number
+  acceptanceRate: number
+  avgTimeToAcceptSeconds: number
+  declinesAndTimeouts: number
+  cancellations: number
+  noShows: number
+  avgRating: number | null
+}
+
+/** Driver retention counts for one ISO calendar week. */
+export interface RetentionBucketDto {
+  weekStart: string
+  active: number
+  newlyActivated: number
+  churned: number
+}
+
+/** Prior-period drivers + retention data (when compare=true). */
+export interface GetDriversPriorDto {
+  drivers: DriverLeagueRowDto[]
+  retention: RetentionBucketDto[]
+}
+
+/** Response for GET /api/v1/analytics/drivers. */
+export interface AnalyticsDriversResponse {
+  drivers: DriverLeagueRowDto[]
+  retention: RetentionBucketDto[]
+  prior: GetDriversPriorDto | null
+}
+
+/** Query parameters for analytics/drivers (same shape as overview). */
+export type AnalyticsDriversParams = AnalyticsOverviewParams
+
+/**
+ * GET /api/v1/analytics/drivers — driver league table, retention series, and optional prior period.
+ */
+export function getAnalyticsDrivers(params: AnalyticsDriversParams): Promise<AnalyticsDriversResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsDriversResponse>(`/analytics/drivers?${qs}`)
+}
+
+/** Driver metrics for one ISO week (drill-down weekly trend). */
+export interface DriverWeeklyTrendDto {
+  weekStart: string
+  ridesCompleted: number
+  revenueCzk: number
+  avgRating: number | null
+}
+
+/** A completed order with a low customer rating (≤ 3 stars), for coaching purposes. */
+export interface LowRatedOrderDto {
+  orderId: string
+  completedAt: string
+  ratingStars: number
+  ratingComment: string | null
+  publicCode: string
+  pickupAddress: string
+  dropoffAddress: string | null
+}
+
+/** Response for GET /api/v1/analytics/drivers/{id}. */
+export interface AnalyticsDriverDrilldownResponse {
+  driverId: string
+  name: string
+  weeklyTrend: DriverWeeklyTrendDto[]
+  lowRatedOrders: LowRatedOrderDto[]
+}
+
+/** Query parameters for the driver drill-down endpoint. */
+export type AnalyticsDriverDrilldownParams = AnalyticsOverviewParams
+
+/**
+ * GET /api/v1/analytics/drivers/{id} — driver drill-down: weekly trend and low-rated orders.
+ */
+export function getAnalyticsDriverDrilldown(
+  id: string,
+  params: AnalyticsDriverDrilldownParams,
+): Promise<AnalyticsDriverDrilldownResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsDriverDrilldownResponse>(`/analytics/drivers/${id}?${qs}`)
+}
+
+// ── Analytics: Customers ──────────────────────────────────────────────────────
+
+/** New vs returning ride counts for a time bucket. */
+export interface NewVsReturningBucketDto {
+  bucket: string
+  newRides: number
+  returningRides: number
+}
+
+/** One row in the monthly cohort retention triangle. */
+export interface CustomerCohortRowDto {
+  acqMonthLabel: string
+  monthsSince: number
+  activeCustomers: number
+}
+
+/** A top customer by rides and revenue. */
+export interface TopCustomerDto {
+  customerUserId: string | null
+  customerPhone: string | null
+  customerName: string | null
+  rides: number
+  revenueCzk: number
+}
+
+/** Count of completed rides with a specific star rating. */
+export interface RatingBucketDto {
+  stars: number
+  count: number
+}
+
+/** Average rating for a time bucket. */
+export interface RatingTrendBucketDto {
+  bucket: string
+  rides: number
+  avgRating: number | null
+}
+
+/** A worst-rated completed order (≤3 stars) for complaint follow-up. */
+export interface WorstRatedOrderDto {
+  orderId: string
+  publicCode: string
+  completedAt: string
+  ratingStars: number
+  ratingComment: string | null
+  driverName: string | null
+}
+
+/** Ratings analysis for the analytics window. */
+export interface RatingsAnalysisDto {
+  totalRated: number
+  avgRating: number | null
+  distribution: RatingBucketDto[]
+  avgTrend: RatingTrendBucketDto[]
+  worstRated: WorstRatedOrderDto[]
+}
+
+/** Prior-period customer data (when compare=true). */
+export interface GetCustomersPriorDto {
+  totalRides: number
+  totalRevenueCzk: number
+  newIdentities: number
+  returningIdentities: number
+  repeatRate: number
+  freqOne: number
+  freqTwoToFive: number
+  freqSixPlus: number
+  newVsReturningBuckets: NewVsReturningBucketDto[]
+  cohortRows: CustomerCohortRowDto[]
+  topCustomers: TopCustomerDto[]
+  ratings: RatingsAnalysisDto
+}
+
+/** Response for GET /api/v1/analytics/customers. */
+export interface AnalyticsCustomersResponse {
+  totalRides: number
+  totalRevenueCzk: number
+  newIdentities: number
+  returningIdentities: number
+  repeatRate: number
+  freqOne: number
+  freqTwoToFive: number
+  freqSixPlus: number
+  newVsReturningBuckets: NewVsReturningBucketDto[]
+  cohortRows: CustomerCohortRowDto[]
+  topCustomers: TopCustomerDto[]
+  ratings: RatingsAnalysisDto
+  prior: GetCustomersPriorDto | null
+}
+
+/** Query parameters for the analytics customers endpoint (same shape as overview). */
+export type AnalyticsCustomersParams = AnalyticsOverviewParams
+
+/**
+ * GET /api/v1/analytics/customers — customer behaviour analytics:
+ * new vs returning, frequency distribution, cohort triangle, top customers, ratings analysis.
+ */
+export function getAnalyticsCustomers(params: AnalyticsCustomersParams): Promise<AnalyticsCustomersResponse> {
+  const qs = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    granularity: params.granularity,
+    compare: String(params.compare),
+  })
+  return apiRequest<AnalyticsCustomersResponse>(`/analytics/customers?${qs}`)
+}
+
 /**
  * GET /api/v1/reports/fleet — KPIs + rides-per-day series + top routes.
  * Envelope `{ kpis, ridesPerDay, topRoutes }`.
@@ -1757,6 +2401,62 @@ export function postCreateFleet(req: CreateFleetRequest): Promise<CreateFleetRes
 /** POST /api/v1/admin/fleets/{id}/deactivate — set IsActive=false (SuperAdmin). */
 export function postDeactivateFleet(id: string): Promise<void> {
   return apiRequest<void>(`/admin/fleets/${id}/deactivate`, { method: 'POST' })
+}
+
+// ---------------------------------------------------------------------------
+// SuperAdmin platform analytics endpoint (UC-009 WI-10 — SuperAdminOnly, cross-tenant)
+//
+// GET /api/v1/admin/analytics. Bare envelope { fleets, totals } (NOT an `items`
+// wrapper). camelCase mirror of GetPlatformAnalyticsResponse / FleetHealthRowDto /
+// PlatformTotalsDto. Reachability caveat: like getAdminFleets, /admin needs a
+// SuperAdmin JWT that the backend cannot mint today (no SuperAdmin login path);
+// the function hits the real route so tsc/build/tests stay green.
+// ---------------------------------------------------------------------------
+
+/**
+ * One per-fleet health row (byte-for-byte FleetHealthRowDto).
+ * Money fields are integer CZK; format at render with Intl.NumberFormat('cs-CZ').
+ */
+export interface FleetHealthRow {
+  fleetId: string
+  fleetName: string
+  ridesThisMonth: number
+  ridesLastMonth: number
+  revenueThisMonthCzk: number
+  revenueLastMonthCzk: number
+  /** Month-over-month rides delta, percent (1 decimal). */
+  momDeltaPct: number
+  activeDrivers: number
+  activeCustomers: number
+  smsCount: number
+  smsEstimatedCostCzk: number
+  /** UTC ISO timestamp of the most recent order, or null if none. */
+  lastOrderAt: string | null
+  /** Completed rides for each of the 12 most recent ISO weeks (oldest first). */
+  sparklineWeeks: number[]
+  /** Server-computed flag: 'growing' | 'stable' | 'declining' | 'inactive'. */
+  health: string
+}
+
+/** Platform-wide totals row (byte-for-byte PlatformTotalsDto). */
+export interface PlatformTotals {
+  totalFleets: number
+  totalRidesThisMonth: number
+  totalRevenueThisMonthCzk: number
+  growingFleets: number
+  decliningFleets: number
+  inactiveFleets: number
+}
+
+/** GET /api/v1/admin/analytics response envelope (byte-for-byte GetPlatformAnalyticsResponse). */
+export interface AdminAnalyticsResponse {
+  fleets: FleetHealthRow[]
+  totals: PlatformTotals
+}
+
+/** GET /api/v1/admin/analytics — cross-tenant per-fleet health + platform totals (SuperAdmin). */
+export function getAdminAnalytics(): Promise<AdminAnalyticsResponse> {
+  return apiRequest<AdminAnalyticsResponse>('/admin/analytics')
 }
 
 // ---------------------------------------------------------------------------

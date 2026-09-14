@@ -47,6 +47,13 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasIndex(x => new { x.FleetId, x.DriverId, x.CreatedAt });
         builder.HasIndex(x => new { x.FleetId, x.Status, x.CreatedAt });
 
+        // Analytics indexes (UC-009): completion-based aggregations for admin dashboards.
+        builder.HasIndex(x => new { x.FleetId, x.DriverId, x.CompletedAt });
+        builder.HasIndex(x => new { x.FleetId, x.CompletedAt });
+        builder.HasIndex(x => new { x.FleetId, x.CustomerUserId, x.CompletedAt });
+        builder.HasIndex(x => new { x.FleetId, x.Source, x.CreatedAt });
+        builder.HasIndex(x => new { x.FleetId, x.PaymentType, x.CompletedAt });
+
         // FK constraints without navigation properties.
         builder.HasOne<Fleet>().WithMany().HasForeignKey(x => x.FleetId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<User>().WithMany().HasForeignKey(x => x.CustomerUserId).OnDelete(DeleteBehavior.SetNull);

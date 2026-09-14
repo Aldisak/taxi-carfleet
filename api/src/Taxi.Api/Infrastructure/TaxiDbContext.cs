@@ -67,6 +67,9 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
     /// <summary>Delivery log for notifications; the unique index also serves as the send-time dedup claim.</summary>
     public DbSet<NotificationLog> NotificationLog => Set<NotificationLog>();
 
+    /// <summary>Idempotency markers recording that the weekly digest was sent for a given ISO week per fleet.</summary>
+    public DbSet<WeeklyDigestMarker> WeeklyDigestMarkers => Set<WeeklyDigestMarker>();
+
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -109,6 +112,7 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
         modelBuilder.Entity<AuditLog>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<NotificationOutbox>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<NotificationLog>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
+        modelBuilder.Entity<WeeklyDigestMarker>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
 
         // Nullable FleetId entities: include rows with null FleetId (customers/superadmin are tenant-agnostic)
         // plus rows belonging to the current fleet.

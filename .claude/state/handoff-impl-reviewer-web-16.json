@@ -1,0 +1,30 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "WI-16",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "rule": "rules/web-performance.md#code-splitting",
+      "file": "web/src/features/admin/PlatformScreen.tsx",
+      "hunk": "build graph (dist/assets/PlatformScreen-*.js)",
+      "detail": "The built PlatformScreen chunk statically imports the analytics chunk: PlatformScreen-BU8gfJ6D.js contains `import{...}from\"./analytics-BpN6SikF.js\"`, and analytics-BpN6SikF.js bundles chart.js (359 KB raw / 94.77 KB brotli). Visiting /admin/platform therefore pulls the full FleetAdmin analytics/chart.js chunk as a static dependency. This contradicts the developer handoff's central rationale ('SVG avoids the coupling entirely', 'admin chunk chart-free', 'analytics chunk unchanged, no leak') — the SVG choice did NOT decouple admin from analytics; vite manualChunks routed shared helpers (theme/i18n/toCsv) into the analytics-named chunk, coupling PlatformScreen to it. Not blocking: the WI-16 deliverable explicitly permits 'keep in the analytics chunk or an admin chunk, NOT eager', PlatformScreen is lazy behind AdminGuard (NOT eager), and both size budgets pass. The size 'app js' budget excludes analytics-*.js so it cannot see this coupling."
+    },
+    {
+      "severity": "LOW",
+      "rule": "rules/web-accessibility.md#semantics",
+      "file": "web/src/features/admin/PlatformScreen.tsx",
+      "hunk": "@@ tfoot ~L347-361",
+      "detail": "In the table tfoot, totals.totalFleets renders in the last <td> (under the 'Zdraví'/Health column header) while its label 'Flotil celkem' sits in column 1; that value cell is not aria-hidden, so the count is visually and semantically bound to the Health column. Redundant with the totals card grid below. Cosmetic/semantic mismatch only."
+    }
+  ],
+  "verification": {
+    "lint": { "command": "npm run --prefix web lint", "exit_code": 0, "result": "0 warnings (eslint --max-warnings 0)" },
+    "tsc": { "command": "npm run --prefix web tsc", "exit_code": 0, "result": "no errors" },
+    "test": { "command": "npm run --prefix web test", "exit_code": 0, "result": "205 files / 1414 tests passed (matches expected 1414/205)" },
+    "build": { "command": "npm run --prefix web build", "exit_code": 0, "result": "vite built OK; PlatformScreen-*.js emitted as its own lazy chunk (~10 KB raw)" },
+    "size": { "command": "npm run --prefix web size", "exit_code": 0, "result": "app js 219.75 kB / 260 PASS; analytics chunk 94.77 kB / 115 PASS" }
+  },
+  "summary": "WI-16 SuperAdmin /admin/platform screen. Spec-conformant and merge-ready. DTOs (FleetHealthRow/PlatformTotals/AdminAnalyticsResponse) are a byte-for-byte camelCase mirror of GetPlatformAnalyticsResponse/FleetHealthRowDto/PlatformTotalsDto. Route /admin/platform is lazy and wrapped in AdminGuard (SuperAdmin gating precedent; no FleetAdmin data path). Nav link added from AdminFleetsPage. Pure modules (sparklinePath, healthBand, platformCsv) are tested; healthBand consumes server row.health directly and pairs fg/bg tokens for WCAG (amber inactive band uses dark text). Query key ['admin','analytics'], staleTime 30s, retry false. All strings via useTranslation with cs/en parity (parity test green). SVG sparkline has role=img + i18n aria-label; axe assertion present and passing. client.ts is the sole fetch surface; no source-level cross-feature imports. All 5 gates pass fresh (lint 0, tsc clean, 1414 tests, build OK, both size budgets pass). Two non-blocking findings: (MEDIUM) the built PlatformScreen chunk statically imports the analytics chunk (which contains chart.js), so /admin/platform lazily pulls chart.js — the handoff's 'chart-free / decoupled' rationale did not materialize, but the WI explicitly sanctions the analytics chunk as a home and 'NOT eager' holds; (LOW) tfoot totalFleets value renders under the Health column header without aria-hidden. blocks_merge=false."
+}

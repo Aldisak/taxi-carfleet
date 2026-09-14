@@ -32,6 +32,11 @@ export const theme: DefaultTheme = {
     orderCompletedText: '#ffffff',
     orderCancelled: '#d93025',
     orderCancelledText: '#ffffff',
+    textOnPrimary: '#ffffff',
+    // Analytics chart accents
+    accentViolet: '#8b5cf6',
+    ratingLow: '#f97316',
+    ratingHigh: '#a3e635',
   },
   spacing: {
     xs: '4px',

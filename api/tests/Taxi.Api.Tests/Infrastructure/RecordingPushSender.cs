@@ -5,14 +5,19 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Taxi.Api.Tests.Infrastructure;
 
-/// <summary>Test <see cref="IPushSender"/> that counts sends and can be configured to return 410 Gone
-/// (deleting the subscription, like the real sender) so AC#4 can be exercised without a push service.</summary>
+/// <summary>Test <see cref="IPushSender"/> that counts sends, captures the last message, and can be
+/// configured to return 410 Gone (deleting the subscription, like the real sender) so AC#4 can be
+/// exercised without a push service.</summary>
 internal sealed class RecordingPushSender(IServiceScopeFactory scopeFactory) : IPushSender
 {
     private int _sendCount;
 
     /// <summary>Number of times <see cref="SendAsync"/> was invoked.</summary>
     public int SendCount => _sendCount;
+
+    /// <summary>The most recent <see cref="PushMessage"/> passed to <see cref="SendAsync"/>, or null if
+    /// no send has been made yet.</summary>
+    public PushMessage? LastMessage { get; private set; }
 
     /// <summary>When true, every send reports 410 Gone and deletes the subscription (AC#4).</summary>
     public bool ReturnGone { get; set; }
@@ -21,6 +26,7 @@ internal sealed class RecordingPushSender(IServiceScopeFactory scopeFactory) : I
     public async Task<PushSendResult> SendAsync(PushSubscription subscription, PushMessage message, CancellationToken ct)
     {
         Interlocked.Increment(ref _sendCount);
+        LastMessage = message;
 
         if (ReturnGone)
         {

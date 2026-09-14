@@ -59,6 +59,25 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Name the analytics lazy chunk so the size-limit budget glob
+        // `dist/assets/analytics-*.js` matches it correctly.
+        // chart.js and all features/analytics/* code lands in this named chunk,
+        // keeping it absent from the eager bundles.
+        manualChunks(id) {
+          if (
+            id.includes('/features/analytics/') ||
+            id.includes('/chart.js/') ||
+            id.includes('/react-chartjs-2/')
+          ) {
+            return 'analytics'
+          }
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': {

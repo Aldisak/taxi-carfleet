@@ -1,0 +1,49 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "WI-15",
+  "round": 1,
+  "blocks_merge": true,
+  "findings": [
+    {
+      "id": "WI15-W1",
+      "severity": "high",
+      "file": "web/src/features/analytics/drivers/DriverDrilldown.tsx",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "title": "Drill-down weekly-trend chart legend shows hardcoded Czech labels (i18n bypass)",
+      "detail": "DriverDrilldown.tsx:136-137 calls buildWeeklyTrendLineConfig(data.weeklyTrend) with NO label arguments, so the builder falls back to its hardcoded Czech defaults ridesLabel='Jízdy' / revenueLabel='Tržby (Kč)' (driversCharts.ts:99-102). That chart config sets legend { position: 'top' } (driversCharts.ts:129 — legend is DISPLAYED), so an English-locale FleetAdmin sees hardcoded Czech legend text that never passes through useTranslation(). This borders the CRITICAL 'hardcoded user-facing string bypassing i18n' category; it slipped past the locales.parity test because the string lives in a pure-config default, not the i18n JSON, and the pure-config test pins the Czech default as 'correct'. Contrast: DriversTab retention and CustomersTab new-vs-returning DO pass t() labels correctly.",
+      "recommendation": "Pass t('analytics.drivers.drilldown.tableRides') / t('analytics.drivers.drilldown.tableRevenue') (or dedicated legend keys, both locales) into buildWeeklyTrendLineConfig at the call site, mirroring the retention/new-vs-returning call sites. Also call the builder once (currently invoked twice inline for data and options)."
+    },
+    {
+      "id": "WI15-W2",
+      "severity": "high",
+      "file": "web/src/features/analytics/customers/customersCharts.ts",
+      "rule": "rules/web-react-style.md#styled-components",
+      "title": "Hardcoded off-theme hex colors in ratings-distribution palette",
+      "detail": "customersCharts.ts:28 ('#f97316' orange-500) and :30 ('#a3e635' lime-500) are hardcoded hex literals in COLOR_RATINGS_DIST, not derived from theme tokens via hexToRgba like the other three entries. The task explicitly required chart colors to derive from theme via hexToRgba, and revenueCharts.test.ts already pins theme-derived chart colors as a prior-round remediation. These two colors are newly introduced by WI-15 (not pre-existing untouched code). NOTE — cross-WI consistency signal for the conductor: the same category was accepted in already-merged WIs — revenueCharts.ts:38/46 ('#8b5cf6', WI-14c) and overviewChart.ts:64/73 ('#1a73e8'/'#188038', WI-13, which happen to equal theme primary/success). The project norm is therefore currently inconsistent. Per the web rubric hardcoded colors are HIGH; not downgrading on precedent, but flagging that a fleet-wide fix (promote a 5-star rating scale + accent colors to theme tokens across all analytics charts) is the durable resolution.",
+      "recommendation": "Add rating-scale / accent tokens (e.g. theme.colors.warningAlt/successAlt or a rating[1..5] scale) to theme.ts and derive all five distribution colors via hexToRgba(theme.colors.*). Address the sibling WI-13/WI-14c literals in the same follow-up for consistency."
+    },
+    {
+      "id": "WI15-W3",
+      "severity": "medium",
+      "file": "web/src/features/analytics/customers/CustomersTab.tsx",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "title": "Ratings distribution/trend chart dataset labels fall back to hardcoded Czech (tooltip-visible)",
+      "detail": "CustomersTab.tsx:160-161 calls buildRatingsDistributionBarConfig(...) and buildRatingsTrendLineConfig(...) with no label argument, so they use the hardcoded Czech defaults label='Počet hodnocení' (customersCharts.ts:84) and label='Průměrné hodnocení' (customersCharts.ts:116). Both configs set legend { display: false } (customersCharts.ts:101, :136), so the strings are NOT shown in a legend, but Chart.js still surfaces the dataset label in hover tooltips — a user-facing string bypassing useTranslation. Lower severity than W1 because it is only tooltip-visible, not a persistent legend.",
+      "recommendation": "Pass t()-derived labels (both locales) into both builders at the call site, or drop the dataset label when legend is hidden and no tooltip label is desired."
+    },
+    {
+      "id": "WI15-I1",
+      "severity": "info",
+      "file": "web/src/features/analytics/drivers/DriverDrilldown.tsx",
+      "rule": "docs/specs/in-progress/admin-analytics-work-items.md#wi-15",
+      "title": "Drill-down 404 renders generic error, not a dedicated not-found state",
+      "detail": "WI-15 Error Paths says 'drill-down 404 → not-found state; query error → last-known + inline.' DriverDrilldown.tsx:128 renders one generic ErrorMessage for any isError (404 and other failures alike). Not blocking — a single inline error state is consistent with the other analytics tabs' precedent (DriversTab/CustomersTab) and the driver detail is reached only by clicking an in-range league row, so a genuine 404 is a narrow edge. Noted for completeness against the WI error-path text."
+    }
+  ],
+  "verification": {
+    "full_suite_result": "PASS — npm run --prefix web test: 200 test files, 1387 tests passed, 0 failed, exit 0 (handoff claimed 1385; actual 1387, all green). npm run --prefix web lint: exit 0, 0 warnings (--max-warnings 0). npm run --prefix web tsc: exit 0, 0 errors. i18n cs/en parity exact: 1082 == 1082 keys, no diff; 96 WI-15 keys under analytics.drivers.*/analytics.customers.*.",
+    "build_result": "PASS — npm run --prefix web build: exit 0. npm run --prefix web size: app js 216.91 kB brotli (limit 260 kB, PASS); analytics chunk 94.73 kB brotli (limit 115 kB, PASS).",
+    "staging_clean": "Reviewed staged diff only; no source files modified, nothing committed or unstaged. Note: the staged web diff includes WI-11..WI-14c files (whole analytics feature) — review scoped to WI-15 files per instruction."
+  },
+  "summary": "WI-15 (Řidiči + Zákazníci analytics tabs) is structurally strong: correct vertical-slice placement, hierarchical TanStack query keys (['analytics','drivers'|'customers', params] and the drill-down subkey), client.ts is the only fetch surface with well-typed DTOs mirroring the backend, no cross-feature imports, presentational components delegating to tested pure modules (leagueSort, driversCsv, cohortCsv, driversCharts, customersCharts), aria-sort on all sortable headers, sr-only table fallbacks on every chart, real <button> elements, and full i18n parity. All verification gates pass (lint 0, tsc 0, 1387 tests, size under both budgets). Pre-blessed deviations (unmasked top customers, inline useQuery for drilldown, no virtualization, Czech CSV headers matching csvExport precedent) are accepted. blocks_merge=true on two findings: (W1 HIGH, borders CRITICAL) the drill-down weekly-trend chart's DISPLAYED legend uses hardcoded Czech default labels because the call site omits t() args — a user-facing i18n bypass invisible to the parity test; and (W2 HIGH) two hardcoded off-theme hex colors in customersCharts.ts violate the theme-token/hexToRgba requirement the task specifically flagged, with a cross-WI consistency note that WI-13/WI-14c carry the same accepted pattern (recommend a fleet-wide theme-token fix). W3 (MEDIUM) is the tooltip-only variant of W1 in CustomersTab ratings charts. W3-fixing and W1-fixing are the same one-line-per-call-site change."
+}

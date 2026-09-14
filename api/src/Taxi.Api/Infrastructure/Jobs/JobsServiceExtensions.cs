@@ -17,6 +17,7 @@ internal static class JobsServiceExtensions
         services.AddHostedService<StalePositionJob>();
         services.AddHostedService<NotificationDispatchJob>();
         services.AddHostedService<RetentionJob>();
+        services.AddHostedService<WeeklyDigestJob>();
         return services;
     }
 }

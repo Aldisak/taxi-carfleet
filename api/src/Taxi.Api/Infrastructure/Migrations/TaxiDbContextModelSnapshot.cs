@@ -178,6 +178,9 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.HasIndex("VehicleId")
                         .HasDatabaseName("ix_driver_shifts_vehicle_id");
 
+                    b.HasIndex("FleetId", "StartedAt")
+                        .HasDatabaseName("ix_driver_shifts_fleet_id_started_at");
+
                     b.ToTable("driver_shifts", (string)null);
                 });
 
@@ -686,6 +689,9 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.HasIndex("VehicleId")
                         .HasDatabaseName("ix_orders_vehicle_id");
 
+                    b.HasIndex("FleetId", "CompletedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_completed_at");
+
                     b.HasIndex("FleetId", "CreatedAt")
                         .IsDescending(false, true)
                         .HasDatabaseName("ix_orders_fleet_id_created_at");
@@ -700,8 +706,20 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.HasIndex("FleetId", "Status")
                         .HasDatabaseName("ix_orders_fleet_id_status");
 
+                    b.HasIndex("FleetId", "CustomerUserId", "CompletedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_customer_user_id_completed_at");
+
+                    b.HasIndex("FleetId", "DriverId", "CompletedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_driver_id_completed_at");
+
                     b.HasIndex("FleetId", "DriverId", "CreatedAt")
                         .HasDatabaseName("ix_orders_fleet_id_driver_id_created_at");
+
+                    b.HasIndex("FleetId", "PaymentType", "CompletedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_payment_type_completed_at");
+
+                    b.HasIndex("FleetId", "Source", "CreatedAt")
+                        .HasDatabaseName("ix_orders_fleet_id_source_created_at");
 
                     b.HasIndex("FleetId", "Status", "CreatedAt")
                         .HasDatabaseName("ix_orders_fleet_id_status_created_at");
@@ -772,6 +790,9 @@ namespace Taxi.Api.Infrastructure.Migrations
 
                     b.HasIndex("OrderId", "At")
                         .HasDatabaseName("ix_order_events_order_id_at");
+
+                    b.HasIndex("FleetId", "Type", "At")
+                        .HasDatabaseName("ix_order_events_fleet_id_type_at");
 
                     b.ToTable("order_events", (string)null);
                 });
@@ -1241,6 +1262,39 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.ToTable("vehicles", (string)null);
                 });
 
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.WeeklyDigestMarker", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<int>("IsoWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("iso_week");
+
+                    b.Property<int>("IsoYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("iso_year");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_weekly_digest_markers");
+
+                    b.HasIndex("FleetId", "IsoYear", "IsoWeek")
+                        .IsUnique()
+                        .HasDatabaseName("ix_weekly_digest_markers_fleet_id_iso_year_iso_week");
+
+                    b.ToTable("weekly_digest_markers", (string)null);
+                });
+
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.Zone", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1543,6 +1597,16 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_vehicles_fleets_fleet_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.WeeklyDigestMarker", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_weekly_digest_markers_fleets_fleet_id");
                 });
 
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.Zone", b =>

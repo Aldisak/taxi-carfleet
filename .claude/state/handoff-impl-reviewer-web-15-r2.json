@@ -1,0 +1,49 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "WI-15",
+  "round": 2,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "WI15-W1",
+      "status": "resolved",
+      "severity": "high",
+      "file": "web/src/features/analytics/drivers/DriverDrilldown.tsx",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "verification": "buildWeeklyTrendLineConfig is now invoked EXACTLY ONCE (DriverDrilldown.tsx:119-125) into a single `weeklyTrendConfig` const, gated by `data ? ... : null`; both .data and .options are read from that one config object (lines 144-145). The call passes t('analytics.drivers.drilldown.tableRides') and t('analytics.drivers.drilldown.tableRevenue') as the rides/revenue legend labels, so the displayed 'top' legend now flows through useTranslation. Prior double-invocation and hardcoded-Czech-default legend both gone."
+    },
+    {
+      "id": "WI15-W2",
+      "status": "resolved",
+      "severity": "high",
+      "file": "web/src/features/analytics/customers/customersCharts.ts",
+      "rule": "rules/web-react-style.md#styled-components",
+      "verification": "All five COLOR_RATINGS_DIST entries now derive from theme tokens via hexToRgba (customersCharts.ts:26-32): error/warning/success (pre-existing) plus the two formerly-hardcoded literals now hexToRgba(theme.colors.ratingLow,1) [2-star] and hexToRgba(theme.colors.ratingHigh,1) [4-star]. Alpha 1.0 preserves the original opaque render (not 0.8). New tokens accentViolet='#8b5cf6', ratingLow='#f97316', ratingHigh='#a3e635' added to BOTH theme.ts:37-39 (object literal) and theme.d.ts:36-41 (DefaultTheme interface). Sibling literals also routed: revenueCharts.ts COLOR_INVOICE/COLOR_DISPATCHER = theme.colors.accentViolet (revenueCharts.ts:38,46); overviewChart.ts borderColor = theme.colors.primary / theme.colors.success (overviewChart.ts:65,74 — these literals already equalled the tokens, byte-identical render). Grep for /#[0-9a-fA-F]{6}/ across web/src/features/analytics/**/*.ts finds only comment/doc occurrences, no code literals. Pinning test present: customersCharts.test.ts:81-93 asserts every distribution color matches /^rgba\(/ and contains no '#', and pins hues 249,115,22 (ratingLow) and 163,230,53 (ratingHigh) — proving rendered hues unchanged."
+    },
+    {
+      "id": "WI15-W3",
+      "status": "resolved",
+      "severity": "medium",
+      "file": "web/src/features/analytics/customers/CustomersTab.tsx",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "verification": "CustomersTab.tsx:160-167 passes t('analytics.customers.ratings.distribution.datasetLabel') into buildRatingsDistributionBarConfig and t('analytics.customers.ratings.avgRating') into buildRatingsTrendLineConfig. NEW key analytics.customers.ratings.distribution.datasetLabel present in BOTH cs.json:1242 ('Počet hodnocení') and en.json:1242 ('Number of ratings'). avgRating is a reused existing key. i18n parity verified programmatically: 1083 == 1083 keys, empty diff both directions, locales.parity.test.ts green."
+    },
+    {
+      "id": "WI15-I1",
+      "status": "carried",
+      "severity": "info",
+      "file": "web/src/features/analytics/drivers/DriverDrilldown.tsx",
+      "rule": "docs/specs/in-progress/admin-analytics-work-items.md#wi-15",
+      "verification": "Info-only in round 1; intentionally not addressed per handoff constraints_honored.no_scope_creep. Drill-down still renders one generic ErrorMessage for any isError (DriverDrilldown.tsx:136). Non-blocking, consistent with sibling tab precedent."
+    }
+  ],
+  "verification": {
+    "lint": "PASS — npm run --prefix web lint: exit 0, 0 warnings (--max-warnings 0).",
+    "tsc": "PASS — npm run --prefix web tsc (tsc --noEmit): exit 0, 0 errors.",
+    "test": "PASS — npm run --prefix web test: 200 test files, 1390 tests passed, 0 failed (round 1 baseline 1387; +3 new pinning/spy tests as claimed).",
+    "i18n_parity": "PASS — cs 1083 keys == en 1083 keys, no missing keys either direction; new key analytics.customers.ratings.distribution.datasetLabel present in both.",
+    "no_regressions_scope_creep": "PASS — round-2 delta confined to the 9 named source files (DriverDrilldown.tsx, customersCharts.ts, CustomersTab.tsx, revenueCharts.ts, overviewChart.ts, theme.ts, theme.d.ts, cs.json, en.json) plus their tests. theme diff is additive (3 tokens + interface docs). No rendered color change: opaque literals stayed opaque (direct token ref or alpha=1.0); no drifted color blessed by a new pinned test. Builder signatures kept backward-compatible Czech default params; only call sites changed. build/size skipped per instruction (dev-reported 94.72 KB analytics / 216.94 KB app both under budget).",
+    "staging_clean": "Read-only review; no source files modified, nothing committed or unstaged."
+  },
+  "summary": "Round-2 narrow verification of WI-15: all three blocking findings are RESOLVED. W1 (HIGH) — buildWeeklyTrendLineConfig now called once with t()-derived legend labels; the displayed legend flows through useTranslation. W2 (HIGH) — all five ratings-distribution colors, plus the sibling revenueCharts/overviewChart literals, are routed through theme tokens (new accentViolet/ratingLow/ratingHigh added to both theme.ts and theme.d.ts); alpha 1.0 preserves opaque render; a pinning test asserts rgba routing (no '#') and freezes the exact hues 249,115,22 / 163,230,53. W3 (MEDIUM) — CustomersTab passes t() dataset labels; new datasetLabel key present in both locales with exact parity (1083==1083). I1 remains info-only, intentionally not addressed. All gates green: lint 0 warnings, tsc 0 errors, 200 files / 1390 tests pass (+3). No regressions or scope creep in the round-2 delta. blocks_merge=false."
+}

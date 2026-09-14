@@ -1,0 +1,50 @@
+{
+  "reviewer": "impl-reviewer",
+  "wi_id": "WI-09+WI-10",
+  "round": 1,
+  "blocks_merge": false,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "file": "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsEndpoint.cs",
+      "rule": "docs/specs/in-progress/admin-analytics-work-items.md#WI-10 (deliverable: 'SMS messages + est. cost') + WI-07 SMS-cost precedent",
+      "title": "SMS estimated cost hardcoded to 1 CZK/SMS instead of per-fleet SmsUnitCostCzk",
+      "detail": "BuildFleetRowAsync returns SmsEstimatedCostCzk: smsCount (line 205, comment '// 1 CZK per SMS'). FleetSettings.SmsUnitCostCzk is a per-fleet configurable value (default 1). The sibling WI-07 revenue endpoint computes SMS cost as smsCount x SmsUnitCostCzk read from FleetSettings (default 1 when no row) and is test-pinned to that. A fleet with a non-default rate shows correct cost on its own /analytics/revenue tab but a wrong (1 CZK/SMS) cost on the SuperAdmin platform table. Numbers are correct only for default-config fleets; no test exercises a non-default rate here so the divergence is silent.",
+      "recommendation": "Read SmsUnitCostCzk per fleet (FleetSettings, default 1 when absent) and multiply, matching the WI-07 revenue endpoint; add a test with a non-default rate."
+    },
+    {
+      "id": "F2",
+      "severity": "minor",
+      "file": "api/src/Taxi.Api/Infrastructure/Jobs/WeeklyDigestJob.cs",
+      "rule": "rules/ef-core.md#asnotracking",
+      "title": "PushSubscriptions and FleetAdmin Users queries lack AsNoTracking()",
+      "detail": "ProcessFleetAsync reads Users (lines 175-180) and PushSubscriptions (lines 189-192) purely to send pushes; neither is updated in this scope, but neither uses AsNoTracking(). The WeeklyDigestMarker is the only entity intentionally tracked for the insert. Tracking the read rows is unnecessary overhead. WeeklyDigestMarkers marker-exists check (line 125) is an AnyAsync so unaffected.",
+      "recommendation": "Add AsNoTracking() to the Users and PushSubscriptions read queries."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "file": "api/src/Taxi.Api/Infrastructure/Jobs/WeeklyDigestJob.cs",
+      "rule": "rules/logging.md#don-t (class name attached via SourceContext)",
+      "title": "Log message templates repeat the class name",
+      "detail": "Templates such as 'WeeklyDigestJob sent {FleetId} ...', 'WeeklyDigestJob skipped ...', 'WeeklyDigestJob push failed ...' prefix the class name, which rules/logging.md says is already attached via the SourceContext enricher and must not be repeated in the template. Property values (fleet id + counts only) are otherwise correct and PII-free per the WI-10 requirement.",
+      "recommendation": "Drop the 'WeeklyDigestJob' prefix from the message templates; rely on SourceContext."
+    },
+    {
+      "id": "F4",
+      "severity": "info",
+      "file": "api/src/Taxi.Api/Features/Analytics/GetCustomers/GetCustomersEndpoint.cs",
+      "rule": "rules/schema-review.md#structured-over-stringly-typed (consistency note, not a vuln)",
+      "title": "AnonymizedPhone interpolated into raw SQL string in one query while parameterized elsewhere",
+      "detail": "The new-vs-returning bucket query (line 216) inlines the AnonymizedPhone constant into the SQL string literal ('AND customer_phone != '+420000000000''), whereas every other query parameterizes it via {AnonymizedPhone}. AnonymizedPhone is a compile-time const and truncUnit comes from a closed-set switch (AnalyticsWindow.TruncUnit -> day/week/month only), so there is no injection surface. Flagged only for consistency; safe as-is.",
+      "recommendation": "Optionally parameterize the sentinel in the FormattableStringFactory call for uniformity."
+    }
+  ],
+  "verification": {
+    "full_suite_result": "PASS - 548 passed, 0 failed, 4 skipped (perf opt-in), 552 total, 1m49s. dotnet test api, SDK 10.0.401, Docker/Testcontainers running.",
+    "build_result": "PASS - dotnet build api -warnaserror: 0 warnings, 0 errors.",
+    "staging_clean": "CLEAN - git status --short shows all UC-009 changes staged (A / 'M '); no unstaged working-tree modifications introduced by build/test; nothing unstaged by reviewer."
+  },
+  "summary": "WI-09 (GET /api/v1/analytics/customers, FleetAdmin) and WI-10 (GET /api/v1/admin/analytics SuperAdminOnly cross-tenant + WeeklyDigestJob) meet their WI deliverables and acceptance criteria. Build is clean under -warnaserror and the full suite passes at the expected 548/4 baseline. Tenant isolation is correct: every IgnoreQueryFilters() is justified and commented for the cross-tenant SuperAdmin/system-job context; the digest idempotency marker check correctly relies on the tenant query filter (WeeklyDigestMarker is ITenantEntity, CurrentTenant.FleetId set per fleet scope, no IgnoreQueryFilters). GDPR exclusion is implemented phone-first (customer_phone != sentinel) so anonymized rows count toward volume/revenue but are excluded from all identity metrics, with both sides tested (AC#5). Digest idempotency and partial-failure behavior are correct and tested: marker written exactly once per (fleet, ISO week) regardless of Gone/Failed outcomes, and a Gone recipient does not abort remaining recipients (AC#8). SqlQuery hygiene follows CLAUDE.md: snake_case aliases throughout, nullable aggregates (avg_rating, last_order_at) mapped to nullable doubles/DateTimeOffset?, MAX(customer_user_id::text)::uuid workaround applied, FormattableStringFactory used for dynamic truncUnit. No direct order.Status writes (all reads). No blocking findings. One MEDIUM correctness gap (F1): the platform SMS estimated cost is hardcoded to 1 CZK/SMS rather than reading per-fleet SmsUnitCostCzk (the WI-07 revenue endpoint reads it) - produces wrong numbers only for fleets that customized the rate, silent because no test uses a non-default rate. Two MINOR (missing AsNoTracking on job reads; log templates repeat class name) and one INFO (sentinel inlined in one SQL string; safe). blocks_merge = false (0 critical + 0 high)."
+}

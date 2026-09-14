@@ -31,6 +31,14 @@ declare module 'styled-components' {
       orderCompletedText: string
       orderCancelled: string
       orderCancelledText: string
+      /** White text used on primary-coloured backgrounds (buttons, badges). */
+      textOnPrimary: string
+      /** Violet accent for analytics charts (invoice payments, dispatcher source). */
+      accentViolet: string
+      /** Orange rating-scale accent (2-star bucket in ratings distribution). */
+      ratingLow: string
+      /** Lime rating-scale accent (4-star bucket in ratings distribution). */
+      ratingHigh: string
     }
     spacing: {
       xs: string

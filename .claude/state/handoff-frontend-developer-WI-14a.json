@@ -1,0 +1,24 @@
+{
+  "wi_id": "WI-14a",
+  "files_changed": [
+    "web/src/features/analytics/demand/DemandTab.tsx",
+    "web/src/features/analytics/demand/DemandTab.test.tsx",
+    "web/src/features/analytics/demand/demandCharts.ts",
+    "web/src/features/analytics/demand/demandCharts.test.ts",
+    "web/src/features/analytics/demand/demandCsv.ts",
+    "web/src/features/analytics/demand/demandCsv.test.ts",
+    "web/src/features/analytics/useAnalyticsDemand.ts",
+    "web/src/features/analytics/useAnalyticsDemand.test.ts",
+    "web/src/features/analytics/AnalyticsPage.tsx",
+    "web/src/features/analytics/AnalyticsPage.test.tsx",
+    "web/src/shared/api/client.ts",
+    "web/src/shared/i18n/cs.json",
+    "web/src/shared/i18n/en.json"
+  ],
+  "tests_added": 40,
+  "tests_passing": 1220,
+  "coverage_delta": null,
+  "hit_max_turns": false,
+  "notes": "WI-14a (UC-009 web lane) — Poptávka (Demand) tab for /x/analytics.\n\n== WHAT WAS DELIVERED ==\n\n1. TYPED CLIENT (client.ts additions):\n   - HeatmapCellDto, SupplyDemandBucketDto, UnmetDemandBucketDto, DriverUtilizationDto, UtilizationDto, ZonePickupDto, DemandTopRouteDto, DemandPriorDto, AnalyticsDemandResponse, AnalyticsDemandParams (= AnalyticsOverviewParams)\n   - getAnalyticsDemand(params) — GET /api/v1/analytics/demand?from&to&granularity&compare\n   NOTE: The existing reports section had a TopRouteDto with different fields (routeId, name, count). Renamed the demand one to DemandTopRouteDto to avoid the conflict.\n\n2. HOOK: useAnalyticsDemand.ts — query key ['analytics', 'demand', params], clones useAnalyticsOverview pattern.\n\n3. PURE CHART CONFIG BUILDERS (demandCharts.ts):\n   - buildHeatmapChartConfig(cells) — Bar chart, 7 datasets (one per DOW 0=Sun…6=Sat), x=hours 0–23\n   - buildSupplyDemandChartConfig(buckets) — grouped Bar, 2 datasets (ordersCreated, onlineSeconds→hours)\n   - buildUnmetDemandChartConfig(buckets) — single Bar dataset\n   All builders are pure TypeScript (no React import), testable without canvas.\n\n4. CSV BUILDERS (demandCsv.ts, via shared toCsv):\n   - buildHeatmapCsv(cells) — 24 rows × 8 cols (Hodina + 7 DOW); BOM + ';' + CRLF\n   - buildZonePickupsCsv(zones) — Zóna + Vyzvednutí columns\n   - buildTopRoutesCsv(routes) — Odkud + Kam + Počet columns\n\n5. COMPONENT (DemandTab.tsx):\n   - Sections: heatmap (Bar + sr-only table), supply/demand (Bar + sr-only table), unmet demand (Bar + sr-only table), utilization (fleet % card + per-driver table), zone pickups (visible table), top routes (visible table)\n   - 3 CSV export buttons: heatmap, zone pickups, top routes\n   - Loading / error / empty states\n   - Every chart has a visually-hidden <table> for screen readers\n   - Axe a11y: all sections use aria-labelledby, tables have caption+scope, buttons have accessible text\n\n6. WIRING: AnalyticsPage.tsx now renders <DemandTab params={overviewParams} /> for activeTab === 'poptavka'. AnalyticsPage.test.tsx updated to mock getAnalyticsDemand and assert DemandTab loads.\n\n7. I18N: analytics.demand.* keys added to both cs.json and en.json (parity test passes).\n\n== CHUNK SIZE ==\nanalytics chunk (brotli): 88.2 KB — under the 90 KB budget. No budget raised.\n\n== TEST COUNTS ==\nNew tests added:\n- demandCharts.test.ts: 12 pure unit tests\n- demandCsv.test.ts: 13 CSV byte tests\n- useAnalyticsDemand.test.ts: 4 hook tests\n- DemandTab.test.tsx: 11 component + axe tests\nTotal new: 40 tests.\nFull suite: 1220 passed, 0 failed.\n\n== DEVIATIONS FROM WI ==\n- DemandTopRouteDto instead of TopRouteDto: The reports section already exports TopRouteDto with different fields (routeId, name, count). Renamed to DemandTopRouteDto to prevent the duplicate-interface TS error. Semantically correct — the analytics demand endpoint uses pickup/dropoff addresses, not route IDs.\n- AnalyticsPage.test.tsx updated: The existing test 'shows a placeholder when clicking Poptávka' was changed to 'shows the Demand tab when clicking Poptávka' (loading state), plus a new test 'shows a placeholder when clicking other non-implemented tabs' for Provoz etc.\n\n== TRAPS ==\n- TopRouteDto name collision: reports section already has TopRouteDto with routeId/name/count. Any future demand work must use DemandTopRouteDto.\n- DOW=0 is Sunday (Postgres convention). Czech display order is Mon-first but heatmap datasets are indexed 0–6 matching the backend. Labels: ['Ne','Po','Út','St','Čt','Pá','So'].\n- Bar mock only: chartMockModule exports Line/Bar/Doughnut stubs. DemandTab uses only Bar — no combo/Chart needed.",
+  "verification_output": "npm run lint: 0 warnings, 0 errors (exit 0). npx tsc --noEmit: 0 errors (exit 0). npx vitest run: 185 test files, 1220 tests passed, 0 failed. npm run build: success in 6.27s, analytics chunk 304.38KB (gzip 101.23KB). npm run size: analytics chunk brotli 88.2KB (limit 90KB — PASS). git add -A: all files staged."
+}

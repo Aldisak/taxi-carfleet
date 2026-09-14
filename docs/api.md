@@ -14,7 +14,20 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 |--------|-------|---------|------|
 | GET | `/admin/fleets` | List fleets (SuperAdmin) | Bearer |
 | POST | `/admin/fleets` | Create fleet (SuperAdmin) | Bearer |
+| GET | `/admin/analytics` | Platform analytics (SuperAdmin) | Bearer |
 | POST | `/admin/fleets/{id}/deactivate` | Deactivate fleet (SuperAdmin) | Bearer |
+
+## Analytics
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/analytics/revenue` | Revenue analytics (FleetAdmin) | Bearer |
+| GET | `/analytics/overview` | Analytics overview (FleetAdmin) | Bearer |
+| GET | `/analytics/operations` | Operational SLA, funnel & cancellation analytics (FleetAdmin) | Bearer |
+| GET | `/analytics/drivers` | Driver league table and retention (FleetAdmin) | Bearer |
+| GET | `/analytics/drivers/{id}` | Driver drill-down: weekly trend + low-rated orders (FleetAdmin) | Bearer |
+| GET | `/analytics/demand` | Demand & capacity analytics (FleetAdmin) | Bearer |
+| GET | `/analytics/customers` | Customer behaviour analytics (FleetAdmin) | Bearer |
 
 ## Audit
 

@@ -49,6 +49,47 @@
         "emailRequired": "E-mail správce je povinný.",
         "emailInvalid": "Zadejte platnou e-mailovou adresu."
       }
+    },
+    "platform": {
+      "title": "Přehled platformy",
+      "subtitle": "Zdraví flotil napříč tenanty",
+      "loading": "Načítám přehled platformy…",
+      "loadFailed": "Přehled platformy se nepodařilo načíst.",
+      "empty": "Zatím zde nejsou žádné flotily.",
+      "backToFleets": "Zpět na správu flotil",
+      "exportCsv": "Exportovat CSV",
+      "csvFilename": "prehled-platformy.csv",
+      "noOrders": "Bez objednávek",
+      "sparklineLabel": "Trend jízd za 12 týdnů pro flotilu {{name}}",
+      "columns": {
+        "fleet": "Flotila",
+        "ridesThisMonth": "Jízdy tento měsíc",
+        "ridesLastMonth": "Jízdy minulý měsíc",
+        "momDelta": "MoM %",
+        "revenueThisMonth": "Tržby tento měsíc",
+        "activeDrivers": "Aktivní řidiči",
+        "activeCustomers": "Aktivní zákazníci",
+        "sms": "SMS",
+        "smsCost": "Odhad. cena SMS",
+        "lastOrder": "Poslední objednávka",
+        "trend": "Trend (12 týdnů)",
+        "health": "Zdraví"
+      },
+      "health": {
+        "growing": "Roste",
+        "stable": "Stabilní",
+        "declining": "Klesá",
+        "inactive": "Neaktivní"
+      },
+      "totals": {
+        "title": "Souhrn platformy",
+        "fleets": "Flotil celkem",
+        "rides": "Jízdy tento měsíc",
+        "revenue": "Tržby tento měsíc",
+        "growing": "Rostoucí flotily",
+        "declining": "Klesající flotily",
+        "inactive": "Neaktivní flotily"
+      }
     }
   },
   "nav": {
@@ -59,7 +100,8 @@
     "mute": "Ztlumit zvuk",
     "unmute": "Zapnout zvuk",
     "reports": "Reporty",
-    "audit": "Audit"
+    "audit": "Audit",
+    "analytics": "Analytika"
   },
   "login": {
     "title": "Přihlášení",
@@ -1049,6 +1091,344 @@
     "event": {
       "StatusOverride": "Ruční změna stavu",
       "Unknown": "Neznámá událost"
+    }
+  },
+  "analytics": {
+    "ranges": {
+      "dnes": "Dnes",
+      "7dni": "Posledních 7 dní",
+      "tentoMesic": "Tento měsíc",
+      "minulyMesic": "Minulý měsíc",
+      "kvartal": "Kvartál",
+      "rok": "Rok",
+      "vlastni": "Vlastní"
+    },
+    "period": {
+      "label": "Období"
+    },
+    "granularity": {
+      "label": "Granularita",
+      "day": "Denně",
+      "week": "Týdně",
+      "month": "Měsíčně"
+    },
+    "compare": "Srovnat s předchozím obdobím",
+    "revenue": {
+      "empty": "Žádná data pro zvolené období",
+      "loading": "Načítám tržby…",
+      "error": "Nepodařilo se načíst analytická data.",
+      "series": {
+        "title": "Vývoj tržeb podle způsobu platby",
+        "tableCaption": "Tržby po obdobích (dostupné pro čtečky obrazovky)",
+        "tableBucket": "Období",
+        "tableCash": "Hotovost (Kč)",
+        "tableCard": "Karta (Kč)",
+        "tableInvoice": "Faktura (Kč)",
+        "tableTotal": "Celkem (Kč)"
+      },
+      "source": {
+        "title": "Podíl tržeb podle zdroje objednávky",
+        "tableCaption": "Tržby podle zdroje (dostupné pro čtečky obrazovky)",
+        "tableSource": "Zdroj",
+        "tableRevenue": "Tržby (Kč)"
+      },
+      "priceType": {
+        "title": "Podíl tržeb podle typu ceny",
+        "tableCaption": "Tržby podle typu ceny (dostupné pro čtečky obrazovky)",
+        "tablePriceType": "Typ ceny",
+        "tableRevenue": "Tržby (Kč)"
+      },
+      "aovTrend": {
+        "title": "Trend průměrné hodnoty jízdy (AOV)",
+        "tableCaption": "AOV po obdobích (dostupné pro čtečky obrazovky)",
+        "tableBucket": "Období",
+        "tableAov": "AOV (Kč)"
+      },
+      "priceOverride": {
+        "title": "Dopad cenových odchylek",
+        "count": "Počet odchylek",
+        "totalDelta": "Celkový dopad (Kč)",
+        "reasonsTitle": "Nejčastější důvody",
+        "tableReason": "Důvod",
+        "tableCount": "Počet"
+      },
+      "topRoutes": {
+        "title": "Nejziskovější trasy",
+        "tableCaption": "Tržby podle tras",
+        "tableFrom": "Odkud",
+        "tableTo": "Kam",
+        "tableRides": "Jízdy",
+        "tableRevenue": "Tržby (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "Exportovat CSV"
+      },
+      "zoneRevenue": {
+        "title": "Tržby podle zón",
+        "tableCaption": "Tržby podle zón",
+        "tableZone": "Zóna",
+        "tableRides": "Jízdy",
+        "tableRevenue": "Tržby (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "Exportovat CSV"
+      },
+      "smsCost": {
+        "title": "Náklady na SMS",
+        "tableCaption": "Náklady SMS po obdobích (dostupné pro čtečky obrazovky)",
+        "tableBucket": "Období",
+        "tableSmsCount": "Počet SMS",
+        "tableCost": "Náklady (Kč)"
+      }
+    },
+    "drivers": {
+      "loading": "Načítám řidiče…",
+      "error": "Nepodařilo se načíst analytická data.",
+      "empty": "Žádná data pro zvolené období",
+      "league": {
+        "title": "Ligová tabulka řidičů",
+        "tableCaption": "Statistiky řidičů",
+        "tableDriver": "Řidič",
+        "tableRides": "Jízdy",
+        "tableRevenue": "Tržby (Kč)",
+        "tableOnline": "Online (hod.)",
+        "tableUtil": "Vytíženost (%)",
+        "tableRevenuePerHour": "Tržby/hod.",
+        "tableAcceptance": "Přijetí (%)",
+        "tableDeclines": "Odmítnutí",
+        "tableCancellations": "Storna",
+        "tableNoShows": "No-show",
+        "tableRating": "Hodnocení",
+        "sortAsc": "Seřadit vzestupně",
+        "sortDesc": "Seřadit sestupně",
+        "csvLabel": "Exportovat CSV"
+      },
+      "retention": {
+        "title": "Retence řidičů (týdenní)",
+        "tableCaption": "Retence řidičů po týdnech (dostupné pro čtečky obrazovky)",
+        "tableWeek": "Týden",
+        "tableActive": "Aktivní",
+        "tableNew": "Noví",
+        "tableChurned": "Odchod",
+        "activeLabel": "Aktivní",
+        "newLabel": "Nově aktivní",
+        "churnedLabel": "Odchod"
+      },
+      "drilldown": {
+        "backLabel": "Zpět na tabulku",
+        "weeklyTitle": "Týdenní trend",
+        "weeklyCaption": "Týdenní statistiky řidiče (dostupné pro čtečky obrazovky)",
+        "tableWeek": "Týden",
+        "tableRides": "Jízdy",
+        "tableRevenue": "Tržby (Kč)",
+        "tableRating": "Hodnocení",
+        "lowRatedTitle": "Jízdy s nízkým hodnocením (≤ 3 hvězdičky)",
+        "tableCode": "Kód",
+        "tableCompleted": "Dokončeno",
+        "tableStars": "Hvězdičky",
+        "tableComment": "Komentář",
+        "tablePickup": "Nástup",
+        "tableDropoff": "Výstup",
+        "noComment": "—",
+        "noLowRated": "Žádné jízdy s hodnocením ≤ 3 hvězdičky."
+      }
+    },
+    "customers": {
+      "loading": "Načítám zákazníky…",
+      "error": "Nepodařilo se načíst analytická data.",
+      "empty": "Žádná data pro zvolené období",
+      "summary": {
+        "title": "Souhrn",
+        "totalRides": "Celkem jízd",
+        "totalRevenue": "Celkem tržby (Kč)",
+        "newIdentities": "Noví zákazníci",
+        "returningIdentities": "Vracející se zákazníci",
+        "repeatRate": "Míra opakování (%)",
+        "freqOne": "Frekvence 1×",
+        "freqTwoToFive": "Frekvence 2–5×",
+        "freqSixPlus": "Frekvence 6+×"
+      },
+      "newVsReturning": {
+        "title": "Noví vs. vracející se zákazníci",
+        "tableCaption": "Noví a vracející se zákazníci po obdobích (dostupné pro čtečky obrazovky)",
+        "tableBucket": "Období",
+        "tableNew": "Noví",
+        "tableReturning": "Vracející se",
+        "newLabel": "Noví zákazníci",
+        "returningLabel": "Vracející se zákazníci"
+      },
+      "cohort": {
+        "title": "Kohortová retence zákazníků",
+        "tableCaption": "Kohortová retence (zákazníci aktivní v daném měsíci po akvizici)",
+        "tableAcqMonth": "Kohorta",
+        "monthHeader": "Měsíc {{n}}",
+        "csvLabel": "Exportovat CSV"
+      },
+      "topCustomers": {
+        "title": "Nejlepší zákazníci",
+        "tableCaption": "Nejlepší zákazníci podle počtu jízd",
+        "tableCustomer": "Zákazník",
+        "tablePhone": "Telefon",
+        "tableRides": "Jízdy",
+        "tableRevenue": "Tržby (Kč)",
+        "unknown": "Neznámý"
+      },
+      "ratings": {
+        "title": "Hodnocení zákazníků",
+        "avgRating": "Průměrné hodnocení",
+        "totalRated": "Hodnoceno jízd",
+        "distribution": {
+          "title": "Rozložení hodnocení (1–5 hvězdiček)",
+          "tableCaption": "Rozložení hodnocení (dostupné pro čtečky obrazovky)",
+          "tableStars": "Hvězdičky",
+          "tableCount": "Počet",
+          "datasetLabel": "Počet hodnocení"
+        },
+        "trend": {
+          "title": "Trend průměrného hodnocení",
+          "tableCaption": "Trend hodnocení po obdobích (dostupné pro čtečky obrazovky)",
+          "tableBucket": "Období",
+          "tableAvg": "Průměr",
+          "tableRides": "Jízd"
+        },
+        "worstRated": {
+          "title": "Jízdy s nejhorším hodnocením (≤ 3 hvězdičky)",
+          "tableCaption": "Nejhůře hodnocené jízdy",
+          "tableCode": "Kód",
+          "tableCompleted": "Dokončeno",
+          "tableStars": "Hvězdičky",
+          "tableComment": "Komentář",
+          "tableDriver": "Řidič",
+          "noComment": "—",
+          "empty": "Žádné jízdy s hodnocením ≤ 3."
+        }
+      }
+    },
+    "tabs": {
+      "prehled": "Přehled",
+      "poptavka": "Poptávka",
+      "provoz": "Provoz",
+      "trzby": "Tržby",
+      "ridici": "Řidiči",
+      "zakaznici": "Zákazníci",
+      "placeholder": "Tato záložka bude k dispozici v budoucí verzi."
+    },
+    "overview": {
+      "title": "Přehled",
+      "rides": "Jízdy",
+      "revenueCzk": "Tržby",
+      "aov": "Průměrná jízda",
+      "fulfillmentRate": "Splněnost",
+      "cancellationRate": "Stornovost",
+      "activeCustomers": "Aktivní zákazníci",
+      "newCustomers": "Noví zákazníci",
+      "activeDrivers": "Aktivní řidiči",
+      "onlineDriverHours": "Hod. online",
+      "revenuePerOnlineHour": "Tržby / hod.",
+      "avgRating": "Průměrné hodnocení",
+      "chartLabel": "Vývoj jízd a tržeb",
+      "chartTableCaption": "Trend jízd a tržeb (dostupné pro čtečky obrazovky)",
+      "chartTableBucket": "Období",
+      "chartTableRides": "Jízdy",
+      "chartTableRevenue": "Tržby (Kč)",
+      "empty": "Žádná data pro zvolené období",
+      "deltaPositive": "+{{value}}",
+      "deltaNegative": "{{value}}",
+      "loading": "Načítám přehled…",
+      "error": "Nepodařilo se načíst analytická data."
+    },
+    "demand": {
+      "loading": "Načítám poptávku…",
+      "error": "Nepodařilo se načíst analytická data.",
+      "empty": "Žádná data pro zvolené období",
+      "heatmap": {
+        "title": "Heatmapa poptávky (hodina × den)",
+        "tableCaption": "Poptávka po hodinách a dnech (dostupné pro čtečky obrazovky)",
+        "tableHour": "Hodina",
+        "csvLabel": "Exportovat CSV"
+      },
+      "supplyDemand": {
+        "title": "Nabídka vs. poptávka po hodinách",
+        "tableCaption": "Nabídka a poptávka po hodinách (dostupné pro čtečky obrazovky)",
+        "tableHour": "Hodina",
+        "tableOrders": "Poptávka (jízdy)",
+        "tableSupplyHours": "Nabídka (hod. online)"
+      },
+      "unmetDemand": {
+        "title": "Nevyřízená poptávka po hodinách",
+        "tableCaption": "Nevyřízená poptávka po hodinách (dostupné pro čtečky obrazovky)",
+        "tableHour": "Hodina",
+        "tableCount": "Nevyřízeno"
+      },
+      "utilization": {
+        "title": "Vytíženost flotily",
+        "fleetLabel": "Vytíženost flotily",
+        "driverTableCaption": "Vytíženost řidičů (dostupné pro čtečky obrazovky)",
+        "tableDriver": "Řidič",
+        "tableBusyH": "Vytíženo (hod.)",
+        "tableOnlineH": "Online (hod.)",
+        "tableUtil": "Vytíženost"
+      },
+      "zonePickups": {
+        "title": "Vyzvednutí podle zón",
+        "tableCaption": "Vyzvednutí podle zón",
+        "tableZone": "Zóna",
+        "tableCount": "Vyzvednutí",
+        "csvLabel": "Exportovat CSV"
+      },
+      "topRoutes": {
+        "title": "Nejčastější trasy",
+        "tableCaption": "Nejčastější trasy",
+        "tableFrom": "Odkud",
+        "tableTo": "Kam",
+        "tableCount": "Počet",
+        "csvLabel": "Exportovat CSV"
+      }
+    },
+    "operations": {
+      "loading": "Načítám provoz…",
+      "error": "Nepodařilo se načíst analytická data.",
+      "sla": {
+        "title": "SLA metriky",
+        "tableCaption": "SLA metriky (dostupné pro čtečky obrazovky)",
+        "tableMetric": "Metrika",
+        "tableP50": "p50 (medián)",
+        "tableP90": "p90",
+        "tableSampleCount": "Počet jízd"
+      },
+      "offerFunnel": {
+        "title": "Trychtýř nabídek",
+        "tableCaption": "Trychtýř nabídek (dostupné pro čtečky obrazovky)",
+        "tableStage": "Fáze",
+        "tableCount": "Počet",
+        "labelOffersMade": "Nabídky odeslány",
+        "labelAccepted": "Přijato",
+        "labelDeclined": "Odmítnuto",
+        "labelTimeouts": "Vypršení",
+        "avgOffersLabel": "Průměrný počet nabídek na jízdu"
+      },
+      "lifecycle": {
+        "title": "Trychtýř životního cyklu",
+        "tableCaption": "Životní cyklus objednávek (dostupné pro čtečky obrazovky)",
+        "tableStage": "Fáze",
+        "tableCount": "Počet",
+        "labelCreated": "Vytvořeno",
+        "labelAssigned": "Přiřazeno",
+        "labelAccepted": "Přijato",
+        "labelArrived": "Na místě",
+        "labelInProgress": "Probíhá",
+        "labelCompleted": "Dokončeno"
+      },
+      "cancellations": {
+        "title": "Storna",
+        "byRoleCaption": "Storna podle role (dostupné pro čtečky obrazovky)",
+        "byStatusCaption": "Storna podle stavu při zrušení",
+        "byHourTitle": "Storna podle hodiny dne",
+        "byHourCaption": "Storna podle hodiny dne",
+        "tableRole": "Role",
+        "tableStatus": "Stav při zrušení",
+        "tableHour": "Hodina",
+        "tableCount": "Počet",
+        "noShowShareLabel": "Podíl no-show storní"
+      }
     }
   }
 }

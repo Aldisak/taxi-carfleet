@@ -22,6 +22,11 @@ const AuditPage = lazy(() =>
   import('../features/audit/AuditPage').then(m => ({ default: m.AuditPage })),
 )
 
+// ── Analytics (lazy-loaded — own chunk; chart.js lives inside this chunk only) ─
+const AnalyticsPage = lazy(() =>
+  import('../features/analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })),
+)
+
 // ── SuperAdmin /admin (lazy-loaded — SuperAdmin only, cross-tenant ops) ─────────
 const AdminFleetsPage = lazy(() =>
   import('../features/admin/AdminFleetsPage').then(m => ({ default: m.AdminFleetsPage })),
@@ -31,6 +36,9 @@ const AdminGuard = lazy(() =>
 )
 const AdminLoginPage = lazy(() =>
   import('../features/admin/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })),
+)
+const PlatformScreen = lazy(() =>
+  import('../features/admin/PlatformScreen').then(m => ({ default: m.PlatformScreen })),
 )
 
 // ── Customer /c (lazy-loaded chunk — no /x or /d code ships to customers) ──────
@@ -89,6 +97,7 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <SettingsPage /> },
       { path: 'reports', element: lazyDispatch(<ReportsPage />) },
       { path: 'audit', element: lazyDispatch(<AuditPage />) },
+      { path: 'analytics', element: lazyDispatch(<AnalyticsPage />) },
     ],
   },
 
@@ -103,6 +112,10 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: lazyDispatch(<AdminGuard>{lazyDispatch(<AdminFleetsPage />)}</AdminGuard>),
+  },
+  {
+    path: '/admin/platform',
+    element: lazyDispatch(<AdminGuard>{lazyDispatch(<PlatformScreen />)}</AdminGuard>),
   },
 
   // ── Driver /d ──────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
+import { MemoryRouter } from 'react-router-dom'
 import { theme } from '../../shared/theme/theme'
 import i18n from '../../shared/i18n'
 import { axe } from '../../shared/test/axe'
@@ -30,9 +31,13 @@ function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) =>
     createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ThemeProvider, { theme }, createElement(I18nextProvider, { i18n }, children)),
+      MemoryRouter,
+      null,
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(ThemeProvider, { theme }, createElement(I18nextProvider, { i18n }, children)),
+      ),
     )
 }
 

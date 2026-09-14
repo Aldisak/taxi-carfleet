@@ -97,6 +97,7 @@ export function AppLayout() {
           <NavLink to="/x/orders">{t('nav.orders')}</NavLink>
           {isFleetAdmin && <NavLink to="/x/reports">{t('nav.reports')}</NavLink>}
           {isFleetAdmin && <NavLink to="/x/audit">{t('nav.audit')}</NavLink>}
+          {isFleetAdmin && <NavLink to="/x/analytics">{t('nav.analytics')}</NavLink>}
           {isFleetAdmin && <NavLink to="/x/settings">{t('nav.settings')}</NavLink>}
           <NavButton
             type="button"
