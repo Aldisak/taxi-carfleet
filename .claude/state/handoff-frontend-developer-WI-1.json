@@ -1,0 +1,38 @@
+{
+  "wi_id": "WI-1",
+  "status": "done",
+  "files_touched": [
+    "web/src/shared/i18n/cs.json -> web/src/shared/i18n/cs-CZ.json (git mv; added common.language)",
+    "web/src/shared/i18n/en.json -> web/src/shared/i18n/en-US.json (git mv; added common.language)",
+    "web/src/shared/i18n/ru-RU.json (new; key-complete copy of cs-CZ.json)",
+    "web/src/shared/i18n/uk-UA.json (new; key-complete copy of cs-CZ.json)",
+    "web/src/shared/i18n/fil-PH.json (new; key-complete copy of cs-CZ.json)",
+    "web/src/shared/i18n/de-DE.json (new; key-complete copy of cs-CZ.json)",
+    "web/src/shared/i18n/locales.ts (new; SUPPORTED_LOCALES registry, LocaleCode, DEFAULT_LOCALE)",
+    "web/src/shared/i18n/index.ts (rewrite; six imports, exported resources map, static lng)",
+    "web/src/shared/i18n/sentinelKeys.ts (new; SENTINEL_KEYS + empty ENFORCED_LOCALES)",
+    "web/src/shared/i18n/locales.parity.test.ts (generalized to iterate registry vs exported resources map)",
+    "web/src/shared/i18n/locales.sentinel.test.ts (new; iterates ENFORCED_LOCALES)",
+    "web/src/features/orders/eventTimeline.test.ts (importer path rename cs+en)",
+    "web/src/shared/audit/auditEventLabel.test.ts (importer path rename cs)",
+    "web/src/features/admin/PlatformScreen.test.tsx (changeLanguage('cs') -> 'cs-CZ')"
+  ],
+  "tests_added": [
+    "src/shared/i18n/locales.parity.test.ts — 5 tests (it.each over the 5 non-default locales in SUPPORTED_LOCALES, each key set identical to cs-CZ resolved from the exported resources map; RED observed with 4 unwired locales, GREEN after seeding)",
+    "src/shared/i18n/locales.sentinel.test.ts — 2 tests (it.each over ENFORCED_LOCALES asserting each SENTINEL_KEY differs from cs-CZ — vacuous GREEN with empty array; plus a shape guard). Gate proven to bite by temporarily setting ENFORCED_LOCALES=['de-DE'] → RED, then reverted to []"
+  ],
+  "tests_passing": 1469,
+  "coverage_delta": "+6 net i18n tests vs pre-WI-1 baseline (parity 1 -> 5 it.each cases = +4; sentinel +2 new). Full suite 1469 (214 files).",
+  "hit_max_turns": false,
+  "notes": [
+    "Sentinel keys chosen: all six from the WI spec exist verbatim in cs-CZ.json as full Czech sentences (verified by script) — NO substitution needed. They are: login.invalidCredentials ('Nesprávné přihlašovací údaje. Zkuste to znovu.'), board.form.validation.phoneInvalid ('Zadejte platné telefonní číslo ...'), settings.accessDenied ('Přístup odepřen. Tato sekce je dostupná pouze pro správce flotily.'), customer.order.loginPrompt ('Pro dokončení objednávky se prosím přihlaste.'), customer.tracking.cancelDialogBody ('Opravdu chcete tuto objednávku zrušit?'), customer.login.codeMismatch ('Kód nesouhlasí, zkuste to znovu.').",
+    "common.language: no pre-existing top-level 'common' section existed in cs.json — added a new 'common' object as the first top-level key with language='Jazyk' (cs-CZ) / 'Language' (en-US) BEFORE seeding, so all four seed copies inherit the Czech 'Jazyk' placeholder (correct — the language WIs overwrite). Parity holds because both cs-CZ and en-US got the key.",
+    "RED→GREEN honesty: rewrote index.ts wiring ONLY cs-CZ + en-US first, then the generalized parity test — ran it and observed 4 genuine failures (ru/uk/fil/de bundle undefined). Then seeded the 4 copies + added their imports/resources lines → GREEN. Split this way (per advisor) so an unresolved JSON import never masked the parity RED as a load error.",
+    "Parity + sentinel both consume the exported resources map from index.ts (never re-import individual JSONs), and iterate SUPPORTED_LOCALES / ENFORCED_LOCALES respectively — satisfies AC#8 (adding a 7th locale needs no test edit) and the WI's 'iterate the REGISTRY' requirement.",
+    "ENFORCED_LOCALES seeded EMPTY and left empty (NOT hardened to the four) — by design per the spec Assumptions; each language WI flips its own code for an observable RED→GREEN.",
+    "Rename ripple fully enumerated and verified: grep for changeLanguage/lng:/i18n JSON importers confirmed the only i18n hits are the four files fixed here; every other 'lng' occurrence is a geo-longitude field (mapPinSet, orderForm, positionThrottle, etc.), not i18n. No other 'cs'/'en' resource-key literal remains in source.",
+    "WI-1 gate is the FULL vitest suite (no filter) because the rename ripples into eventTimeline.test.ts / auditEventLabel.test.ts / PlatformScreen.test.tsx whose paths contain no 'i18n'. Full suite: 214 files, 1469 tests, all green.",
+    "git mv used for both renames so history follows (staged as R in git status). No CLAUDE.md fact appended — no new non-obvious trap surfaced (the absent 'common' section is documented here in the handoff)."
+  ],
+  "verification_output": "npm run --prefix web tsc: no errors. npm run --prefix web lint: check:geo OK, eslint 0 warnings/errors (--max-warnings 0). npm run --prefix web test (FULL suite, no filter): 214 test files, 1469 tests all passing, duration ~41s. Parity RED confirmed before seeding (4 locales 'Cannot read properties of undefined'); GREEN after. Sentinel gate confirmed to bite with ENFORCED_LOCALES=['de-DE'] (RED) then reverted to []. git add web/ complete; renames R, new files A, importer fixes M; nothing outside web/, nothing committed."
+}

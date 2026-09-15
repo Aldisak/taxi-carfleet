@@ -6,6 +6,7 @@ import { idbAuthStore } from '../../../shared/api/idbAuthStore'
 import { transitionQueue } from '../queue/transitionQueue'
 import { idbRideStore } from '../ride/idbRideStore'
 import { useDriverSettings } from './useDriverSettings'
+import { LanguageSelector } from '../../../shared/i18n/LanguageSelector'
 import { NavAppPreference } from './NavAppPreference'
 import { SilentModeToggle } from './SilentModeToggle'
 import { Diagnostika } from './Diagnostika'
@@ -24,6 +25,20 @@ const Heading = styled.h1`
   font-weight: ${({ theme }) => theme.typography.fontWeightBold};
   color: ${({ theme }) => theme.colors.text};
   margin: 0;
+`
+
+const Section = styled.section`
+  background: ${({ theme }) => theme.colors.surface};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  padding: ${({ theme }) => theme.spacing.md};
+`
+
+const SectionTitle = styled.h2`
+  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+  color: ${({ theme }) => theme.colors.text};
+  margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
 `
 
 const VersionRow = styled.div`
@@ -70,6 +85,11 @@ export function DriverSettingsPage() {
   return (
     <Page>
       <Heading>{t('driver.settings.title')}</Heading>
+
+      <Section>
+        <SectionTitle>{t('common.language')}</SectionTitle>
+        <LanguageSelector />
+      </Section>
 
       <NavAppPreference value={navApp} onChange={setNavApp} />
       <SilentModeToggle value={silentMode} onChange={setSilentMode} />

@@ -78,7 +78,7 @@ function response(overrides?: Partial<client.AdminAnalyticsResponse>): client.Ad
 
 beforeEach(() => {
   vi.clearAllMocks()
-  i18n.changeLanguage('cs')
+  i18n.changeLanguage('cs-CZ')
   mockGet.mockResolvedValue(response())
 })
 

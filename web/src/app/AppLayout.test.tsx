@@ -65,4 +65,10 @@ describe('AppLayout nav gating', () => {
     renderLayout()
     expect(screen.queryByRole('link', { name: 'Analytika' })).toBeNull()
   })
+
+  it('renders the language selector', () => {
+    vi.mocked(authStorage.getUserRole).mockReturnValue('Dispatcher')
+    renderLayout()
+    expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
+  })
 })

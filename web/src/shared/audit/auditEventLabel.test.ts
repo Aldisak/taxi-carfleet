@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { auditEventLabelKey, allLabelledEvents, KNOWN_AUDIT_ACTIONS, ALL_ORDER_EVENT_TYPES } from './auditEventLabel'
-import cs from '../i18n/cs.json'
+import cs from '../i18n/cs-CZ.json'
 
 type Dict = Record<string, unknown>
 function resolve(key: string): unknown {

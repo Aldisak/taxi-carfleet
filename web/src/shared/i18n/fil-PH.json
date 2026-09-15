@@ -1,0 +1,1451 @@
+{
+  "common": {
+    "language": "Wika"
+  },
+  "app": {
+    "title": "Taxi Dispatch",
+    "loading": "Naglo-load...",
+    "error": "May naganap na error",
+    "offline": "Offline – ipinapakita ang huling alam na estado"
+  },
+  "admin": {
+    "login": {
+      "title": "Pag-login ng administrador ng sistema",
+      "email": "E-mail",
+      "emailPlaceholder": "superadmin@demo.local",
+      "password": "Password",
+      "submit": "Mag-login",
+      "loading": "Nagla-log in…",
+      "invalidCredentials": "Maling detalye ng pag-login. Subukan muli.",
+      "networkError": "Hindi makakonekta sa server. Suriin ang koneksyon sa internet.",
+      "unknownError": "May naganap na hindi inaasahang error. Subukan muli.",
+      "validation": {
+        "emailRequired": "Kailangan ang e-mail.",
+        "emailInvalid": "Maglagay ng wastong e-mail address.",
+        "passwordRequired": "Kailangan ang password."
+      }
+    },
+    "fleets": {
+      "title": "Pamamahala ng mga fleet",
+      "createTitle": "Gumawa ng bagong fleet",
+      "listTitle": "Mga umiiral na fleet",
+      "create": "Gumawa ng fleet",
+      "creating": "Ginagawa…",
+      "createFailed": "Hindi nagawa ang fleet. Suriin ang mga detalye at subukan muli.",
+      "loading": "Naglo-load ng mga fleet…",
+      "loadFailed": "Hindi na-load ang listahan ng mga fleet.",
+      "active": "Aktibo",
+      "inactive": "Hindi aktibo",
+      "passwordWarning": "Isang beses na password ng administrador para sa {{email}}. Ipapakita lang ito minsan – kopyahin ito at ibigay nang ligtas.",
+      "fields": {
+        "slug": "Identifier (slug)",
+        "name": "Pangalan",
+        "phone": "Telepono",
+        "adminEmail": "E-mail ng administrador",
+        "status": "Katayuan"
+      },
+      "validation": {
+        "slugRequired": "Kailangan ang identifier.",
+        "slugInvalid": "Ang identifier ay maaari lang maglaman ng maliliit na titik, numero at gitling.",
+        "nameRequired": "Kailangan ang pangalan.",
+        "phoneRequired": "Kailangan ang telepono.",
+        "emailRequired": "Kailangan ang e-mail ng administrador.",
+        "emailInvalid": "Maglagay ng wastong e-mail address."
+      }
+    },
+    "platform": {
+      "title": "Pangkalahatang-tanaw ng platform",
+      "subtitle": "Kalusugan ng mga fleet sa lahat ng tenant",
+      "loading": "Naglo-load ng pangkalahatang-tanaw ng platform…",
+      "loadFailed": "Hindi na-load ang pangkalahatang-tanaw ng platform.",
+      "empty": "Wala pang mga fleet dito.",
+      "backToFleets": "Bumalik sa pamamahala ng mga fleet",
+      "exportCsv": "I-export ang CSV",
+      "csvFilename": "pangkalahatang-tanaw-platform.csv",
+      "noOrders": "Walang order",
+      "sparklineLabel": "Trend ng mga biyahe sa loob ng 12 linggo para sa fleet na {{name}}",
+      "columns": {
+        "fleet": "Fleet",
+        "ridesThisMonth": "Mga biyahe ngayong buwan",
+        "ridesLastMonth": "Mga biyahe noong nakaraang buwan",
+        "momDelta": "MoM %",
+        "revenueThisMonth": "Kita ngayong buwan",
+        "activeDrivers": "Mga aktibong driver",
+        "activeCustomers": "Mga aktibong customer",
+        "sms": "SMS",
+        "smsCost": "Tinatayang halaga ng SMS",
+        "lastOrder": "Huling order",
+        "trend": "Trend (12 linggo)",
+        "health": "Kalusugan"
+      },
+      "health": {
+        "growing": "Lumalago",
+        "stable": "Matatag",
+        "declining": "Bumababa",
+        "inactive": "Hindi aktibo"
+      },
+      "totals": {
+        "title": "Buod ng platform",
+        "fleets": "Kabuuang fleet",
+        "rides": "Mga biyahe ngayong buwan",
+        "revenue": "Kita ngayong buwan",
+        "growing": "Mga lumalagong fleet",
+        "declining": "Mga bumababang fleet",
+        "inactive": "Mga hindi aktibong fleet"
+      }
+    }
+  },
+  "nav": {
+    "board": "Dispatch",
+    "orders": "Mga order",
+    "settings": "Mga setting",
+    "logout": "Mag-logout",
+    "mute": "I-mute ang tunog",
+    "unmute": "I-on ang tunog",
+    "reports": "Mga ulat",
+    "audit": "Audit",
+    "analytics": "Analytics"
+  },
+  "login": {
+    "title": "Pag-login",
+    "fleetSlug": "Code ng fleet",
+    "fleetSlugPlaceholder": "hal. kolintaxi",
+    "email": "E-mail",
+    "emailPlaceholder": "vas@email.cz",
+    "password": "Password",
+    "submit": "Mag-login",
+    "invalidCredentials": "Maling detalye ng pag-login. Subukan muli.",
+    "networkError": "Hindi makakonekta sa server. Suriin ang koneksyon sa internet.",
+    "loading": "Nagla-log in...",
+    "unknownError": "May naganap na hindi inaasahang error. Subukan muli.",
+    "validation": {
+      "fleetSlugRequired": "Kailangan ang code ng fleet.",
+      "emailRequired": "Kailangan ang e-mail.",
+      "emailInvalid": "Maglagay ng wastong e-mail address.",
+      "passwordRequired": "Kailangan ang password."
+    }
+  },
+  "board": {
+    "form": {
+      "title": "Bagong order",
+      "validation": {
+        "phoneRequired": "Kailangan ang numero ng telepono.",
+        "phoneInvalid": "Maglagay ng wastong numero ng telepono (hal. 777 123 456 o +420777123456).",
+        "pickupRequired": "Kailangan ang lugar ng pickup.",
+        "pickupNoCoords": "Pumili ng lugar ng pickup mula sa listahan o i-click ang mabilis na pagpili.",
+        "scheduledAtInvalid": "Maglagay ng wastong petsa at oras.",
+        "scheduledAtPast": "Ang nakatakdang oras ay dapat nasa hinaharap.",
+        "passengersMin": "Ang bilang ng pasahero ay dapat hindi bababa sa 1."
+      },
+      "phone": "Telepono",
+      "name": "Pangalan",
+      "pickup": "Pickup",
+      "dropoff": "Destinasyon",
+      "when": "Kailan",
+      "asap": "Sa lalong madaling panahon",
+      "scheduledAt": "Nakatakdang oras",
+      "passengers": "Mga pasahero",
+      "note": "Tala",
+      "pricePreview": "~ {{price}} Kč",
+      "distanceOnly": "{{km}} km",
+      "submit": "Gumawa ng order",
+      "creating": "Ginagawa...",
+      "pickupPlaceholder": "Ilagay ang address ng pickup",
+      "dropoffPlaceholder": "Ilagay ang address ng destinasyon (opsyonal)"
+    },
+    "columns": {
+      "orders": "Mga order",
+      "drivers": "Mga driver",
+      "map": "Mapa"
+    },
+    "mapToggle": "I-toggle ang mapa",
+    "sections": {
+      "nove": "Bago",
+      "prirazene": "Naitalaga / Naghihintay ng pagtanggap",
+      "probihajici": "Kasalukuyang isinasagawa",
+      "naplanovane": "Nakatakda (ngayon / bukas)",
+      "dokonceneDnes": "Natapos ngayong araw"
+    },
+    "order": {
+      "asap": "ASAP",
+      "noDriver": "Hindi naitalaga",
+      "fixedPriceBadge": "NAKATAKDA {{price}} Kč",
+      "estimatedPrice": "~{{price}} Kč",
+      "elapsedTime": "{{sec}}s",
+      "elapsedTimeMin": "{{min}} min"
+    },
+    "actions": {
+      "assign": "Italaga",
+      "reassign": "Italaga muli",
+      "cancel": "Kanselahin",
+      "detail": "Detalye",
+      "confirm": "Kumpirmahin",
+      "close": "Isara"
+    },
+    "cancelReasons": {
+      "title": "Dahilan ng pagkansela",
+      "zákazník zrušil": "Kinansela ng customer",
+      "nedorazil": "Hindi dumating",
+      "omyl": "Pagkakamali",
+      "jiný": "Iba pa",
+      "freeTextPlaceholder": "Linawin ang dahilan...",
+      "required": "Pumili ng dahilan ng pagkansela"
+    },
+    "driverPicker": {
+      "title": "Pumili ng driver",
+      "noDrivers": "Walang available na driver",
+      "loading": "Naglo-load ng mga driver..."
+    },
+    "conflict": "Binago ng ibang tao ang order habang ginagawa mo"
+  },
+  "status": {
+    "order": {
+      "New": "Bago",
+      "Assigned": "Naitalaga",
+      "Accepted": "Tinanggap",
+      "Arrived": "Nasa lugar na",
+      "InProgress": "Isinasagawa",
+      "Completed": "Natapos",
+      "Cancelled": "Kinansela"
+    },
+    "driver": {
+      "Free": "Libre",
+      "EnRoute": "Papunta na",
+      "Busy": "Abala",
+      "Offline": "Offline"
+    }
+  },
+  "drivers": {
+    "overrideTitle": "Itakda ang estado",
+    "setFree": "Libre",
+    "setBusy": "Abala",
+    "setOffline": "Offline",
+    "positionAge": {
+      "unknown": "—",
+      "seconds": "{{n}} s na ang nakaraan",
+      "minutes": "{{n}} min na ang nakaraan"
+    },
+    "noOrderCode": "—",
+    "overrideError": "May naganap na error habang itinatakda ang estado"
+  },
+  "map": {
+    "loading": "Naglo-load ng mapa...",
+    "toggleShow": "Ipakita ang mapa",
+    "toggleHide": "Itago ang mapa",
+    "driverPopup": "Driver: {{name}}",
+    "orderPopup": "Order: {{code}}",
+    "mapyLogoAlt": "Mapy.com – tingnan sa mapy.com",
+    "attributionLabel": "Pinagmulan ng mga datos ng mapa",
+    "unavailable": "Pansamantalang hindi available ang mapa",
+    "noCoords": "walang koordinado"
+  },
+  "settings": {
+    "title": "Mga setting",
+    "accessDenied": "Tinanggihan ang pag-access. Ang seksyong ito ay para lang sa administrador ng fleet.",
+    "geoUsage": {
+      "title": "Konsumo ng mga map credit",
+      "creditsUsed": "Mga credit ngayong buwan",
+      "budget": "Buwanang badyet",
+      "percent": "{{percent}} % ng badyet",
+      "loading": "Naglo-load ng konsumo ng mga credit…",
+      "error": "Hindi na-load ang konsumo ng mga credit.",
+      "overBudget": "Lumampas sa badyet"
+    },
+    "tabs": {
+      "vehicles": "Mga sasakyan",
+      "people": "Mga tao",
+      "fleet": "Fleet",
+      "routesZones": "Mga ruta at zone"
+    },
+    "routesZones": {
+      "title": "Mga ruta at zone",
+      "tabs": {
+        "zones": "Mga zone",
+        "routes": "Mga ruta",
+        "places": "Mga lugar"
+      }
+    },
+    "zones": {
+      "title": "Mga zone",
+      "listLabel": "Listahan ng mga zone",
+      "loading": "Naglo-load ng mga zone…",
+      "loadingMap": "Naglo-load ng mapa…",
+      "empty": "Wala pang mga zone. Gumuhit ng unang zone sa mapa sa ibaba.",
+      "nameLabel": "Pangalan ng zone",
+      "namePlaceholder": "hal. Centrum Kutná Hora",
+      "nameRequired": "Ilagay muna ang pangalan ng zone.",
+      "modeCircle": "Bilog",
+      "modePolygon": "Polygon",
+      "circleHint": "I-click ang gitna, pagkatapos i-click ang gilid upang itakda ang radius.",
+      "polygonHint": "Mag-click upang magdagdag ng mga punto, mag-double-click upang isara ang polygon.",
+      "circleMeta": "Bilog · radius {{radius}} m",
+      "polygonMeta": "Polygon · {{count}} puntos",
+      "disabled": "naka-off",
+      "delete": "Tanggalin",
+      "deleteAria": "Tanggalin ang zone na {{name}}",
+      "saved": "Na-save ang zone.",
+      "saveFailed": "Hindi na-save ang zone. Pakisubukan muli.",
+      "polygonTooFewPoints": "Kailangan ng polygon ng hindi bababa sa 3 puntos."
+    },
+    "vehicles": {
+      "title": "Mga sasakyan",
+      "add": "Magdagdag ng sasakyan",
+      "edit": "I-edit",
+      "deactivate": "I-deactivate",
+      "activate": "I-activate",
+      "confirmDeactivate": "Sigurado ka bang gusto mong i-deactivate ang sasakyang ito?",
+      "inactive": "Hindi aktibo",
+      "fields": {
+        "plate": "Plaka",
+        "make": "Marka",
+        "model": "Modelo",
+        "color": "Kulay",
+        "seats": "Bilang ng upuan",
+        "active": "Aktibo"
+      },
+      "validation": {
+        "plateRequired": "Kailangan ang plaka.",
+        "plateTooLong": "Ang plaka ay maaaring may pinakamarami na 20 karakter.",
+        "makeRequired": "Kailangan ang marka.",
+        "modelRequired": "Kailangan ang modelo.",
+        "colorRequired": "Kailangan ang kulay.",
+        "seatsMin": "Ang bilang ng upuan ay dapat hindi bababa sa 1."
+      },
+      "save": "I-save",
+      "cancel": "Kanselahin",
+      "createSuccess": "Naidagdag ang sasakyan.",
+      "updateSuccess": "Na-update ang sasakyan.",
+      "deactivateSuccess": "Na-deactivate ang sasakyan.",
+      "loading": "Naglo-load ng mga sasakyan..."
+    },
+    "people": {
+      "title": "Mga tao",
+      "invite": "Mag-imbita",
+      "edit": "I-edit",
+      "deactivate": "I-deactivate",
+      "resetPassword": "I-reset ang password",
+      "fields": {
+        "email": "E-mail",
+        "displayName": "Pangalang ipapakita",
+        "role": "Papel",
+        "phone": "Telepono",
+        "isActive": "Aktibo",
+        "lastLogin": "Huling pag-login"
+      },
+      "roles": {
+        "Driver": "Driver",
+        "Dispatcher": "Dispatcher",
+        "FleetAdmin": "Administrador ng fleet"
+      },
+      "validation": {
+        "emailRequired": "Kailangan ang e-mail.",
+        "emailInvalid": "Maglagay ng wastong e-mail address.",
+        "displayNameRequired": "Kailangan ang pangalan.",
+        "roleRequired": "Kailangan ang papel."
+      },
+      "tempPassword": {
+        "title": "Pansamantalang password",
+        "warning": "Ipapakita lang ang password na ito minsan. Kopyahin ito at ibigay sa user.",
+        "copy": "Kopyahin",
+        "copied": "Nakopya!",
+        "dismiss": "Isara"
+      },
+      "save": "I-save",
+      "cancel": "Kanselahin",
+      "inviteSuccess": "Naipadala ang imbitasyon.",
+      "updateSuccess": "Na-update ang user.",
+      "deactivateSuccess": "Na-deactivate ang user.",
+      "selfDeactivation": "Hindi mo maaaring i-deactivate ang sarili mong account.",
+      "driverIsOnline": "Kailangan munang mag-offline ang driver.",
+      "loading": "Naglo-load ng mga user...",
+      "noLastLogin": "Hindi kailanman"
+    },
+    "fleet": {
+      "title": "Fleet",
+      "name": "Pangalan ng fleet",
+      "phone": "Telepono ng fleet",
+      "primaryColor": "Kulay ng brand",
+      "primaryColorHex": "Color code",
+      "welcomeText": "Teksto ng pagbati",
+      "offerTimeout": "Time limit ng alok (s)",
+      "smsCap": "Buwanang limitasyon ng SMS (Kč)",
+      "autoDispatch": "Awtomatikong pagtatalaga",
+      "autoDispatchHint": "Available sa bersyong 1.1",
+      "save": "I-save",
+      "saving": "Nagse-save…",
+      "saved": "Na-save ang mga setting.",
+      "saveFailed": "Hindi na-save ang mga setting. Pakisubukan muli.",
+      "loading": "Naglo-load ng mga setting...",
+      "logo": {
+        "label": "Logo ng fleet",
+        "hint": "PNG, pinakamarami 200 KB.",
+        "previewAlt": "Preview ng logo ng fleet",
+        "notPng": "Ang logo ay dapat nasa format na PNG.",
+        "tooLarge": "Ang logo ay lumampas sa limitasyong 200 KB.",
+        "uploaded": "Na-upload ang logo.",
+        "uploadFailed": "Hindi na-upload ang logo. Suriin ang format at laki."
+      },
+      "validation": {
+        "nameRequired": "Kailangan ang pangalan ng fleet.",
+        "phoneRequired": "Kailangan ang telepono ng fleet.",
+        "colorInvalid": "Maglagay ng wastong color code sa format na #RRGGBB.",
+        "offerTimeoutRange": "Ang time limit ng alok ay dapat nasa pagitan ng 10 at 600 segundo.",
+        "smsCapInvalid": "Ang limitasyon ng SMS ay dapat hindi negatibong buong numero.",
+        "welcomeTooLong": "Ang teksto ng pagbati ay maaaring may pinakamarami na 2000 karakter."
+      }
+    },
+    "routes": {
+      "title": "Mga ruta",
+      "listLabel": "Listahan ng mga ruta",
+      "loading": "Naglo-load ng mga ruta…",
+      "empty": "Wala pang mga ruta. Magdagdag ng unang ruta sa ibaba.",
+      "add": "Magdagdag ng ruta",
+      "edit": "I-edit",
+      "delete": "Tanggalin",
+      "disabled": "naka-off",
+      "priceMeta": "{{price}} Kč",
+      "moveUp": "Ilipat pataas ang rutang {{name}}",
+      "moveDown": "Ilipat pababa ang rutang {{name}}",
+      "enableAria": "I-on o i-off ang rutang {{name}}",
+      "editAria": "I-edit ang rutang {{name}}",
+      "deleteAria": "Tanggalin ang rutang {{name}}",
+      "types": {
+        "PointToPoint": "Punto sa punto",
+        "Zone": "Zone",
+        "ZoneToZone": "Sa pagitan ng mga zone"
+      },
+      "days": {
+        "mon": "Lunes",
+        "tue": "Martes",
+        "wed": "Miyerkules",
+        "thu": "Huwebes",
+        "fri": "Biyernes",
+        "sat": "Sabado",
+        "sun": "Linggo"
+      },
+      "daysShort": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Miy",
+        "thu": "Huw",
+        "fri": "Biy",
+        "sat": "Sab",
+        "sun": "Lin"
+      },
+      "editor": {
+        "title": "Editor ng ruta",
+        "name": "Pangalan ng ruta",
+        "type": "Uri ng ruta",
+        "price": "Presyo (Kč)",
+        "pickupPick": "I-click sa mapa upang itakda ang lugar ng pickup.",
+        "pickupSet": "Pickup: {{lat}}, {{lng}}",
+        "dropoffPick": "I-click sa mapa upang itakda ang lugar ng dropoff.",
+        "dropoffSet": "Dropoff: {{lat}}, {{lng}}",
+        "loadingMap": "Naglo-load ng mapa…",
+        "fromRadius": "Radius ng pickup (m)",
+        "toRadius": "Radius ng dropoff (m)",
+        "fromZone": "Panimulang zone",
+        "toZone": "Patutunguhang zone",
+        "selectZone": "Pumili ng zone…",
+        "bidirectional": "Balido sa magkabilang direksyon",
+        "days": "Mga balidong araw",
+        "validFrom": "Balido mula",
+        "validTo": "Balido hanggang",
+        "enabled": "Naka-on",
+        "save": "I-save",
+        "cancel": "Kanselahin"
+      },
+      "validation": {
+        "nameRequired": "Ilagay ang pangalan ng ruta.",
+        "priceRequired": "Ang presyo ay dapat mas malaki sa zero.",
+        "daysRequired": "Pumili ng hindi bababa sa isang araw.",
+        "pickupRequired": "Itakda ang lugar ng pickup sa mapa.",
+        "dropoffRequired": "Itakda ang lugar ng dropoff sa mapa.",
+        "radiusRequired": "Ang mga radius ay dapat mas malaki sa zero.",
+        "fromZoneRequired": "Pumili ng panimulang zone.",
+        "toZoneRequired": "Pumili ng patutunguhang zone."
+      },
+      "test": {
+        "title": "Subukan ang ruta",
+        "pickPickup": "I-click sa mapa upang itakda ang lugar ng pickup.",
+        "pickupSet": "Pickup: {{lat}}, {{lng}}",
+        "dropoffOptional": "Opsyonal na i-click sa mapa upang itakda ang dropoff.",
+        "dropoffSet": "Dropoff: {{lat}}, {{lng}}",
+        "at": "Oras (opsyonal)",
+        "loading": "Kinukwenta ang presyo…",
+        "fixed": "Nakatakdang presyo {{price}} Kč",
+        "estimate": "Tantya {{low}}–{{high}} Kč",
+        "meter": "Ayon sa metro",
+        "unknown": "Hindi natukoy ang presyo.",
+        "quoteUnavailable": "Hindi makwenta ang presyo, tawagan kami."
+      }
+    },
+    "places": {
+      "title": "Mga lugar",
+      "listLabel": "Listahan ng mga lugar",
+      "loading": "Naglo-load ng mga lugar…",
+      "empty": "Wala pang mga lugar. Magdagdag ng unang lugar sa ibaba.",
+      "add": "Magdagdag ng lugar",
+      "edit": "I-edit",
+      "delete": "Tanggalin",
+      "disabled": "naka-off",
+      "editAria": "I-edit ang lugar na {{name}}",
+      "deleteAria": "Tanggalin ang lugar na {{name}}",
+      "editor": {
+        "title": "Editor ng lugar",
+        "name": "Pangalan ng lugar",
+        "address": "Address",
+        "addressPlaceholder": "hal. Nádražní 1, Kutná Hora",
+        "pickCoords": "I-click sa mapa upang itakda ang lokasyon.",
+        "coordsSet": "Lokasyon: {{lat}}, {{lng}}",
+        "loadingMap": "Naglo-load ng mapa…",
+        "sortOrder": "Pagkakasunod-sunod",
+        "enabled": "Naka-on",
+        "save": "I-save",
+        "cancel": "Kanselahin"
+      },
+      "validation": {
+        "nameRequired": "Ilagay ang pangalan ng lugar.",
+        "addressRequired": "Ilagay ang address.",
+        "coordsRequired": "Itakda ang lokasyon sa mapa.",
+        "sortOrderInvalid": "Ang pagkakasunod-sunod ay hindi maaaring negatibo."
+      }
+    }
+  },
+  "search": {
+    "title": "Paghahanap ng mga order",
+    "filters": {
+      "dateFrom": "Mula",
+      "dateTo": "Hanggang",
+      "status": "Katayuan",
+      "allStatuses": "Lahat ng katayuan",
+      "driver": "Driver",
+      "allDrivers": "Lahat ng driver",
+      "search": "Maghanap",
+      "searchPlaceholder": "Code, telepono o pangalan",
+      "apply": "Ilapat",
+      "exportCsv": "I-export ang CSV"
+    },
+    "table": {
+      "code": "Code",
+      "created": "Ginawa",
+      "when": "Kailan",
+      "customer": "Customer",
+      "route": "Ruta",
+      "price": "Presyo",
+      "driver": "Driver",
+      "status": "Katayuan",
+      "noDriver": "—",
+      "asap": "ASAP",
+      "noResults": "Walang resulta",
+      "loading": "Naglo-load..."
+    },
+    "pagination": {
+      "page": "Pahina {{page}} / {{total}}",
+      "prev": "Nakaraan",
+      "next": "Susunod"
+    }
+  },
+  "driver": {
+    "login": {
+      "title": "Pag-login ng driver",
+      "fleetSlug": "Code ng fleet",
+      "fleetSlugPlaceholder": "hal. kolintaxi",
+      "email": "E-mail",
+      "emailPlaceholder": "vas@email.cz",
+      "password": "Password",
+      "staySignedIn": "Manatiling naka-login",
+      "submit": "Mag-login",
+      "loading": "Nagla-log in...",
+      "invalidCredentials": "Maling detalye ng pag-login. Subukan mo muli.",
+      "networkError": "Hindi makakonekta sa server. Suriin ang koneksyon.",
+      "unknownError": "May naganap na hindi inaasahang error. Subukan mo muli.",
+      "validation": {
+        "fleetSlugRequired": "Kailangan ang code ng fleet.",
+        "emailRequired": "Kailangan ang e-mail.",
+        "emailInvalid": "Maglagay ng wastong e-mail address.",
+        "passwordRequired": "Kailangan ang password."
+      }
+    },
+    "install": {
+      "bannerTitle": "I-install ang app",
+      "bannerDescription": "Idagdag ang app sa iyong home screen para sa mabilis na pag-access.",
+      "installButton": "I-install",
+      "dismissButton": "Huwag na lang",
+      "iosInstructions": "Idagdag sa home screen: pindutin ang Share tapos ang Add to Home Screen."
+    },
+    "permissions": {
+      "locationTitle": "Lokasyon",
+      "locationDescription": "Kailangan ng app na malaman ang iyong lokasyon para makatanggap at masubaybayan ang mga biyahe.",
+      "notificationsTitle": "Mga notipikasyon",
+      "notificationsDescription": "Payagan ang mga notipikasyon para makatanggap ka ng mga bagong alok ng biyahe.",
+      "allow": "Payagan",
+      "skip": "Laktawan"
+    },
+    "home": {
+      "title": "Taxi Driver",
+      "status": {
+        "startShift": "Simulan ang shift",
+        "endShift": "Tapusin ang shift",
+        "waitingForOrder": "Naghihintay ng order",
+        "rideInProgress": "Isinasagawa ang biyahe",
+        "viewRide": "Tingnan ang biyahe"
+      },
+      "summary": {
+        "rides": "Mga biyahe",
+        "cash": "Cash",
+        "card": "Card",
+        "hours": "Oras online"
+      },
+      "connection": {
+        "connected": "Nakakonekta",
+        "connecting": "Kumokonekta...",
+        "reconnecting": "Muling kumokonekta...",
+        "disconnected": "Nadiskonekta"
+      },
+      "vehicle": {
+        "label": "Sasakyan",
+        "placeholder": "Pumili ng sasakyan",
+        "noVehicleHint": "Pumili ng sasakyan para simulan ang shift",
+        "noLocationHint": "Payagan ang lokasyon para simulan ang shift"
+      },
+      "errors": {
+        "goOnlineConflict": "Online ka na",
+        "goOnlineNotFound": "Hindi nahanap ang sasakyan o hindi ito aktibo",
+        "goOnlineFailed": "Hindi nasimulan ang shift. Subukan mo muli."
+      }
+    },
+    "ride": {
+      "navigate": "Mag-navigate",
+      "navigateToDropoff": "Mag-navigate sa destinasyon",
+      "arrive": "Nasa lugar na ako",
+      "start": "Simulan ang biyahe",
+      "complete": "Tapusin ang biyahe",
+      "noShow": "Hindi dumating ang customer",
+      "noShowCountdown": "Available sa loob ng {{sec}} s",
+      "noShowConfirm": "Hindi dumating ang customer ({{min}} min na paghihintay)",
+      "phone": "Telepono",
+      "pickup": "Pickup",
+      "dropoff": "Destinasyon",
+      "note": "Tala",
+      "map": "Mapa",
+      "mapShow": "Ipakita ang mapa",
+      "mapHide": "Itago ang mapa",
+      "reassigned": "Naitalaga muli ang order",
+      "loading": "Naglo-load ng biyahe...",
+      "noRide": "Walang aktibong biyahe",
+      "backHome": "Bumalik sa home"
+    },
+    "complete": {
+      "title": "Tapusin ang biyahe",
+      "price": "Presyo (Kč)",
+      "pricePlaceholder": "Ilagay ang presyo",
+      "changePrice": "Baguhin ang presyo",
+      "overrideReason": "Dahilan ng pagbabago ng presyo",
+      "overrideReasonPlaceholder": "Ilagay ang dahilan (min. 5 karakter)",
+      "paymentTitle": "Paraan ng pagbabayad",
+      "paymentCash": "Cash",
+      "paymentCard": "Card",
+      "paymentInvoice": "Invoice",
+      "submit": "Tapusin",
+      "submitting": "Tinatapos...",
+      "successOverlay": "Tapos na ✓",
+      "queuedOverlay": "Ipapadala pagkatapos kumonekta",
+      "fixedLocked": "Nakatakdang presyo",
+      "staleRefetched": "Nagbago ang estado ng biyahe, suriin ang mga detalye.",
+      "offlineHint": "Walang koneksyon, subukan mo muli.",
+      "keypad": {
+        "delete": "Burahin",
+        "clear": "I-clear"
+      },
+      "errors": {
+        "priceRequired": "Ilagay ang presyong mas malaki sa 0.",
+        "paymentRequired": "Pumili ng paraan ng pagbabayad.",
+        "overrideReasonTooShort": "Ang dahilan ng pagbabago ay dapat may hindi bababa sa 5 karakter."
+      }
+    },
+    "offer": {
+      "accept": "Tanggapin",
+      "decline": "Tanggihan",
+      "pickup": "Pickup",
+      "dropoff": "Destinasyon",
+      "distance": "{{km}} km",
+      "eta": "{{min}} min",
+      "priceFixed": "NAKATAKDA",
+      "priceEstimate": "Tantya",
+      "priceMeter": "Metro",
+      "priceCzk": "{{amount}} Kč",
+      "customerName": "Customer",
+      "note": "Tala",
+      "scheduledAt": "Nakatakda",
+      "expired": "Nag-expire ang alok",
+      "staleOffer": "Hindi na available ang alok",
+      "offlineHint": "Walang koneksyon, subukan mo muli",
+      "declineReasonTitle": "Dahilan ng pagtanggi",
+      "declineReasonFar": "Malayo",
+      "declineReasonBreak": "May break ako",
+      "declineReasonOther": "Ibang dahilan",
+      "declineReasonRequired": "Pumili ng dahilan ng pagtanggi",
+      "silentMode": "Tahimik na mode",
+      "accepting": "Tinatanggap...",
+      "declining": "Tinatanggihan..."
+    },
+    "position": {
+      "stale": "Hindi naipapadala ang lokasyon"
+    },
+    "queue": {
+      "pending": "naghihintay na maipadala"
+    },
+    "nav": {
+      "label": "Nabigasyon",
+      "home": "Home",
+      "history": "Kasaysayan",
+      "settings": "Mga setting"
+    },
+    "history": {
+      "title": "Kasaysayan ng mga biyahe",
+      "dateLabel": "Petsa",
+      "today": "Ngayon",
+      "empty": "Walang biyahe sa araw na ito.",
+      "loading": "Naglo-load...",
+      "ride": "Biyahe",
+      "active": "Isinasagawa",
+      "totalsTitle": "Buod",
+      "ridesCount": "Mga biyahe",
+      "cashTotal": "Cash",
+      "cardTotal": "Card",
+      "invoiceTotal": "Invoice",
+      "payment": {
+        "Cash": "Cash",
+        "Card": "Card",
+        "Invoice": "Invoice"
+      }
+    },
+    "settings": {
+      "title": "Mga setting",
+      "navAppTitle": "Nabigasyon",
+      "navAppGeo": "Default na mapa",
+      "navAppGoogle": "Google Maps",
+      "navAppMapy": "Mapy.cz",
+      "navAppWaze": "Waze",
+      "silentModeTitle": "Tahimik na mode",
+      "silentModeDescription": "Ini-mute ang tunog at vibration para sa mga bagong alok.",
+      "versionLabel": "Bersyon ng app",
+      "logout": "Mag-logout",
+      "diagnostika": {
+        "title": "Diagnostics",
+        "hint": "Maaari mong basahin ang mga datos na ito sa dispatcher.",
+        "locationPermission": "Pahintulot sa lokasyon",
+        "pushPermission": "Pahintulot sa notipikasyon",
+        "lastPositionSent": "Huling ipinadalang lokasyon",
+        "connectionState": "Estado ng koneksyon",
+        "never": "Hindi kailanman",
+        "unknown": "Hindi alam",
+        "permission": {
+          "granted": "Pinayagan",
+          "denied": "Tinanggihan",
+          "prompt": "Hindi hiniling",
+          "default": "Hindi hiniling"
+        },
+        "connection": {
+          "connected": "Nakakonekta",
+          "connecting": "Kumokonekta",
+          "reconnecting": "Muling kumokonekta",
+          "disconnected": "Nadiskonekta"
+        }
+      }
+    }
+  },
+  "orders": {
+    "drawer": {
+      "title": "Detalye ng order",
+      "close": "Isara",
+      "edit": "I-edit",
+      "save": "I-save",
+      "saving": "Nagse-save...",
+      "cancel": "Kanselahin",
+      "conflict": "Binago ng ibang tao ang order habang ginagawa mo",
+      "editableStatuses": "Maaari lang i-edit sa estado na Bago o Naitalaga",
+      "fields": {
+        "pickup": "Pickup",
+        "dropoff": "Destinasyon",
+        "scheduledAt": "Nakatakdang oras",
+        "note": "Tala",
+        "passengers": "Mga pasahero"
+      }
+    },
+    "timeline": {
+      "title": "Kasaysayan",
+      "noEvents": "Walang mga kaganapan",
+      "actor": {
+        "System": "Sistema",
+        "Driver": "Driver",
+        "Dispatcher": "Dispatcher",
+        "Customer": "Customer"
+      },
+      "event": {
+        "Created": "Ginawa ang order",
+        "Assigned": "Naitalaga sa driver",
+        "Accepted": "Tinanggap ng driver",
+        "Declined": "Tinanggihan ng driver",
+        "Timeout": "Nag-expire ang oras ng alok",
+        "Arrived": "Dumating ang driver",
+        "Started": "Sinimulan ang biyahe",
+        "Completed": "Natapos ang biyahe",
+        "Cancelled": "Kinansela ang order",
+        "Reassigned": "Naitalaga sa ibang driver",
+        "PriceOverridden": "Binago ang presyo",
+        "NoteAdded": "Nagdagdag ng tala",
+        "Updated": "Na-update ang order"
+      }
+    },
+    "actions": {
+      "assign": "Italaga",
+      "reassign": "Italaga muli",
+      "cancel": "Kanselahin",
+      "accept": "Tanggapin",
+      "arrive": "Nasa lugar",
+      "start": "Simulan ang biyahe",
+      "complete": "Tapusin",
+      "decline": "Tanggihan",
+      "title": "Mga aksyon"
+    },
+    "loading": "Naglo-load...",
+    "notFound": "Hindi nahanap ang order"
+  },
+  "customer": {
+    "appName": "Taxi",
+    "footer": {
+      "gdpr": "Proteksyon ng personal na datos"
+    },
+    "call": "Tumawag",
+    "callAria": "Tumawag sa dispatch {{phone}}",
+    "callUnavailableAria": "Hindi pa available ang numero ng telepono ng dispatch",
+    "offline": {
+      "title": "Offline kayo – tawagan ninyo kami",
+      "orderingDisabled": "Hindi magagamit ang pag-order sa ngayon. Mangyaring tawagan ninyo kami."
+    },
+    "home": {
+      "commonRoutesTitle": "Mga paboritong ruta",
+      "customAddress": "Sariling address",
+      "activeOrderTitle": "May aktibo kayong order na {{code}} – subaybayan",
+      "activeOrderAria": "Subaybayan ang aktibong order na {{code}}"
+    },
+    "order": {
+      "fixedPrice": "Presyo {{price}} – nakatakda",
+      "noteLabel": "Saan eksakto namin kayo susunduin?",
+      "notePlaceholder": "hal. sa may pangunahing pasukan",
+      "whenLabel": "Kailan namin kayo susunduin",
+      "whenNow": "Ngayon na",
+      "whenScheduled": "Sa takdang oras",
+      "scheduledAtLabel": "Petsa at oras ng pagsundo",
+      "passengersLabel": "Bilang ng pasahero",
+      "passengersDecrease": "Bawasan ng pasahero",
+      "passengersIncrease": "Dagdagan ng pasahero",
+      "morePassengers": "Mas maraming pasahero? Tawagan ninyo kami.",
+      "submit": "Mag-order",
+      "submitting": "Ino-order...",
+      "loginPrompt": "Para tapusin ang order, mangyaring mag-login kayo.",
+      "zonePickupLabel": "Saan namin kayo susunduin? (sa zone)",
+      "zoneDropoffLabel": "Saan kayo pupunta? (sa patutunguhang zone)",
+      "zonePickupRequired": "Pumili muna ng lugar ng pagsundo sa zone.",
+      "zoneConfirmed": "Ang address ay nasa zone – nakatakda ang presyo.",
+      "outsideZone": "Ang inilagay na address ay nasa labas ng zone ng rutang ito. Pumili ng ibang lugar o tawagan ninyo kami.",
+      "offlineBlocked": "Offline kayo. Hindi magagawa ang order sa ngayon – mangyaring tawagan ninyo kami.",
+      "errorTooSoon": "Ang pagsundo ay dapat pinakamaaga sa loob ng 20 minuto.",
+      "errorTooLate": "Ang pagsundo ay maaaring itakda nang pinakamatagal na 7 araw nang maaga.",
+      "errorScheduledInvalid": "Mangyaring maglagay ng wastong petsa at oras.",
+      "errorCreateFailed": "Hindi nagawa ang order. Pakisubukan muli.",
+      "routeNotFound": "Hindi na-load ang ruta."
+    },
+    "custom": {
+      "title": "Sariling order",
+      "pickupLabel": "Saan namin kayo susunduin?",
+      "pickupPlaceholder": "Ilagay ang address ng pagsundo",
+      "dropoffLabel": "Saan kayo pupunta? (opsyonal)",
+      "dropoffPlaceholder": "Sasabihin ko sa driver",
+      "useMyLocation": "Gamitin ang aking lokasyon",
+      "myLocationLabel": "Aking lokasyon (GPS)",
+      "locationDenied": "Hindi natukoy ang lokasyon. Ilagay ang address nang manual o igalaw ang pin sa mapa.",
+      "suggestionsLabel": "Mga mungkahing address",
+      "noSuggestions": "Walang mungkahi",
+      "showMap": "I-edit sa mapa",
+      "hideMap": "Itago ang mapa",
+      "mapLabel": "Mapa para pumili ng lugar ng pagsundo",
+      "dragHint": "Igalaw ang pin sa eksaktong lugar ng pagsundo.",
+      "quoteFixed": "Presyo {{price}} – nakatakda",
+      "quoteEstimate": "Tantya {{low}} – {{high}}",
+      "quoteEstimateOrientacni": "Panimulang tantya {{low}} – {{high}}",
+      "quoteMeter": "Ayon sa metro",
+      "quoteUnavailable": "Hindi makwenta ang presyo, tawagan ninyo kami.",
+      "submit": "Mag-order",
+      "submitting": "Ino-order...",
+      "pickupRequired": "Pumili muna ng lugar ng pagsundo.",
+      "loginPrompt": "Para tapusin ang order, mangyaring mag-login kayo."
+    },
+    "tracking": {
+      "title": "Pagsubaybay sa biyahe",
+      "loading": "Naglo-load...",
+      "expired": "Nag-expire ang link",
+      "expiredHint": "Nag-expire na ang link para sa pagsubaybay. Mangyaring tawagan ninyo kami.",
+      "notFound": "Hindi nahanap ang order.",
+      "loginNeeded": "Para subaybayan ang biyaheng ito, mangyaring mag-login kayo.",
+      "headline": {
+        "new": "Naghahanap ng driver…",
+        "assignedEta": "Darating si driver {{name}} sa loob ng ~{{eta}} min",
+        "assignedNoEta": "Papunta na si driver {{name}}",
+        "arrived": "Nasa lugar na ang driver",
+        "inProgress": "Naka-biyahe kayo",
+        "completed": "Tapos na – {{price}} Kč",
+        "completedNoPrice": "Tapos na",
+        "cancelled": "Kinansela ang order"
+      },
+      "vehicleLabel": "Sasakyan",
+      "dropoffLabel": "Destinasyon",
+      "mapLabel": "Mapa na may pagsubaybay sa sasakyan",
+      "showMap": "Ipakita ang mapa",
+      "hideMap": "Itago ang mapa",
+      "carLabel": "Lokasyon ng sasakyan",
+      "pickupLabel": "Lugar ng pagsundo",
+      "detailsTitle": "Mga detalye",
+      "showDetails": "Ipakita ang mga detalye",
+      "hideDetails": "Itago ang mga detalye",
+      "codeLabel": "Code ng order",
+      "pickupAddress": "Saan galing",
+      "dropoffAddress": "Saan pupunta",
+      "timeLabel": "Oras",
+      "timeAsap": "Sa lalong madaling panahon",
+      "priceLabel": "Presyo",
+      "driverLabel": "Driver",
+      "cancel": "Kanselahin ang order",
+      "cancelAcceptedHint": "Papunta na ang driver, kanselahin lang kung talagang kinakailangan.",
+      "cancelDialogTitle": "Kanselahin ang order?",
+      "cancelDialogBody": "Sigurado ba kayong gusto ninyong kanselahin ang order na ito?",
+      "cancelConfirm": "Oo, kanselahin",
+      "cancelDismiss": "Hindi, panatilihin",
+      "cancelTooLate": "Hindi na maaaring kanselahin ang order.",
+      "cancelFailed": "Hindi nakansela ang order. Pakisubukan muli.",
+      "cancelling": "Kinakansela...",
+      "ratingSeam": "Mangyaring i-rate ang inyong biyahe.",
+      "pushPromptTitle": "Gusto ninyo bang makatanggap ng abiso kapag dumating na ang driver?",
+      "pushAllow": "I-on ang mga abiso",
+      "pushDismiss": "Hindi muna"
+    },
+    "login": {
+      "title": "Pag-login",
+      "phoneLabel": "Numero ng telepono",
+      "phonePlaceholder": "123 456 789",
+      "sendCode": "Ipadala ang code",
+      "sending": "Ipinapadala...",
+      "codeLabel": "Verification code",
+      "codeHint": "Ilagay ang 6-digit na code na ipinadala namin sa inyo sa pamamagitan ng SMS.",
+      "verifying": "Vine-verify...",
+      "resend": "Muling ipadala ang code",
+      "resendIn": "Muling ipadala ang code sa loob ng {{seconds}} s",
+      "resent": "Nagpadala kami sa inyo ng bagong code.",
+      "changePhone": "Baguhin ang numero",
+      "invalidPhone": "Maglagay ng wastong numero ng telepono.",
+      "codeMismatch": "Hindi tugma ang code, subukan ninyong muli.",
+      "tooManyRequests": "Sandaling maghintay at subukan ninyong muli.",
+      "networkError": "Hindi makakonekta sa server. Suriin ang koneksyon.",
+      "unknownError": "May naganap na hindi inaasahang error. Subukan ninyong muli."
+    },
+    "rating": {
+      "title": "I-rate ang inyong biyahe",
+      "starsLegend": "Bilang ng bituin",
+      "starLabel": "I-rate ng {{stars}} bituin",
+      "commentLabel": "Komento (opsyonal)",
+      "commentPlaceholder": "Isulat sa amin kung kumusta ang inyong biyahe",
+      "submit": "Ipadala ang rating",
+      "submitting": "Ipinapadala...",
+      "thanks": "Salamat sa inyong rating.",
+      "yourRating": "Inyong rating: {{stars}} sa 5",
+      "submitFailed": "Hindi naipadala ang rating. Pakisubukan muli.",
+      "offline": "Maaari lang ipadala ang rating kapag online."
+    },
+    "history": {
+      "title": "Kasaysayan ng mga biyahe",
+      "empty": "Wala pang mga biyahe",
+      "reorder": "Mag-order muli",
+      "openAria": "Tingnan ang biyaheng {{code}}",
+      "statusCompleted": "Natapos",
+      "statusCancelled": "Kinansela",
+      "statusActive": "Isinasagawa",
+      "priceUnknown": "—",
+      "offline": "Offline kayo – ipinapakita ang huling alam na datos."
+    }
+  },
+  "notifications": {
+    "title": "Mga notipikasyon",
+    "empty": "Wala pang mga notipikasyon.",
+    "failedSmsIcon": "Hindi naipadala ang SMS – tawagan ang customer",
+    "statusOf": "Katayuan: {{status}}",
+    "status": {
+      "sent": "Naipadala",
+      "failed": "Nabigo",
+      "queued": "Nasa pila",
+      "skippedCap": "Nilaktawan (limitasyon)",
+      "skippedNoChannel": "Nilaktawan (walang channel)",
+      "unknown": "Hindi alam na katayuan"
+    },
+    "channel": {
+      "sms": "SMS",
+      "push": "Push",
+      "unknown": "Channel"
+    },
+    "event": {
+      "OrderCreatedForCustomer": "Natanggap ang order",
+      "DriverAssigned": "Naitalaga ang driver",
+      "DriverArrived": "Nasa lugar na ang driver",
+      "RideStarted": "Sinimulan ang biyahe",
+      "RideCompleted": "Natapos ang biyahe",
+      "OrderCancelledByFleet": "Kinansela ng dispatch",
+      "OrderCancelledByCustomer": "Kinansela ng customer",
+      "OfferToDriver": "Alok sa driver",
+      "DriverDeclined": "Tinanggihan ng driver",
+      "DriverTimedOut": "Hindi tumugon ang driver",
+      "NewAppOrderForDispatch": "Bagong order mula sa app",
+      "ScheduledOrderReminder": "Paalala ng nakatakdang biyahe"
+    },
+    "settings": {
+      "title": "Mga notipikasyon sa SMS",
+      "monthlyCount": "Naipadalang SMS ngayong buwan",
+      "estimatedCost": "Tinatayang halaga",
+      "cap": "Buwanang limitasyon",
+      "nearCap": "Papalapit na kayo sa buwanang limitasyon ng SMS.",
+      "overCap": "Naubos na ang buwanang limitasyon ng SMS – mga SMS lang tungkol sa pagdating ng driver ang ipinapadala."
+    }
+  },
+  "reports": {
+    "title": "Mga ulat",
+    "driverReport": {
+      "title": "Ulat ng mga driver",
+      "driver": "Driver",
+      "allDrivers": "Lahat ng driver",
+      "from": "Mula",
+      "to": "Hanggang",
+      "downloadCsv": "I-download ang CSV",
+      "downloading": "Nagda-download...",
+      "selectDriver": "Pumili ng driver para makita ang kanyang ulat."
+    },
+    "table": {
+      "day": "Araw",
+      "completed": "Natapos",
+      "cancelled": "Kinansela",
+      "cash": "Cash",
+      "card": "Card",
+      "invoice": "Invoice",
+      "total": "Kabuuan",
+      "hoursOnline": "Oras online",
+      "priceOverrides": "Mga pagbabago ng presyo",
+      "totalsRow": "Kabuuan",
+      "avgRating": "Karaniwang rating",
+      "noRating": "–",
+      "empty": "Walang datos para sa napiling panahon"
+    },
+    "fleet": {
+      "title": "Ulat ng fleet",
+      "rides": "Mga biyahe",
+      "revenue": "Kita",
+      "avgPrice": "Karaniwang presyo",
+      "timeToAssign": "Oras hanggang pagtatalaga",
+      "timeToPickup": "Oras hanggang pagsundo",
+      "cancellationRate": "Rate ng pagkansela",
+      "appShare": "Bahagi mula sa app",
+      "phoneShare": "Bahagi sa telepono",
+      "fixedRouteShare": "Bahagi ng nakatakdang ruta",
+      "smsCount": "Bilang ng SMS",
+      "smsCost": "Tinatayang halaga ng SMS"
+    },
+    "chart": {
+      "title": "Mga biyahe kada araw",
+      "empty": "Walang biyahe sa panahon",
+      "barLabel": "{{day}}: {{rides}} biyahe"
+    },
+    "topRoutes": {
+      "title": "Pinakamadalas na ruta",
+      "count": "{{count}}×",
+      "empty": "Walang ruta"
+    },
+    "ratings": {
+      "title": "Mga rating",
+      "stars": "{{stars}} sa 5",
+      "order": "Order",
+      "driver": "Driver",
+      "noComment": "Walang komento",
+      "empty": "Walang rating"
+    },
+    "loading": "Naglo-load ng ulat...",
+    "error": "Hindi na-load ang ulat.",
+    "accessDenied": "Wala kang access sa pahinang ito."
+  },
+  "audit": {
+    "title": "Audit",
+    "filters": {
+      "actor": "Aktor",
+      "entity": "Entity",
+      "from": "Mula",
+      "to": "Hanggang",
+      "orderCode": "Code ng order",
+      "apply": "I-filter",
+      "clear": "I-clear ang filter",
+      "allEntities": "Lahat ng entity"
+    },
+    "table": {
+      "time": "Oras",
+      "actor": "Aktor",
+      "entity": "Entity",
+      "event": "Kaganapan",
+      "order": "Order"
+    },
+    "empty": "Walang mga tala",
+    "loading": "Naglo-load ng audit...",
+    "error": "Hindi na-load ang audit.",
+    "accessDenied": "Wala kang access sa pahinang ito.",
+    "page": "Pahina {{page}}",
+    "prev": "Nakaraan",
+    "next": "Susunod",
+    "event": {
+      "StatusOverride": "Manwal na pagbabago ng estado",
+      "Unknown": "Hindi alam na kaganapan"
+    }
+  },
+  "analytics": {
+    "ranges": {
+      "dnes": "Ngayon",
+      "7dni": "Huling 7 araw",
+      "tentoMesic": "Ngayong buwan",
+      "minulyMesic": "Nakaraang buwan",
+      "kvartal": "Quarter",
+      "rok": "Taon",
+      "vlastni": "Sarili"
+    },
+    "period": {
+      "label": "Panahon"
+    },
+    "granularity": {
+      "label": "Granularity",
+      "day": "Araw-araw",
+      "week": "Lingguhan",
+      "month": "Buwan-buwan"
+    },
+    "compare": "Ihambing sa nakaraang panahon",
+    "revenue": {
+      "empty": "Walang datos para sa napiling panahon",
+      "loading": "Naglo-load ng kita…",
+      "error": "Hindi na-load ang datos ng analytics.",
+      "series": {
+        "title": "Trend ng kita ayon sa paraan ng pagbabayad",
+        "tableCaption": "Kita kada panahon (available para sa mga screen reader)",
+        "tableBucket": "Panahon",
+        "tableCash": "Cash (Kč)",
+        "tableCard": "Card (Kč)",
+        "tableInvoice": "Invoice (Kč)",
+        "tableTotal": "Kabuuan (Kč)"
+      },
+      "source": {
+        "title": "Bahagi ng kita ayon sa pinagmulan ng order",
+        "tableCaption": "Kita ayon sa pinagmulan (available para sa mga screen reader)",
+        "tableSource": "Pinagmulan",
+        "tableRevenue": "Kita (Kč)"
+      },
+      "priceType": {
+        "title": "Bahagi ng kita ayon sa uri ng presyo",
+        "tableCaption": "Kita ayon sa uri ng presyo (available para sa mga screen reader)",
+        "tablePriceType": "Uri ng presyo",
+        "tableRevenue": "Kita (Kč)"
+      },
+      "aovTrend": {
+        "title": "Trend ng karaniwang halaga ng biyahe (AOV)",
+        "tableCaption": "AOV kada panahon (available para sa mga screen reader)",
+        "tableBucket": "Panahon",
+        "tableAov": "AOV (Kč)"
+      },
+      "priceOverride": {
+        "title": "Epekto ng mga pagbabago sa presyo",
+        "count": "Bilang ng pagbabago",
+        "totalDelta": "Kabuuang epekto (Kč)",
+        "reasonsTitle": "Pinakamadalas na dahilan",
+        "tableReason": "Dahilan",
+        "tableCount": "Bilang"
+      },
+      "topRoutes": {
+        "title": "Pinakakumikitang ruta",
+        "tableCaption": "Kita ayon sa ruta",
+        "tableFrom": "Saan galing",
+        "tableTo": "Saan pupunta",
+        "tableRides": "Mga biyahe",
+        "tableRevenue": "Kita (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "I-export ang CSV"
+      },
+      "zoneRevenue": {
+        "title": "Kita ayon sa zone",
+        "tableCaption": "Kita ayon sa zone",
+        "tableZone": "Zone",
+        "tableRides": "Mga biyahe",
+        "tableRevenue": "Kita (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "I-export ang CSV"
+      },
+      "smsCost": {
+        "title": "Gastos sa SMS",
+        "tableCaption": "Gastos sa SMS kada panahon (available para sa mga screen reader)",
+        "tableBucket": "Panahon",
+        "tableSmsCount": "Bilang ng SMS",
+        "tableCost": "Gastos (Kč)"
+      }
+    },
+    "drivers": {
+      "loading": "Naglo-load ng mga driver…",
+      "error": "Hindi na-load ang datos ng analytics.",
+      "empty": "Walang datos para sa napiling panahon",
+      "league": {
+        "title": "Talaan ng liga ng mga driver",
+        "tableCaption": "Mga estadistika ng driver",
+        "tableDriver": "Driver",
+        "tableRides": "Mga biyahe",
+        "tableRevenue": "Kita (Kč)",
+        "tableOnline": "Online (oras)",
+        "tableUtil": "Paggamit (%)",
+        "tableRevenuePerHour": "Kita/oras",
+        "tableAcceptance": "Pagtanggap (%)",
+        "tableDeclines": "Pagtanggi",
+        "tableCancellations": "Pagkansela",
+        "tableNoShows": "No-show",
+        "tableRating": "Rating",
+        "sortAsc": "Ayusin nang pataas",
+        "sortDesc": "Ayusin nang pababa",
+        "csvLabel": "I-export ang CSV"
+      },
+      "retention": {
+        "title": "Retensyon ng mga driver (lingguhan)",
+        "tableCaption": "Retensyon ng mga driver kada linggo (available para sa mga screen reader)",
+        "tableWeek": "Linggo",
+        "tableActive": "Aktibo",
+        "tableNew": "Bago",
+        "tableChurned": "Umalis",
+        "activeLabel": "Aktibo",
+        "newLabel": "Bagong aktibo",
+        "churnedLabel": "Umalis"
+      },
+      "drilldown": {
+        "backLabel": "Bumalik sa talaan",
+        "weeklyTitle": "Lingguhang trend",
+        "weeklyCaption": "Lingguhang estadistika ng driver (available para sa mga screen reader)",
+        "tableWeek": "Linggo",
+        "tableRides": "Mga biyahe",
+        "tableRevenue": "Kita (Kč)",
+        "tableRating": "Rating",
+        "lowRatedTitle": "Mga biyahe na may mababang rating (≤ 3 bituin)",
+        "tableCode": "Code",
+        "tableCompleted": "Natapos",
+        "tableStars": "Mga bituin",
+        "tableComment": "Komento",
+        "tablePickup": "Pickup",
+        "tableDropoff": "Dropoff",
+        "noComment": "—",
+        "noLowRated": "Walang biyahe na may rating na ≤ 3 bituin."
+      }
+    },
+    "customers": {
+      "loading": "Naglo-load ng mga customer…",
+      "error": "Hindi na-load ang datos ng analytics.",
+      "empty": "Walang datos para sa napiling panahon",
+      "summary": {
+        "title": "Buod",
+        "totalRides": "Kabuuang biyahe",
+        "totalRevenue": "Kabuuang kita (Kč)",
+        "newIdentities": "Mga bagong customer",
+        "returningIdentities": "Mga bumabalik na customer",
+        "repeatRate": "Rate ng pag-ulit (%)",
+        "freqOne": "Dalas na 1×",
+        "freqTwoToFive": "Dalas na 2–5×",
+        "freqSixPlus": "Dalas na 6+×"
+      },
+      "newVsReturning": {
+        "title": "Bago vs. bumabalik na mga customer",
+        "tableCaption": "Mga bago at bumabalik na customer kada panahon (available para sa mga screen reader)",
+        "tableBucket": "Panahon",
+        "tableNew": "Bago",
+        "tableReturning": "Bumabalik",
+        "newLabel": "Mga bagong customer",
+        "returningLabel": "Mga bumabalik na customer"
+      },
+      "cohort": {
+        "title": "Retensyon ng cohort ng mga customer",
+        "tableCaption": "Retensyon ng cohort (mga customer na aktibo sa buwang iyon pagkatapos ma-acquire)",
+        "tableAcqMonth": "Cohort",
+        "monthHeader": "Buwan {{n}}",
+        "csvLabel": "I-export ang CSV"
+      },
+      "topCustomers": {
+        "title": "Pinakamahuhusay na customer",
+        "tableCaption": "Pinakamahuhusay na customer ayon sa bilang ng biyahe",
+        "tableCustomer": "Customer",
+        "tablePhone": "Telepono",
+        "tableRides": "Mga biyahe",
+        "tableRevenue": "Kita (Kč)",
+        "unknown": "Hindi alam"
+      },
+      "ratings": {
+        "title": "Mga rating ng customer",
+        "avgRating": "Karaniwang rating",
+        "totalRated": "Mga na-rate na biyahe",
+        "distribution": {
+          "title": "Distribusyon ng rating (1–5 bituin)",
+          "tableCaption": "Distribusyon ng rating (available para sa mga screen reader)",
+          "tableStars": "Mga bituin",
+          "tableCount": "Bilang",
+          "datasetLabel": "Bilang ng rating"
+        },
+        "trend": {
+          "title": "Trend ng karaniwang rating",
+          "tableCaption": "Trend ng rating kada panahon (available para sa mga screen reader)",
+          "tableBucket": "Panahon",
+          "tableAvg": "Karaniwan",
+          "tableRides": "Mga biyahe"
+        },
+        "worstRated": {
+          "title": "Mga biyahe na may pinakamababang rating (≤ 3 bituin)",
+          "tableCaption": "Mga biyahe na may pinakamababang rating",
+          "tableCode": "Code",
+          "tableCompleted": "Natapos",
+          "tableStars": "Mga bituin",
+          "tableComment": "Komento",
+          "tableDriver": "Driver",
+          "noComment": "—",
+          "empty": "Walang biyahe na may rating na ≤ 3."
+        }
+      }
+    },
+    "tabs": {
+      "prehled": "Pangkalahatang-tanaw",
+      "poptavka": "Demand",
+      "provoz": "Operasyon",
+      "trzby": "Kita",
+      "ridici": "Mga driver",
+      "zakaznici": "Mga customer",
+      "placeholder": "Magiging available ang tab na ito sa isang hinaharap na bersyon."
+    },
+    "overview": {
+      "title": "Pangkalahatang-tanaw",
+      "rides": "Mga biyahe",
+      "revenueCzk": "Kita",
+      "aov": "Karaniwang biyahe",
+      "fulfillmentRate": "Rate ng pagtupad",
+      "cancellationRate": "Rate ng pagkansela",
+      "activeCustomers": "Mga aktibong customer",
+      "newCustomers": "Mga bagong customer",
+      "activeDrivers": "Mga aktibong driver",
+      "onlineDriverHours": "Oras online",
+      "revenuePerOnlineHour": "Kita / oras",
+      "avgRating": "Karaniwang rating",
+      "chartLabel": "Trend ng mga biyahe at kita",
+      "chartTableCaption": "Trend ng mga biyahe at kita (available para sa mga screen reader)",
+      "chartTableBucket": "Panahon",
+      "chartTableRides": "Mga biyahe",
+      "chartTableRevenue": "Kita (Kč)",
+      "empty": "Walang datos para sa napiling panahon",
+      "deltaPositive": "+{{value}}",
+      "deltaNegative": "{{value}}",
+      "loading": "Naglo-load ng pangkalahatang-tanaw…",
+      "error": "Hindi na-load ang datos ng analytics."
+    },
+    "demand": {
+      "loading": "Naglo-load ng demand…",
+      "error": "Hindi na-load ang datos ng analytics.",
+      "empty": "Walang datos para sa napiling panahon",
+      "heatmap": {
+        "title": "Heatmap ng demand (oras × araw)",
+        "tableCaption": "Demand ayon sa oras at araw (available para sa mga screen reader)",
+        "tableHour": "Oras",
+        "csvLabel": "I-export ang CSV"
+      },
+      "supplyDemand": {
+        "title": "Supply vs. demand kada oras",
+        "tableCaption": "Supply at demand kada oras (available para sa mga screen reader)",
+        "tableHour": "Oras",
+        "tableOrders": "Demand (mga biyahe)",
+        "tableSupplyHours": "Supply (oras online)"
+      },
+      "unmetDemand": {
+        "title": "Hindi natugunang demand kada oras",
+        "tableCaption": "Hindi natugunang demand kada oras (available para sa mga screen reader)",
+        "tableHour": "Oras",
+        "tableCount": "Hindi natugunan"
+      },
+      "utilization": {
+        "title": "Paggamit ng fleet",
+        "fleetLabel": "Paggamit ng fleet",
+        "driverTableCaption": "Paggamit ng mga driver (available para sa mga screen reader)",
+        "tableDriver": "Driver",
+        "tableBusyH": "Abala (oras)",
+        "tableOnlineH": "Online (oras)",
+        "tableUtil": "Paggamit"
+      },
+      "zonePickups": {
+        "title": "Mga pagsundo ayon sa zone",
+        "tableCaption": "Mga pagsundo ayon sa zone",
+        "tableZone": "Zone",
+        "tableCount": "Mga pagsundo",
+        "csvLabel": "I-export ang CSV"
+      },
+      "topRoutes": {
+        "title": "Pinakamadalas na ruta",
+        "tableCaption": "Pinakamadalas na ruta",
+        "tableFrom": "Saan galing",
+        "tableTo": "Saan pupunta",
+        "tableCount": "Bilang",
+        "csvLabel": "I-export ang CSV"
+      }
+    },
+    "operations": {
+      "loading": "Naglo-load ng operasyon…",
+      "error": "Hindi na-load ang datos ng analytics.",
+      "sla": {
+        "title": "Mga SLA metric",
+        "tableCaption": "Mga SLA metric (available para sa mga screen reader)",
+        "tableMetric": "Metric",
+        "tableP50": "p50 (median)",
+        "tableP90": "p90",
+        "tableSampleCount": "Bilang ng biyahe"
+      },
+      "offerFunnel": {
+        "title": "Funnel ng mga alok",
+        "tableCaption": "Funnel ng mga alok (available para sa mga screen reader)",
+        "tableStage": "Yugto",
+        "tableCount": "Bilang",
+        "labelOffersMade": "Mga alok na ipinadala",
+        "labelAccepted": "Tinanggap",
+        "labelDeclined": "Tinanggihan",
+        "labelTimeouts": "Nag-expire",
+        "avgOffersLabel": "Karaniwang bilang ng alok kada biyahe"
+      },
+      "lifecycle": {
+        "title": "Funnel ng lifecycle",
+        "tableCaption": "Lifecycle ng mga order (available para sa mga screen reader)",
+        "tableStage": "Yugto",
+        "tableCount": "Bilang",
+        "labelCreated": "Ginawa",
+        "labelAssigned": "Naitalaga",
+        "labelAccepted": "Tinanggap",
+        "labelArrived": "Nasa lugar",
+        "labelInProgress": "Isinasagawa",
+        "labelCompleted": "Natapos"
+      },
+      "cancellations": {
+        "title": "Mga pagkansela",
+        "byRoleCaption": "Mga pagkansela ayon sa papel (available para sa mga screen reader)",
+        "byStatusCaption": "Mga pagkansela ayon sa estado sa oras ng pagkansela",
+        "byHourTitle": "Mga pagkansela ayon sa oras ng araw",
+        "byHourCaption": "Mga pagkansela ayon sa oras ng araw",
+        "tableRole": "Papel",
+        "tableStatus": "Estado sa pagkansela",
+        "tableHour": "Oras",
+        "tableCount": "Bilang",
+        "noShowShareLabel": "Bahagi ng mga no-show na pagkansela"
+      }
+    }
+  }
+}

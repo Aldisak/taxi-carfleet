@@ -1,4 +1,7 @@
 {
+  "common": {
+    "language": "Language"
+  },
   "app": {
     "title": "Taxi Dispatch",
     "loading": "Loading...",

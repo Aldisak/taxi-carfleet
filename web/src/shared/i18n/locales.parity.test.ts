@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import cs from './cs.json'
-import en from './en.json'
+import { resources } from './index'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from './locales'
 
 /**
  * Flattens a nested object to dot-notation keys.
@@ -16,15 +16,24 @@ function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
   })
 }
 
+function keysFor(code: string): string[] {
+  const bundle = (resources as Record<string, { translation: Record<string, unknown> }>)[code]
+  return flattenKeys(bundle.translation).sort()
+}
+
 describe('locales parity', () => {
-  it('cs.json and en.json have identical key sets', () => {
-    const csKeys = flattenKeys(cs as unknown as Record<string, unknown>).sort()
-    const enKeys = flattenKeys(en as unknown as Record<string, unknown>).sort()
+  const baselineKeys = keysFor(DEFAULT_LOCALE)
 
-    const missingInEn = csKeys.filter(k => !enKeys.includes(k))
-    const missingInCs = enKeys.filter(k => !csKeys.includes(k))
+  it.each(SUPPORTED_LOCALES.filter(l => l.code !== DEFAULT_LOCALE).map(l => l.code))(
+    '%s has a key set identical to cs-CZ',
+    code => {
+      const localeKeys = keysFor(code)
 
-    expect(missingInEn, `Keys in cs.json but not en.json: ${missingInEn.join(', ')}`).toEqual([])
-    expect(missingInCs, `Keys in en.json but not cs.json: ${missingInCs.join(', ')}`).toEqual([])
-  })
+      const missing = baselineKeys.filter(k => !localeKeys.includes(k))
+      const extra = localeKeys.filter(k => !baselineKeys.includes(k))
+
+      expect(missing, `Keys in ${DEFAULT_LOCALE} but missing in ${code}: ${missing.join(', ')}`).toEqual([])
+      expect(extra, `Keys in ${code} but not in ${DEFAULT_LOCALE}: ${extra.join(', ')}`).toEqual([])
+    },
+  )
 })

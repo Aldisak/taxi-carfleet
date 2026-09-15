@@ -63,7 +63,7 @@ A user belongs to exactly one fleet (except SuperAdmin). Customers are global us
   - **Graceful degradation:** the resilience boundary (4 s timeout, 1 retry on 5xx, circuit breaker) lives inside `MapyClient`; on failure it returns `GeoResult.Unavailable` and the UI shows degraded banners + a wider "orientační odhad" estimate rather than a hard error.
   - **No vendor lock-in:** all Mapy access sits behind `IMapyClient`/`IGeoService`, so the provider is replaceable without touching endpoints or the frontend.
 - PWA: `vite-plugin-pwa` (Workbox). Web Push with VAPID.
-- i18n: `i18next`. **Czech is the default language.** All user-facing strings go through i18n; no hardcoded text.
+- i18n: `i18next`. **Czech (`cs-CZ`) is the default language.** All user-facing strings go through i18n; no hardcoded text. Six UI languages are supported — `cs-CZ`, `en-US`, `ru-RU`, `uk-UA`, `fil-PH`, `de-DE` — defined once by `SUPPORTED_LOCALES` in `web/src/shared/i18n/locales.ts` (the single source of truth; selector, detection, parity test all derive from it). First-visit language is auto-detected from the browser and falls back to Czech for unsupported languages. Money/date **formatting** stays `cs-CZ`/`Europe/Prague` in every UI language (localization non-goal, spec §21).
 - Tests: Vitest for logic, Playwright for the three critical flows (create order, driver accept, customer order).
 
 ### Infra (`/infra`)

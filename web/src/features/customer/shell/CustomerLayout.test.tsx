@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -57,5 +57,10 @@ describe('CustomerLayout', () => {
   it('enables customer silent refresh on mount', () => {
     renderLayout()
     expect(enableSilentRefresh).toHaveBeenCalledWith('/customer/login')
+  })
+
+  it('renders the language selector in the header', () => {
+    renderLayout()
+    expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
   })
 })

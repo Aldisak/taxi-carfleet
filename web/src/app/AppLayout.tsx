@@ -6,6 +6,7 @@ import { canAccessSettings } from '../features/settings/roleGating'
 import { useFleetHub } from '../shared/realtime/useFleetHub'
 import { DisconnectBanner } from '../features/board/DisconnectBanner'
 import { useNotificationSound } from '../shared/sound/useNotificationSound'
+import { LanguageSelector } from '../shared/i18n/LanguageSelector'
 
 const Shell = styled.div`
   display: flex;
@@ -99,6 +100,7 @@ export function AppLayout() {
           {isFleetAdmin && <NavLink to="/dispatcher/audit">{t('nav.audit')}</NavLink>}
           {isFleetAdmin && <NavLink to="/dispatcher/analytics">{t('nav.analytics')}</NavLink>}
           {isFleetAdmin && <NavLink to="/dispatcher/settings">{t('nav.settings')}</NavLink>}
+          <LanguageSelector />
           <NavButton
             type="button"
             aria-label={isMuted ? t('nav.unmute') : t('nav.mute')}

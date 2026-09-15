@@ -69,6 +69,11 @@ describe('DriverSettingsPage', () => {
     expect(rideClear).toHaveBeenCalled()
   })
 
+  it('renders the language selector', () => {
+    renderPage()
+    expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
+  })
+
   it('has no axe violations', async () => {
     const { container } = renderPage()
     expect(await axe(container)).toHaveNoViolations()

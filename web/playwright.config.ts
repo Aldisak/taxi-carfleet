@@ -29,6 +29,9 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     // Chromium only (as per B11 spec).
     ...devices['Desktop Chrome'],
+    // Pin the browser locale so applyInitialLanguage() detects cs-CZ and every
+    // existing e2e spec stays Czech (UC-011 AC#7). No project overrides locale.
+    locale: 'cs-CZ',
     // Capture traces on failure for debugging.
     trace: 'on-first-retry',
   },

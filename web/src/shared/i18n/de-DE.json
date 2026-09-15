@@ -1,0 +1,1451 @@
+{
+  "common": {
+    "language": "Sprache"
+  },
+  "app": {
+    "title": "Taxi Disposition",
+    "loading": "Wird geladen...",
+    "error": "Ein Fehler ist aufgetreten",
+    "offline": "Offline – letzter bekannter Stand wird angezeigt"
+  },
+  "admin": {
+    "login": {
+      "title": "Anmeldung Systemadministrator",
+      "email": "E-Mail",
+      "emailPlaceholder": "superadmin@demo.local",
+      "password": "Passwort",
+      "submit": "Anmelden",
+      "loading": "Anmeldung läuft…",
+      "invalidCredentials": "Ungültige Anmeldedaten. Bitte versuchen Sie es erneut.",
+      "networkError": "Verbindung zum Server nicht möglich. Bitte prüfen Sie Ihre Internetverbindung.",
+      "unknownError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+      "validation": {
+        "emailRequired": "E-Mail ist erforderlich.",
+        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "passwordRequired": "Passwort ist erforderlich."
+      }
+    },
+    "fleets": {
+      "title": "Flottenverwaltung",
+      "createTitle": "Neue Flotte anlegen",
+      "listTitle": "Vorhandene Flotten",
+      "create": "Flotte anlegen",
+      "creating": "Wird angelegt…",
+      "createFailed": "Die Flotte konnte nicht angelegt werden. Bitte prüfen Sie die Angaben und versuchen Sie es erneut.",
+      "loading": "Flotten werden geladen…",
+      "loadFailed": "Die Flottenliste konnte nicht geladen werden.",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "passwordWarning": "Einmaliges Administrator-Passwort für {{email}}. Es wird nur einmal angezeigt – kopieren Sie es und geben Sie es sicher weiter.",
+      "fields": {
+        "slug": "Kennung (Slug)",
+        "name": "Name",
+        "phone": "Telefon",
+        "adminEmail": "E-Mail des Administrators",
+        "status": "Status"
+      },
+      "validation": {
+        "slugRequired": "Die Kennung ist erforderlich.",
+        "slugInvalid": "Die Kennung darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.",
+        "nameRequired": "Der Name ist erforderlich.",
+        "phoneRequired": "Das Telefon ist erforderlich.",
+        "emailRequired": "Die E-Mail des Administrators ist erforderlich.",
+        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein."
+      }
+    },
+    "platform": {
+      "title": "Plattformübersicht",
+      "subtitle": "Zustand der Flotten über alle Mandanten hinweg",
+      "loading": "Plattformübersicht wird geladen…",
+      "loadFailed": "Die Plattformübersicht konnte nicht geladen werden.",
+      "empty": "Es sind noch keine Flotten vorhanden.",
+      "backToFleets": "Zurück zur Flottenverwaltung",
+      "exportCsv": "CSV exportieren",
+      "csvFilename": "plattformuebersicht.csv",
+      "noOrders": "Keine Bestellungen",
+      "sparklineLabel": "Fahrten-Trend der letzten 12 Wochen für Flotte {{name}}",
+      "columns": {
+        "fleet": "Flotte",
+        "ridesThisMonth": "Fahrten diesen Monat",
+        "ridesLastMonth": "Fahrten letzten Monat",
+        "momDelta": "MoM %",
+        "revenueThisMonth": "Umsatz diesen Monat",
+        "activeDrivers": "Aktive Fahrer",
+        "activeCustomers": "Aktive Kunden",
+        "sms": "SMS",
+        "smsCost": "Geschätzte SMS-Kosten",
+        "lastOrder": "Letzte Bestellung",
+        "trend": "Trend (12 Wochen)",
+        "health": "Zustand"
+      },
+      "health": {
+        "growing": "Wächst",
+        "stable": "Stabil",
+        "declining": "Rückläufig",
+        "inactive": "Inaktiv"
+      },
+      "totals": {
+        "title": "Plattform-Zusammenfassung",
+        "fleets": "Flotten gesamt",
+        "rides": "Fahrten diesen Monat",
+        "revenue": "Umsatz diesen Monat",
+        "growing": "Wachsende Flotten",
+        "declining": "Rückläufige Flotten",
+        "inactive": "Inaktive Flotten"
+      }
+    }
+  },
+  "nav": {
+    "board": "Disposition",
+    "orders": "Bestellungen",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "mute": "Ton aus",
+    "unmute": "Ton ein",
+    "reports": "Berichte",
+    "audit": "Audit",
+    "analytics": "Analytik"
+  },
+  "login": {
+    "title": "Anmeldung",
+    "fleetSlug": "Flottencode",
+    "fleetSlugPlaceholder": "z. B. kolintaxi",
+    "email": "E-Mail",
+    "emailPlaceholder": "vas@email.cz",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "invalidCredentials": "Ungültige Anmeldedaten. Bitte versuchen Sie es erneut.",
+    "networkError": "Verbindung zum Server nicht möglich. Bitte prüfen Sie Ihre Internetverbindung.",
+    "loading": "Anmeldung läuft...",
+    "unknownError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "validation": {
+      "fleetSlugRequired": "Der Flottencode ist erforderlich.",
+      "emailRequired": "E-Mail ist erforderlich.",
+      "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      "passwordRequired": "Passwort ist erforderlich."
+    }
+  },
+  "board": {
+    "form": {
+      "title": "Neue Bestellung",
+      "validation": {
+        "phoneRequired": "Die Telefonnummer ist erforderlich.",
+        "phoneInvalid": "Bitte geben Sie eine gültige Telefonnummer ein (z. B. 777 123 456 oder +420777123456).",
+        "pickupRequired": "Der Abholort ist erforderlich.",
+        "pickupNoCoords": "Wählen Sie den Abholort aus der Liste oder klicken Sie auf die Schnellauswahl.",
+        "scheduledAtInvalid": "Bitte geben Sie ein gültiges Datum und eine gültige Uhrzeit ein.",
+        "scheduledAtPast": "Die geplante Zeit muss in der Zukunft liegen.",
+        "passengersMin": "Die Anzahl der Fahrgäste muss mindestens 1 betragen."
+      },
+      "phone": "Telefon",
+      "name": "Name",
+      "pickup": "Abholung",
+      "dropoff": "Ziel",
+      "when": "Wann",
+      "asap": "Schnellstmöglich",
+      "scheduledAt": "Geplante Zeit",
+      "passengers": "Fahrgäste",
+      "note": "Notiz",
+      "pricePreview": "~ {{price}} Kč",
+      "distanceOnly": "{{km}} km",
+      "submit": "Bestellung anlegen",
+      "creating": "Wird angelegt...",
+      "pickupPlaceholder": "Abholadresse eingeben",
+      "dropoffPlaceholder": "Zieladresse eingeben (optional)"
+    },
+    "columns": {
+      "orders": "Bestellungen",
+      "drivers": "Fahrer",
+      "map": "Karte"
+    },
+    "mapToggle": "Karte umschalten",
+    "sections": {
+      "nove": "Neu",
+      "prirazene": "Zugewiesen / Warten auf Annahme",
+      "probihajici": "Laufend",
+      "naplanovane": "Geplant (heute / morgen)",
+      "dokonceneDnes": "Heute abgeschlossen"
+    },
+    "order": {
+      "asap": "ASAP",
+      "noDriver": "Nicht zugewiesen",
+      "fixedPriceBadge": "FEST {{price}} Kč",
+      "estimatedPrice": "~{{price}} Kč",
+      "elapsedTime": "{{sec}}s",
+      "elapsedTimeMin": "{{min}} min"
+    },
+    "actions": {
+      "assign": "Zuweisen",
+      "reassign": "Neu zuweisen",
+      "cancel": "Stornieren",
+      "detail": "Details",
+      "confirm": "Bestätigen",
+      "close": "Schließen"
+    },
+    "cancelReasons": {
+      "title": "Stornogrund",
+      "zákazník zrušil": "Vom Kunden storniert",
+      "nedorazil": "Nicht erschienen",
+      "omyl": "Versehen",
+      "jiný": "Sonstiges",
+      "freeTextPlaceholder": "Grund näher beschreiben...",
+      "required": "Wählen Sie einen Stornogrund"
+    },
+    "driverPicker": {
+      "title": "Fahrer auswählen",
+      "noDrivers": "Keine verfügbaren Fahrer",
+      "loading": "Fahrer werden geladen..."
+    },
+    "conflict": "Die Bestellung wurde inzwischen von jemand anderem geändert"
+  },
+  "status": {
+    "order": {
+      "New": "Neu",
+      "Assigned": "Zugewiesen",
+      "Accepted": "Angenommen",
+      "Arrived": "Vor Ort",
+      "InProgress": "Läuft",
+      "Completed": "Abgeschlossen",
+      "Cancelled": "Storniert"
+    },
+    "driver": {
+      "Free": "Frei",
+      "EnRoute": "Unterwegs",
+      "Busy": "Besetzt",
+      "Offline": "Offline"
+    }
+  },
+  "drivers": {
+    "overrideTitle": "Status setzen",
+    "setFree": "Frei",
+    "setBusy": "Besetzt",
+    "setOffline": "Offline",
+    "positionAge": {
+      "unknown": "—",
+      "seconds": "vor {{n}} s",
+      "minutes": "vor {{n}} min"
+    },
+    "noOrderCode": "—",
+    "overrideError": "Beim Setzen des Status ist ein Fehler aufgetreten"
+  },
+  "map": {
+    "loading": "Karte wird geladen...",
+    "toggleShow": "Karte anzeigen",
+    "toggleHide": "Karte ausblenden",
+    "driverPopup": "Fahrer: {{name}}",
+    "orderPopup": "Bestellung: {{code}}",
+    "mapyLogoAlt": "Mapy.com – auf mapy.com anzeigen",
+    "attributionLabel": "Quelle der Kartendaten",
+    "unavailable": "Karte vorübergehend nicht verfügbar",
+    "noCoords": "ohne Koordinaten"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "accessDenied": "Zugriff verweigert. Dieser Bereich ist nur für Flottenadministratoren zugänglich.",
+    "geoUsage": {
+      "title": "Verbrauch der Kartenguthaben",
+      "creditsUsed": "Guthaben diesen Monat",
+      "budget": "Monatsbudget",
+      "percent": "{{percent}} % des Budgets",
+      "loading": "Guthabenverbrauch wird geladen…",
+      "error": "Der Guthabenverbrauch konnte nicht geladen werden.",
+      "overBudget": "Budget überschritten"
+    },
+    "tabs": {
+      "vehicles": "Fahrzeuge",
+      "people": "Personen",
+      "fleet": "Flotte",
+      "routesZones": "Routen und Zonen"
+    },
+    "routesZones": {
+      "title": "Routen und Zonen",
+      "tabs": {
+        "zones": "Zonen",
+        "routes": "Routen",
+        "places": "Orte"
+      }
+    },
+    "zones": {
+      "title": "Zonen",
+      "listLabel": "Zonenliste",
+      "loading": "Zonen werden geladen…",
+      "loadingMap": "Karte wird geladen…",
+      "empty": "Es sind noch keine Zonen vorhanden. Zeichnen Sie die erste Zone auf der Karte unten.",
+      "nameLabel": "Zonenname",
+      "namePlaceholder": "z. B. Centrum Kutná Hora",
+      "nameRequired": "Geben Sie zuerst einen Zonennamen ein.",
+      "modeCircle": "Kreis",
+      "modePolygon": "Polygon",
+      "circleHint": "Klicken Sie auf den Mittelpunkt und dann auf den Rand, um den Radius festzulegen.",
+      "polygonHint": "Fügen Sie Punkte durch Klicken hinzu, schließen Sie das Polygon per Doppelklick.",
+      "circleMeta": "Kreis · Radius {{radius}} m",
+      "polygonMeta": "Polygon · {{count}} Punkte",
+      "disabled": "deaktiviert",
+      "delete": "Löschen",
+      "deleteAria": "Zone {{name}} löschen",
+      "saved": "Zone gespeichert.",
+      "saveFailed": "Die Zone konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+      "polygonTooFewPoints": "Das Polygon benötigt mindestens 3 Punkte."
+    },
+    "vehicles": {
+      "title": "Fahrzeuge",
+      "add": "Fahrzeug hinzufügen",
+      "edit": "Bearbeiten",
+      "deactivate": "Deaktivieren",
+      "activate": "Aktivieren",
+      "confirmDeactivate": "Möchten Sie dieses Fahrzeug wirklich deaktivieren?",
+      "inactive": "Inaktiv",
+      "fields": {
+        "plate": "Kennzeichen",
+        "make": "Marke",
+        "model": "Modell",
+        "color": "Farbe",
+        "seats": "Sitzplätze",
+        "active": "Aktiv"
+      },
+      "validation": {
+        "plateRequired": "Das Kennzeichen ist erforderlich.",
+        "plateTooLong": "Das Kennzeichen darf höchstens 20 Zeichen lang sein.",
+        "makeRequired": "Die Marke ist erforderlich.",
+        "modelRequired": "Das Modell ist erforderlich.",
+        "colorRequired": "Die Farbe ist erforderlich.",
+        "seatsMin": "Die Anzahl der Sitzplätze muss mindestens 1 betragen."
+      },
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "createSuccess": "Das Fahrzeug wurde hinzugefügt.",
+      "updateSuccess": "Das Fahrzeug wurde aktualisiert.",
+      "deactivateSuccess": "Das Fahrzeug wurde deaktiviert.",
+      "loading": "Fahrzeuge werden geladen..."
+    },
+    "people": {
+      "title": "Personen",
+      "invite": "Einladen",
+      "edit": "Bearbeiten",
+      "deactivate": "Deaktivieren",
+      "resetPassword": "Passwort zurücksetzen",
+      "fields": {
+        "email": "E-Mail",
+        "displayName": "Anzeigename",
+        "role": "Rolle",
+        "phone": "Telefon",
+        "isActive": "Aktiv",
+        "lastLogin": "Letzte Anmeldung"
+      },
+      "roles": {
+        "Driver": "Fahrer",
+        "Dispatcher": "Disponent",
+        "FleetAdmin": "Flottenadministrator"
+      },
+      "validation": {
+        "emailRequired": "E-Mail ist erforderlich.",
+        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "displayNameRequired": "Der Name ist erforderlich.",
+        "roleRequired": "Die Rolle ist erforderlich."
+      },
+      "tempPassword": {
+        "title": "Temporäres Passwort",
+        "warning": "Dieses Passwort wird nur einmal angezeigt. Kopieren Sie es und geben Sie es an den Benutzer weiter.",
+        "copy": "Kopieren",
+        "copied": "Kopiert!",
+        "dismiss": "Schließen"
+      },
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "inviteSuccess": "Die Einladung wurde versendet.",
+      "updateSuccess": "Der Benutzer wurde aktualisiert.",
+      "deactivateSuccess": "Der Benutzer wurde deaktiviert.",
+      "selfDeactivation": "Sie können Ihr eigenes Konto nicht deaktivieren.",
+      "driverIsOnline": "Der Fahrer muss zuerst offline gehen.",
+      "loading": "Benutzer werden geladen...",
+      "noLastLogin": "Nie"
+    },
+    "fleet": {
+      "title": "Flotte",
+      "name": "Flottenname",
+      "phone": "Flottentelefon",
+      "primaryColor": "Markenfarbe",
+      "primaryColorHex": "Farbcode",
+      "welcomeText": "Begrüßungstext",
+      "offerTimeout": "Angebots-Zeitlimit (s)",
+      "smsCap": "Monatliches SMS-Limit (Kč)",
+      "autoDispatch": "Automatische Zuweisung",
+      "autoDispatchHint": "Verfügbar in Version 1.1",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Einstellungen gespeichert.",
+      "saveFailed": "Die Einstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+      "loading": "Einstellungen werden geladen...",
+      "logo": {
+        "label": "Flottenlogo",
+        "hint": "PNG, maximal 200 KB.",
+        "previewAlt": "Vorschau des Flottenlogos",
+        "notPng": "Das Logo muss im PNG-Format vorliegen.",
+        "tooLarge": "Das Logo überschreitet das Limit von 200 KB.",
+        "uploaded": "Logo hochgeladen.",
+        "uploadFailed": "Das Logo konnte nicht hochgeladen werden. Bitte prüfen Sie Format und Größe."
+      },
+      "validation": {
+        "nameRequired": "Der Flottenname ist erforderlich.",
+        "phoneRequired": "Das Flottentelefon ist erforderlich.",
+        "colorInvalid": "Bitte geben Sie einen gültigen Farbcode im Format #RRGGBB ein.",
+        "offerTimeoutRange": "Das Angebots-Zeitlimit muss zwischen 10 und 600 Sekunden liegen.",
+        "smsCapInvalid": "Das SMS-Limit muss eine nicht negative ganze Zahl sein.",
+        "welcomeTooLong": "Der Begrüßungstext darf höchstens 2000 Zeichen lang sein."
+      }
+    },
+    "routes": {
+      "title": "Routen",
+      "listLabel": "Routenliste",
+      "loading": "Routen werden geladen…",
+      "empty": "Es sind noch keine Routen vorhanden. Fügen Sie unten die erste Route hinzu.",
+      "add": "Route hinzufügen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "disabled": "deaktiviert",
+      "priceMeta": "{{price}} Kč",
+      "moveUp": "Route {{name}} nach oben verschieben",
+      "moveDown": "Route {{name}} nach unten verschieben",
+      "enableAria": "Route {{name}} aktivieren oder deaktivieren",
+      "editAria": "Route {{name}} bearbeiten",
+      "deleteAria": "Route {{name}} löschen",
+      "types": {
+        "PointToPoint": "Von Punkt zu Punkt",
+        "Zone": "Zone",
+        "ZoneToZone": "Zwischen Zonen"
+      },
+      "days": {
+        "mon": "Montag",
+        "tue": "Dienstag",
+        "wed": "Mittwoch",
+        "thu": "Donnerstag",
+        "fri": "Freitag",
+        "sat": "Samstag",
+        "sun": "Sonntag"
+      },
+      "daysShort": {
+        "mon": "Mo",
+        "tue": "Di",
+        "wed": "Mi",
+        "thu": "Do",
+        "fri": "Fr",
+        "sat": "Sa",
+        "sun": "So"
+      },
+      "editor": {
+        "title": "Routen-Editor",
+        "name": "Routenname",
+        "type": "Routentyp",
+        "price": "Preis (Kč)",
+        "pickupPick": "Klicken Sie auf die Karte, um den Abholort festzulegen.",
+        "pickupSet": "Abholung: {{lat}}, {{lng}}",
+        "dropoffPick": "Klicken Sie auf die Karte, um den Ausstiegsort festzulegen.",
+        "dropoffSet": "Ausstieg: {{lat}}, {{lng}}",
+        "loadingMap": "Karte wird geladen…",
+        "fromRadius": "Abholradius (m)",
+        "toRadius": "Ausstiegsradius (m)",
+        "fromZone": "Startzone",
+        "toZone": "Zielzone",
+        "selectZone": "Zone auswählen…",
+        "bidirectional": "Gilt in beide Richtungen",
+        "days": "Gültige Tage",
+        "validFrom": "Gültig ab",
+        "validTo": "Gültig bis",
+        "enabled": "Aktiviert",
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "validation": {
+        "nameRequired": "Geben Sie einen Routennamen ein.",
+        "priceRequired": "Der Preis muss größer als null sein.",
+        "daysRequired": "Wählen Sie mindestens einen Tag.",
+        "pickupRequired": "Legen Sie den Abholort auf der Karte fest.",
+        "dropoffRequired": "Legen Sie den Ausstiegsort auf der Karte fest.",
+        "radiusRequired": "Die Radien müssen größer als null sein.",
+        "fromZoneRequired": "Wählen Sie eine Startzone.",
+        "toZoneRequired": "Wählen Sie eine Zielzone."
+      },
+      "test": {
+        "title": "Route testen",
+        "pickPickup": "Klicken Sie auf die Karte, um den Abholort festzulegen.",
+        "pickupSet": "Abholung: {{lat}}, {{lng}}",
+        "dropoffOptional": "Klicken Sie optional auf die Karte, um den Ausstieg festzulegen.",
+        "dropoffSet": "Ausstieg: {{lat}}, {{lng}}",
+        "at": "Zeit (optional)",
+        "loading": "Preis wird berechnet…",
+        "fixed": "Festpreis {{price}} Kč",
+        "estimate": "Schätzung {{low}}–{{high}} Kč",
+        "meter": "Nach Taxameter",
+        "unknown": "Der Preis konnte nicht ermittelt werden.",
+        "quoteUnavailable": "Der Preis lässt sich nicht berechnen, rufen Sie uns an."
+      }
+    },
+    "places": {
+      "title": "Orte",
+      "listLabel": "Ortsliste",
+      "loading": "Orte werden geladen…",
+      "empty": "Es sind noch keine Orte vorhanden. Fügen Sie unten den ersten Ort hinzu.",
+      "add": "Ort hinzufügen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "disabled": "deaktiviert",
+      "editAria": "Ort {{name}} bearbeiten",
+      "deleteAria": "Ort {{name}} löschen",
+      "editor": {
+        "title": "Orts-Editor",
+        "name": "Ortsname",
+        "address": "Adresse",
+        "addressPlaceholder": "z. B. Nádražní 1, Kutná Hora",
+        "pickCoords": "Klicken Sie auf die Karte, um die Position festzulegen.",
+        "coordsSet": "Position: {{lat}}, {{lng}}",
+        "loadingMap": "Karte wird geladen…",
+        "sortOrder": "Reihenfolge",
+        "enabled": "Aktiviert",
+        "save": "Speichern",
+        "cancel": "Abbrechen"
+      },
+      "validation": {
+        "nameRequired": "Geben Sie einen Ortsnamen ein.",
+        "addressRequired": "Geben Sie eine Adresse ein.",
+        "coordsRequired": "Legen Sie die Position auf der Karte fest.",
+        "sortOrderInvalid": "Die Reihenfolge darf nicht negativ sein."
+      }
+    }
+  },
+  "search": {
+    "title": "Bestellungssuche",
+    "filters": {
+      "dateFrom": "Von",
+      "dateTo": "Bis",
+      "status": "Status",
+      "allStatuses": "Alle Status",
+      "driver": "Fahrer",
+      "allDrivers": "Alle Fahrer",
+      "search": "Suchen",
+      "searchPlaceholder": "Code, Telefon oder Name",
+      "apply": "Anwenden",
+      "exportCsv": "CSV exportieren"
+    },
+    "table": {
+      "code": "Code",
+      "created": "Erstellt",
+      "when": "Wann",
+      "customer": "Kunde",
+      "route": "Route",
+      "price": "Preis",
+      "driver": "Fahrer",
+      "status": "Status",
+      "noDriver": "—",
+      "asap": "ASAP",
+      "noResults": "Keine Ergebnisse",
+      "loading": "Wird geladen..."
+    },
+    "pagination": {
+      "page": "Seite {{page}} / {{total}}",
+      "prev": "Zurück",
+      "next": "Weiter"
+    }
+  },
+  "driver": {
+    "login": {
+      "title": "Fahrer-Anmeldung",
+      "fleetSlug": "Flottencode",
+      "fleetSlugPlaceholder": "z. B. kolintaxi",
+      "email": "E-Mail",
+      "emailPlaceholder": "vas@email.cz",
+      "password": "Passwort",
+      "staySignedIn": "Angemeldet bleiben",
+      "submit": "Anmelden",
+      "loading": "Anmeldung läuft...",
+      "invalidCredentials": "Ungültige Anmeldedaten. Versuche es erneut.",
+      "networkError": "Verbindung zum Server nicht möglich. Prüfe deine Verbindung.",
+      "unknownError": "Ein unerwarteter Fehler ist aufgetreten. Versuche es erneut.",
+      "validation": {
+        "fleetSlugRequired": "Der Flottencode ist erforderlich.",
+        "emailRequired": "E-Mail ist erforderlich.",
+        "emailInvalid": "Gib eine gültige E-Mail-Adresse ein.",
+        "passwordRequired": "Passwort ist erforderlich."
+      }
+    },
+    "install": {
+      "bannerTitle": "App installieren",
+      "bannerDescription": "Füge die App zum Startbildschirm hinzu, um schnell darauf zuzugreifen.",
+      "installButton": "Installieren",
+      "dismissButton": "Nein, danke",
+      "iosInstructions": "Zum Startbildschirm hinzufügen: Tippe auf Teilen und dann auf Zum Startbildschirm."
+    },
+    "permissions": {
+      "locationTitle": "Standort",
+      "locationDescription": "Die App muss deinen Standort kennen, um Fahrten empfangen und verfolgen zu können.",
+      "notificationsTitle": "Benachrichtigungen",
+      "notificationsDescription": "Erlaube Benachrichtigungen, um neue Fahrtangebote zu erhalten.",
+      "allow": "Erlauben",
+      "skip": "Überspringen"
+    },
+    "home": {
+      "title": "Taxi Fahrer",
+      "status": {
+        "startShift": "Schicht beginnen",
+        "endShift": "Schicht beenden",
+        "waitingForOrder": "Warte auf Bestellung",
+        "rideInProgress": "Fahrt läuft",
+        "viewRide": "Fahrt anzeigen"
+      },
+      "summary": {
+        "rides": "Fahrten",
+        "cash": "Bargeld",
+        "card": "Karte",
+        "hours": "Stunden online"
+      },
+      "connection": {
+        "connected": "Verbunden",
+        "connecting": "Verbinde...",
+        "reconnecting": "Verbinde erneut...",
+        "disconnected": "Getrennt"
+      },
+      "vehicle": {
+        "label": "Fahrzeug",
+        "placeholder": "Fahrzeug auswählen",
+        "noVehicleHint": "Wähle ein Fahrzeug, um die Schicht zu beginnen",
+        "noLocationHint": "Erlaube den Standort, um die Schicht zu beginnen"
+      },
+      "errors": {
+        "goOnlineConflict": "Du bist bereits online",
+        "goOnlineNotFound": "Fahrzeug nicht gefunden oder nicht aktiv",
+        "goOnlineFailed": "Der Schichtbeginn ist fehlgeschlagen. Versuche es erneut."
+      }
+    },
+    "ride": {
+      "navigate": "Navigieren",
+      "navigateToDropoff": "Zum Ziel navigieren",
+      "arrive": "Ich bin vor Ort",
+      "start": "Fahrt starten",
+      "complete": "Fahrt beenden",
+      "noShow": "Kunde nicht erschienen",
+      "noShowCountdown": "Verfügbar in {{sec}} s",
+      "noShowConfirm": "Kunde nicht erschienen ({{min}} min Wartezeit)",
+      "phone": "Telefon",
+      "pickup": "Abholung",
+      "dropoff": "Ziel",
+      "note": "Notiz",
+      "map": "Karte",
+      "mapShow": "Karte anzeigen",
+      "mapHide": "Karte ausblenden",
+      "reassigned": "Die Bestellung wurde neu zugewiesen",
+      "loading": "Fahrt wird geladen...",
+      "noRide": "Keine aktive Fahrt",
+      "backHome": "Zurück zur Startseite"
+    },
+    "complete": {
+      "title": "Fahrt abschließen",
+      "price": "Preis (Kč)",
+      "pricePlaceholder": "Preis eingeben",
+      "changePrice": "Preis ändern",
+      "overrideReason": "Grund für Preisänderung",
+      "overrideReasonPlaceholder": "Grund eingeben (mind. 5 Zeichen)",
+      "paymentTitle": "Zahlungsart",
+      "paymentCash": "Bar",
+      "paymentCard": "Karte",
+      "paymentInvoice": "Rechnung",
+      "submit": "Abschließen",
+      "submitting": "Wird abgeschlossen...",
+      "successOverlay": "Fertig ✓",
+      "queuedOverlay": "Wird nach der Verbindung gesendet",
+      "fixedLocked": "Festpreis",
+      "staleRefetched": "Der Fahrtstatus hat sich geändert, prüfe die Angaben.",
+      "offlineHint": "Keine Verbindung, versuche es erneut.",
+      "keypad": {
+        "delete": "Löschen",
+        "clear": "Leeren"
+      },
+      "errors": {
+        "priceRequired": "Gib einen Preis größer als 0 ein.",
+        "paymentRequired": "Wähle eine Zahlungsart.",
+        "overrideReasonTooShort": "Der Grund für die Änderung muss mindestens 5 Zeichen lang sein."
+      }
+    },
+    "offer": {
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "pickup": "Abholung",
+      "dropoff": "Ziel",
+      "distance": "{{km}} km",
+      "eta": "{{min}} min",
+      "priceFixed": "FEST",
+      "priceEstimate": "Schätzung",
+      "priceMeter": "Taxameter",
+      "priceCzk": "{{amount}} Kč",
+      "customerName": "Kunde",
+      "note": "Notiz",
+      "scheduledAt": "Geplant",
+      "expired": "Angebot abgelaufen",
+      "staleOffer": "Angebot ist nicht mehr verfügbar",
+      "offlineHint": "Keine Verbindung, versuche es erneut",
+      "declineReasonTitle": "Ablehnungsgrund",
+      "declineReasonFar": "Zu weit",
+      "declineReasonBreak": "Ich habe Pause",
+      "declineReasonOther": "Anderer Grund",
+      "declineReasonRequired": "Wähle einen Ablehnungsgrund",
+      "silentMode": "Stiller Modus",
+      "accepting": "Wird angenommen...",
+      "declining": "Wird abgelehnt..."
+    },
+    "position": {
+      "stale": "Standort wird nicht gesendet"
+    },
+    "queue": {
+      "pending": "wartet auf Versand"
+    },
+    "nav": {
+      "label": "Navigation",
+      "home": "Start",
+      "history": "Verlauf",
+      "settings": "Einstellungen"
+    },
+    "history": {
+      "title": "Fahrtverlauf",
+      "dateLabel": "Datum",
+      "today": "Heute",
+      "empty": "Keine Fahrten an diesem Tag.",
+      "loading": "Wird geladen...",
+      "ride": "Fahrt",
+      "active": "Läuft",
+      "totalsTitle": "Zusammenfassung",
+      "ridesCount": "Fahrten",
+      "cashTotal": "Bargeld",
+      "cardTotal": "Karte",
+      "invoiceTotal": "Rechnung",
+      "payment": {
+        "Cash": "Bar",
+        "Card": "Karte",
+        "Invoice": "Rechnung"
+      }
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "navAppTitle": "Navigation",
+      "navAppGeo": "Standardkarte",
+      "navAppGoogle": "Google Maps",
+      "navAppMapy": "Mapy.cz",
+      "navAppWaze": "Waze",
+      "silentModeTitle": "Stiller Modus",
+      "silentModeDescription": "Schaltet Ton und Vibration bei neuen Angeboten stumm.",
+      "versionLabel": "App-Version",
+      "logout": "Abmelden",
+      "diagnostika": {
+        "title": "Diagnose",
+        "hint": "Diese Angaben kannst du dem Disponenten vorlesen.",
+        "locationPermission": "Standortberechtigung",
+        "pushPermission": "Benachrichtigungsberechtigung",
+        "lastPositionSent": "Zuletzt gesendeter Standort",
+        "connectionState": "Verbindungsstatus",
+        "never": "Nie",
+        "unknown": "Unbekannt",
+        "permission": {
+          "granted": "Erlaubt",
+          "denied": "Abgelehnt",
+          "prompt": "Nicht angefordert",
+          "default": "Nicht angefordert"
+        },
+        "connection": {
+          "connected": "Verbunden",
+          "connecting": "Verbinde",
+          "reconnecting": "Verbinde erneut",
+          "disconnected": "Getrennt"
+        }
+      }
+    }
+  },
+  "orders": {
+    "drawer": {
+      "title": "Bestelldetails",
+      "close": "Schließen",
+      "edit": "Bearbeiten",
+      "save": "Speichern",
+      "saving": "Wird gespeichert...",
+      "cancel": "Abbrechen",
+      "conflict": "Die Bestellung wurde inzwischen von jemand anderem geändert",
+      "editableStatuses": "Nur im Status Neu oder Zugewiesen bearbeitbar",
+      "fields": {
+        "pickup": "Abholung",
+        "dropoff": "Ziel",
+        "scheduledAt": "Geplante Zeit",
+        "note": "Notiz",
+        "passengers": "Fahrgäste"
+      }
+    },
+    "timeline": {
+      "title": "Verlauf",
+      "noEvents": "Keine Ereignisse",
+      "actor": {
+        "System": "System",
+        "Driver": "Fahrer",
+        "Dispatcher": "Disponent",
+        "Customer": "Kunde"
+      },
+      "event": {
+        "Created": "Bestellung erstellt",
+        "Assigned": "Fahrer zugewiesen",
+        "Accepted": "Fahrer hat angenommen",
+        "Declined": "Fahrer hat abgelehnt",
+        "Timeout": "Angebotszeit abgelaufen",
+        "Arrived": "Fahrer ist eingetroffen",
+        "Started": "Fahrt gestartet",
+        "Completed": "Fahrt abgeschlossen",
+        "Cancelled": "Bestellung storniert",
+        "Reassigned": "Anderem Fahrer neu zugewiesen",
+        "PriceOverridden": "Preis angepasst",
+        "NoteAdded": "Notiz hinzugefügt",
+        "Updated": "Bestellung bearbeitet"
+      }
+    },
+    "actions": {
+      "assign": "Zuweisen",
+      "reassign": "Neu zuweisen",
+      "cancel": "Stornieren",
+      "accept": "Annehmen",
+      "arrive": "Vor Ort",
+      "start": "Fahrt starten",
+      "complete": "Abschließen",
+      "decline": "Ablehnen",
+      "title": "Aktionen"
+    },
+    "loading": "Wird geladen...",
+    "notFound": "Die Bestellung wurde nicht gefunden"
+  },
+  "customer": {
+    "appName": "Taxi",
+    "footer": {
+      "gdpr": "Datenschutz"
+    },
+    "call": "Anrufen",
+    "callAria": "Zentrale anrufen {{phone}}",
+    "callUnavailableAria": "Die Telefonnummer der Zentrale ist noch nicht verfügbar",
+    "offline": {
+      "title": "Sie sind offline – rufen Sie uns an",
+      "orderingDisabled": "Das Bestellen ist derzeit nicht verfügbar. Bitte rufen Sie uns an."
+    },
+    "home": {
+      "commonRoutesTitle": "Beliebte Routen",
+      "customAddress": "Eigene Adresse",
+      "activeOrderTitle": "Sie haben eine aktive Bestellung {{code}} – verfolgen",
+      "activeOrderAria": "Aktive Bestellung {{code}} verfolgen"
+    },
+    "order": {
+      "fixedPrice": "Preis {{price}} – fest",
+      "noteLabel": "Wo genau sollen wir Sie abholen?",
+      "notePlaceholder": "z. B. am Haupteingang",
+      "whenLabel": "Wann sollen wir Sie abholen",
+      "whenNow": "Sofort",
+      "whenScheduled": "Zu einer bestimmten Zeit",
+      "scheduledAtLabel": "Datum und Uhrzeit der Abholung",
+      "passengersLabel": "Anzahl der Fahrgäste",
+      "passengersDecrease": "Fahrgast entfernen",
+      "passengersIncrease": "Fahrgast hinzufügen",
+      "morePassengers": "Mehr Fahrgäste? Rufen Sie uns an.",
+      "submit": "Bestellen",
+      "submitting": "Bestellung läuft...",
+      "loginPrompt": "Bitte melden Sie sich an, um die Bestellung abzuschließen.",
+      "zonePickupLabel": "Wo sollen wir Sie abholen? (in der Zone)",
+      "zoneDropoffLabel": "Wohin möchten Sie? (in der Zielzone)",
+      "zonePickupRequired": "Wählen Sie zuerst den Abholort in der Zone.",
+      "zoneConfirmed": "Die Adresse liegt in der Zone – der Preis ist fest.",
+      "outsideZone": "Die eingegebene Adresse liegt außerhalb der Zone dieser Route. Wählen Sie einen anderen Ort oder rufen Sie uns an.",
+      "offlineBlocked": "Sie sind offline. Die Bestellung kann derzeit nicht erstellt werden – bitte rufen Sie uns an.",
+      "errorTooSoon": "Die Abholung muss frühestens in 20 Minuten erfolgen.",
+      "errorTooLate": "Die Abholung kann höchstens 7 Tage im Voraus geplant werden.",
+      "errorScheduledInvalid": "Bitte geben Sie ein gültiges Datum und eine gültige Uhrzeit ein.",
+      "errorCreateFailed": "Die Bestellung konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+      "routeNotFound": "Die Route konnte nicht geladen werden."
+    },
+    "custom": {
+      "title": "Eigene Bestellung",
+      "pickupLabel": "Wo sollen wir Sie abholen?",
+      "pickupPlaceholder": "Abholadresse eingeben",
+      "dropoffLabel": "Wohin möchten Sie? (optional)",
+      "dropoffPlaceholder": "Ich sage es dem Fahrer",
+      "useMyLocation": "Meinen Standort verwenden",
+      "myLocationLabel": "Mein Standort (GPS)",
+      "locationDenied": "Der Standort konnte nicht ermittelt werden. Geben Sie die Adresse manuell ein oder verschieben Sie die Stecknadel auf der Karte.",
+      "suggestionsLabel": "Adressvorschläge",
+      "noSuggestions": "Keine Vorschläge",
+      "showMap": "Auf der Karte anpassen",
+      "hideMap": "Karte ausblenden",
+      "mapLabel": "Karte zur Auswahl des Abholorts",
+      "dragHint": "Verschieben Sie die Stecknadel an den genauen Abholort.",
+      "quoteFixed": "Preis {{price}} – fest",
+      "quoteEstimate": "Schätzung {{low}} – {{high}}",
+      "quoteEstimateOrientacni": "Ungefähre Schätzung {{low}} – {{high}}",
+      "quoteMeter": "Nach Taxameter",
+      "quoteUnavailable": "Der Preis lässt sich nicht berechnen, rufen Sie uns an.",
+      "submit": "Bestellen",
+      "submitting": "Bestellung läuft...",
+      "pickupRequired": "Wählen Sie zuerst den Abholort.",
+      "loginPrompt": "Bitte melden Sie sich an, um die Bestellung abzuschließen."
+    },
+    "tracking": {
+      "title": "Fahrtverfolgung",
+      "loading": "Wird geladen...",
+      "expired": "Link abgelaufen",
+      "expiredHint": "Die Gültigkeit des Verfolgungslinks ist abgelaufen. Bitte rufen Sie uns an.",
+      "notFound": "Die Bestellung konnte nicht gefunden werden.",
+      "loginNeeded": "Bitte melden Sie sich an, um diese Fahrt zu verfolgen.",
+      "headline": {
+        "new": "Wir suchen einen Fahrer…",
+        "assignedEta": "Fahrer {{name}} trifft in ~{{eta}} min ein",
+        "assignedNoEta": "Fahrer {{name}} ist unterwegs",
+        "arrived": "Der Fahrer ist vor Ort",
+        "inProgress": "Sie fahren",
+        "completed": "Fertig – {{price}} Kč",
+        "completedNoPrice": "Fertig",
+        "cancelled": "Die Bestellung wurde storniert"
+      },
+      "vehicleLabel": "Fahrzeug",
+      "dropoffLabel": "Ziel",
+      "mapLabel": "Karte mit Fahrzeugverfolgung",
+      "showMap": "Karte anzeigen",
+      "hideMap": "Karte ausblenden",
+      "carLabel": "Fahrzeugposition",
+      "pickupLabel": "Abholort",
+      "detailsTitle": "Details",
+      "showDetails": "Details anzeigen",
+      "hideDetails": "Details ausblenden",
+      "codeLabel": "Bestellcode",
+      "pickupAddress": "Von wo",
+      "dropoffAddress": "Wohin",
+      "timeLabel": "Zeit",
+      "timeAsap": "Schnellstmöglich",
+      "priceLabel": "Preis",
+      "driverLabel": "Fahrer",
+      "cancel": "Bestellung stornieren",
+      "cancelAcceptedHint": "Der Fahrer ist bereits unterwegs, bitte stornieren Sie nur im Notfall.",
+      "cancelDialogTitle": "Bestellung stornieren?",
+      "cancelDialogBody": "Möchten Sie diese Bestellung wirklich stornieren?",
+      "cancelConfirm": "Ja, stornieren",
+      "cancelDismiss": "Nein, behalten",
+      "cancelTooLate": "Die Bestellung kann nicht mehr storniert werden.",
+      "cancelFailed": "Die Bestellung konnte nicht storniert werden. Bitte versuchen Sie es erneut.",
+      "cancelling": "Wird storniert...",
+      "ratingSeam": "Bitte bewerten Sie Ihre Fahrt.",
+      "pushPromptTitle": "Möchten Sie benachrichtigt werden, sobald der Fahrer eintrifft?",
+      "pushAllow": "Benachrichtigungen aktivieren",
+      "pushDismiss": "Jetzt nicht"
+    },
+    "login": {
+      "title": "Anmeldung",
+      "phoneLabel": "Telefonnummer",
+      "phonePlaceholder": "123 456 789",
+      "sendCode": "Code senden",
+      "sending": "Wird gesendet...",
+      "codeLabel": "Bestätigungscode",
+      "codeHint": "Geben Sie den 6-stelligen Code ein, den wir Ihnen per SMS geschickt haben.",
+      "verifying": "Wird überprüft...",
+      "resend": "Code erneut senden",
+      "resendIn": "Code erneut senden in {{seconds}} s",
+      "resent": "Wir haben Ihnen einen neuen Code geschickt.",
+      "changePhone": "Nummer ändern",
+      "invalidPhone": "Bitte geben Sie eine gültige Telefonnummer ein.",
+      "codeMismatch": "Der Code stimmt nicht, bitte versuchen Sie es erneut.",
+      "tooManyRequests": "Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+      "networkError": "Verbindung zum Server nicht möglich. Bitte prüfen Sie Ihre Verbindung.",
+      "unknownError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+    },
+    "rating": {
+      "title": "Bewerten Sie Ihre Fahrt",
+      "starsLegend": "Anzahl der Sterne",
+      "starLabel": "Mit {{stars}} Sternen bewerten",
+      "commentLabel": "Kommentar (optional)",
+      "commentPlaceholder": "Schreiben Sie uns, wie Ihnen die Fahrt gefallen hat",
+      "submit": "Bewertung senden",
+      "submitting": "Wird gesendet...",
+      "thanks": "Vielen Dank für Ihre Bewertung.",
+      "yourRating": "Ihre Bewertung: {{stars}} von 5",
+      "submitFailed": "Die Bewertung konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+      "offline": "Die Bewertung kann nur online gesendet werden."
+    },
+    "history": {
+      "title": "Fahrtverlauf",
+      "empty": "Noch keine Fahrten",
+      "reorder": "Erneut bestellen",
+      "openAria": "Fahrt {{code}} anzeigen",
+      "statusCompleted": "Abgeschlossen",
+      "statusCancelled": "Storniert",
+      "statusActive": "Läuft",
+      "priceUnknown": "—",
+      "offline": "Sie sind offline – wir zeigen die zuletzt bekannten Daten an."
+    }
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "empty": "Noch keine Benachrichtigungen.",
+    "failedSmsIcon": "SMS konnte nicht gesendet werden – rufen Sie den Kunden an",
+    "statusOf": "Status: {{status}}",
+    "status": {
+      "sent": "Gesendet",
+      "failed": "Fehlgeschlagen",
+      "queued": "In Warteschlange",
+      "skippedCap": "Übersprungen (Limit)",
+      "skippedNoChannel": "Übersprungen (kein Kanal)",
+      "unknown": "Unbekannter Status"
+    },
+    "channel": {
+      "sms": "SMS",
+      "push": "Push",
+      "unknown": "Kanal"
+    },
+    "event": {
+      "OrderCreatedForCustomer": "Bestellung angenommen",
+      "DriverAssigned": "Fahrer zugewiesen",
+      "DriverArrived": "Fahrer vor Ort",
+      "RideStarted": "Fahrt gestartet",
+      "RideCompleted": "Fahrt abgeschlossen",
+      "OrderCancelledByFleet": "Von der Zentrale storniert",
+      "OrderCancelledByCustomer": "Vom Kunden storniert",
+      "OfferToDriver": "Angebot an Fahrer",
+      "DriverDeclined": "Fahrer hat abgelehnt",
+      "DriverTimedOut": "Fahrer hat nicht reagiert",
+      "NewAppOrderForDispatch": "Neue Bestellung aus der App",
+      "ScheduledOrderReminder": "Erinnerung an geplante Fahrt"
+    },
+    "settings": {
+      "title": "SMS-Benachrichtigungen",
+      "monthlyCount": "Gesendete SMS diesen Monat",
+      "estimatedCost": "Geschätzte Kosten",
+      "cap": "Monatliches Limit",
+      "nearCap": "Sie nähern sich dem monatlichen SMS-Limit.",
+      "overCap": "Das monatliche SMS-Limit ist ausgeschöpft – es werden nur noch SMS über die Fahrerankunft versendet."
+    }
+  },
+  "reports": {
+    "title": "Berichte",
+    "driverReport": {
+      "title": "Fahrerbericht",
+      "driver": "Fahrer",
+      "allDrivers": "Alle Fahrer",
+      "from": "Von",
+      "to": "Bis",
+      "downloadCsv": "CSV herunterladen",
+      "downloading": "Wird heruntergeladen...",
+      "selectDriver": "Wählen Sie einen Fahrer aus, um seinen Bericht anzuzeigen."
+    },
+    "table": {
+      "day": "Tag",
+      "completed": "Abgeschlossen",
+      "cancelled": "Storniert",
+      "cash": "Bargeld",
+      "card": "Karte",
+      "invoice": "Rechnung",
+      "total": "Gesamt",
+      "hoursOnline": "Stunden online",
+      "priceOverrides": "Preisänderungen",
+      "totalsRow": "Gesamt",
+      "avgRating": "Durchschnittliche Bewertung",
+      "noRating": "–",
+      "empty": "Keine Daten für den gewählten Zeitraum"
+    },
+    "fleet": {
+      "title": "Flottenbericht",
+      "rides": "Fahrten",
+      "revenue": "Umsatz",
+      "avgPrice": "Durchschnittspreis",
+      "timeToAssign": "Zeit bis zur Zuweisung",
+      "timeToPickup": "Zeit bis zur Abholung",
+      "cancellationRate": "Stornoquote",
+      "appShare": "Anteil aus der App",
+      "phoneShare": "Anteil per Telefon",
+      "fixedRouteShare": "Anteil fester Routen",
+      "smsCount": "Anzahl SMS",
+      "smsCost": "Geschätzte SMS-Kosten"
+    },
+    "chart": {
+      "title": "Fahrten nach Tagen",
+      "empty": "Keine Fahrten im Zeitraum",
+      "barLabel": "{{day}}: {{rides}} Fahrten"
+    },
+    "topRoutes": {
+      "title": "Häufigste Routen",
+      "count": "{{count}}×",
+      "empty": "Keine Routen"
+    },
+    "ratings": {
+      "title": "Bewertungen",
+      "stars": "{{stars}} von 5",
+      "order": "Bestellung",
+      "driver": "Fahrer",
+      "noComment": "Kein Kommentar",
+      "empty": "Keine Bewertungen"
+    },
+    "loading": "Bericht wird geladen...",
+    "error": "Der Bericht konnte nicht geladen werden.",
+    "accessDenied": "Sie haben keinen Zugriff auf diese Seite."
+  },
+  "audit": {
+    "title": "Audit",
+    "filters": {
+      "actor": "Akteur",
+      "entity": "Entität",
+      "from": "Von",
+      "to": "Bis",
+      "orderCode": "Bestellcode",
+      "apply": "Filtern",
+      "clear": "Filter zurücksetzen",
+      "allEntities": "Alle Entitäten"
+    },
+    "table": {
+      "time": "Zeit",
+      "actor": "Akteur",
+      "entity": "Entität",
+      "event": "Ereignis",
+      "order": "Bestellung"
+    },
+    "empty": "Keine Einträge",
+    "loading": "Audit wird geladen...",
+    "error": "Das Audit konnte nicht geladen werden.",
+    "accessDenied": "Sie haben keinen Zugriff auf diese Seite.",
+    "page": "Seite {{page}}",
+    "prev": "Zurück",
+    "next": "Weiter",
+    "event": {
+      "StatusOverride": "Manuelle Statusänderung",
+      "Unknown": "Unbekanntes Ereignis"
+    }
+  },
+  "analytics": {
+    "ranges": {
+      "dnes": "Heute",
+      "7dni": "Letzte 7 Tage",
+      "tentoMesic": "Dieser Monat",
+      "minulyMesic": "Letzter Monat",
+      "kvartal": "Quartal",
+      "rok": "Jahr",
+      "vlastni": "Benutzerdefiniert"
+    },
+    "period": {
+      "label": "Zeitraum"
+    },
+    "granularity": {
+      "label": "Granularität",
+      "day": "Täglich",
+      "week": "Wöchentlich",
+      "month": "Monatlich"
+    },
+    "compare": "Mit vorherigem Zeitraum vergleichen",
+    "revenue": {
+      "empty": "Keine Daten für den gewählten Zeitraum",
+      "loading": "Umsatz wird geladen…",
+      "error": "Die Analysedaten konnten nicht geladen werden.",
+      "series": {
+        "title": "Umsatzentwicklung nach Zahlungsart",
+        "tableCaption": "Umsatz nach Zeiträumen (für Screenreader verfügbar)",
+        "tableBucket": "Zeitraum",
+        "tableCash": "Bargeld (Kč)",
+        "tableCard": "Karte (Kč)",
+        "tableInvoice": "Rechnung (Kč)",
+        "tableTotal": "Gesamt (Kč)"
+      },
+      "source": {
+        "title": "Umsatzanteil nach Bestellquelle",
+        "tableCaption": "Umsatz nach Quelle (für Screenreader verfügbar)",
+        "tableSource": "Quelle",
+        "tableRevenue": "Umsatz (Kč)"
+      },
+      "priceType": {
+        "title": "Umsatzanteil nach Preistyp",
+        "tableCaption": "Umsatz nach Preistyp (für Screenreader verfügbar)",
+        "tablePriceType": "Preistyp",
+        "tableRevenue": "Umsatz (Kč)"
+      },
+      "aovTrend": {
+        "title": "Trend des durchschnittlichen Fahrtwerts (AOV)",
+        "tableCaption": "AOV nach Zeiträumen (für Screenreader verfügbar)",
+        "tableBucket": "Zeitraum",
+        "tableAov": "AOV (Kč)"
+      },
+      "priceOverride": {
+        "title": "Auswirkung von Preisabweichungen",
+        "count": "Anzahl der Abweichungen",
+        "totalDelta": "Gesamtauswirkung (Kč)",
+        "reasonsTitle": "Häufigste Gründe",
+        "tableReason": "Grund",
+        "tableCount": "Anzahl"
+      },
+      "topRoutes": {
+        "title": "Profitabelste Routen",
+        "tableCaption": "Umsatz nach Routen",
+        "tableFrom": "Von wo",
+        "tableTo": "Wohin",
+        "tableRides": "Fahrten",
+        "tableRevenue": "Umsatz (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "CSV exportieren"
+      },
+      "zoneRevenue": {
+        "title": "Umsatz nach Zonen",
+        "tableCaption": "Umsatz nach Zonen",
+        "tableZone": "Zone",
+        "tableRides": "Fahrten",
+        "tableRevenue": "Umsatz (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "CSV exportieren"
+      },
+      "smsCost": {
+        "title": "SMS-Kosten",
+        "tableCaption": "SMS-Kosten nach Zeiträumen (für Screenreader verfügbar)",
+        "tableBucket": "Zeitraum",
+        "tableSmsCount": "Anzahl SMS",
+        "tableCost": "Kosten (Kč)"
+      }
+    },
+    "drivers": {
+      "loading": "Fahrer werden geladen…",
+      "error": "Die Analysedaten konnten nicht geladen werden.",
+      "empty": "Keine Daten für den gewählten Zeitraum",
+      "league": {
+        "title": "Fahrer-Rangliste",
+        "tableCaption": "Fahrerstatistiken",
+        "tableDriver": "Fahrer",
+        "tableRides": "Fahrten",
+        "tableRevenue": "Umsatz (Kč)",
+        "tableOnline": "Online (Std.)",
+        "tableUtil": "Auslastung (%)",
+        "tableRevenuePerHour": "Umsatz/Std.",
+        "tableAcceptance": "Annahme (%)",
+        "tableDeclines": "Ablehnungen",
+        "tableCancellations": "Stornos",
+        "tableNoShows": "No-show",
+        "tableRating": "Bewertung",
+        "sortAsc": "Aufsteigend sortieren",
+        "sortDesc": "Absteigend sortieren",
+        "csvLabel": "CSV exportieren"
+      },
+      "retention": {
+        "title": "Fahrerbindung (wöchentlich)",
+        "tableCaption": "Fahrerbindung nach Wochen (für Screenreader verfügbar)",
+        "tableWeek": "Woche",
+        "tableActive": "Aktiv",
+        "tableNew": "Neu",
+        "tableChurned": "Abgang",
+        "activeLabel": "Aktiv",
+        "newLabel": "Neu aktiv",
+        "churnedLabel": "Abgang"
+      },
+      "drilldown": {
+        "backLabel": "Zurück zur Tabelle",
+        "weeklyTitle": "Wöchentlicher Trend",
+        "weeklyCaption": "Wöchentliche Fahrerstatistiken (für Screenreader verfügbar)",
+        "tableWeek": "Woche",
+        "tableRides": "Fahrten",
+        "tableRevenue": "Umsatz (Kč)",
+        "tableRating": "Bewertung",
+        "lowRatedTitle": "Fahrten mit niedriger Bewertung (≤ 3 Sterne)",
+        "tableCode": "Code",
+        "tableCompleted": "Abgeschlossen",
+        "tableStars": "Sterne",
+        "tableComment": "Kommentar",
+        "tablePickup": "Abholung",
+        "tableDropoff": "Ausstieg",
+        "noComment": "—",
+        "noLowRated": "Keine Fahrten mit Bewertung ≤ 3 Sterne."
+      }
+    },
+    "customers": {
+      "loading": "Kunden werden geladen…",
+      "error": "Die Analysedaten konnten nicht geladen werden.",
+      "empty": "Keine Daten für den gewählten Zeitraum",
+      "summary": {
+        "title": "Zusammenfassung",
+        "totalRides": "Fahrten gesamt",
+        "totalRevenue": "Umsatz gesamt (Kč)",
+        "newIdentities": "Neue Kunden",
+        "returningIdentities": "Wiederkehrende Kunden",
+        "repeatRate": "Wiederholungsrate (%)",
+        "freqOne": "Häufigkeit 1×",
+        "freqTwoToFive": "Häufigkeit 2–5×",
+        "freqSixPlus": "Häufigkeit 6+×"
+      },
+      "newVsReturning": {
+        "title": "Neue vs. wiederkehrende Kunden",
+        "tableCaption": "Neue und wiederkehrende Kunden nach Zeiträumen (für Screenreader verfügbar)",
+        "tableBucket": "Zeitraum",
+        "tableNew": "Neu",
+        "tableReturning": "Wiederkehrend",
+        "newLabel": "Neue Kunden",
+        "returningLabel": "Wiederkehrende Kunden"
+      },
+      "cohort": {
+        "title": "Kohorten-Bindung der Kunden",
+        "tableCaption": "Kohorten-Bindung (Kunden, die im jeweiligen Monat nach der Akquise aktiv waren)",
+        "tableAcqMonth": "Kohorte",
+        "monthHeader": "Monat {{n}}",
+        "csvLabel": "CSV exportieren"
+      },
+      "topCustomers": {
+        "title": "Beste Kunden",
+        "tableCaption": "Beste Kunden nach Anzahl der Fahrten",
+        "tableCustomer": "Kunde",
+        "tablePhone": "Telefon",
+        "tableRides": "Fahrten",
+        "tableRevenue": "Umsatz (Kč)",
+        "unknown": "Unbekannt"
+      },
+      "ratings": {
+        "title": "Kundenbewertungen",
+        "avgRating": "Durchschnittliche Bewertung",
+        "totalRated": "Bewertete Fahrten",
+        "distribution": {
+          "title": "Verteilung der Bewertungen (1–5 Sterne)",
+          "tableCaption": "Verteilung der Bewertungen (für Screenreader verfügbar)",
+          "tableStars": "Sterne",
+          "tableCount": "Anzahl",
+          "datasetLabel": "Anzahl der Bewertungen"
+        },
+        "trend": {
+          "title": "Trend der durchschnittlichen Bewertung",
+          "tableCaption": "Bewertungstrend nach Zeiträumen (für Screenreader verfügbar)",
+          "tableBucket": "Zeitraum",
+          "tableAvg": "Durchschnitt",
+          "tableRides": "Fahrten"
+        },
+        "worstRated": {
+          "title": "Fahrten mit der schlechtesten Bewertung (≤ 3 Sterne)",
+          "tableCaption": "Am schlechtesten bewertete Fahrten",
+          "tableCode": "Code",
+          "tableCompleted": "Abgeschlossen",
+          "tableStars": "Sterne",
+          "tableComment": "Kommentar",
+          "tableDriver": "Fahrer",
+          "noComment": "—",
+          "empty": "Keine Fahrten mit Bewertung ≤ 3."
+        }
+      }
+    },
+    "tabs": {
+      "prehled": "Übersicht",
+      "poptavka": "Nachfrage",
+      "provoz": "Betrieb",
+      "trzby": "Umsatz",
+      "ridici": "Fahrer",
+      "zakaznici": "Kunden",
+      "placeholder": "Dieser Reiter wird in einer künftigen Version verfügbar sein."
+    },
+    "overview": {
+      "title": "Übersicht",
+      "rides": "Fahrten",
+      "revenueCzk": "Umsatz",
+      "aov": "Durchschnittliche Fahrt",
+      "fulfillmentRate": "Erfüllungsquote",
+      "cancellationRate": "Stornoquote",
+      "activeCustomers": "Aktive Kunden",
+      "newCustomers": "Neue Kunden",
+      "activeDrivers": "Aktive Fahrer",
+      "onlineDriverHours": "Std. online",
+      "revenuePerOnlineHour": "Umsatz / Std.",
+      "avgRating": "Durchschnittliche Bewertung",
+      "chartLabel": "Entwicklung von Fahrten und Umsatz",
+      "chartTableCaption": "Trend von Fahrten und Umsatz (für Screenreader verfügbar)",
+      "chartTableBucket": "Zeitraum",
+      "chartTableRides": "Fahrten",
+      "chartTableRevenue": "Umsatz (Kč)",
+      "empty": "Keine Daten für den gewählten Zeitraum",
+      "deltaPositive": "+{{value}}",
+      "deltaNegative": "{{value}}",
+      "loading": "Übersicht wird geladen…",
+      "error": "Die Analysedaten konnten nicht geladen werden."
+    },
+    "demand": {
+      "loading": "Nachfrage wird geladen…",
+      "error": "Die Analysedaten konnten nicht geladen werden.",
+      "empty": "Keine Daten für den gewählten Zeitraum",
+      "heatmap": {
+        "title": "Nachfrage-Heatmap (Stunde × Tag)",
+        "tableCaption": "Nachfrage nach Stunden und Tagen (für Screenreader verfügbar)",
+        "tableHour": "Stunde",
+        "csvLabel": "CSV exportieren"
+      },
+      "supplyDemand": {
+        "title": "Angebot vs. Nachfrage nach Stunden",
+        "tableCaption": "Angebot und Nachfrage nach Stunden (für Screenreader verfügbar)",
+        "tableHour": "Stunde",
+        "tableOrders": "Nachfrage (Fahrten)",
+        "tableSupplyHours": "Angebot (Std. online)"
+      },
+      "unmetDemand": {
+        "title": "Unerfüllte Nachfrage nach Stunden",
+        "tableCaption": "Unerfüllte Nachfrage nach Stunden (für Screenreader verfügbar)",
+        "tableHour": "Stunde",
+        "tableCount": "Unerfüllt"
+      },
+      "utilization": {
+        "title": "Flottenauslastung",
+        "fleetLabel": "Flottenauslastung",
+        "driverTableCaption": "Fahrerauslastung (für Screenreader verfügbar)",
+        "tableDriver": "Fahrer",
+        "tableBusyH": "Ausgelastet (Std.)",
+        "tableOnlineH": "Online (Std.)",
+        "tableUtil": "Auslastung"
+      },
+      "zonePickups": {
+        "title": "Abholungen nach Zonen",
+        "tableCaption": "Abholungen nach Zonen",
+        "tableZone": "Zone",
+        "tableCount": "Abholungen",
+        "csvLabel": "CSV exportieren"
+      },
+      "topRoutes": {
+        "title": "Häufigste Routen",
+        "tableCaption": "Häufigste Routen",
+        "tableFrom": "Von wo",
+        "tableTo": "Wohin",
+        "tableCount": "Anzahl",
+        "csvLabel": "CSV exportieren"
+      }
+    },
+    "operations": {
+      "loading": "Betrieb wird geladen…",
+      "error": "Die Analysedaten konnten nicht geladen werden.",
+      "sla": {
+        "title": "SLA-Kennzahlen",
+        "tableCaption": "SLA-Kennzahlen (für Screenreader verfügbar)",
+        "tableMetric": "Kennzahl",
+        "tableP50": "p50 (Median)",
+        "tableP90": "p90",
+        "tableSampleCount": "Anzahl Fahrten"
+      },
+      "offerFunnel": {
+        "title": "Angebots-Funnel",
+        "tableCaption": "Angebots-Funnel (für Screenreader verfügbar)",
+        "tableStage": "Phase",
+        "tableCount": "Anzahl",
+        "labelOffersMade": "Angebote gesendet",
+        "labelAccepted": "Angenommen",
+        "labelDeclined": "Abgelehnt",
+        "labelTimeouts": "Zeitüberschreitungen",
+        "avgOffersLabel": "Durchschnittliche Anzahl der Angebote pro Fahrt"
+      },
+      "lifecycle": {
+        "title": "Lebenszyklus-Funnel",
+        "tableCaption": "Lebenszyklus der Bestellungen (für Screenreader verfügbar)",
+        "tableStage": "Phase",
+        "tableCount": "Anzahl",
+        "labelCreated": "Erstellt",
+        "labelAssigned": "Zugewiesen",
+        "labelAccepted": "Angenommen",
+        "labelArrived": "Vor Ort",
+        "labelInProgress": "Läuft",
+        "labelCompleted": "Abgeschlossen"
+      },
+      "cancellations": {
+        "title": "Stornos",
+        "byRoleCaption": "Stornos nach Rolle (für Screenreader verfügbar)",
+        "byStatusCaption": "Stornos nach Status bei Stornierung",
+        "byHourTitle": "Stornos nach Tagesstunde",
+        "byHourCaption": "Stornos nach Tagesstunde",
+        "tableRole": "Rolle",
+        "tableStatus": "Status bei Stornierung",
+        "tableHour": "Stunde",
+        "tableCount": "Anzahl",
+        "noShowShareLabel": "Anteil der No-show-Stornos"
+      }
+    }
+  }
+}

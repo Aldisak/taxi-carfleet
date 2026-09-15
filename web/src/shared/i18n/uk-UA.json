@@ -1,0 +1,1451 @@
+{
+  "common": {
+    "language": "Мова"
+  },
+  "app": {
+    "title": "Taxi Диспетчерська",
+    "loading": "Завантаження...",
+    "error": "Сталася помилка",
+    "offline": "Офлайн – показуємо останній відомий стан"
+  },
+  "admin": {
+    "login": {
+      "title": "Вхід адміністратора системи",
+      "email": "Ел. пошта",
+      "emailPlaceholder": "superadmin@demo.local",
+      "password": "Пароль",
+      "submit": "Увійти",
+      "loading": "Вхід…",
+      "invalidCredentials": "Неправильні дані для входу. Спробуйте ще раз.",
+      "networkError": "Не вдається підключитися до сервера. Перевірте підключення до інтернету.",
+      "unknownError": "Сталася неочікувана помилка. Спробуйте ще раз.",
+      "validation": {
+        "emailRequired": "Ел. пошта обов'язкова.",
+        "emailInvalid": "Введіть дійсну адресу ел. пошти.",
+        "passwordRequired": "Пароль обов'язковий."
+      }
+    },
+    "fleets": {
+      "title": "Керування автопарками",
+      "createTitle": "Створити новий автопарк",
+      "listTitle": "Наявні автопарки",
+      "create": "Створити автопарк",
+      "creating": "Створення…",
+      "createFailed": "Не вдалося створити автопарк. Перевірте дані та спробуйте ще раз.",
+      "loading": "Завантаження автопарків…",
+      "loadFailed": "Не вдалося завантажити список автопарків.",
+      "active": "Активний",
+      "inactive": "Неактивний",
+      "passwordWarning": "Одноразовий пароль адміністратора для {{email}}. Показується лише один раз – скопіюйте його та передайте безпечно.",
+      "fields": {
+        "slug": "Ідентифікатор (slug)",
+        "name": "Назва",
+        "phone": "Телефон",
+        "adminEmail": "Ел. пошта адміністратора",
+        "status": "Стан"
+      },
+      "validation": {
+        "slugRequired": "Ідентифікатор обов'язковий.",
+        "slugInvalid": "Ідентифікатор може містити лише малі літери, цифри та дефіси.",
+        "nameRequired": "Назва обов'язкова.",
+        "phoneRequired": "Телефон обов'язковий.",
+        "emailRequired": "Ел. пошта адміністратора обов'язкова.",
+        "emailInvalid": "Введіть дійсну адресу ел. пошти."
+      }
+    },
+    "platform": {
+      "title": "Огляд платформи",
+      "subtitle": "Стан автопарків у всіх орендарів",
+      "loading": "Завантаження огляду платформи…",
+      "loadFailed": "Не вдалося завантажити огляд платформи.",
+      "empty": "Тут поки немає жодного автопарку.",
+      "backToFleets": "Назад до керування автопарками",
+      "exportCsv": "Експортувати CSV",
+      "csvFilename": "ohliad-platformy.csv",
+      "noOrders": "Без замовлень",
+      "sparklineLabel": "Тренд поїздок за 12 тижнів для автопарку {{name}}",
+      "columns": {
+        "fleet": "Автопарк",
+        "ridesThisMonth": "Поїздки цього місяця",
+        "ridesLastMonth": "Поїздки минулого місяця",
+        "momDelta": "МоМ %",
+        "revenueThisMonth": "Виторг цього місяця",
+        "activeDrivers": "Активні водії",
+        "activeCustomers": "Активні клієнти",
+        "sms": "SMS",
+        "smsCost": "Орієнт. вартість SMS",
+        "lastOrder": "Останнє замовлення",
+        "trend": "Тренд (12 тижнів)",
+        "health": "Стан"
+      },
+      "health": {
+        "growing": "Зростає",
+        "stable": "Стабільно",
+        "declining": "Спадає",
+        "inactive": "Неактивний"
+      },
+      "totals": {
+        "title": "Підсумок платформи",
+        "fleets": "Автопарків усього",
+        "rides": "Поїздки цього місяця",
+        "revenue": "Виторг цього місяця",
+        "growing": "Зростаючі автопарки",
+        "declining": "Спадаючі автопарки",
+        "inactive": "Неактивні автопарки"
+      }
+    }
+  },
+  "nav": {
+    "board": "Диспетчерська",
+    "orders": "Замовлення",
+    "settings": "Налаштування",
+    "logout": "Вийти",
+    "mute": "Вимкнути звук",
+    "unmute": "Увімкнути звук",
+    "reports": "Звіти",
+    "audit": "Аудит",
+    "analytics": "Аналітика"
+  },
+  "login": {
+    "title": "Вхід",
+    "fleetSlug": "Код автопарку",
+    "fleetSlugPlaceholder": "напр. kolintaxi",
+    "email": "Ел. пошта",
+    "emailPlaceholder": "vas@email.cz",
+    "password": "Пароль",
+    "submit": "Увійти",
+    "invalidCredentials": "Неправильні дані для входу. Спробуйте ще раз.",
+    "networkError": "Не вдається підключитися до сервера. Перевірте підключення до інтернету.",
+    "loading": "Вхід...",
+    "unknownError": "Сталася неочікувана помилка. Спробуйте ще раз.",
+    "validation": {
+      "fleetSlugRequired": "Код автопарку обов'язковий.",
+      "emailRequired": "Ел. пошта обов'язкова.",
+      "emailInvalid": "Введіть дійсну адресу ел. пошти.",
+      "passwordRequired": "Пароль обов'язковий."
+    }
+  },
+  "board": {
+    "form": {
+      "title": "Нове замовлення",
+      "validation": {
+        "phoneRequired": "Номер телефону обов'язковий.",
+        "phoneInvalid": "Введіть дійсний номер телефону (напр. 777 123 456 або +420777123456).",
+        "pickupRequired": "Місце посадки обов'язкове.",
+        "pickupNoCoords": "Виберіть місце посадки зі списку або натисніть швидкий вибір.",
+        "scheduledAtInvalid": "Введіть дійсні дату та час.",
+        "scheduledAtPast": "Запланований час має бути в майбутньому.",
+        "passengersMin": "Кількість пасажирів має бути щонайменше 1."
+      },
+      "phone": "Телефон",
+      "name": "Ім'я",
+      "pickup": "Посадка",
+      "dropoff": "Призначення",
+      "when": "Коли",
+      "asap": "Якнайшвидше",
+      "scheduledAt": "Запланований час",
+      "passengers": "Пасажири",
+      "note": "Примітка",
+      "pricePreview": "~ {{price}} Kč",
+      "distanceOnly": "{{km}} км",
+      "submit": "Створити замовлення",
+      "creating": "Створення...",
+      "pickupPlaceholder": "Введіть адресу посадки",
+      "dropoffPlaceholder": "Введіть адресу призначення (необов'язково)"
+    },
+    "columns": {
+      "orders": "Замовлення",
+      "drivers": "Водії",
+      "map": "Мапа"
+    },
+    "mapToggle": "Перемкнути мапу",
+    "sections": {
+      "nove": "Нові",
+      "prirazene": "Призначені / Очікують прийняття",
+      "probihajici": "Виконуються",
+      "naplanovane": "Заплановані (сьогодні / завтра)",
+      "dokonceneDnes": "Завершені сьогодні"
+    },
+    "order": {
+      "asap": "ASAP",
+      "noDriver": "Не призначено",
+      "fixedPriceBadge": "ФІКС. {{price}} Kč",
+      "estimatedPrice": "~{{price}} Kč",
+      "elapsedTime": "{{sec}}с",
+      "elapsedTimeMin": "{{min}} хв"
+    },
+    "actions": {
+      "assign": "Призначити",
+      "reassign": "Перепризначити",
+      "cancel": "Скасувати",
+      "detail": "Деталі",
+      "confirm": "Підтвердити",
+      "close": "Закрити"
+    },
+    "cancelReasons": {
+      "title": "Причина скасування",
+      "zákazník zrušil": "Клієнт скасував",
+      "nedorazil": "Не з'явився",
+      "omyl": "Помилка",
+      "jiný": "Інша",
+      "freeTextPlaceholder": "Уточніть причину...",
+      "required": "Виберіть причину скасування"
+    },
+    "driverPicker": {
+      "title": "Виберіть водія",
+      "noDrivers": "Немає доступних водіїв",
+      "loading": "Завантаження водіїв..."
+    },
+    "conflict": "Замовлення тим часом змінив хтось інший"
+  },
+  "status": {
+    "order": {
+      "New": "Нове",
+      "Assigned": "Призначене",
+      "Accepted": "Прийняте",
+      "Arrived": "На місці",
+      "InProgress": "Виконується",
+      "Completed": "Завершене",
+      "Cancelled": "Скасоване"
+    },
+    "driver": {
+      "Free": "Вільний",
+      "EnRoute": "У дорозі",
+      "Busy": "Зайнятий",
+      "Offline": "Офлайн"
+    }
+  },
+  "drivers": {
+    "overrideTitle": "Встановити стан",
+    "setFree": "Вільний",
+    "setBusy": "Зайнятий",
+    "setOffline": "Офлайн",
+    "positionAge": {
+      "unknown": "—",
+      "seconds": "{{n}} с тому",
+      "minutes": "{{n}} хв тому"
+    },
+    "noOrderCode": "—",
+    "overrideError": "Сталася помилка під час встановлення стану"
+  },
+  "map": {
+    "loading": "Завантаження мапи...",
+    "toggleShow": "Показати мапу",
+    "toggleHide": "Сховати мапу",
+    "driverPopup": "Водій: {{name}}",
+    "orderPopup": "Замовлення: {{code}}",
+    "mapyLogoAlt": "Mapy.com – відкрити на mapy.com",
+    "attributionLabel": "Джерело картографічних даних",
+    "unavailable": "Мапа тимчасово недоступна",
+    "noCoords": "без координат"
+  },
+  "settings": {
+    "title": "Налаштування",
+    "accessDenied": "Доступ заборонено. Цей розділ доступний лише адміністратору автопарку.",
+    "geoUsage": {
+      "title": "Витрата картографічних кредитів",
+      "creditsUsed": "Кредити цього місяця",
+      "budget": "Місячний бюджет",
+      "percent": "{{percent}} % бюджету",
+      "loading": "Завантаження витрати кредитів…",
+      "error": "Не вдалося завантажити витрату кредитів.",
+      "overBudget": "Бюджет перевищено"
+    },
+    "tabs": {
+      "vehicles": "Автомобілі",
+      "people": "Люди",
+      "fleet": "Автопарк",
+      "routesZones": "Маршрути та зони"
+    },
+    "routesZones": {
+      "title": "Маршрути та зони",
+      "tabs": {
+        "zones": "Зони",
+        "routes": "Маршрути",
+        "places": "Місця"
+      }
+    },
+    "zones": {
+      "title": "Зони",
+      "listLabel": "Список зон",
+      "loading": "Завантаження зон…",
+      "loadingMap": "Завантаження мапи…",
+      "empty": "Поки немає жодної зони. Намалюйте першу зону на мапі нижче.",
+      "nameLabel": "Назва зони",
+      "namePlaceholder": "напр. Центр Кутна Гора",
+      "nameRequired": "Спочатку введіть назву зони.",
+      "modeCircle": "Коло",
+      "modePolygon": "Багатокутник",
+      "circleHint": "Натисніть на центр, потім натисніть на край, щоб задати радіус.",
+      "polygonHint": "Натискайте, щоб додати точки, подвійним кліком замкніть багатокутник.",
+      "circleMeta": "Коло · радіус {{radius}} м",
+      "polygonMeta": "Багатокутник · {{count}} точок",
+      "disabled": "вимкнено",
+      "delete": "Видалити",
+      "deleteAria": "Видалити зону {{name}}",
+      "saved": "Зону збережено.",
+      "saveFailed": "Не вдалося зберегти зону. Спробуйте ще раз.",
+      "polygonTooFewPoints": "Багатокутник потребує щонайменше 3 точки."
+    },
+    "vehicles": {
+      "title": "Автомобілі",
+      "add": "Додати автомобіль",
+      "edit": "Редагувати",
+      "deactivate": "Деактивувати",
+      "activate": "Активувати",
+      "confirmDeactivate": "Ви справді хочете деактивувати цей автомобіль?",
+      "inactive": "Неактивний",
+      "fields": {
+        "plate": "Держ. номер",
+        "make": "Марка",
+        "model": "Модель",
+        "color": "Колір",
+        "seats": "Кількість місць",
+        "active": "Активний"
+      },
+      "validation": {
+        "plateRequired": "Держ. номер обов'язковий.",
+        "plateTooLong": "Держ. номер може мати щонайбільше 20 символів.",
+        "makeRequired": "Марка обов'язкова.",
+        "modelRequired": "Модель обов'язкова.",
+        "colorRequired": "Колір обов'язковий.",
+        "seatsMin": "Кількість місць має бути щонайменше 1."
+      },
+      "save": "Зберегти",
+      "cancel": "Скасувати",
+      "createSuccess": "Автомобіль додано.",
+      "updateSuccess": "Автомобіль оновлено.",
+      "deactivateSuccess": "Автомобіль деактивовано.",
+      "loading": "Завантаження автомобілів..."
+    },
+    "people": {
+      "title": "Люди",
+      "invite": "Запросити",
+      "edit": "Редагувати",
+      "deactivate": "Деактивувати",
+      "resetPassword": "Скинути пароль",
+      "fields": {
+        "email": "Ел. пошта",
+        "displayName": "Відображуване ім'я",
+        "role": "Роль",
+        "phone": "Телефон",
+        "isActive": "Активний",
+        "lastLogin": "Останній вхід"
+      },
+      "roles": {
+        "Driver": "Водій",
+        "Dispatcher": "Диспетчер",
+        "FleetAdmin": "Адміністратор автопарку"
+      },
+      "validation": {
+        "emailRequired": "Ел. пошта обов'язкова.",
+        "emailInvalid": "Введіть дійсну адресу ел. пошти.",
+        "displayNameRequired": "Ім'я обов'язкове.",
+        "roleRequired": "Роль обов'язкова."
+      },
+      "tempPassword": {
+        "title": "Тимчасовий пароль",
+        "warning": "Цей пароль показується лише один раз. Скопіюйте його та передайте користувачу.",
+        "copy": "Копіювати",
+        "copied": "Скопійовано!",
+        "dismiss": "Закрити"
+      },
+      "save": "Зберегти",
+      "cancel": "Скасувати",
+      "inviteSuccess": "Запрошення надіслано.",
+      "updateSuccess": "Користувача оновлено.",
+      "deactivateSuccess": "Користувача деактивовано.",
+      "selfDeactivation": "Ви не можете деактивувати власний обліковий запис.",
+      "driverIsOnline": "Водій має спершу перейти в офлайн.",
+      "loading": "Завантаження користувачів...",
+      "noLastLogin": "Ніколи"
+    },
+    "fleet": {
+      "title": "Автопарк",
+      "name": "Назва автопарку",
+      "phone": "Телефон автопарку",
+      "primaryColor": "Колір бренду",
+      "primaryColorHex": "Код кольору",
+      "welcomeText": "Вітальний текст",
+      "offerTimeout": "Ліміт часу пропозиції (с)",
+      "smsCap": "Місячний ліміт SMS (Kč)",
+      "autoDispatch": "Автоматичне призначення",
+      "autoDispatchHint": "Доступно у версії 1.1",
+      "save": "Зберегти",
+      "saving": "Збереження…",
+      "saved": "Налаштування збережено.",
+      "saveFailed": "Не вдалося зберегти налаштування. Спробуйте ще раз.",
+      "loading": "Завантаження налаштувань...",
+      "logo": {
+        "label": "Логотип автопарку",
+        "hint": "PNG, щонайбільше 200 КБ.",
+        "previewAlt": "Попередній перегляд логотипу автопарку",
+        "notPng": "Логотип має бути у форматі PNG.",
+        "tooLarge": "Логотип перевищує ліміт 200 КБ.",
+        "uploaded": "Логотип завантажено.",
+        "uploadFailed": "Не вдалося завантажити логотип. Перевірте формат і розмір."
+      },
+      "validation": {
+        "nameRequired": "Назва автопарку обов'язкова.",
+        "phoneRequired": "Телефон автопарку обов'язковий.",
+        "colorInvalid": "Введіть дійсний код кольору у форматі #RRGGBB.",
+        "offerTimeoutRange": "Ліміт часу пропозиції має бути між 10 та 600 секундами.",
+        "smsCapInvalid": "Ліміт SMS має бути невід'ємним цілим числом.",
+        "welcomeTooLong": "Вітальний текст може мати щонайбільше 2000 символів."
+      }
+    },
+    "routes": {
+      "title": "Маршрути",
+      "listLabel": "Список маршрутів",
+      "loading": "Завантаження маршрутів…",
+      "empty": "Поки немає жодного маршруту. Додайте перший маршрут нижче.",
+      "add": "Додати маршрут",
+      "edit": "Редагувати",
+      "delete": "Видалити",
+      "disabled": "вимкнено",
+      "priceMeta": "{{price}} Kč",
+      "moveUp": "Перемістити маршрут {{name}} вгору",
+      "moveDown": "Перемістити маршрут {{name}} вниз",
+      "enableAria": "Увімкнути або вимкнути маршрут {{name}}",
+      "editAria": "Редагувати маршрут {{name}}",
+      "deleteAria": "Видалити маршрут {{name}}",
+      "types": {
+        "PointToPoint": "З точки в точку",
+        "Zone": "Зона",
+        "ZoneToZone": "Між зонами"
+      },
+      "days": {
+        "mon": "Понеділок",
+        "tue": "Вівторок",
+        "wed": "Середа",
+        "thu": "Четвер",
+        "fri": "П'ятниця",
+        "sat": "Субота",
+        "sun": "Неділя"
+      },
+      "daysShort": {
+        "mon": "Пн",
+        "tue": "Вт",
+        "wed": "Ср",
+        "thu": "Чт",
+        "fri": "Пт",
+        "sat": "Сб",
+        "sun": "Нд"
+      },
+      "editor": {
+        "title": "Редактор маршруту",
+        "name": "Назва маршруту",
+        "type": "Тип маршруту",
+        "price": "Ціна (Kč)",
+        "pickupPick": "Натисніть на мапу, щоб задати місце посадки.",
+        "pickupSet": "Посадка: {{lat}}, {{lng}}",
+        "dropoffPick": "Натисніть на мапу, щоб задати місце висадки.",
+        "dropoffSet": "Висадка: {{lat}}, {{lng}}",
+        "loadingMap": "Завантаження мапи…",
+        "fromRadius": "Радіус посадки (м)",
+        "toRadius": "Радіус висадки (м)",
+        "fromZone": "Початкова зона",
+        "toZone": "Цільова зона",
+        "selectZone": "Виберіть зону…",
+        "bidirectional": "Діє в обох напрямках",
+        "days": "Дійсні дні",
+        "validFrom": "Діє від",
+        "validTo": "Діє до",
+        "enabled": "Увімкнено",
+        "save": "Зберегти",
+        "cancel": "Скасувати"
+      },
+      "validation": {
+        "nameRequired": "Введіть назву маршруту.",
+        "priceRequired": "Ціна має бути більшою за нуль.",
+        "daysRequired": "Виберіть щонайменше один день.",
+        "pickupRequired": "Задайте місце посадки на мапі.",
+        "dropoffRequired": "Задайте місце висадки на мапі.",
+        "radiusRequired": "Радіуси мають бути більшими за нуль.",
+        "fromZoneRequired": "Виберіть початкову зону.",
+        "toZoneRequired": "Виберіть цільову зону."
+      },
+      "test": {
+        "title": "Протестувати маршрут",
+        "pickPickup": "Натисніть на мапу, щоб задати місце посадки.",
+        "pickupSet": "Посадка: {{lat}}, {{lng}}",
+        "dropoffOptional": "За бажанням натисніть на мапу, щоб задати висадку.",
+        "dropoffSet": "Висадка: {{lat}}, {{lng}}",
+        "at": "Час (за бажанням)",
+        "loading": "Обчислення ціни…",
+        "fixed": "Фіксована ціна {{price}} Kč",
+        "estimate": "Орієнтовно {{low}}–{{high}} Kč",
+        "meter": "За таксометром",
+        "unknown": "Не вдалося визначити ціну.",
+        "quoteUnavailable": "Ціну неможливо обчислити, зателефонуйте нам."
+      }
+    },
+    "places": {
+      "title": "Місця",
+      "listLabel": "Список місць",
+      "loading": "Завантаження місць…",
+      "empty": "Поки немає жодного місця. Додайте перше місце нижче.",
+      "add": "Додати місце",
+      "edit": "Редагувати",
+      "delete": "Видалити",
+      "disabled": "вимкнено",
+      "editAria": "Редагувати місце {{name}}",
+      "deleteAria": "Видалити місце {{name}}",
+      "editor": {
+        "title": "Редактор місця",
+        "name": "Назва місця",
+        "address": "Адреса",
+        "addressPlaceholder": "напр. Надражні 1, Кутна Гора",
+        "pickCoords": "Натисніть на мапу, щоб задати положення.",
+        "coordsSet": "Положення: {{lat}}, {{lng}}",
+        "loadingMap": "Завантаження мапи…",
+        "sortOrder": "Порядок",
+        "enabled": "Увімкнено",
+        "save": "Зберегти",
+        "cancel": "Скасувати"
+      },
+      "validation": {
+        "nameRequired": "Введіть назву місця.",
+        "addressRequired": "Введіть адресу.",
+        "coordsRequired": "Задайте положення на мапі.",
+        "sortOrderInvalid": "Порядок не може бути від'ємним."
+      }
+    }
+  },
+  "search": {
+    "title": "Пошук замовлень",
+    "filters": {
+      "dateFrom": "Від",
+      "dateTo": "До",
+      "status": "Стан",
+      "allStatuses": "Усі стани",
+      "driver": "Водій",
+      "allDrivers": "Усі водії",
+      "search": "Шукати",
+      "searchPlaceholder": "Код, телефон або ім'я",
+      "apply": "Застосувати",
+      "exportCsv": "Експортувати CSV"
+    },
+    "table": {
+      "code": "Код",
+      "created": "Створено",
+      "when": "Коли",
+      "customer": "Клієнт",
+      "route": "Маршрут",
+      "price": "Ціна",
+      "driver": "Водій",
+      "status": "Стан",
+      "noDriver": "—",
+      "asap": "ASAP",
+      "noResults": "Немає результатів",
+      "loading": "Завантаження..."
+    },
+    "pagination": {
+      "page": "Сторінка {{page}} / {{total}}",
+      "prev": "Попередня",
+      "next": "Наступна"
+    }
+  },
+  "driver": {
+    "login": {
+      "title": "Вхід водія",
+      "fleetSlug": "Код автопарку",
+      "fleetSlugPlaceholder": "напр. kolintaxi",
+      "email": "Ел. пошта",
+      "emailPlaceholder": "vas@email.cz",
+      "password": "Пароль",
+      "staySignedIn": "Залишатися в системі",
+      "submit": "Увійти",
+      "loading": "Вхід...",
+      "invalidCredentials": "Неправильні дані для входу. Спробуй ще раз.",
+      "networkError": "Не вдається підключитися до сервера. Перевір підключення.",
+      "unknownError": "Сталася неочікувана помилка. Спробуй ще раз.",
+      "validation": {
+        "fleetSlugRequired": "Код автопарку обов'язковий.",
+        "emailRequired": "Ел. пошта обов'язкова.",
+        "emailInvalid": "Введи дійсну адресу ел. пошти.",
+        "passwordRequired": "Пароль обов'язковий."
+      }
+    },
+    "install": {
+      "bannerTitle": "Встановити застосунок",
+      "bannerDescription": "Додай застосунок на головний екран для швидкого доступу.",
+      "installButton": "Встановити",
+      "dismissButton": "Ні, дякую",
+      "iosInstructions": "Додати на головний екран: торкнись Поділитися, а потім Додати на головний екран."
+    },
+    "permissions": {
+      "locationTitle": "Місцезнаходження",
+      "locationDescription": "Застосунку потрібно знати твоє місцезнаходження, щоб приймати та відстежувати поїздки.",
+      "notificationsTitle": "Сповіщення",
+      "notificationsDescription": "Дозволь сповіщення, щоб отримувати нові пропозиції поїздок.",
+      "allow": "Дозволити",
+      "skip": "Пропустити"
+    },
+    "home": {
+      "title": "Taxi Водій",
+      "status": {
+        "startShift": "Почати зміну",
+        "endShift": "Завершити зміну",
+        "waitingForOrder": "Очікую замовлення",
+        "rideInProgress": "Поїздка триває",
+        "viewRide": "Переглянути поїздку"
+      },
+      "summary": {
+        "rides": "Поїздки",
+        "cash": "Готівка",
+        "card": "Картка",
+        "hours": "Годин онлайн"
+      },
+      "connection": {
+        "connected": "Підключено",
+        "connecting": "Підключення...",
+        "reconnecting": "Повторне підключення...",
+        "disconnected": "Відключено"
+      },
+      "vehicle": {
+        "label": "Автомобіль",
+        "placeholder": "Вибери автомобіль",
+        "noVehicleHint": "Вибери автомобіль, щоб почати зміну",
+        "noLocationHint": "Дозволь місцезнаходження, щоб почати зміну"
+      },
+      "errors": {
+        "goOnlineConflict": "Ти вже онлайн",
+        "goOnlineNotFound": "Автомобіль не знайдено або він неактивний",
+        "goOnlineFailed": "Не вдалося почати зміну. Спробуй ще раз."
+      }
+    },
+    "ride": {
+      "navigate": "Навігувати",
+      "navigateToDropoff": "Навігувати до призначення",
+      "arrive": "Я на місці",
+      "start": "Почати поїздку",
+      "complete": "Завершити поїздку",
+      "noShow": "Клієнт не з'явився",
+      "noShowCountdown": "Доступно за {{sec}} с",
+      "noShowConfirm": "Клієнт не з'явився ({{min}} хв очікування)",
+      "phone": "Телефон",
+      "pickup": "Посадка",
+      "dropoff": "Призначення",
+      "note": "Примітка",
+      "map": "Мапа",
+      "mapShow": "Показати мапу",
+      "mapHide": "Сховати мапу",
+      "reassigned": "Замовлення перепризначено",
+      "loading": "Завантаження поїздки...",
+      "noRide": "Немає активної поїздки",
+      "backHome": "На головну"
+    },
+    "complete": {
+      "title": "Завершити поїздку",
+      "price": "Ціна (Kč)",
+      "pricePlaceholder": "Введи ціну",
+      "changePrice": "Змінити ціну",
+      "overrideReason": "Причина зміни ціни",
+      "overrideReasonPlaceholder": "Введи причину (мін. 5 символів)",
+      "paymentTitle": "Спосіб оплати",
+      "paymentCash": "Готівкою",
+      "paymentCard": "Карткою",
+      "paymentInvoice": "Рахунок",
+      "submit": "Завершити",
+      "submitting": "Завершення...",
+      "successOverlay": "Готово ✓",
+      "queuedOverlay": "Надішлеться після підключення",
+      "fixedLocked": "Фіксована ціна",
+      "staleRefetched": "Стан поїздки змінився, перевір дані.",
+      "offlineHint": "Немає підключення, спробуй ще раз.",
+      "keypad": {
+        "delete": "Видалити",
+        "clear": "Очистити"
+      },
+      "errors": {
+        "priceRequired": "Введи ціну більшу за 0.",
+        "paymentRequired": "Вибери спосіб оплати.",
+        "overrideReasonTooShort": "Причина зміни має містити щонайменше 5 символів."
+      }
+    },
+    "offer": {
+      "accept": "Прийняти",
+      "decline": "Відхилити",
+      "pickup": "Посадка",
+      "dropoff": "Призначення",
+      "distance": "{{km}} км",
+      "eta": "{{min}} хв",
+      "priceFixed": "ФІКС.",
+      "priceEstimate": "Орієнтовно",
+      "priceMeter": "Таксометр",
+      "priceCzk": "{{amount}} Kč",
+      "customerName": "Клієнт",
+      "note": "Примітка",
+      "scheduledAt": "Заплановано",
+      "expired": "Пропозиція минула",
+      "staleOffer": "Пропозиція вже недоступна",
+      "offlineHint": "Немає підключення, спробуй ще раз",
+      "declineReasonTitle": "Причина відхилення",
+      "declineReasonFar": "Далеко",
+      "declineReasonBreak": "Маю перерву",
+      "declineReasonOther": "Інша причина",
+      "declineReasonRequired": "Вибери причину відхилення",
+      "silentMode": "Тихий режим",
+      "accepting": "Приймаю...",
+      "declining": "Відхиляю..."
+    },
+    "position": {
+      "stale": "Місцезнаходження не надсилається"
+    },
+    "queue": {
+      "pending": "очікує надсилання"
+    },
+    "nav": {
+      "label": "Навігація",
+      "home": "Головна",
+      "history": "Історія",
+      "settings": "Налаштування"
+    },
+    "history": {
+      "title": "Історія поїздок",
+      "dateLabel": "Дата",
+      "today": "Сьогодні",
+      "empty": "Немає поїздок цього дня.",
+      "loading": "Завантаження...",
+      "ride": "Поїздка",
+      "active": "Триває",
+      "totalsTitle": "Підсумок",
+      "ridesCount": "Поїздок",
+      "cashTotal": "Готівка",
+      "cardTotal": "Картка",
+      "invoiceTotal": "Рахунок",
+      "payment": {
+        "Cash": "Готівкою",
+        "Card": "Карткою",
+        "Invoice": "Рахунок"
+      }
+    },
+    "settings": {
+      "title": "Налаштування",
+      "navAppTitle": "Навігація",
+      "navAppGeo": "Мапа за замовчуванням",
+      "navAppGoogle": "Google Maps",
+      "navAppMapy": "Mapy.cz",
+      "navAppWaze": "Waze",
+      "silentModeTitle": "Тихий режим",
+      "silentModeDescription": "Вимикає звук і вібрацію для нових пропозицій.",
+      "versionLabel": "Версія застосунку",
+      "logout": "Вийти",
+      "diagnostika": {
+        "title": "Діагностика",
+        "hint": "Ці дані ти можеш прочитати диспетчеру.",
+        "locationPermission": "Дозвіл на місцезнаходження",
+        "pushPermission": "Дозвіл на сповіщення",
+        "lastPositionSent": "Останнє надіслане місцезнаходження",
+        "connectionState": "Стан підключення",
+        "never": "Ніколи",
+        "unknown": "Невідомо",
+        "permission": {
+          "granted": "Дозволено",
+          "denied": "Відхилено",
+          "prompt": "Не запитано",
+          "default": "Не запитано"
+        },
+        "connection": {
+          "connected": "Підключено",
+          "connecting": "Підключення",
+          "reconnecting": "Повторне підключення",
+          "disconnected": "Відключено"
+        }
+      }
+    }
+  },
+  "orders": {
+    "drawer": {
+      "title": "Деталі замовлення",
+      "close": "Закрити",
+      "edit": "Редагувати",
+      "save": "Зберегти",
+      "saving": "Збереження...",
+      "cancel": "Скасувати",
+      "conflict": "Замовлення тим часом змінив хтось інший",
+      "editableStatuses": "Редагується лише у стані Нове або Призначене",
+      "fields": {
+        "pickup": "Посадка",
+        "dropoff": "Призначення",
+        "scheduledAt": "Запланований час",
+        "note": "Примітка",
+        "passengers": "Пасажири"
+      }
+    },
+    "timeline": {
+      "title": "Історія",
+      "noEvents": "Немає подій",
+      "actor": {
+        "System": "Система",
+        "Driver": "Водій",
+        "Dispatcher": "Диспетчер",
+        "Customer": "Клієнт"
+      },
+      "event": {
+        "Created": "Замовлення створено",
+        "Assigned": "Призначено водію",
+        "Accepted": "Водій прийняв",
+        "Declined": "Водій відхилив",
+        "Timeout": "Час пропозиції минув",
+        "Arrived": "Водій прибув",
+        "Started": "Поїздку розпочато",
+        "Completed": "Поїздку завершено",
+        "Cancelled": "Замовлення скасовано",
+        "Reassigned": "Перепризначено іншому водію",
+        "PriceOverridden": "Ціну змінено",
+        "NoteAdded": "Додано примітку",
+        "Updated": "Замовлення відредаговано"
+      }
+    },
+    "actions": {
+      "assign": "Призначити",
+      "reassign": "Перепризначити",
+      "cancel": "Скасувати",
+      "accept": "Прийняти",
+      "arrive": "На місці",
+      "start": "Почати поїздку",
+      "complete": "Завершити",
+      "decline": "Відхилити",
+      "title": "Дії"
+    },
+    "loading": "Завантаження...",
+    "notFound": "Замовлення не знайдено"
+  },
+  "customer": {
+    "appName": "Taxi",
+    "footer": {
+      "gdpr": "Захист персональних даних"
+    },
+    "call": "Зателефонувати",
+    "callAria": "Зателефонувати на диспетчерську {{phone}}",
+    "callUnavailableAria": "Номер телефону диспетчерської поки недоступний",
+    "offline": {
+      "title": "Ви офлайн – зателефонуйте нам",
+      "orderingDisabled": "Замовлення зараз недоступне. Будь ласка, зателефонуйте нам."
+    },
+    "home": {
+      "commonRoutesTitle": "Улюблені маршрути",
+      "customAddress": "Власна адреса",
+      "activeOrderTitle": "У вас є активне замовлення {{code}} – відстежувати",
+      "activeOrderAria": "Відстежувати активне замовлення {{code}}"
+    },
+    "order": {
+      "fixedPrice": "Ціна {{price}} – фіксована",
+      "noteLabel": "Де саме вас забрати?",
+      "notePlaceholder": "напр. біля головного входу",
+      "whenLabel": "Коли вас забрати",
+      "whenNow": "Зараз",
+      "whenScheduled": "На час",
+      "scheduledAtLabel": "Дата та час подачі",
+      "passengersLabel": "Кількість пасажирів",
+      "passengersDecrease": "Прибрати пасажира",
+      "passengersIncrease": "Додати пасажира",
+      "morePassengers": "Більше пасажирів? Зателефонуйте нам.",
+      "submit": "Замовити",
+      "submitting": "Замовляємо...",
+      "loginPrompt": "Щоб завершити замовлення, будь ласка, увійдіть.",
+      "zonePickupLabel": "Звідки вас забрати? (у зоні)",
+      "zoneDropoffLabel": "Куди ви їдете? (у цільовій зоні)",
+      "zonePickupRequired": "Спочатку виберіть місце подачі в зоні.",
+      "zoneConfirmed": "Адреса в зоні – ціна фіксована.",
+      "outsideZone": "Введена адреса поза зоною цього маршруту. Виберіть інше місце або зателефонуйте нам.",
+      "offlineBlocked": "Ви офлайн. Замовлення зараз неможливо створити – будь ласка, зателефонуйте нам.",
+      "errorTooSoon": "Подача можлива не раніше ніж за 20 хвилин.",
+      "errorTooLate": "Подачу можна запланувати щонайбільше на 7 днів наперед.",
+      "errorScheduledInvalid": "Будь ласка, введіть дійсні дату та час.",
+      "errorCreateFailed": "Не вдалося створити замовлення. Будь ласка, спробуйте ще раз.",
+      "routeNotFound": "Не вдалося завантажити маршрут."
+    },
+    "custom": {
+      "title": "Власне замовлення",
+      "pickupLabel": "Звідки вас забрати?",
+      "pickupPlaceholder": "Введіть адресу подачі",
+      "dropoffLabel": "Куди ви їдете? (необов'язково)",
+      "dropoffPlaceholder": "Скажу водієві",
+      "useMyLocation": "Використати моє місцезнаходження",
+      "myLocationLabel": "Моє місцезнаходження (GPS)",
+      "locationDenied": "Не вдалося визначити місцезнаходження. Введіть адресу вручну або перемістіть шпильку на мапі.",
+      "suggestionsLabel": "Пропозиції адрес",
+      "noSuggestions": "Немає пропозицій",
+      "showMap": "Змінити на мапі",
+      "hideMap": "Сховати мапу",
+      "mapLabel": "Мапа для вибору місця подачі",
+      "dragHint": "Перемістіть шпильку на точне місце подачі.",
+      "quoteFixed": "Ціна {{price}} – фіксована",
+      "quoteEstimate": "Орієнтовно {{low}} – {{high}}",
+      "quoteEstimateOrientacni": "Орієнтовна оцінка {{low}} – {{high}}",
+      "quoteMeter": "За таксометром",
+      "quoteUnavailable": "Ціну неможливо обчислити, зателефонуйте нам.",
+      "submit": "Замовити",
+      "submitting": "Замовляємо...",
+      "pickupRequired": "Спочатку виберіть місце подачі.",
+      "loginPrompt": "Щоб завершити замовлення, будь ласка, увійдіть."
+    },
+    "tracking": {
+      "title": "Відстеження поїздки",
+      "loading": "Завантажуємо...",
+      "expired": "Термін посилання минув",
+      "expiredHint": "Термін дії посилання для відстеження минув. Будь ласка, зателефонуйте нам.",
+      "notFound": "Не вдалося знайти замовлення.",
+      "loginNeeded": "Щоб відстежувати цю поїздку, будь ласка, увійдіть.",
+      "headline": {
+        "new": "Шукаємо водія…",
+        "assignedEta": "Водій {{name}} прибуде за ~{{eta}} хв",
+        "assignedNoEta": "Водій {{name}} у дорозі",
+        "arrived": "Водій на місці",
+        "inProgress": "Ви їдете",
+        "completed": "Готово – {{price}} Kč",
+        "completedNoPrice": "Готово",
+        "cancelled": "Замовлення скасовано"
+      },
+      "vehicleLabel": "Автомобіль",
+      "dropoffLabel": "Призначення",
+      "mapLabel": "Мапа з відстеженням автомобіля",
+      "showMap": "Показати мапу",
+      "hideMap": "Сховати мапу",
+      "carLabel": "Місцезнаходження автомобіля",
+      "pickupLabel": "Місце подачі",
+      "detailsTitle": "Подробиці",
+      "showDetails": "Показати подробиці",
+      "hideDetails": "Сховати подробиці",
+      "codeLabel": "Код замовлення",
+      "pickupAddress": "Звідки",
+      "dropoffAddress": "Куди",
+      "timeLabel": "Час",
+      "timeAsap": "Якнайшвидше",
+      "priceLabel": "Ціна",
+      "driverLabel": "Водій",
+      "cancel": "Скасувати замовлення",
+      "cancelAcceptedHint": "Водій уже їде, скасовуйте, будь ласка, лише за потреби.",
+      "cancelDialogTitle": "Скасувати замовлення?",
+      "cancelDialogBody": "Ви справді хочете скасувати це замовлення?",
+      "cancelConfirm": "Так, скасувати",
+      "cancelDismiss": "Ні, залишити",
+      "cancelTooLate": "Замовлення вже неможливо скасувати.",
+      "cancelFailed": "Не вдалося скасувати замовлення. Будь ласка, спробуйте ще раз.",
+      "cancelling": "Скасовуємо...",
+      "ratingSeam": "Будь ласка, оцініть свою поїздку.",
+      "pushPromptTitle": "Хочете отримати сповіщення, коли водій прибуде?",
+      "pushAllow": "Увімкнути сповіщення",
+      "pushDismiss": "Не зараз"
+    },
+    "login": {
+      "title": "Вхід",
+      "phoneLabel": "Номер телефону",
+      "phonePlaceholder": "123 456 789",
+      "sendCode": "Надіслати код",
+      "sending": "Надсилаємо...",
+      "codeLabel": "Код підтвердження",
+      "codeHint": "Введіть 6-значний код, який ми надіслали вам у SMS.",
+      "verifying": "Перевіряємо...",
+      "resend": "Надіслати код ще раз",
+      "resendIn": "Надіслати код ще раз за {{seconds}} с",
+      "resent": "Ми надіслали вам новий код.",
+      "changePhone": "Змінити номер",
+      "invalidPhone": "Введіть дійсний номер телефону.",
+      "codeMismatch": "Код не збігається, спробуйте ще раз.",
+      "tooManyRequests": "Зачекайте трохи та спробуйте ще раз.",
+      "networkError": "Не вдається підключитися до сервера. Перевірте підключення.",
+      "unknownError": "Сталася неочікувана помилка. Спробуйте ще раз."
+    },
+    "rating": {
+      "title": "Оцініть свою поїздку",
+      "starsLegend": "Кількість зірок",
+      "starLabel": "Оцінити на {{stars}} зірок",
+      "commentLabel": "Коментар (необов'язково)",
+      "commentPlaceholder": "Напишіть нам, як вам сподобалася поїздка",
+      "submit": "Надіслати оцінку",
+      "submitting": "Надсилаємо...",
+      "thanks": "Дякуємо за оцінку.",
+      "yourRating": "Ваша оцінка: {{stars}} з 5",
+      "submitFailed": "Не вдалося надіслати оцінку. Будь ласка, спробуйте ще раз.",
+      "offline": "Оцінку можна надіслати лише онлайн."
+    },
+    "history": {
+      "title": "Історія поїздок",
+      "empty": "Поки немає поїздок",
+      "reorder": "Замовити знову",
+      "openAria": "Переглянути поїздку {{code}}",
+      "statusCompleted": "Завершено",
+      "statusCancelled": "Скасовано",
+      "statusActive": "Триває",
+      "priceUnknown": "—",
+      "offline": "Ви офлайн – показуємо останні відомі дані."
+    }
+  },
+  "notifications": {
+    "title": "Сповіщення",
+    "empty": "Поки немає сповіщень.",
+    "failedSmsIcon": "Не вдалося надіслати SMS – зателефонуйте клієнту",
+    "statusOf": "Стан: {{status}}",
+    "status": {
+      "sent": "Надіслано",
+      "failed": "Не вдалося",
+      "queued": "У черзі",
+      "skippedCap": "Пропущено (ліміт)",
+      "skippedNoChannel": "Пропущено (без каналу)",
+      "unknown": "Невідомий стан"
+    },
+    "channel": {
+      "sms": "SMS",
+      "push": "Push",
+      "unknown": "Канал"
+    },
+    "event": {
+      "OrderCreatedForCustomer": "Замовлення прийнято",
+      "DriverAssigned": "Призначено водія",
+      "DriverArrived": "Водій на місці",
+      "RideStarted": "Поїздку розпочато",
+      "RideCompleted": "Поїздку завершено",
+      "OrderCancelledByFleet": "Скасовано диспетчерською",
+      "OrderCancelledByCustomer": "Скасовано клієнтом",
+      "OfferToDriver": "Пропозиція водію",
+      "DriverDeclined": "Водій відхилив",
+      "DriverTimedOut": "Водій не відповів",
+      "NewAppOrderForDispatch": "Нове замовлення із застосунку",
+      "ScheduledOrderReminder": "Нагадування про заплановану поїздку"
+    },
+    "settings": {
+      "title": "SMS-сповіщення",
+      "monthlyCount": "Надіслані SMS цього місяця",
+      "estimatedCost": "Орієнтовна вартість",
+      "cap": "Місячний ліміт",
+      "nearCap": "Ви наближаєтеся до місячного ліміту SMS.",
+      "overCap": "Місячний ліміт SMS вичерпано – надсилаються лише SMS про прибуття водія."
+    }
+  },
+  "reports": {
+    "title": "Звіти",
+    "driverReport": {
+      "title": "Звіт водіїв",
+      "driver": "Водій",
+      "allDrivers": "Усі водії",
+      "from": "Від",
+      "to": "До",
+      "downloadCsv": "Завантажити CSV",
+      "downloading": "Завантаження...",
+      "selectDriver": "Виберіть водія, щоб переглянути його звіт."
+    },
+    "table": {
+      "day": "День",
+      "completed": "Завершені",
+      "cancelled": "Скасовані",
+      "cash": "Готівка",
+      "card": "Картка",
+      "invoice": "Рахунок",
+      "total": "Усього",
+      "hoursOnline": "Годин онлайн",
+      "priceOverrides": "Зміни ціни",
+      "totalsRow": "Усього",
+      "avgRating": "Середня оцінка",
+      "noRating": "–",
+      "empty": "Немає даних за вибраний період"
+    },
+    "fleet": {
+      "title": "Звіт автопарку",
+      "rides": "Поїздки",
+      "revenue": "Виторг",
+      "avgPrice": "Середня ціна",
+      "timeToAssign": "Час до призначення",
+      "timeToPickup": "Час до подачі",
+      "cancellationRate": "Частка скасувань",
+      "appShare": "Частка із застосунку",
+      "phoneShare": "Частка по телефону",
+      "fixedRouteShare": "Частка фіксованих маршрутів",
+      "smsCount": "Кількість SMS",
+      "smsCost": "Орієнтовна вартість SMS"
+    },
+    "chart": {
+      "title": "Поїздки за днями",
+      "empty": "Немає поїздок за період",
+      "barLabel": "{{day}}: {{rides}} поїздок"
+    },
+    "topRoutes": {
+      "title": "Найчастіші маршрути",
+      "count": "{{count}}×",
+      "empty": "Немає маршрутів"
+    },
+    "ratings": {
+      "title": "Оцінки",
+      "stars": "{{stars}} з 5",
+      "order": "Замовлення",
+      "driver": "Водій",
+      "noComment": "Без коментаря",
+      "empty": "Немає оцінок"
+    },
+    "loading": "Завантаження звіту...",
+    "error": "Не вдалося завантажити звіт.",
+    "accessDenied": "У вас немає доступу до цієї сторінки."
+  },
+  "audit": {
+    "title": "Аудит",
+    "filters": {
+      "actor": "Актор",
+      "entity": "Сутність",
+      "from": "Від",
+      "to": "До",
+      "orderCode": "Код замовлення",
+      "apply": "Фільтрувати",
+      "clear": "Скинути фільтр",
+      "allEntities": "Усі сутності"
+    },
+    "table": {
+      "time": "Час",
+      "actor": "Актор",
+      "entity": "Сутність",
+      "event": "Подія",
+      "order": "Замовлення"
+    },
+    "empty": "Немає записів",
+    "loading": "Завантаження аудиту...",
+    "error": "Не вдалося завантажити аудит.",
+    "accessDenied": "У вас немає доступу до цієї сторінки.",
+    "page": "Сторінка {{page}}",
+    "prev": "Попередня",
+    "next": "Наступна",
+    "event": {
+      "StatusOverride": "Ручна зміна стану",
+      "Unknown": "Невідома подія"
+    }
+  },
+  "analytics": {
+    "ranges": {
+      "dnes": "Сьогодні",
+      "7dni": "Останні 7 днів",
+      "tentoMesic": "Цей місяць",
+      "minulyMesic": "Минулий місяць",
+      "kvartal": "Квартал",
+      "rok": "Рік",
+      "vlastni": "Власний"
+    },
+    "period": {
+      "label": "Період"
+    },
+    "granularity": {
+      "label": "Деталізація",
+      "day": "Щодня",
+      "week": "Щотижня",
+      "month": "Щомісяця"
+    },
+    "compare": "Порівняти з попереднім періодом",
+    "revenue": {
+      "empty": "Немає даних за вибраний період",
+      "loading": "Завантаження виторгу…",
+      "error": "Не вдалося завантажити аналітичні дані.",
+      "series": {
+        "title": "Динаміка виторгу за способом оплати",
+        "tableCaption": "Виторг за періодами (доступно для читачів екрана)",
+        "tableBucket": "Період",
+        "tableCash": "Готівка (Kč)",
+        "tableCard": "Картка (Kč)",
+        "tableInvoice": "Рахунок (Kč)",
+        "tableTotal": "Усього (Kč)"
+      },
+      "source": {
+        "title": "Частка виторгу за джерелом замовлення",
+        "tableCaption": "Виторг за джерелом (доступно для читачів екрана)",
+        "tableSource": "Джерело",
+        "tableRevenue": "Виторг (Kč)"
+      },
+      "priceType": {
+        "title": "Частка виторгу за типом ціни",
+        "tableCaption": "Виторг за типом ціни (доступно для читачів екрана)",
+        "tablePriceType": "Тип ціни",
+        "tableRevenue": "Виторг (Kč)"
+      },
+      "aovTrend": {
+        "title": "Тренд середньої вартості поїздки (AOV)",
+        "tableCaption": "AOV за періодами (доступно для читачів екрана)",
+        "tableBucket": "Період",
+        "tableAov": "AOV (Kč)"
+      },
+      "priceOverride": {
+        "title": "Вплив цінових відхилень",
+        "count": "Кількість відхилень",
+        "totalDelta": "Загальний вплив (Kč)",
+        "reasonsTitle": "Найчастіші причини",
+        "tableReason": "Причина",
+        "tableCount": "Кількість"
+      },
+      "topRoutes": {
+        "title": "Найприбутковіші маршрути",
+        "tableCaption": "Виторг за маршрутами",
+        "tableFrom": "Звідки",
+        "tableTo": "Куди",
+        "tableRides": "Поїздки",
+        "tableRevenue": "Виторг (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "Експортувати CSV"
+      },
+      "zoneRevenue": {
+        "title": "Виторг за зонами",
+        "tableCaption": "Виторг за зонами",
+        "tableZone": "Зона",
+        "tableRides": "Поїздки",
+        "tableRevenue": "Виторг (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "Експортувати CSV"
+      },
+      "smsCost": {
+        "title": "Витрати на SMS",
+        "tableCaption": "Витрати на SMS за періодами (доступно для читачів екрана)",
+        "tableBucket": "Період",
+        "tableSmsCount": "Кількість SMS",
+        "tableCost": "Витрати (Kč)"
+      }
+    },
+    "drivers": {
+      "loading": "Завантаження водіїв…",
+      "error": "Не вдалося завантажити аналітичні дані.",
+      "empty": "Немає даних за вибраний період",
+      "league": {
+        "title": "Турнірна таблиця водіїв",
+        "tableCaption": "Статистика водіїв",
+        "tableDriver": "Водій",
+        "tableRides": "Поїздки",
+        "tableRevenue": "Виторг (Kč)",
+        "tableOnline": "Онлайн (год.)",
+        "tableUtil": "Завантаженість (%)",
+        "tableRevenuePerHour": "Виторг/год.",
+        "tableAcceptance": "Прийняття (%)",
+        "tableDeclines": "Відхилення",
+        "tableCancellations": "Скасування",
+        "tableNoShows": "No-show",
+        "tableRating": "Оцінка",
+        "sortAsc": "Сортувати за зростанням",
+        "sortDesc": "Сортувати за спаданням",
+        "csvLabel": "Експортувати CSV"
+      },
+      "retention": {
+        "title": "Утримання водіїв (тижневе)",
+        "tableCaption": "Утримання водіїв за тижнями (доступно для читачів екрана)",
+        "tableWeek": "Тиждень",
+        "tableActive": "Активні",
+        "tableNew": "Нові",
+        "tableChurned": "Відтік",
+        "activeLabel": "Активні",
+        "newLabel": "Нещодавно активні",
+        "churnedLabel": "Відтік"
+      },
+      "drilldown": {
+        "backLabel": "Назад до таблиці",
+        "weeklyTitle": "Тижневий тренд",
+        "weeklyCaption": "Тижнева статистика водія (доступно для читачів екрана)",
+        "tableWeek": "Тиждень",
+        "tableRides": "Поїздки",
+        "tableRevenue": "Виторг (Kč)",
+        "tableRating": "Оцінка",
+        "lowRatedTitle": "Поїздки з низькою оцінкою (≤ 3 зірки)",
+        "tableCode": "Код",
+        "tableCompleted": "Завершено",
+        "tableStars": "Зірки",
+        "tableComment": "Коментар",
+        "tablePickup": "Посадка",
+        "tableDropoff": "Висадка",
+        "noComment": "—",
+        "noLowRated": "Немає поїздок з оцінкою ≤ 3 зірки."
+      }
+    },
+    "customers": {
+      "loading": "Завантаження клієнтів…",
+      "error": "Не вдалося завантажити аналітичні дані.",
+      "empty": "Немає даних за вибраний період",
+      "summary": {
+        "title": "Підсумок",
+        "totalRides": "Усього поїздок",
+        "totalRevenue": "Усього виторгу (Kč)",
+        "newIdentities": "Нові клієнти",
+        "returningIdentities": "Клієнти, що повертаються",
+        "repeatRate": "Частка повторних (%)",
+        "freqOne": "Частота 1×",
+        "freqTwoToFive": "Частота 2–5×",
+        "freqSixPlus": "Частота 6+×"
+      },
+      "newVsReturning": {
+        "title": "Нові проти клієнтів, що повертаються",
+        "tableCaption": "Нові та клієнти, що повертаються, за періодами (доступно для читачів екрана)",
+        "tableBucket": "Період",
+        "tableNew": "Нові",
+        "tableReturning": "Повертаються",
+        "newLabel": "Нові клієнти",
+        "returningLabel": "Клієнти, що повертаються"
+      },
+      "cohort": {
+        "title": "Когортне утримання клієнтів",
+        "tableCaption": "Когортне утримання (клієнти, активні в даному місяці після залучення)",
+        "tableAcqMonth": "Когорта",
+        "monthHeader": "Місяць {{n}}",
+        "csvLabel": "Експортувати CSV"
+      },
+      "topCustomers": {
+        "title": "Найкращі клієнти",
+        "tableCaption": "Найкращі клієнти за кількістю поїздок",
+        "tableCustomer": "Клієнт",
+        "tablePhone": "Телефон",
+        "tableRides": "Поїздки",
+        "tableRevenue": "Виторг (Kč)",
+        "unknown": "Невідомий"
+      },
+      "ratings": {
+        "title": "Оцінки клієнтів",
+        "avgRating": "Середня оцінка",
+        "totalRated": "Оцінено поїздок",
+        "distribution": {
+          "title": "Розподіл оцінок (1–5 зірок)",
+          "tableCaption": "Розподіл оцінок (доступно для читачів екрана)",
+          "tableStars": "Зірки",
+          "tableCount": "Кількість",
+          "datasetLabel": "Кількість оцінок"
+        },
+        "trend": {
+          "title": "Тренд середньої оцінки",
+          "tableCaption": "Тренд оцінок за періодами (доступно для читачів екрана)",
+          "tableBucket": "Період",
+          "tableAvg": "Середнє",
+          "tableRides": "Поїздок"
+        },
+        "worstRated": {
+          "title": "Поїздки з найгіршою оцінкою (≤ 3 зірки)",
+          "tableCaption": "Найгірше оцінені поїздки",
+          "tableCode": "Код",
+          "tableCompleted": "Завершено",
+          "tableStars": "Зірки",
+          "tableComment": "Коментар",
+          "tableDriver": "Водій",
+          "noComment": "—",
+          "empty": "Немає поїздок з оцінкою ≤ 3."
+        }
+      }
+    },
+    "tabs": {
+      "prehled": "Огляд",
+      "poptavka": "Попит",
+      "provoz": "Робота",
+      "trzby": "Виторг",
+      "ridici": "Водії",
+      "zakaznici": "Клієнти",
+      "placeholder": "Ця вкладка буде доступна в майбутній версії."
+    },
+    "overview": {
+      "title": "Огляд",
+      "rides": "Поїздки",
+      "revenueCzk": "Виторг",
+      "aov": "Середня поїздка",
+      "fulfillmentRate": "Виконаність",
+      "cancellationRate": "Скасовуваність",
+      "activeCustomers": "Активні клієнти",
+      "newCustomers": "Нові клієнти",
+      "activeDrivers": "Активні водії",
+      "onlineDriverHours": "Год. онлайн",
+      "revenuePerOnlineHour": "Виторг / год.",
+      "avgRating": "Середня оцінка",
+      "chartLabel": "Динаміка поїздок і виторгу",
+      "chartTableCaption": "Тренд поїздок і виторгу (доступно для читачів екрана)",
+      "chartTableBucket": "Період",
+      "chartTableRides": "Поїздки",
+      "chartTableRevenue": "Виторг (Kč)",
+      "empty": "Немає даних за вибраний період",
+      "deltaPositive": "+{{value}}",
+      "deltaNegative": "{{value}}",
+      "loading": "Завантаження огляду…",
+      "error": "Не вдалося завантажити аналітичні дані."
+    },
+    "demand": {
+      "loading": "Завантаження попиту…",
+      "error": "Не вдалося завантажити аналітичні дані.",
+      "empty": "Немає даних за вибраний період",
+      "heatmap": {
+        "title": "Теплова мапа попиту (година × день)",
+        "tableCaption": "Попит за годинами та днями (доступно для читачів екрана)",
+        "tableHour": "Година",
+        "csvLabel": "Експортувати CSV"
+      },
+      "supplyDemand": {
+        "title": "Пропозиція проти попиту за годинами",
+        "tableCaption": "Пропозиція та попит за годинами (доступно для читачів екрана)",
+        "tableHour": "Година",
+        "tableOrders": "Попит (поїздки)",
+        "tableSupplyHours": "Пропозиція (год. онлайн)"
+      },
+      "unmetDemand": {
+        "title": "Незадоволений попит за годинами",
+        "tableCaption": "Незадоволений попит за годинами (доступно для читачів екрана)",
+        "tableHour": "Година",
+        "tableCount": "Незадоволено"
+      },
+      "utilization": {
+        "title": "Завантаженість автопарку",
+        "fleetLabel": "Завантаженість автопарку",
+        "driverTableCaption": "Завантаженість водіїв (доступно для читачів екрана)",
+        "tableDriver": "Водій",
+        "tableBusyH": "Зайнято (год.)",
+        "tableOnlineH": "Онлайн (год.)",
+        "tableUtil": "Завантаженість"
+      },
+      "zonePickups": {
+        "title": "Посадки за зонами",
+        "tableCaption": "Посадки за зонами",
+        "tableZone": "Зона",
+        "tableCount": "Посадки",
+        "csvLabel": "Експортувати CSV"
+      },
+      "topRoutes": {
+        "title": "Найчастіші маршрути",
+        "tableCaption": "Найчастіші маршрути",
+        "tableFrom": "Звідки",
+        "tableTo": "Куди",
+        "tableCount": "Кількість",
+        "csvLabel": "Експортувати CSV"
+      }
+    },
+    "operations": {
+      "loading": "Завантаження роботи…",
+      "error": "Не вдалося завантажити аналітичні дані.",
+      "sla": {
+        "title": "SLA-метрики",
+        "tableCaption": "SLA-метрики (доступно для читачів екрана)",
+        "tableMetric": "Метрика",
+        "tableP50": "p50 (медіана)",
+        "tableP90": "p90",
+        "tableSampleCount": "Кількість поїздок"
+      },
+      "offerFunnel": {
+        "title": "Воронка пропозицій",
+        "tableCaption": "Воронка пропозицій (доступно для читачів екрана)",
+        "tableStage": "Етап",
+        "tableCount": "Кількість",
+        "labelOffersMade": "Пропозиції надіслано",
+        "labelAccepted": "Прийнято",
+        "labelDeclined": "Відхилено",
+        "labelTimeouts": "Час минув",
+        "avgOffersLabel": "Середня кількість пропозицій на поїздку"
+      },
+      "lifecycle": {
+        "title": "Воронка життєвого циклу",
+        "tableCaption": "Життєвий цикл замовлень (доступно для читачів екрана)",
+        "tableStage": "Етап",
+        "tableCount": "Кількість",
+        "labelCreated": "Створено",
+        "labelAssigned": "Призначено",
+        "labelAccepted": "Прийнято",
+        "labelArrived": "На місці",
+        "labelInProgress": "Виконується",
+        "labelCompleted": "Завершено"
+      },
+      "cancellations": {
+        "title": "Скасування",
+        "byRoleCaption": "Скасування за роллю (доступно для читачів екрана)",
+        "byStatusCaption": "Скасування за станом на момент скасування",
+        "byHourTitle": "Скасування за годиною дня",
+        "byHourCaption": "Скасування за годиною дня",
+        "tableRole": "Роль",
+        "tableStatus": "Стан на момент скасування",
+        "tableHour": "Година",
+        "tableCount": "Кількість",
+        "noShowShareLabel": "Частка no-show скасувань"
+      }
+    }
+  }
+}

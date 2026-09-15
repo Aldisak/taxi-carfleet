@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ALL_ORDER_EVENT_TYPES } from './eventTimeline'
-import cs from '../../shared/i18n/cs.json'
-import en from '../../shared/i18n/en.json'
+import cs from '../../shared/i18n/cs-CZ.json'
+import en from '../../shared/i18n/en-US.json'
 
 // ── Type helpers ──────────────────────────────────────────────────────────────
 

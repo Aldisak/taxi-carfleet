@@ -1,1057 +1,317 @@
 {
-  "uc": "UC-010",
-  "spec": "docs/specs/in-progress/010_UC_010_mapy.md",
-  "doc": "docs/specs/in-progress/010_UC_010_mapy-work-items.md",
-  "assumptions": [
-    "CONFIG ENDPOINT (fork resolved to recommended default; user to confirm): the spec §1 + AC#7 mention GET /me/config, which does NOT exist in the codebase. We add a dedicated GET /geo/config (anonymous + X-Fleet-Slug, mirroring the existing anonymous GET /public/fleet) carrying browser key + tile template + attribution + map center/zoom. AC#7's key-leak scan targets /geo/config and /public/fleet. No /me/config is created.",
-    "AC#3 ETA GATING (fork resolved): SignalR exposes no native group-membership count, so the driver->pickup ETA refresh throttle (<=60s, gated on an active viewer of order:{id} or the dispatcher detail) needs a custom subscriber-tracker or an order.LastEtaRefreshAt + viewer-count heuristic. It gets its own backend WI (WI-11), flagged needs_library_research, so the impl agent designs the tracking mechanism. The create-time single quote call lives separately in WI-10.",
-    "WI GRANULARITY (fork resolved): budget-alert + cache-cleanup TTL sweep are merged into one geo-jobs WI (WI-13). §7 doc edits are distributed onto their motivating code WIs (decisions.md->WI-01; costs.md + runbook->WI-13/WI-18); a thin AC#8 docs WI (WI-18) covers 00-PROJECT-CONTEXT + assignments 02/04/06/08 and confirms the decisions.md/costs.md entries exist.",
-    "Circuit breaker uses Microsoft.Extensions.Http.Resilience 10.x (verified .NET 10-compatible on nuget.org, 2026). WI-01 verifies the exact pinned version and records docs/decisions.md; if a version conflict with the EF pin surfaces, WI-01 falls back to a ~40-line DelegatingHandler breaker exposing IsOpen.",
-    "The geo seam evolves into two Infrastructure/Geo/ layers: IMapyClient (low-level typed HttpClient + resilience + server key) and IGeoService (high-level cache->client->degradation orchestration, successor to IGeoProvider). QuoteEndpoint calls the provider IN-PROCESS (not HTTP), so it is repointed to IGeoService, not to an HTTP call.",
-    "Demo/first-day fleets use env fallback keys (Mapy__ServerKey/Mapy__BrowserKey); DevelopmentSeeder writes NO encrypted key columns (leaves them null) and TaxiDbContextFactory/seeder stay untouched.",
-    "Encrypted keys use IDataProtectionProvider via a Common/ IFleetKeyProtector (NOT an EF ValueConverter, which would break the design-time factory). AddDataProtection().PersistKeysToFileSystem(<mounted volume>).SetApplicationName(\"taxi\") is MANDATORY — without a persisted key-ring the stored fleet keys become permanently undecryptable on restart. Persistence is enforced two ways, not by a runbook note alone: (1) PRIMARY — a fail-fast DataProtectionKeyRingGuard in WI-03 refuses to boot in non-Development when the keys dir is ephemeral/non-persistent; (2) a persistent named keys volume mounted onto the api service in the infra compose (WI-18).",
-    "geo_cache and geo_usage are NOT ITenantEntity (no query filter) — read from varied scopes incl background jobs, mirroring the RefreshToken/SmsCode no-filter decision. Explicit Where(c => c.FleetId == .. && ..) instead.",
-    "GeoResult is a discriminated result union (Success | Unavailable); the client boundary maps 4s-timeout / retry-exhausted-5xx / breaker-open to Unavailable (sanctioned log-and-continue carve-out of rules/error-handling.md). Endpoints guard-clause on the result — no handler try/catch, never null.",
-    "The customer-facing \"orientacni odhad\"/wider +-20% band (AC#5) is a RESPONSE-BODY estimate-mode field, NOT the debug X-Geo-* header. X-Geo-Source/X-Geo-Cache are debug-only headers on the 4 proxy endpoints; /geo/config uses Cache-Control max-age instead."
-  ],
+  "uc": "UC-011",
+  "spec": "docs/specs/in-progress/011_UC_011_multilingual.md",
+  "generated_by": "designer",
   "work_items": [
     {
-      "id": "WI-01",
-      "lane": "api",
-      "title": "Verify resilience dependency + record docs/decisions.md",
-      "depends_on": [],
-      "estimated_complexity": "XS",
-      "needs_library_research": true,
-      "required_reads": [
-        "api/src/Taxi.Api/Taxi.Api.csproj",
-        "api/Directory.Build.props",
-        "docs/decisions.md"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Taxi.Api.csproj",
-        "docs/decisions.md"
-      ],
-      "acceptance_criteria": [
-        "Add Microsoft.Extensions.Http.Resilience (10.x, .NET 10-compatible) to Taxi.Api.csproj; solution restores + builds -warnaserror with no EF/EF-pin version conflict (the Directory.Build.props pins are respected).",
-        "If a version conflict surfaces, fall back to documenting the ~40-line DelegatingHandler breaker approach instead — decisions.md records which path was taken.",
-        "docs/decisions.md gains a UC-010 entry: choice of Mapy.com, the credit prices verified on the day (1 credit/tile, 4 credits/suggest+geocode+reverse+route; 250k free/month, 1.60 CZK/1000 after), estimated monthly consumption (~1000 rides -> 200-400k credits), and the resilience-library decision.",
-        "No production code changes beyond the package reference — this WI unblocks WI-04's resilience pipeline."
-      ],
-      "test_cases": [
-        "Build_WithResiliencePackage_RestoresAndBuildsWarnAsError"
-      ],
-      "verification": { "tool": "dotnet-build" },
-      "rule_citations": [
-        "CLAUDE.md#EF-Core-package-version-conflict"
-      ]
-    },
-    {
-      "id": "WI-02",
-      "lane": "api",
-      "title": "Geo schema — fleet_settings + orders columns, geo_cache, geo_usage entities + migration",
-      "depends_on": [],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#enums-as-strings",
-        "rules/ef-core.md#migrations",
-        "rules/ef-core.md#date-types",
-        "rules/naming.md#migrations",
-        "rules/csharp-style.md#guid-primary-keys",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#SpotDbContext",
-        "CLAUDE.md#JsonDocument-for-jsonb",
-        "CLAUDE.md#UUIDv7-value-generator",
-        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/RefreshToken.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/SmsCode.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/FleetSettingsConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderEventConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContextFactory.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheEntry.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheKind.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/GeoUsage.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/FleetSettingsConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/GeoCacheEntryConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/GeoUsageConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Infrastructure/Migrations/*_AddMapyGeoSchema.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoSchemaMigrationTests.cs"
-      ],
-      "acceptance_criteria": [
-        "fleet_settings gains MapyServerKey string? (text, HasMaxLength(512), holds protected base64), MapyBrowserKey string? (same), MapCenterLat double (HasDefaultValue 50.08), MapCenterLng double (HasDefaultValue 14.42), MapZoom int (HasDefaultValue 12), GeoMonthlyCreditBudget int (HasDefaultValue 250000). Every NON-NULL new column MUST have HasDefaultValue (backfill on the populated table). XML-doc each property; keys are never logged.",
-        "orders gains DistanceM int? and DurationS int? (nullable -> metadata-only ADD COLUMN, no table rewrite, no index). XML-doc each.",
-        "GeoCacheEntry entity: composite PK (FleetId, Kind, Key) which IS the lookup index (no separate index); Kind is a C# enum GeoCacheKind{Suggest,Geocode,Reverse,Route,QuickPlace} (enum-as-string, HasMaxLength on the string PK col); Value JsonDocument? .HasColumnType(\"jsonb\"); CreatedAt DateTimeOffset with HasIndex for the TTL sweep; cascade FK to Fleet; NOT ITenantEntity and NO query filter; DbSet registered.",
-        "GeoUsage entity: composite PK (FleetId, Day, Kind) with Day DateOnly (date column); Calls int; CreditsEst int; NOT ITenantEntity / no query filter; PK covers monthly aggregation (WHERE fleet_id=.. AND day>=monthStart AND day<monthEnd GROUP BY); DbSet registered.",
-        "Migration AddMapyGeoSchema created with --output-dir Infrastructure/Migrations from api/src/Taxi.Api; generated SQL is additive-only (ADD COLUMN + CREATE TABLE, no drops/renames, no index on orders); a test applies it against Testcontainers Postgres and asserts the geo_cache composite PK uniqueness + geo_usage upsert PK.",
-        "TaxiDbContextFactory (NullCurrentTenant) still constructs the context at design time (no EF ValueConverter on the key columns)."
-      ],
-      "test_cases": [
-        "Migration_AddMapyGeoSchema_AppliesAndEnforcesCompositeKeys",
-        "GeoCache_DuplicateFleetKindKey_ViolatesPrimaryKey"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoSchema" },
-      "rule_citations": [
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#enums-as-strings",
-        "rules/ef-core.md#migrations",
-        "rules/ef-core.md#date-types",
-        "rules/ef-core.md#entity-naming",
-        "rules/ef-core.md#primary-keys",
-        "rules/naming.md#migrations",
-        "rules/naming.md#files-and-types",
-        "rules/csharp-style.md#guid-primary-keys",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/architecture.md#one-type-per-file"
-      ]
-    },
-    {
-      "id": "WI-03",
-      "lane": "api",
-      "title": "IFleetKeyProtector + DataProtection wiring (persisted key-ring)",
+      "id": "WI-1",
+      "title": "Locale registry + culture-code rename + N-locale parity gate + placeholder JSON seed",
+      "lane": "web",
       "depends_on": [],
       "estimated_complexity": "M",
       "needs_library_research": false,
       "required_reads": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/src/Taxi.Api/Common/Tenancy/ICurrentTenant.cs"
+        "docs/specs/in-progress/011_UC_011_multilingual.md#1-locale-codes-registry-and-files",
+        "docs/specs/in-progress/011_UC_011_multilingual.md#2-i18n-configuration",
+        "docs/specs/in-progress/011_UC_011_multilingual.md#6-test-and-e2e-locale-safety"
+      ],
+      "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-testing.md#i18n-parity",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-testing.md#colocation-and-naming",
+        "rules/web-react-style.md#typescript-strict"
       ],
       "files_touched": [
-        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
-        "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
-        "api/src/Taxi.Api/Common/Security/DataProtectionKeyRingGuard.cs",
-        "api/src/Taxi.Api/Program.cs",
-        "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs"
+        "web/src/shared/i18n/cs.json -> web/src/shared/i18n/cs-CZ.json (rename)",
+        "web/src/shared/i18n/en.json -> web/src/shared/i18n/en-US.json (rename)",
+        "web/src/shared/i18n/ru-RU.json (new, key-complete copy of cs-CZ)",
+        "web/src/shared/i18n/uk-UA.json (new, key-complete copy of cs-CZ)",
+        "web/src/shared/i18n/fil-PH.json (new, key-complete copy of cs-CZ)",
+        "web/src/shared/i18n/de-DE.json (new, key-complete copy of cs-CZ)",
+        "web/src/shared/i18n/locales.ts (new)",
+        "web/src/shared/i18n/index.ts",
+        "web/src/shared/i18n/locales.parity.test.ts",
+        "web/src/shared/i18n/sentinelKeys.ts (new)",
+        "web/src/shared/i18n/locales.sentinel.test.ts (new)",
+        "web/src/shared/audit/auditEventLabel.test.ts",
+        "web/src/features/orders/eventTimeline.test.ts",
+        "web/src/features/admin/PlatformScreen.test.tsx"
       ],
       "acceptance_criteria": [
-        "IFleetKeyProtector { string Protect(string plaintext); string Unprotect(string ciphertext); } in Common/Security/, implemented over IDataProtectionProvider.CreateProtector(\"FleetSettings.MapyKeys\"). Round-trip test: Unprotect(Protect(x)) == x.",
-        "Program.cs registers AddDataProtection().PersistKeysToFileSystem(<configured keys dir>).SetApplicationName(\"taxi\") — the persisted key-ring is MANDATORY (without it stored fleet keys become permanently undecryptable on restart). The keys directory path comes from configuration (env/volume mount) with a sensible local default.",
-        "A test proves two protectors built from the SAME persisted key-ring directory can decrypt each other's ciphertext (simulating a restart); protectors from different app-names/rings cannot.",
-        "Keys are never logged (verified by the logging rule); the columns stay plain nullable text holding base64 ciphertext (no EF ValueConverter).",
-        "PRIMARY persistence safeguard: a DataProtectionKeyRingGuard fails-fast at startup (throws before the app boots) when the configured keys directory is non-persistent/ephemeral — missing, unwritable, or pointing at a container-ephemeral path (e.g. the default temp/app-local dir when a persistent volume mount is expected). A redeploy without a persistent ring makes every stored fleet Mapy key permanently undecryptable, so the app MUST refuse to boot rather than silently mint a throwaway ring. In Development the guard is relaxed to allow the sensible local default dir; in non-Development it requires an explicitly configured persistent path.",
-        "The Docker keys-volume mount is ALSO captured as a note for the ops runbook (delivered in WI-18/§8) and as a concrete mounted-keys volume in the infra compose (delivered in WI-18) — the startup guard is the primary safeguard, the mounted volume is the deployment provision."
+        "SUPPORTED_LOCALES in locales.ts lists all six culture codes {cs-CZ,en-US,ru-RU,uk-UA,fil-PH,de-DE} with nativeName; DEFAULT_LOCALE = 'cs-CZ'; LocaleCode type derived from the array (const assertion).",
+        "index.ts builds resources from the six imported JSONs keyed by culture code, init with lng: DEFAULT_LOCALE (static), fallbackLng: 'en-US', supportedLngs from SUPPORTED_LOCALES.map(l => l.code), interpolation.escapeValue false. NO browser detection in index.ts.",
+        "cs.json renamed to cs-CZ.json and en.json to en-US.json with identical content; every importer updated (index.ts, locales.parity.test.ts, auditEventLabel.test.ts, eventTimeline.test.ts).",
+        "PlatformScreen.test.tsx changeLanguage('cs') updated to changeLanguage('cs-CZ').",
+        "Four new files ru-RU.json, uk-UA.json, fil-PH.json, de-DE.json exist as key-complete copies of cs-CZ.json (placeholder Czech values); a new 'common.language' key is added to cs-CZ.json first and propagated to all locales so parity holds.",
+        "locales.parity.test.ts generalized: iterates the resources map exported from index.ts (imports that map, NOT each JSON individually — so parity itself carries zero per-locale literals), asserts every locale's flattened key set equals cs-CZ's, failing with the per-locale missing/extra key list; reuses existing flattenKeys.",
+        "index.ts exports the built resources map (keyed by culture code) so parity and any registry consumer read it instead of re-importing individual JSONs.",
+        "sentinelKeys.ts defines SENTINEL_KEYS: a curated frozen array of exactly six non-brand full-sentence dot-paths shared by all four language WIs — dispatcher: 'login.invalidCredentials', 'board.form.validation.phoneInvalid', 'settings.accessDenied'; customer: 'customer.order.loginPrompt', 'customer.tracking.cancelDialogBody', 'customer.login.codeMismatch'. It also exports ENFORCED_LOCALES (a LocaleCode[] the sentinel test iterates), seeded EMPTY in WI-1 so the four untranslated placeholder locales are not yet enforced and WI-1 stays GREEN; each language WI (WI-3..6) adds its own code to ENFORCED_LOCALES, giving that WI an observable RED (values still equal cs-CZ) → GREEN (real translation). Final state after WI-6 enforces all four. Do NOT add a static 'all four enforced' assertion to WI-1 — with the empty seed that would make WI-1 RED; enforcement accrues one locale per language WI and the conductor's full-suite gate exercises all four at the end.",
+        "locales.sentinel.test.ts: for each code in ENFORCED_LOCALES, asserts every SENTINEL_KEYS value in that locale's resources DIFFERS from the cs-CZ value (reads the index.ts resources map, resolving dot-paths); locales not in ENFORCED_LOCALES are skipped. With ENFORCED_LOCALES empty in WI-1, the suite is GREEN; the test carries no per-locale literals beyond consuming SENTINEL_KEYS + ENFORCED_LOCALES from sentinelKeys.ts."
       ],
       "test_cases": [
-        "Protect_ThenUnprotect_RoundTripsPlaintext",
-        "Unprotect_WithPersistedRing_SurvivesSimulatedRestart",
-        "Boot_WithEphemeralKeysDir_FailsFast"
+        "parity: each of the six locales has a key set identical to cs-CZ (iterate the resources map) — observe RED by adding a locale with a missing key, then GREEN once complete.",
+        "sentinel: with ENFORCED_LOCALES empty, locales.sentinel.test.ts is GREEN (no locale enforced); temporarily enforcing a placeholder locale shows RED (its sentinel values still equal cs-CZ), proving the gate bites before any WI-3..6 translation lands.",
+        "index.ts default: imported i18n singleton resolves i18n.language to 'cs-CZ' and t('app.title') returns the Czech string with no detection call.",
+        "eventTimeline + auditEventLabel tests still pass against the renamed cs-CZ.json / en-US.json paths.",
+        "PlatformScreen suite green after changeLanguage('cs-CZ')."
       ],
-      "verification": { "tool": "dotnet-test", "filter": "FleetKeyProtector" },
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "rules/naming.md#files-and-types"
-      ]
+      "verification": { "tool": "vitest" }
     },
     {
-      "id": "WI-04",
-      "lane": "api",
-      "title": "IMapyClient typed HttpClient + resilience/breaker + HttpMessageHandler test seam",
-      "depends_on": ["WI-01", "WI-03"],
-      "estimated_complexity": "XL",
-      "needs_library_research": true,
+      "id": "WI-2",
+      "title": "Detection + persistence + switching runtime, main.tsx apply, formatting-stays-cs guard, Playwright locale pin",
+      "lane": "web",
+      "depends_on": ["WI-1"],
+      "estimated_complexity": "M",
+      "needs_library_research": false,
       "required_reads": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#banned-patterns",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/csharp-style.md#async-await",
-        "rules/logging.md#style-message-templates",
-        "CLAUDE.md#FakeGeoProvider-shared-singleton",
-        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
-        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Common/Notifications/INotificationService.cs",
-        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs"
+        "docs/specs/in-progress/011_UC_011_multilingual.md#3-detection-persistence-and-switching",
+        "docs/specs/in-progress/011_UC_011_multilingual.md#6-test-and-e2e-locale-safety"
+      ],
+      "rule_citations": [
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-react-style.md#typescript-strict",
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#timers-and-async"
       ],
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Geo/IMapyClient.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/MapyClient.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoResult.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/MapyDtos.cs",
-        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
-        "api/tests/Taxi.Api.Tests/Geo/MapyClientHandlerTests.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/StubMapyHttpHandler.cs"
+        "web/src/shared/i18n/languageStorage.ts (new)",
+        "web/src/shared/i18n/languageStorage.test.ts (new)",
+        "web/src/shared/i18n/resolveInitialLanguage.ts (new)",
+        "web/src/shared/i18n/resolveInitialLanguage.test.ts (new)",
+        "web/src/shared/i18n/applyInitialLanguage.ts (new)",
+        "web/src/shared/i18n/useLanguage.ts (new)",
+        "web/src/shared/i18n/useLanguage.test.ts (new)",
+        "web/src/shared/i18n/formatStaysCs.test.ts (new)",
+        "web/src/main.tsx",
+        "web/playwright.config.ts"
       ],
       "acceptance_criteria": [
-        "IMapyClient exposes typed methods for /v1/suggest, /v1/geocode, /v1/rgeocode, /v1/routing/route, each returning a GeoResult<T> discriminated union (Success(value) | Unavailable(reason)) — never throws for degradation, never returns null.",
-        "MapyClient is a typed HttpClient registered in GeoFeatureConfiguration.AddFeatureDependencies with a resilience pipeline: 4s timeout, 1 retry on 5xx, circuit breaker after 5 failures / 30s with half-open probes; breaker-open is queryable and short-circuits (no upstream call, no credit spent). The old photon/osrm named clients are removed.",
-        "The server key is resolved per-fleet via MapyKeyResolver (Unprotect(fleet.MapyServerKey) else env Mapy__ServerKey fallback) and attached to every Mapy call; the key is never logged (log templates use event phrases only).",
-        "try/catch for infra (timeout, retry-exhausted 5xx, breaker-open) lives INSIDE MapyClient and maps to GeoResult.Unavailable there (the sanctioned degradation carve-out).",
-        "A REAL MapyClient over a stubbed HttpMessageHandler (ConfigurePrimaryHttpMessageHandler / StubMapyHttpHandler) proves: (a) a 200 maps to Success with parsed street+municipality+lat+lng; (b) five consecutive 503s open the breaker and the sixth call returns Unavailable WITHOUT hitting the handler (assert on the handler's call counter); (c) the request URL carries type=regional.address,regional.street,poi and lang=cs for suggest."
+        "languageStorage.ts uses the driverSettings.ts localStorage try/catch pattern, key 'app.language' (NOT in authStorage): getStoredLanguage() returns a LocaleCode validated against SUPPORTED_LOCALES or null; setStoredLanguage(code) writes; both swallow storage errors.",
+        "resolveInitialLanguage(navigatorLangs, stored) is pure: stored wins -> exact culture-code match -> primary-subtag match -> DEFAULT_LOCALE for unknown/empty. The primary-subtag map is DERIVED from SUPPORTED_LOCALES (code.split('-')[0] -> code: de->de-DE, uk->uk-UA, ru->ru-RU, en->en-US, cs->cs-CZ, fil->fil-PH); ONLY the tl->fil-PH legacy alias (Tagalog, not derivable) is hardcoded. A hypothetical 7th locale (e.g. es-ES) must auto-detect from 'es' with NO edit to resolveInitialLanguage.ts (AC#8).",
+        "applyInitialLanguage() resolves navigator.languages + stored, calls i18n.changeLanguage(code) and sets document.documentElement.lang; invoked once from main.tsx only, never from index.ts.",
+        "useLanguage() returns { current, setLanguage }; setLanguage(code) calls i18n.changeLanguage, setStoredLanguage, and sets document.documentElement.lang; react-i18next re-render switches all t() consumers with no reload.",
+        "main.tsx calls applyInitialLanguage() before render.",
+        "playwright.config.ts top-level use gains locale: 'cs-CZ' so Chromium navigator.language is cs-CZ and detection keeps every existing e2e spec in Czech.",
+        "formatStaysCs.test.ts: after i18n.changeLanguage('de-DE'), money.ts still renders 'Kč' / cs-CZ grouping and the date helper still formats in Europe/Prague (AC#6)."
       ],
       "test_cases": [
-        "SuggestAsync_Success_ParsesStreetAndMunicipality",
-        "SuggestAsync_FiveConsecutive503_OpensBreakerAndSkipsUpstream",
-        "RouteAsync_Timeout_ReturnsUnavailableNotThrow"
+        "resolveInitialLanguage: exact ['de-DE']->de-DE; primary-subtag ['de']->de-DE, ['tl']->fil-PH, ['fil']->fil-PH; stored-wins (stored 'ru-RU' beats navigator ['de'])->ru-RU; unknown ['ja']->cs-CZ; empty []->cs-CZ.",
+        "languageStorage: round-trip set/get; invalid stored value ('xx-YY') ignored -> null; getItem throwing -> null (safe); setItem throwing -> no throw.",
+        "useLanguage: setLanguage('de-DE') calls i18n.changeLanguage, persists via setStoredLanguage, sets documentElement.lang='de-DE'; current reflects i18n.language.",
+        "formatStaysCs: money formatCzk stays 'Kč'/cs-CZ and date helper stays Europe/Prague after switching UI language to de-DE (AC#6)."
       ],
-      "verification": { "tool": "dotnet-test", "filter": "MapyClient" },
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#banned-patterns",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/error-handling.md#no-exceptions-for-control-flow",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/csharp-style.md#async-await",
-        "rules/logging.md#style-message-templates",
-        "rules/logging.md#what-must-not-appear-in-logs",
-        "rules/naming.md#files-and-types"
-      ]
+      "verification": { "tool": "vitest", "filter": "i18n" }
     },
     {
-      "id": "WI-05",
-      "lane": "api",
-      "title": "Common/Geo pure helpers — cache-key folding/rounding, haversine, ETA fallback",
-      "depends_on": [],
+      "id": "WI-3",
+      "title": "ru-RU.json full translation (formal customer / informal driver)",
+      "lane": "web",
+      "depends_on": ["WI-1"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
+      ],
+      "rule_citations": [
+        "rules/web-testing.md#i18n-parity",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-react-style.md#i18n-czech-first"
+      ],
+      "files_touched": [
+        "web/src/shared/i18n/ru-RU.json",
+        "web/src/shared/i18n/sentinelKeys.ts"
+      ],
+      "acceptance_criteria": [
+        "ru-RU.json has all keys of cs-CZ.json (native-quality Russian), key structure identical.",
+        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens (app name, SMS, PWA, Kč, error-code-like values) left untranslated.",
+        "Register split honored: customer-facing formal Russian, driver-facing informal Russian, mirroring the cs vy/ty split.",
+        "The generalized parity test passes for ru-RU (no missing/extra keys).",
+        "'ru-RU' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate (locales.sentinel.test.ts) then requires every WI-1-defined SENTINEL_KEYS value in ru-RU to DIFFER from cs-CZ — observe RED against the placeholder seed BEFORE translating, GREEN after real Russian lands. Do not restate the sentinel key set; consume it from WI-1's sentinelKeys.ts."
+      ],
+      "test_cases": [
+        "parity: ru-RU key set equals cs-CZ key set (generalized locales.parity.test.ts from WI-1).",
+        "sentinel: after adding 'ru-RU' to ENFORCED_LOCALES, locales.sentinel.test.ts asserts all SENTINEL_KEYS differ from cs-CZ for ru-RU — RED on the seed copy, GREEN after translation."
+      ],
+      "verification": { "tool": "vitest", "filter": "locales." }
+    },
+    {
+      "id": "WI-4",
+      "title": "uk-UA.json full translation (formal customer / informal driver)",
+      "lane": "web",
+      "depends_on": ["WI-1"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
+      ],
+      "rule_citations": [
+        "rules/web-testing.md#i18n-parity",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-react-style.md#i18n-czech-first"
+      ],
+      "files_touched": [
+        "web/src/shared/i18n/uk-UA.json",
+        "web/src/shared/i18n/sentinelKeys.ts"
+      ],
+      "acceptance_criteria": [
+        "uk-UA.json has all keys of cs-CZ.json (native-quality Ukrainian), key structure identical.",
+        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens left untranslated.",
+        "Register split honored: customer-facing formal Ukrainian, driver-facing informal Ukrainian.",
+        "The generalized parity test passes for uk-UA.",
+        "'uk-UA' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate then requires every WI-1-defined SENTINEL_KEYS value in uk-UA to DIFFER from cs-CZ — RED against the placeholder seed BEFORE translating, GREEN after real Ukrainian. Consume the key set from WI-1's sentinelKeys.ts; do not restate it."
+      ],
+      "test_cases": [
+        "parity: uk-UA key set equals cs-CZ key set.",
+        "sentinel: after adding 'uk-UA' to ENFORCED_LOCALES, all SENTINEL_KEYS differ from cs-CZ for uk-UA — RED on seed, GREEN after translation."
+      ],
+      "verification": { "tool": "vitest", "filter": "locales." }
+    },
+    {
+      "id": "WI-5",
+      "title": "fil-PH.json full translation (formal customer / informal driver)",
+      "lane": "web",
+      "depends_on": ["WI-1"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
+      ],
+      "rule_citations": [
+        "rules/web-testing.md#i18n-parity",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-react-style.md#i18n-czech-first"
+      ],
+      "files_touched": [
+        "web/src/shared/i18n/fil-PH.json",
+        "web/src/shared/i18n/sentinelKeys.ts"
+      ],
+      "acceptance_criteria": [
+        "fil-PH.json has all keys of cs-CZ.json (native-quality Filipino), key structure identical.",
+        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens left untranslated.",
+        "Register split honored: customer-facing formal (po/opo) and driver-facing informal Filipino.",
+        "The generalized parity test passes for fil-PH.",
+        "'fil-PH' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate then requires every WI-1-defined SENTINEL_KEYS value in fil-PH to DIFFER from cs-CZ — RED against the placeholder seed BEFORE translating, GREEN after real Filipino. Consume the key set from WI-1's sentinelKeys.ts; do not restate it."
+      ],
+      "test_cases": [
+        "parity: fil-PH key set equals cs-CZ key set.",
+        "sentinel: after adding 'fil-PH' to ENFORCED_LOCALES, all SENTINEL_KEYS differ from cs-CZ for fil-PH — RED on seed, GREEN after translation."
+      ],
+      "verification": { "tool": "vitest", "filter": "locales." }
+    },
+    {
+      "id": "WI-6",
+      "title": "de-DE.json full translation (Sie customer / du driver)",
+      "lane": "web",
+      "depends_on": ["WI-1"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
+      ],
+      "rule_citations": [
+        "rules/web-testing.md#i18n-parity",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-react-style.md#i18n-czech-first"
+      ],
+      "files_touched": [
+        "web/src/shared/i18n/de-DE.json",
+        "web/src/shared/i18n/sentinelKeys.ts"
+      ],
+      "acceptance_criteria": [
+        "de-DE.json has all keys of cs-CZ.json (native-quality German), key structure identical.",
+        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens left untranslated.",
+        "Register split honored: customer-facing 'Sie', driver-facing 'du'.",
+        "The generalized parity test passes for de-DE.",
+        "'de-DE' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate then requires every WI-1-defined SENTINEL_KEYS value in de-DE to DIFFER from cs-CZ — RED against the placeholder seed BEFORE translating, GREEN after real German. Consume the key set from WI-1's sentinelKeys.ts; do not restate it."
+      ],
+      "test_cases": [
+        "parity: de-DE key set equals cs-CZ key set.",
+        "sentinel: after adding 'de-DE' to ENFORCED_LOCALES, all SENTINEL_KEYS differ from cs-CZ for de-DE — RED on seed, GREEN after translation."
+      ],
+      "verification": { "tool": "vitest", "filter": "locales." }
+    },
+    {
+      "id": "WI-7",
+      "title": "Shared LanguageSelector + placement in dispatcher, driver settings, customer header",
+      "lane": "web",
+      "depends_on": ["WI-2"],
+      "estimated_complexity": "M",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/011_UC_011_multilingual.md#4-the-selector-and-where-it-goes"
+      ],
+      "rule_citations": [
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#component-conventions",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-accessibility.md#a11y-gate",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#queries-over-testids",
+        "rules/web-architecture.md#route-groups"
+      ],
+      "files_touched": [
+        "web/src/shared/i18n/LanguageSelector.tsx (new)",
+        "web/src/shared/i18n/LanguageSelector.test.tsx (new)",
+        "web/src/app/AppLayout.tsx",
+        "web/src/features/driver/settings/DriverSettingsPage.tsx",
+        "web/src/features/customer/shell/CustomerLayout.tsx"
+      ],
+      "acceptance_criteria": [
+        "LanguageSelector.tsx is a styled native <select> (VehicleSelector.tsx pattern), min-height theme.touchTargets.min (>=48px), one <option> per SUPPORTED_LOCALES entry showing nativeName, value = i18n.language, onChange -> useLanguage().setLanguage.",
+        "Accessible name via aria-label={t('common.language')}; renders all six options; passes vitest-axe via the src/shared/test/axe helper.",
+        "Dispatcher: mounted in AppLayout <Nav> before the mute/logout controls.",
+        "Driver: mounted as a settings section in DriverSettingsPage (styled like NavAppPreference), not the bottom nav.",
+        "Customer: mounted in CustomerLayout header actions next to CallButton.",
+        "Component maps SUPPORTED_LOCALES only — no individual locale-code literals (AC#8)."
+      ],
+      "test_cases": [
+        "renders all six options with nativeName labels (getByRole('option')).",
+        "selecting an option calls setLanguage with the chosen code (i18n.changeLanguage + persist), verified via a spied/mocked useLanguage.",
+        "value reflects i18n.language.",
+        "axe: no violations (preconfigured helper).",
+        "AppLayout renders the selector; DriverSettingsPage renders the settings section; CustomerLayout renders it in the header next to CallButton."
+      ],
+      "verification": { "tool": "vitest", "filter": "LanguageSelector" }
+    },
+    {
+      "id": "WI-8",
+      "title": "Docs: i18n rule anchor, project-context note, decisions entry, AC#8 extensibility grep gate",
+      "lane": "web",
+      "depends_on": ["WI-2", "WI-3", "WI-4", "WI-5", "WI-6", "WI-7"],
       "estimated_complexity": "S",
       "needs_library_research": false,
       "required_reads": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/csharp-style.md#expression-bodied",
-        "rules/csharp-style.md#xml-documentation",
-        "api/src/Taxi.Api/Common/Geo/ZoneBbox.cs"
+        "docs/specs/in-progress/011_UC_011_multilingual.md#7-documentation-updates"
       ],
-      "files_touched": [
-        "api/src/Taxi.Api/Common/Geo/GeoCacheKey.cs",
-        "api/src/Taxi.Api/Common/Geo/HaversineDistance.cs",
-        "api/src/Taxi.Api/Common/Geo/GeoEstimateFallback.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoHelpersTests.cs"
-      ],
-      "acceptance_criteria": [
-        "GeoCacheKey: pure folding — suggest key = lowercased+trimmed+diacritics-folded q + near rounded to 2 decimals; geocode = folded q; reverse = lat,lng at 4 decimals; route = from+to at 4 decimals. Deterministic and tested for diacritics (\"Nadrazi\" == \"nadrazi\").",
-        "HaversineDistance.Meters(lat1,lng1,lat2,lng2) returns great-circle metres; a known Prague pair matches an expected value within tolerance.",
-        "GeoEstimateFallback: distance = haversine x 1.3 road factor; ETA = distanceM / (35 km/h); the +-20% band bounds are pure functions. All covered by unit tests.",
-        "All helpers are pure static (no DI, no I/O) beside ZoneBbox.cs per architecture#common-infrastructure."
-      ],
-      "test_cases": [
-        "GeoCacheKey_DiacriticsAndCase_FoldToSameKey",
-        "HaversineDistance_KnownPair_WithinTolerance",
-        "GeoEstimateFallback_Distance_AppliesRoadFactorAndBand"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoHelpers" },
       "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/csharp-style.md#expression-bodied",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types"
-      ]
-    },
-    {
-      "id": "WI-06",
-      "lane": "api",
-      "title": "GeoCache two-tier (MemoryCache L1 + Postgres L2) + geo_usage accounting",
-      "depends_on": ["WI-02", "WI-04", "WI-05"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#JsonDocument-projection-in-EF-Core-LINQ-queries",
-        "CLAUDE.md#geo_usage-atomic-upsert",
-        "api/src/Taxi.Api/Common/Geo/GeoCacheKey.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheEntry.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/GeoUsage.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoCache.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
-        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoCacheTests.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoUsageRecorderTests.cs"
-      ],
-      "acceptance_criteria": [
-        "GeoCache is SCOPED (composes singleton IMemoryCache L1 + scoped TaxiDbContext L2 + TimeProvider) — a singleton capturing DbContext would be a captive-dependency bug; the WI proves the registration lifetime is scoped.",
-        "Read path: L1 hit -> return; L1 miss + L2 hit (and CreatedAt + ttlForKind >= now) -> hydrate L1 + return; else miss. TTL is app-enforced per kind (suggest 7d, geocode 30d, reverse 30d, route 24h, quickplace forever) — a stale L2 row is treated as a miss. jsonb Value is loaded then read (RootElement), never projected in a Select.",
-        "GeoUsageRecorder increments geo_usage via an ATOMIC INSERT..ON CONFLICT (fleet_id,day,kind) DO UPDATE SET calls=geo_usage.calls+EXCLUDED.calls, credits_est=geo_usage.credits_est+EXCLUDED.credits_est using ExecuteSqlInterpolatedAsync (NOT read-modify-write — concurrent misses must not race). A concurrent-misses test asserts the final count equals the number of misses.",
-        "Accounting is caller-driven (the single accounting site is the cache-miss in WI-07's IGeoService, not a decorator): +4 credits per suggest/geocode/reverse/route miss. GeoCache itself does not increment on hit or on breaker-open.",
-        "A test proves: two identical reads -> first is a miss (writes L1+L2), second is an L1 hit with no L2 query and no usage increment."
-      ],
-      "test_cases": [
-        "GeoCache_SecondIdenticalRead_IsL1HitNoDbNoUsage",
-        "GeoCache_StaleL2Row_TreatedAsMiss",
-        "GeoUsageRecorder_ConcurrentMisses_AtomicUpsertNoRace"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoCache" },
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#banned-patterns",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types"
-      ]
-    },
-    {
-      "id": "WI-07",
-      "lane": "api",
-      "title": "IGeoService orchestration (cache->client->degradation) + high-level test fake",
-      "depends_on": ["WI-04", "WI-06"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/error-handling.md#core-principle",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#pattern-matching",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#FakeGeoProvider-shared-singleton",
-        "api/src/Taxi.Api/Infrastructure/Geo/IMapyClient.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoResult.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoCache.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
-        "api/src/Taxi.Api/Common/Geo/GeoEstimateFallback.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/FakeGeoProvider.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Geo/IGeoService.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoService.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
-        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/FakeGeoService.cs",
-        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoServiceTests.cs"
-      ],
-      "acceptance_criteria": [
-        "IGeoService high-level surface (Suggest/Geocode/Reverse/Route + a QuickPlace lookup that never calls Mapy) composes cache -> client -> degradation and returns a result carrying a source/cache/degraded signal so endpoints can set X-Geo-* headers and the estimate-mode body field. Successor to IGeoProvider; PhotonOsrmGeoProvider and the old IGeoProvider are deleted.",
-        "On cache miss: call IMapyClient; on Success -> write L1+L2, increment geo_usage +4 (the single accounting site), signal cache=miss/source=mapy; on Unavailable (breaker-open/timeout/5xx) -> NO usage increment, return a degraded result (haversine x1.3 / ETA fallback for route, empty for suggest, coords-only for reverse).",
-        "A high-level FakeGeoService (successor to FakeGeoProvider, carrying the shared-singleton Reset() discipline: Reset() FIRST then set fields) is wired into TaxiApiFactory and used by most integration tests; it can be told to return Unavailable to drive AC#5 degradation without a real HTTP stub.",
-        "GeoServiceTests prove: cache-hit path spends no credit and does not call the client; Unavailable route returns the haversine x1.3 estimate with the wider band flagged; QuickPlace lookup never touches the client or usage.",
-        "QuoteEndpoint and the Geo endpoints compile against IGeoService (the swap itself is completed in WI-08/WI-09/WI-10)."
-      ],
-      "test_cases": [
-        "Route_CacheHit_NoClientCallNoCredit",
-        "Route_ClientUnavailable_ReturnsHaversineEstimateFlaggedWider",
-        "QuickPlace_NeverCallsClientOrIncrementsUsage"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoService" },
-      "rule_citations": [
-        "rules/architecture.md#common-infrastructure",
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/architecture.md#banned-patterns",
-        "rules/error-handling.md#core-principle",
-        "rules/error-handling.md#exceptions-for-infrastructure",
-        "rules/csharp-style.md#sealed-internal",
-        "rules/csharp-style.md#pattern-matching",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types"
-      ]
-    },
-    {
-      "id": "WI-08",
-      "lane": "api",
-      "title": "Geo proxy endpoints — suggest (enriched) + geocode + reverse + rate limit + X-Geo headers",
-      "depends_on": ["WI-07"],
-      "estimated_complexity": "XL",
-      "needs_library_research": true,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/api-design.md#authorization",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#error-codes",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#FastEndpoints-double-query-param-binding-is-locale-sensitive",
-        "CLAUDE.md#required-on-STJ-deserialized-request-properties",
-        "CLAUDE.md#WithTag-needs-using",
-        "CLAUDE.md#OpenAPI-route-allowlist-test",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestItemDto.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestValidator.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestRequest.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestItemDto.cs",
-        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestResponse.cs",
-        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeRequest.cs",
-        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeResponse.cs",
-        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeValidator.cs",
-        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseRequest.cs",
-        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseResponse.cs",
-        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseValidator.cs",
-        "api/src/Taxi.Api/Common/Geo/GeoRateLimiter.cs",
-        "api/src/Taxi.Api/Common/ErrorCodes.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /geo/suggest keeps its verb + CustomerOrStaff policy; gains Near (string?, parsed InvariantCulture in-handler, lenient/ignore-if-malformed). SuggestItemDto grows to (Label, Street?, Municipality?, Lat, Lng) so \"Kollarova\" and \"nadrazi Kolin\" return street+town. Upstream Unavailable -> 200 empty (never 502). A second identical query returns X-Geo-Cache: hit with no client call.",
-        "GET /geo/geocode?q= (NEW, CustomerOrStaff): min 3 chars -> 400 Geo.GeocodeQueryTooShort; a geocode match -> 200 Found=true with resolved Lat/Lng + Label; no match -> 200 Found=false (not 404).",
-        "GET /geo/reverse?lat=&lng= (NEW, CustomerOrStaff): Lat/Lng declared as string? (GET-query double-binding trap), parsed + range-checked + rounded to 4 decimals in-handler; valid coords -> 200 with a resolved street + municipality address; invalid -> 400 Geo.ReverseCoordsInvalid; upstream Unavailable -> 200 nulls (client shows coords).",
-        "5 req/s per USER rate limit on suggest/geocode/reverse via GeoRateLimiter (a PreProcessor or DelegatingHandler token-bucket keyed on the authenticated user id — FE Throttle keys on IP and does not fit); over-limit -> 429 Geo.RateLimited. Error codes added to ErrorCodes.Geo.",
-        "All three proxy endpoints set X-Geo-Source: mapy and X-Geo-Cache: hit|miss BEFORE Send.*Async (debug-only headers).",
-        "SeedAndEndToEndTests expected allowlist adds GET /api/v1/geo/geocode and GET /api/v1/geo/reverse; docs/api.md regenerated and staged."
-      ],
-      "test_cases": [
-        "HandleAsync_SuggestSecondIdenticalQuery_ReturnsCacheHitHeaderNoClientCall",
-        "HandleAsync_GeocodeMatch_Returns200Found",
-        "HandleAsync_GeocodeQueryTooShort_Returns400",
-        "HandleAsync_ReverseValidCoords_Returns200Address",
-        "HandleAsync_ReverseUpstreamUnavailable_Returns200Nulls",
-        "HandleAsync_SuggestOverRateLimit_Returns429RateLimited"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoProxy" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#error-codes",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-09",
-      "lane": "api",
-      "title": "POST /geo/route (verb+contract change) + GET /geo/config + allowlist",
-      "depends_on": ["WI-07", "WI-08"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#error-codes",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#required-on-STJ-deserialized-request-properties",
-        "CLAUDE.md#OpenAPI-route-allowlist-test",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteRequest.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteResponse.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteValidator.cs",
-        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetEndpoint.cs",
-        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetResponse.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteRequest.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/GeoPoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteResponse.cs",
-        "api/src/Taxi.Api/Features/Geo/Route/RouteValidator.cs",
-        "api/src/Taxi.Api/Features/Geo/Config/GeoConfigEndpoint.cs",
-        "api/src/Taxi.Api/Features/Geo/Config/GeoConfigResponse.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoRouteTests.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoConfigTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /geo/route becomes POST /geo/route with body { from:{lat,lng}, to:{lat,lng} }; GeoPoint uses REAL double (STJ is invariant-culture for bodies) and NO `required` (required -> STJ 500 not 400). Validator: NotNull From/To + lat/lng range + reject (0,0). Response gains a simplified geometry (max 200 points) and an estimate-mode field. Upstream Unavailable still -> 502 Geo.RouteUnavailable (the endpoint does not invent an estimate — Pricing does the fallback in WI-10). X-Geo-* headers set.",
-        "GET /geo/config (NEW): AllowAnonymous() + X-Fleet-Slug resolution mirroring GetFleetEndpoint (the logged-out customer tracking map must render without a JWT). Response: TileUrlTemplate, BrowserKey (Unprotect(fleet.MapyBrowserKey) else env Mapy__BrowserKey fallback), AttributionHtml, MapCenterLat/Lng, MapZoom. Cache-Control: public, max-age=604800. NO server key anywhere in the DTO.",
-        "AC#7 structural guard: a test asserts /geo/config and /public/fleet responses never contain the server key value; GeoConfigResponse has no server-key member.",
-        "SeedAndEndToEndTests expected allowlist: CHANGE GET /api/v1/geo/route -> POST /api/v1/geo/route and ADD GET /api/v1/geo/config; docs/api.md regenerated and staged.",
-        "This WI depends_on WI-08 so the two shared files (SeedAndEndToEndTests.cs + docs/api.md) are edited strictly after WI-08 (no impl-agent collision)."
-      ],
-      "test_cases": [
-        "HandleAsync_PostRouteValidBody_ReturnsDistanceDurationGeometry",
-        "HandleAsync_RouteBodyZeroZero_Returns400",
-        "HandleAsync_RouteUpstreamUnavailable_Returns502",
-        "HandleAsync_GeoConfigAnonymous_ReturnsBrowserKeyNotServerKey",
-        "GeoConfig_And_PublicFleet_NeverExposeServerKey"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoRoute" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#dont-catch-exceptions",
-        "rules/validation.md#when-to-add-a-validator",
-        "rules/validation.md#error-codes",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-10",
-      "lane": "api",
-      "title": "Pricing/Quote on IGeoService + persist order DistanceM/DurationS (quote-once)",
-      "depends_on": ["WI-07", "WI-09"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/error-handling.md#core-principle",
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
-        "api/src/Taxi.Api/Common/Geo/GeoEstimateFallback.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/IGeoService.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
-        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
-        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteResponse.cs",
-        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
-      ],
-      "acceptance_criteria": [
-        "QuoteEndpoint injects IGeoService (not IGeoProvider); on a known dropoff it calls Route once; on GeoResult.Unavailable it no longer 502s — it falls back to the haversine x1.3 estimate with a WIDER +-20% band and an estimate-mode = \"orientacni odhad\" body field (AC#5); a matched Fixed route still short-circuits with zero geo calls.",
-        "The Estimate quote result carries DistanceM/DurationS so the order-create path persists them onto the order (DistanceM, DurationS) — the create-time route call happens at most once (AC#3 first clause).",
-        "A test with the fake returning Unavailable proves an order can still be created with the wider-band estimate and \"orientacni odhad\" label; a happy-path test proves exactly one route call at create.",
-        "geo_usage reflects the create-time miss only (no double counting)."
-      ],
-      "test_cases": [
-        "HandleAsync_QuoteKnownDropoff_CallsRouteOnceAndPersistsDistance",
-        "HandleAsync_QuoteGeoUnavailable_FallsBackWiderBandOrientacniOdhad",
-        "HandleAsync_QuoteFixedRoute_ZeroGeoCalls"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "PricingQuote" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/error-handling.md#core-principle",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#guard-clauses",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-11",
-      "lane": "api",
-      "title": "Driver->pickup ETA — accept-time single call + throttled viewer-gated refresh",
-      "depends_on": ["WI-07", "WI-10"],
-      "estimated_complexity": "XL",
-      "needs_library_research": true,
-      "required_reads": [
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/architecture.md#banned-patterns",
-        "rules/error-handling.md#core-principle",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#style-message-templates",
-        "CLAUDE.md#SignalR-hub-tenant-scope",
-        "CLAUDE.md#Background-job-testability-pattern",
-        "api/src/Taxi.Api/Realtime/FleetHub.cs",
-        "api/src/Taxi.Api/Realtime/SignalRRealtimePublisher.cs",
-        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
-        "api/src/Taxi.Api/Features/Orders/AcceptOrder/AcceptOrderEndpoint.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/IGeoService.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Realtime/FleetHub.cs",
-        "api/src/Taxi.Api/Common/Geo/OrderSubscriptionTracker.cs",
-        "api/src/Taxi.Api/Common/Geo/PickupEtaService.cs",
-        "api/src/Taxi.Api/Features/Orders/AcceptOrder/AcceptOrderEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Geo/PickupEtaTests.cs"
-      ],
-      "acceptance_criteria": [
-        "SCOUT FIRST (why needs_library_research): SignalR exposes no native group-member count. The impl agent must design a viewer-tracking mechanism — an OrderSubscriptionTracker (in-memory count incremented in FleetHub.Subscribe / decremented in OnDisconnectedAsync for order:{id}, plus a dispatcher-detail-open signal) — and confirm it is queryable from the ETA refresh path. Document the chosen mechanism in the WI notes.",
-        "OrderSubscriptionTracker is an in-memory singleton (mirrors the DriverPositionStore precedent) — it MUST be DI-registered with singleton lifetime and reset per-test (shared across the test collection, so tests must clear/reset it to avoid cross-test leakage exactly like FakeGeoProvider/DriverPositionStore).",
-        "On Accept: exactly one route call computes the initial driver->pickup ETA (AC#3 second clause). Assigning + accepting together cause at most one more route call beyond create.",
-        "While at least one viewer is subscribed to order:{id} (or the dispatcher has the detail open), the ETA refreshes at most every 60s -> a customer watching for 5 minutes causes <= 5 further route calls; nobody watching -> 0 calls, and between refreshes the ETA is EXTRAPOLATED from remaining distance and last average speed (no API call).",
-        "The dispatcher board assign-picker driver->pickup distances use haversine only (no API call) — verified: opening the picker triggers zero route calls.",
-        "PickupEtaTests (using the fake geo service + a controllable TimeProvider + a controllable subscriber tracker) assert the call-count bounds for: create=1, accept=+1, 5-min watch<=5, no-watcher=0."
-      ],
-      "test_cases": [
-        "Accept_ComputesPickupEta_ExactlyOneRouteCall",
-        "TrackingWatched5Minutes_AtMostFiveRefreshCalls",
-        "NoSubscriber_ZeroRefreshCalls_ExtrapolatesEta",
-        "AssignPicker_UsesHaversine_ZeroRouteCalls"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "PickupEta" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/architecture.md#banned-patterns",
-        "rules/error-handling.md#core-principle",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#style-message-templates",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-12",
-      "lane": "api",
-      "title": "Geo usage settings read + 80%/100% budget alert via notification engine",
-      "depends_on": ["WI-06", "WI-09"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#OpenAPI-route-allowlist-test",
-        "api/src/Taxi.Api/Common/Notifications/INotificationService.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationEvent.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationLog.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationEvent.cs",
-        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
-        "api/src/Taxi.Api/Features/Settings/GetGeoUsage/GetGeoUsageEndpoint.cs",
-        "api/src/Taxi.Api/Features/Settings/GetGeoUsage/GetGeoUsageResponse.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoBudgetAlertTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "A settings read endpoint (GET /settings/geo-usage) uses Policies(nameof(AuthorizationPolicies.FleetAdminOnly)) — the settings/budget page is a FleetAdmin surface, so the single concrete policy is FleetAdminOnly (NOT DispatcherOnly). It returns this month's estimated credits + % of GeoMonthlyCreditBudget for the current fleet (plain-LINQ GroupBy over geo_usage WHERE fleet_id AND day in [monthStart,monthEnd) — no SqlQuery aliasing needed on read).",
-        "When a cache-miss upsert crosses 80% or 100% of GeoMonthlyCreditBudget for the fleet-month, a FleetAdmin alert is enqueued via the notification engine (new NotificationEvent member, e.g. GeoBudgetWarning) and a notification_log row is written; each threshold fires at most once per fleet-month (dedup on the existing NotificationLog unique index shape).",
-        "A test with GeoMonthlyCreditBudget = 100 credits proves the 80% alert fires exactly once when usage crosses 80 (AC#6); usage below threshold fires nothing; a further miss that keeps usage in the 80-100% band does NOT re-fire the 80% alert (dedup per fleet + ISO-month).",
-        "A test proves the 100% alert fires exactly once when usage crosses 100% of GeoMonthlyCreditBudget (AC#6 requires alerts at BOTH 80% and 100%); an already-sent 100% alert is not re-fired on subsequent misses in the same fleet-month.",
-        "geo_usage reflects cache MISSES only (verified: a cache-hit read does not move the counter).",
-        "SeedAndEndToEndTests allowlist + docs/api.md updated for the new settings endpoint (depends_on WI-09 serializes the shared-file edits)."
-      ],
-      "test_cases": [
-        "GeoUsage_Budget100_At80Percent_FiresAlertOnce",
-        "GeoUsage_Budget100_At100Percent_FiresAlertOnce",
-        "GetGeoUsage_CurrentMonth_ReturnsEstimateAndPercent",
-        "GeoUsage_CacheHit_DoesNotIncrement"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoBudgetAlert" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-13",
-      "lane": "api",
-      "title": "Geo background jobs — cache TTL cleanup sweep + costs.md measurement note",
-      "depends_on": ["WI-06"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#style-message-templates",
-        "CLAUDE.md#Background-job-testability-pattern",
-        "api/src/Taxi.Api/Infrastructure/Jobs/StalePositionJob.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheEntry.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Jobs/GeoCacheCleanupJob.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
-        "api/tests/Taxi.Api.Tests/Geo/GeoCacheCleanupJobTests.cs",
-        "docs/costs.md"
-      ],
-      "acceptance_criteria": [
-        "GeoCacheCleanupJob follows the RunTickAsync PeriodicTimer shell (internal RunTickAsync(ct) with all logic; ExecuteAsync a thin timer shell) and is registered in JobsServiceExtensions.AddJobs().",
-        "Per tick it ExecuteDeleteAsync's expired geo_cache rows per-kind (CreatedAt + ttlForKind < now) EXCEPT QuickPlace (forever — cleanup skips it; QuickPlace invalidation happens on Place edit, not here).",
-        "A test seeds cache rows of each kind at varying ages, constructs the job and calls RunTickAsync directly (advancing FakeTimeProvider), and asserts only the expired non-QuickPlace rows are deleted.",
-        "docs/costs.md gains the UC-010 tile-credit estimate line (§5: tiles are not counted server-side; estimate them from a measured week) as a placeholder to be filled after the first real week."
-      ],
-      "test_cases": [
-        "RunTickAsync_ExpiredNonQuickPlaceRows_Deleted",
-        "RunTickAsync_QuickPlaceRows_NeverDeleted"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "GeoCacheCleanup" },
-      "rule_citations": [
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/logging.md#style-message-templates",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-14",
-      "lane": "api",
-      "title": "GET /admin/geo-usage — SuperAdmin per-fleet monthly totals",
-      "depends_on": ["WI-06", "WI-12"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "CLAUDE.md#OpenAPI-route-allowlist-test",
-        "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsEndpoint.cs",
-        "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsResponse.cs",
-        "api/src/Taxi.Api/Features/Admin/AdminFeatureConfiguration.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Admin/GetGeoUsage/GetGeoUsageEndpoint.cs",
-        "api/src/Taxi.Api/Features/Admin/GetGeoUsage/GetGeoUsageResponse.cs",
-        "api/tests/Taxi.Api.Tests/Admin/AdminGeoUsageTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /api/v1/admin/geo-usage (SuperAdminOnly, EndpointWithoutRequest, IgnoreQueryFilters, current month) mirrors GetPlatformAnalyticsEndpoint: per-fleet rows (fleet name + calls + credits_est + % of that fleet's budget) plus platform totals, from a plain-LINQ GroupBy over geo_usage for the current month.",
-        "A cross-fleet test (fleet A + fleet B usage) proves the SuperAdmin sees both fleets' rows; a non-SuperAdmin gets 403.",
-        "SeedAndEndToEndTests allowlist adds GET /api/v1/admin/geo-usage; docs/api.md regenerated and staged (depends_on WI-12 serializes the shared-file edits)."
-      ],
-      "test_cases": [
-        "HandleAsync_SuperAdmin_ReturnsPerFleetGeoUsage",
-        "HandleAsync_NonSuperAdmin_Returns403"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "AdminGeoUsage" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#configure-structure",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#authorization",
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/csharp-style.md#xml-documentation",
-        "rules/naming.md#files-and-types",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-15",
-      "lane": "web",
-      "title": "Shared MapyMap + /geo/config client + tile swap across all map components",
-      "depends_on": ["WI-09"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#component-conventions",
-        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-performance.md#query-keys",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "web/src/shared/map/leafletSetup.ts",
-        "web/src/features/board/MapPanel.tsx",
-        "web/src/features/customer/tracking/TrackingMapInner.tsx",
-        "web/src/shared/api/client.ts",
-        "web/src/features/customer/order/PickupMapInner.tsx"
+        "rules/web-react-style.md#dates-and-money",
+        "rules/web-architecture.md#feature-folders"
       ],
       "files_touched": [
-        "web/src/shared/map/MapyMap.tsx",
-        "web/src/shared/map/MapyMap.test.tsx",
-        "web/src/shared/map/useGeoConfig.ts",
-        "web/src/shared/map/useGeoConfig.test.ts",
-        "web/src/shared/map/tileTemplate.ts",
-        "web/src/shared/map/tileTemplate.test.ts",
-        "web/src/shared/map/leafletSetup.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/features/board/MapPanel.tsx",
-        "web/src/features/customer/order/PickupMapInner.tsx",
-        "web/src/features/customer/tracking/TrackingMapInner.tsx",
-        "web/src/features/driver/ride/RideMapInner.tsx",
-        "web/src/features/settings/routesZones/PinPickerMap.tsx",
-        "web/src/features/settings/routesZones/zones/ZoneEditorMap.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "acceptance_criteria": [
-        "getGeoConfig() in client.ts calls GET /geo/config (X-Fleet-Slug attached like getPublicFleet); DTO { tileUrlTemplate, browserKey, attributionHtml, mapCenterLat, mapCenterLng, mapZoom }. useGeoConfig is a TanStack Query hook keyed ['geo','config'].",
-        "tileTemplate.ts (pure) builds the Mapy raster URL from the template + browser key + basic set, 256px, choosing @2x only when devicePixelRatio > 1.5 — covered by a pure unit test (test-first).",
-        "MapyMap.tsx is one shared component in shared/map/ wrapping react-leaflet MapContainer + a Mapy TileLayer + a mandatory Mapy logo control (their SVG linking to mapy.com) + text attribution in the Leaflet attribution control; it renders the fleet's center/zoom from /geo/config. Has an axe assertion with an i18n'd logo aria-label.",
-        "All TileLayer users (MapPanel, PickupMapInner, TrackingMapInner, RideMapInner, PinPickerMap, ZoneEditorMap) render via MapyMap instead of the OSM TileLayer; OSM_TILE_URL/OSM_ATTRIBUTION are removed from leafletSetup.ts (DEFAULT_CENTER/ZOOM kept as fallbacks).",
-        "New i18n keys (map logo aria-label, attribution) land in both cs.json and en.json (parity test passes)."
-      ],
-      "test_cases": [
-        "tileTemplate builds the basic 256px url and only uses @2x above devicePixelRatio 1.5",
-        "MapyMap renders the Mapy attribution control and logo with an accessible label",
-        "MapyMap has no axe violations"
-      ],
-      "verification": { "tool": "vitest", "filter": "shared/map" },
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#state-tiers",
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#component-conventions",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-performance.md#query-keys",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "rules/web-testing.md#queries-over-testids"
-      ]
-    },
-    {
-      "id": "WI-16",
-      "lane": "web",
-      "title": "Suggest hooks enriched (street+town) + geo route client GET->POST",
-      "depends_on": ["WI-08", "WI-09", "WI-15"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#component-conventions",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-performance.md#query-keys",
-        "rules/web-performance.md#high-frequency-events",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#i18n-parity",
-        "web/src/shared/api/client.ts",
-        "web/src/features/customer/order/useSuggest.ts",
-        "web/src/features/customer/order/AddressAutocomplete.tsx",
-        "web/src/features/board/useAddressSuggest.ts",
-        "web/src/features/board/OrderForm.tsx",
-        "web/src/features/board/useRouteEstimate.ts",
-        "web/src/features/driver/offer/useOfferRoute.ts"
-      ],
-      "files_touched": [
-        "web/src/shared/api/client.ts",
-        "web/src/features/customer/order/useSuggest.ts",
-        "web/src/features/customer/order/AddressAutocomplete.tsx",
-        "web/src/features/customer/order/AddressAutocomplete.test.tsx",
-        "web/src/features/board/useAddressSuggest.ts",
-        "web/src/features/board/OrderForm.tsx",
-        "web/src/features/board/useRouteEstimate.ts",
-        "web/src/features/board/useRouteEstimate.test.ts",
-        "web/src/features/driver/offer/useOfferRoute.ts",
-        "web/src/features/driver/offer/useOfferRoute.test.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "acceptance_criteria": [
-        "GeoSuggestItem DTO in client.ts grows street? + municipality? (matching the enriched backend); both suggest lists (AddressAutocomplete + OrderForm's AddressInput) render the regionalStructure (street, town) so \"Kolin\" vs \"Kutna Hora\" is distinguishable at a glance. Rendered via getByText assertions (test-first).",
-        "getGeoRoute flips from a GET query-string call to a POST body { from:{lat,lng}, to:{lat,lng} }; GeoRouteResponse gains geometry + estimateMode. Both callers (useRouteEstimate, useOfferRoute) and their tests are updated; the 502/degraded path still degrades silently (form never blocked).",
-        "Debounce (350ms) + min-3-chars + request cancellation behavior is preserved (existing tests still green); no unthrottled setState per keystroke.",
-        "New/changed i18n keys land in both cs.json and en.json (parity)."
-      ],
-      "test_cases": [
-        "AddressAutocomplete shows street and municipality for a suggestion",
-        "useRouteEstimate posts a from/to body and maps geometry",
-        "useOfferRoute degrades silently when the route call is unavailable"
-      ],
-      "verification": { "tool": "vitest", "filter": "features/board/useRouteEstimate" },
-      "rule_citations": [
-        "rules/web-architecture.md#api-client",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#component-conventions",
-        "rules/web-react-style.md#typescript-strict",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-performance.md#query-keys",
-        "rules/web-performance.md#high-frequency-events",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#network-mocking",
-        "rules/web-testing.md#i18n-parity"
-      ]
-    },
-    {
-      "id": "WI-17",
-      "lane": "web",
-      "title": "Degradation UI (grey-tile banner, no-coords, orientacni odhad) + settings credits panel",
-      "depends_on": ["WI-15", "WI-16"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-realtime.md#last-known-state",
-        "rules/web-realtime.md#offline-ux",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity",
-        "web/src/features/board/DisconnectBanner.tsx",
-        "web/src/shared/map/MapyMap.tsx",
-        "web/src/shared/api/client.ts"
-      ],
-      "files_touched": [
-        "web/src/shared/map/MapUnavailableBanner.tsx",
-        "web/src/shared/map/MapUnavailableBanner.test.tsx",
-        "web/src/shared/map/MapyMap.tsx",
-        "web/src/features/settings/geoUsage/GeoUsagePanel.tsx",
-        "web/src/features/settings/geoUsage/GeoUsagePanel.test.tsx",
-        "web/src/features/settings/geoUsage/useGeoUsage.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "acceptance_criteria": [
-        "When /geo/config fails or tiles fail to load, MapyMap shows a grey background with markers still placed by coordinates + a role=\"alert\" banner \"Mapa docasne nedostupna\" (MapUnavailableBanner). Test-first component + axe assertion.",
-        "The order card shows a warning \"bez souradnic\" when an order was created without coordinates (suggest/geocode degraded); reverse-geocode degraded shows coordinates instead of an address. (Consumes the estimateMode/no-coords signals from WI-16's DTOs.)",
-        "The estimate display shows the wider range with the label \"orientacni odhad\" when estimateMode indicates the haversine fallback (AC#5).",
-        "The dispatcher settings page GeoUsagePanel shows this month's estimated credits + % (getGeoUsage client fn + useGeoUsage hook against GET /settings/geo-usage).",
-        "All new strings in both cs.json + en.json (parity); banner + panel pass axe."
-      ],
-      "test_cases": [
-        "MapUnavailableBanner renders a role=alert message and has no axe violations",
-        "estimate shows the wider range with orientacni odhad label when degraded",
-        "GeoUsagePanel shows the month estimate and percent"
-      ],
-      "verification": { "tool": "vitest", "filter": "shared/map/MapUnavailableBanner" },
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-realtime.md#last-known-state",
-        "rules/web-realtime.md#offline-ux",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#i18n-parity"
-      ]
-    },
-    {
-      "id": "WI-18",
-      "lane": "web",
-      "title": "Remove OSM/OSRM/Nominatim/Photon refs + CI grep guard + docs §7",
-      "depends_on": ["WI-15", "WI-16"],
-      "estimated_complexity": "S",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-testing.md#test-ordering",
-        "web/eslint.config.js",
-        "web/src/shared/map/leafletSetup.ts",
-        "docs/decisions.md",
-        "infra/docker-compose.prod.yml",
-        "infra/docker-compose.dev.yml"
-      ],
-      "files_touched": [
-        "web/src/shared/map/leafletSetup.ts",
-        "web/eslint.config.js",
-        "web/src/shared/map/noLegacyMapHosts.test.ts",
+        ".claude/rules/web-react-style.md",
         ".claude/state/00-PROJECT-CONTEXT.md",
-        ".claude/state/02-dispatcher-web.md",
-        ".claude/state/04-customer-pwa.md",
-        ".claude/state/06-pricing-routing.md",
-        ".claude/state/08-infra-ops.md",
-        "infra/docker-compose.prod.yml",
-        "infra/docker-compose.dev.yml"
+        "docs/decisions.md",
+        "web/src/shared/i18n/extensibility.test.ts (new)"
       ],
       "acceptance_criteria": [
-        "No reference to router.project-osrm.org, nominatim.openstreetmap.org, photon.komoot.io, or tile.openstreetmap.org remains anywhere under web/src (AC#1). A test (noLegacyMapHosts.test.ts) greps the source tree and fails if any of the four hostnames reappear; wire the same check as an eslint no-restricted-syntax rule or an npm script so CI fails on reintroduction.",
-        "00-PROJECT-CONTEXT.md §4 replaces \"Leaflet + OpenStreetMap tiles\" and \"OSRM\" with \"Mapy.com REST API via backend proxy\", adds the caching-rules summary + two-key model, and adds mapy.com to the no-vendor-lock-in note as replaceable behind IMapyClient.",
-        "Assignments 02, 04, 06 replace the old endpoint names with the Mapy geo endpoints; assignment 08 gains the Mapy.com console runbook steps (create project, restrict browser key by referrer, set monthly cap) AND the DataProtection keys-volume mount note from WI-03 AND the cost-sheet line.",
-        "The infra compose files (docker-compose.prod.yml + docker-compose.dev.yml) mount a PERSISTENT named volume for the DataProtection key-ring onto the api service's configured keys directory, so the ring survives redeploys (paired with WI-03's fail-fast startup guard which is the primary safeguard). Without a persistent ring every stored fleet Mapy key becomes permanently undecryptable on redeploy.",
-        "This WI closes AC#1 and the code portion of AC#8 (docs)."
+        "web-react-style.md#i18n-czech-first notes supported locales are defined by SUPPORTED_LOCALES, parity now covers all of them, and money/date formatting stays cs-CZ/Europe/Prague regardless of UI language.",
+        "00-PROJECT-CONTEXT.md records the six-locale set and the SUPPORTED_LOCALES source-of-truth.",
+        "docs/decisions.md records the six-locale decision, full-culture-code convention, and auto-detect -> Czech-fallback behavior.",
+        "AC#8 extensibility contract enforced by extensibility.test.ts: a scan of NON-TEST production source under web/src (exclude *.test.ts/*.test.tsx and the whitelist files locales.ts, index.ts, resolveInitialLanguage.ts, shared/date/analyticsRange.ts) flags ONLY the FIVE non-default culture codes {en-US, ru-RU, uk-UA, fil-PH, de-DE} and asserts none appears. 'cs-CZ' is DELIBERATELY EXEMPT from the scan: per the spec's formatting non-goal, 'cs-CZ' is spec-MANDATED as a formatting literal in ~30 non-test production files (money.ts Intl.NumberFormat('cs-CZ'), TrackingPage, HistoryRow, PlatformScreen, AuditPage, DriverDrilldown, smsCostDisplay, csvExport, etc.) — those are correct and MUST NOT be 'fixed'. shared/date/analyticsRange.ts is whitelisted because its Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Prague' }) is a locale-agnostic date-parts extractor (NOT a UI-language reference) — the 'en-US' there is a formatting literal, not a supported-locale code. resolveInitialLanguage.ts is whitelisted because it hardcodes exactly one legacy alias (tl -> fil-PH); its primary-subtag map is otherwise derived from the registry.",
+        "The extensibility.test.ts source comment states WHY cs-CZ is exempt (formatting non-goal, ~30 mandated files) so an impl agent does not add cs-CZ back into the flagged set.",
+        "Adding a hypothetical 7th locale (es-ES) requires exactly: one xx-YY.json, one SUPPORTED_LOCALES entry, one import+resources line in index.ts — and NO edit to resolveInitialLanguage.ts (its subtag map derives from the registry) nor to the selector/parity (both read the registry)."
       ],
       "test_cases": [
-        "no legacy map hostname appears anywhere under web/src"
+        "extensibility: scan of non-test production source asserts none of the five non-default culture codes {en-US, ru-RU, uk-UA, fil-PH, de-DE} appears outside the whitelist {locales.ts, index.ts, resolveInitialLanguage.ts, shared/date/analyticsRange.ts}; 'cs-CZ' is NOT in the flagged set (spec-mandated formatting literal) and analyticsRange.ts's en-US is a formatting literal not a UI-language code; selector maps SUPPORTED_LOCALES, parity iterates the index.ts resources map, detection derives its subtag map from the registry."
       ],
-      "verification": { "tool": "vitest", "filter": "shared/map/noLegacyMapHosts" },
-      "rule_citations": [
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#network-mocking"
-      ]
-    },
-    {
-      "id": "WI-19",
-      "lane": "web",
-      "title": "E2E — degraded-mode order lifecycle + Mapy tiles/attribution render",
-      "depends_on": ["WI-17", "WI-18"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/web-testing.md#e2e-conventions",
-        "CLAUDE.md#e2e-harness-seeds-only-DevelopmentSeeder",
-        "CLAUDE.md#SuperAdmin-reachable-in-e2e",
-        "web/e2e/analytics.spec.ts"
-      ],
-      "files_touched": [
-        "web/e2e/mapy-degraded.spec.ts"
-      ],
-      "acceptance_criteria": [
-        "With the geo service forced to 503/Unavailable (fake client), the dispatcher can still create, assign and complete an order end-to-end; the degraded banners are visible and the estimate shows the wider range with \"orientacni odhad\" (AC#5).",
-        "A happy-path assertion confirms the Mapy attribution control + logo render on the board map (AC#4). Numeric assertions stay minimal per the e2e-harness seeding note.",
-        "The spec is its own serial file; test-results/ and playwright-report/ stay gitignored."
-      ],
-      "test_cases": [
-        "dispatcher completes an order in degraded mode and sees the orientacni odhad banner"
-      ],
-      "verification": { "tool": "playwright" },
-      "rule_citations": [
-        "rules/web-testing.md#e2e-conventions"
-      ]
+      "verification": { "tool": "vitest", "filter": "extensibility" }
     }
   ]
 }

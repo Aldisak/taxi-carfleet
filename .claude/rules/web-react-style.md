@@ -29,7 +29,13 @@ type ConnectionState = 'connected' | 'connecting' | 'reconnecting' | 'disconnect
 
 ## I18n czech first
 
-Every user-facing string — including `aria-label`, `alt`, placeholders, button text, error messages — goes through `useTranslation()`. Czech (`cs`) is the default; English is the fallback. Every new key is added to **both** `src/shared/i18n/cs.json` and `en.json` in the same change — `src/shared/i18n/locales.parity.test.ts` fails the suite on any key-set mismatch.
+Every user-facing string — including `aria-label`, `alt`, placeholders, button text, error messages — goes through `useTranslation()`. Czech (`cs-CZ`) is the default; English (`en-US`) is the fallback.
+
+The set of supported UI languages is defined once by `SUPPORTED_LOCALES` in `src/shared/i18n/locales.ts` (full culture codes: `cs-CZ`, `en-US`, `ru-RU`, `uk-UA`, `fil-PH`, `de-DE`). The selector, i18n config, browser detection, and parity test all derive from that registry — never reference a language by a bare code literal in feature/component code (`extensibility.test.ts` fails the suite if one leaks in). Adding a language is exactly: one `xx-YY.json`, one `SUPPORTED_LOCALES` entry, one import + resources line in `index.ts`.
+
+Every new key is added to **all** locale JSONs (`cs-CZ.json`, `en-US.json`, `ru-RU.json`, `uk-UA.json`, `fil-PH.json`, `de-DE.json`) in the same change — `src/shared/i18n/locales.parity.test.ts` iterates the exported resources map and fails the suite on any key-set mismatch against `cs-CZ`.
+
+Formatting is a non-goal of localization: money stays `cs-CZ` (`… Kč`) and dates stay `Europe/Prague` in **every** UI language (`money.ts` `Intl.NumberFormat('cs-CZ')`, date helpers). Those `cs-CZ` formatting literals are correct and are exempt from the extensibility scan — do not "fix" them to the active UI language. `formatStaysCs.test.ts` guards this.
 
 Tone: formal "vy" for customers, informal "ty" for drivers (spec §11). API error codes (`Order.StaleVersion`) map to i18n keys; errors shown to users are human sentences — never raw codes, JSON, or stack traces.
 

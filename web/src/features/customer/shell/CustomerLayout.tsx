@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { authStorage } from '../../../shared/api/auth-storage'
 import { enableSilentRefresh, scheduleProactiveRefresh } from '../../../shared/api/refresh'
 import { CallButton } from './CallButton'
+import { LanguageSelector } from '../../../shared/i18n/LanguageSelector'
 import { useFleetBranding } from './useFleetBranding'
 import { ensureFleetSlug } from './ensureFleetSlug'
 
@@ -45,6 +46,12 @@ const FleetName = styled.h1`
   font-size: ${({ theme }) => theme.typography.fontSizeLg};
   font-weight: ${({ theme }) => theme.typography.fontWeightBold};
   color: ${({ theme }) => theme.colors.text};
+`
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
 `
 
 const Content = styled.main`
@@ -113,7 +120,10 @@ export function CustomerLayout() {
             )}
             <FleetName>{fleet?.name ?? t('customer.appName')}</FleetName>
           </Brand>
-          <CallButton phone={fleet?.phone} />
+          <HeaderActions>
+            <LanguageSelector />
+            <CallButton phone={fleet?.phone} />
+          </HeaderActions>
         </Header>
         <Content>
           <Outlet />

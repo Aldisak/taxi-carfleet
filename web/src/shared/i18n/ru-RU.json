@@ -1,0 +1,1451 @@
+{
+  "common": {
+    "language": "Язык"
+  },
+  "app": {
+    "title": "Taxi Диспетчерская",
+    "loading": "Загрузка...",
+    "error": "Произошла ошибка",
+    "offline": "Не в сети — показано последнее известное состояние"
+  },
+  "admin": {
+    "login": {
+      "title": "Вход администратора системы",
+      "email": "Эл. почта",
+      "emailPlaceholder": "superadmin@demo.local",
+      "password": "Пароль",
+      "submit": "Войти",
+      "loading": "Выполняется вход…",
+      "invalidCredentials": "Неверные учётные данные. Попробуйте ещё раз.",
+      "networkError": "Не удаётся подключиться к серверу. Проверьте подключение к интернету.",
+      "unknownError": "Произошла непредвиденная ошибка. Попробуйте ещё раз.",
+      "validation": {
+        "emailRequired": "Укажите эл. почту.",
+        "emailInvalid": "Введите корректный адрес эл. почты.",
+        "passwordRequired": "Укажите пароль."
+      }
+    },
+    "fleets": {
+      "title": "Управление автопарками",
+      "createTitle": "Создать новый автопарк",
+      "listTitle": "Существующие автопарки",
+      "create": "Создать автопарк",
+      "creating": "Создание…",
+      "createFailed": "Не удалось создать автопарк. Проверьте данные и попробуйте ещё раз.",
+      "loading": "Загрузка автопарков…",
+      "loadFailed": "Не удалось загрузить список автопарков.",
+      "active": "Активен",
+      "inactive": "Неактивен",
+      "passwordWarning": "Одноразовый пароль администратора для {{email}}. Он показывается только один раз — скопируйте его и передайте безопасным способом.",
+      "fields": {
+        "slug": "Идентификатор (slug)",
+        "name": "Название",
+        "phone": "Телефон",
+        "adminEmail": "Эл. почта администратора",
+        "status": "Статус"
+      },
+      "validation": {
+        "slugRequired": "Укажите идентификатор.",
+        "slugInvalid": "Идентификатор может содержать только строчные буквы, цифры и дефисы.",
+        "nameRequired": "Укажите название.",
+        "phoneRequired": "Укажите телефон.",
+        "emailRequired": "Укажите эл. почту администратора.",
+        "emailInvalid": "Введите корректный адрес эл. почты."
+      }
+    },
+    "platform": {
+      "title": "Обзор платформы",
+      "subtitle": "Состояние автопарков по всем арендаторам",
+      "loading": "Загрузка обзора платформы…",
+      "loadFailed": "Не удалось загрузить обзор платформы.",
+      "empty": "Автопарков пока нет.",
+      "backToFleets": "Назад к управлению автопарками",
+      "exportCsv": "Экспорт в CSV",
+      "csvFilename": "obzor-platformy.csv",
+      "noOrders": "Без заказов",
+      "sparklineLabel": "Тренд поездок за 12 недель для автопарка {{name}}",
+      "columns": {
+        "fleet": "Автопарк",
+        "ridesThisMonth": "Поездки в этом месяце",
+        "ridesLastMonth": "Поездки в прошлом месяце",
+        "momDelta": "MoM %",
+        "revenueThisMonth": "Выручка в этом месяце",
+        "activeDrivers": "Активные водители",
+        "activeCustomers": "Активные клиенты",
+        "sms": "SMS",
+        "smsCost": "Ориент. стоимость SMS",
+        "lastOrder": "Последний заказ",
+        "trend": "Тренд (12 недель)",
+        "health": "Состояние"
+      },
+      "health": {
+        "growing": "Растёт",
+        "stable": "Стабильно",
+        "declining": "Снижается",
+        "inactive": "Неактивен"
+      },
+      "totals": {
+        "title": "Сводка по платформе",
+        "fleets": "Всего автопарков",
+        "rides": "Поездки в этом месяце",
+        "revenue": "Выручка в этом месяце",
+        "growing": "Растущие автопарки",
+        "declining": "Снижающиеся автопарки",
+        "inactive": "Неактивные автопарки"
+      }
+    }
+  },
+  "nav": {
+    "board": "Диспетчерская",
+    "orders": "Заказы",
+    "settings": "Настройки",
+    "logout": "Выйти",
+    "mute": "Выключить звук",
+    "unmute": "Включить звук",
+    "reports": "Отчёты",
+    "audit": "Аудит",
+    "analytics": "Аналитика"
+  },
+  "login": {
+    "title": "Вход",
+    "fleetSlug": "Код автопарка",
+    "fleetSlugPlaceholder": "например, kolintaxi",
+    "email": "Эл. почта",
+    "emailPlaceholder": "vas@email.cz",
+    "password": "Пароль",
+    "submit": "Войти",
+    "invalidCredentials": "Неверные учётные данные. Попробуйте ещё раз.",
+    "networkError": "Не удаётся подключиться к серверу. Проверьте подключение к интернету.",
+    "loading": "Выполняется вход...",
+    "unknownError": "Произошла непредвиденная ошибка. Попробуйте ещё раз.",
+    "validation": {
+      "fleetSlugRequired": "Укажите код автопарка.",
+      "emailRequired": "Укажите эл. почту.",
+      "emailInvalid": "Введите корректный адрес эл. почты.",
+      "passwordRequired": "Укажите пароль."
+    }
+  },
+  "board": {
+    "form": {
+      "title": "Новый заказ",
+      "validation": {
+        "phoneRequired": "Укажите номер телефона.",
+        "phoneInvalid": "Введите корректный номер телефона (например, 777 123 456 или +420777123456).",
+        "pickupRequired": "Укажите место подачи.",
+        "pickupNoCoords": "Выберите место подачи из списка или нажмите на быстрый выбор.",
+        "scheduledAtInvalid": "Введите корректные дату и время.",
+        "scheduledAtPast": "Запланированное время должно быть в будущем.",
+        "passengersMin": "Число пассажиров должно быть не менее 1."
+      },
+      "phone": "Телефон",
+      "name": "Имя",
+      "pickup": "Подача",
+      "dropoff": "Назначение",
+      "when": "Когда",
+      "asap": "Как можно скорее",
+      "scheduledAt": "Запланированное время",
+      "passengers": "Пассажиры",
+      "note": "Примечание",
+      "pricePreview": "~ {{price}} Kč",
+      "distanceOnly": "{{km}} км",
+      "submit": "Создать заказ",
+      "creating": "Создание...",
+      "pickupPlaceholder": "Введите адрес подачи",
+      "dropoffPlaceholder": "Введите адрес назначения (необязательно)"
+    },
+    "columns": {
+      "orders": "Заказы",
+      "drivers": "Водители",
+      "map": "Карта"
+    },
+    "mapToggle": "Переключить карту",
+    "sections": {
+      "nove": "Новые",
+      "prirazene": "Назначенные / Ожидают принятия",
+      "probihajici": "Выполняются",
+      "naplanovane": "Запланированные (сегодня / завтра)",
+      "dokonceneDnes": "Завершённые сегодня"
+    },
+    "order": {
+      "asap": "ASAP",
+      "noDriver": "Не назначен",
+      "fixedPriceBadge": "ФИКС. {{price}} Kč",
+      "estimatedPrice": "~{{price}} Kč",
+      "elapsedTime": "{{sec}}с",
+      "elapsedTimeMin": "{{min}} мин"
+    },
+    "actions": {
+      "assign": "Назначить",
+      "reassign": "Переназначить",
+      "cancel": "Отменить",
+      "detail": "Подробнее",
+      "confirm": "Подтвердить",
+      "close": "Закрыть"
+    },
+    "cancelReasons": {
+      "title": "Причина отмены",
+      "zákazník zrušil": "Клиент отменил",
+      "nedorazil": "Не пришёл",
+      "omyl": "Ошибка",
+      "jiný": "Другое",
+      "freeTextPlaceholder": "Уточните причину...",
+      "required": "Выберите причину отмены"
+    },
+    "driverPicker": {
+      "title": "Выберите водителя",
+      "noDrivers": "Нет доступных водителей",
+      "loading": "Загрузка водителей..."
+    },
+    "conflict": "Заказ тем временем изменил кто-то другой"
+  },
+  "status": {
+    "order": {
+      "New": "Новый",
+      "Assigned": "Назначен",
+      "Accepted": "Принят",
+      "Arrived": "На месте",
+      "InProgress": "Выполняется",
+      "Completed": "Завершён",
+      "Cancelled": "Отменён"
+    },
+    "driver": {
+      "Free": "Свободен",
+      "EnRoute": "В пути",
+      "Busy": "Занят",
+      "Offline": "Не в сети"
+    }
+  },
+  "drivers": {
+    "overrideTitle": "Установить статус",
+    "setFree": "Свободен",
+    "setBusy": "Занят",
+    "setOffline": "Не в сети",
+    "positionAge": {
+      "unknown": "—",
+      "seconds": "{{n}} с назад",
+      "minutes": "{{n}} мин назад"
+    },
+    "noOrderCode": "—",
+    "overrideError": "Произошла ошибка при установке статуса"
+  },
+  "map": {
+    "loading": "Загрузка карты...",
+    "toggleShow": "Показать карту",
+    "toggleHide": "Скрыть карту",
+    "driverPopup": "Водитель: {{name}}",
+    "orderPopup": "Заказ: {{code}}",
+    "mapyLogoAlt": "Mapy.com — открыть на mapy.com",
+    "attributionLabel": "Источник картографических данных",
+    "unavailable": "Карта временно недоступна",
+    "noCoords": "без координат"
+  },
+  "settings": {
+    "title": "Настройки",
+    "accessDenied": "Доступ запрещён. Этот раздел доступен только администратору автопарка.",
+    "geoUsage": {
+      "title": "Расход картографических кредитов",
+      "creditsUsed": "Кредиты в этом месяце",
+      "budget": "Месячный бюджет",
+      "percent": "{{percent}} % бюджета",
+      "loading": "Загрузка расхода кредитов…",
+      "error": "Не удалось загрузить расход кредитов.",
+      "overBudget": "Бюджет превышен"
+    },
+    "tabs": {
+      "vehicles": "Автомобили",
+      "people": "Люди",
+      "fleet": "Автопарк",
+      "routesZones": "Маршруты и зоны"
+    },
+    "routesZones": {
+      "title": "Маршруты и зоны",
+      "tabs": {
+        "zones": "Зоны",
+        "routes": "Маршруты",
+        "places": "Места"
+      }
+    },
+    "zones": {
+      "title": "Зоны",
+      "listLabel": "Список зон",
+      "loading": "Загрузка зон…",
+      "loadingMap": "Загрузка карты…",
+      "empty": "Зон пока нет. Нарисуйте первую зону на карте ниже.",
+      "nameLabel": "Название зоны",
+      "namePlaceholder": "например, Центр Kutná Hora",
+      "nameRequired": "Сначала укажите название зоны.",
+      "modeCircle": "Круг",
+      "modePolygon": "Многоугольник",
+      "circleHint": "Нажмите на центр, затем нажмите на край, чтобы задать радиус.",
+      "polygonHint": "Нажимайте, чтобы добавлять точки, двойным щелчком замкните многоугольник.",
+      "circleMeta": "Круг · радиус {{radius}} м",
+      "polygonMeta": "Многоугольник · {{count}} точек",
+      "disabled": "выключено",
+      "delete": "Удалить",
+      "deleteAria": "Удалить зону {{name}}",
+      "saved": "Зона сохранена.",
+      "saveFailed": "Не удалось сохранить зону. Попробуйте ещё раз.",
+      "polygonTooFewPoints": "Многоугольнику нужно минимум 3 точки."
+    },
+    "vehicles": {
+      "title": "Автомобили",
+      "add": "Добавить автомобиль",
+      "edit": "Изменить",
+      "deactivate": "Деактивировать",
+      "activate": "Активировать",
+      "confirmDeactivate": "Вы действительно хотите деактивировать этот автомобиль?",
+      "inactive": "Неактивен",
+      "fields": {
+        "plate": "Гос. номер",
+        "make": "Марка",
+        "model": "Модель",
+        "color": "Цвет",
+        "seats": "Число мест",
+        "active": "Активен"
+      },
+      "validation": {
+        "plateRequired": "Укажите гос. номер.",
+        "plateTooLong": "Гос. номер может содержать не более 20 символов.",
+        "makeRequired": "Укажите марку.",
+        "modelRequired": "Укажите модель.",
+        "colorRequired": "Укажите цвет.",
+        "seatsMin": "Число мест должно быть не менее 1."
+      },
+      "save": "Сохранить",
+      "cancel": "Отменить",
+      "createSuccess": "Автомобиль добавлен.",
+      "updateSuccess": "Автомобиль обновлён.",
+      "deactivateSuccess": "Автомобиль деактивирован.",
+      "loading": "Загрузка автомобилей..."
+    },
+    "people": {
+      "title": "Люди",
+      "invite": "Пригласить",
+      "edit": "Изменить",
+      "deactivate": "Деактивировать",
+      "resetPassword": "Сбросить пароль",
+      "fields": {
+        "email": "Эл. почта",
+        "displayName": "Отображаемое имя",
+        "role": "Роль",
+        "phone": "Телефон",
+        "isActive": "Активен",
+        "lastLogin": "Последний вход"
+      },
+      "roles": {
+        "Driver": "Водитель",
+        "Dispatcher": "Диспетчер",
+        "FleetAdmin": "Администратор автопарка"
+      },
+      "validation": {
+        "emailRequired": "Укажите эл. почту.",
+        "emailInvalid": "Введите корректный адрес эл. почты.",
+        "displayNameRequired": "Укажите имя.",
+        "roleRequired": "Укажите роль."
+      },
+      "tempPassword": {
+        "title": "Временный пароль",
+        "warning": "Этот пароль показывается только один раз. Скопируйте его и передайте пользователю.",
+        "copy": "Копировать",
+        "copied": "Скопировано!",
+        "dismiss": "Закрыть"
+      },
+      "save": "Сохранить",
+      "cancel": "Отменить",
+      "inviteSuccess": "Приглашение отправлено.",
+      "updateSuccess": "Пользователь обновлён.",
+      "deactivateSuccess": "Пользователь деактивирован.",
+      "selfDeactivation": "Нельзя деактивировать собственную учётную запись.",
+      "driverIsOnline": "Сначала водитель должен выйти из сети.",
+      "loading": "Загрузка пользователей...",
+      "noLastLogin": "Никогда"
+    },
+    "fleet": {
+      "title": "Автопарк",
+      "name": "Название автопарка",
+      "phone": "Телефон автопарка",
+      "primaryColor": "Цвет бренда",
+      "primaryColorHex": "Цветовой код",
+      "welcomeText": "Приветственный текст",
+      "offerTimeout": "Тайм-аут предложения (с)",
+      "smsCap": "Месячный лимит SMS (Kč)",
+      "autoDispatch": "Автоматическое распределение",
+      "autoDispatchHint": "Доступно в версии 1.1",
+      "save": "Сохранить",
+      "saving": "Сохранение…",
+      "saved": "Настройки сохранены.",
+      "saveFailed": "Не удалось сохранить настройки. Попробуйте ещё раз.",
+      "loading": "Загрузка настроек...",
+      "logo": {
+        "label": "Логотип автопарка",
+        "hint": "PNG, не более 200 KB.",
+        "previewAlt": "Предпросмотр логотипа автопарка",
+        "notPng": "Логотип должен быть в формате PNG.",
+        "tooLarge": "Логотип превышает лимит 200 KB.",
+        "uploaded": "Логотип загружен.",
+        "uploadFailed": "Не удалось загрузить логотип. Проверьте формат и размер."
+      },
+      "validation": {
+        "nameRequired": "Укажите название автопарка.",
+        "phoneRequired": "Укажите телефон автопарка.",
+        "colorInvalid": "Введите корректный цветовой код в формате #RRGGBB.",
+        "offerTimeoutRange": "Тайм-аут предложения должен быть от 10 до 600 секунд.",
+        "smsCapInvalid": "Лимит SMS должен быть неотрицательным целым числом.",
+        "welcomeTooLong": "Приветственный текст может содержать не более 2000 символов."
+      }
+    },
+    "routes": {
+      "title": "Маршруты",
+      "listLabel": "Список маршрутов",
+      "loading": "Загрузка маршрутов…",
+      "empty": "Маршрутов пока нет. Добавьте первый маршрут ниже.",
+      "add": "Добавить маршрут",
+      "edit": "Изменить",
+      "delete": "Удалить",
+      "disabled": "выключено",
+      "priceMeta": "{{price}} Kč",
+      "moveUp": "Переместить маршрут {{name}} вверх",
+      "moveDown": "Переместить маршрут {{name}} вниз",
+      "enableAria": "Включить или выключить маршрут {{name}}",
+      "editAria": "Изменить маршрут {{name}}",
+      "deleteAria": "Удалить маршрут {{name}}",
+      "types": {
+        "PointToPoint": "От точки до точки",
+        "Zone": "Зона",
+        "ZoneToZone": "Между зонами"
+      },
+      "days": {
+        "mon": "Понедельник",
+        "tue": "Вторник",
+        "wed": "Среда",
+        "thu": "Четверг",
+        "fri": "Пятница",
+        "sat": "Суббота",
+        "sun": "Воскресенье"
+      },
+      "daysShort": {
+        "mon": "Пн",
+        "tue": "Вт",
+        "wed": "Ср",
+        "thu": "Чт",
+        "fri": "Пт",
+        "sat": "Сб",
+        "sun": "Вс"
+      },
+      "editor": {
+        "title": "Редактор маршрута",
+        "name": "Название маршрута",
+        "type": "Тип маршрута",
+        "price": "Цена (Kč)",
+        "pickupPick": "Нажмите на карту, чтобы указать место подачи.",
+        "pickupSet": "Подача: {{lat}}, {{lng}}",
+        "dropoffPick": "Нажмите на карту, чтобы указать место высадки.",
+        "dropoffSet": "Высадка: {{lat}}, {{lng}}",
+        "loadingMap": "Загрузка карты…",
+        "fromRadius": "Радиус подачи (м)",
+        "toRadius": "Радиус высадки (м)",
+        "fromZone": "Начальная зона",
+        "toZone": "Целевая зона",
+        "selectZone": "Выберите зону…",
+        "bidirectional": "Действует в обе стороны",
+        "days": "Действующие дни",
+        "validFrom": "Действует с",
+        "validTo": "Действует до",
+        "enabled": "Включено",
+        "save": "Сохранить",
+        "cancel": "Отменить"
+      },
+      "validation": {
+        "nameRequired": "Укажите название маршрута.",
+        "priceRequired": "Цена должна быть больше нуля.",
+        "daysRequired": "Выберите хотя бы один день.",
+        "pickupRequired": "Укажите место подачи на карте.",
+        "dropoffRequired": "Укажите место высадки на карте.",
+        "radiusRequired": "Радиусы должны быть больше нуля.",
+        "fromZoneRequired": "Выберите начальную зону.",
+        "toZoneRequired": "Выберите целевую зону."
+      },
+      "test": {
+        "title": "Проверить маршрут",
+        "pickPickup": "Нажмите на карту, чтобы указать место подачи.",
+        "pickupSet": "Подача: {{lat}}, {{lng}}",
+        "dropoffOptional": "При желании нажмите на карту, чтобы указать высадку.",
+        "dropoffSet": "Высадка: {{lat}}, {{lng}}",
+        "at": "Время (необязательно)",
+        "loading": "Расчёт цены…",
+        "fixed": "Фиксированная цена {{price}} Kč",
+        "estimate": "Оценка {{low}}–{{high}} Kč",
+        "meter": "По таксометру",
+        "unknown": "Не удалось определить цену.",
+        "quoteUnavailable": "Цену рассчитать невозможно, позвоните нам."
+      }
+    },
+    "places": {
+      "title": "Места",
+      "listLabel": "Список мест",
+      "loading": "Загрузка мест…",
+      "empty": "Мест пока нет. Добавьте первое место ниже.",
+      "add": "Добавить место",
+      "edit": "Изменить",
+      "delete": "Удалить",
+      "disabled": "выключено",
+      "editAria": "Изменить место {{name}}",
+      "deleteAria": "Удалить место {{name}}",
+      "editor": {
+        "title": "Редактор места",
+        "name": "Название места",
+        "address": "Адрес",
+        "addressPlaceholder": "например, Nádražní 1, Kutná Hora",
+        "pickCoords": "Нажмите на карту, чтобы указать местоположение.",
+        "coordsSet": "Местоположение: {{lat}}, {{lng}}",
+        "loadingMap": "Загрузка карты…",
+        "sortOrder": "Порядок",
+        "enabled": "Включено",
+        "save": "Сохранить",
+        "cancel": "Отменить"
+      },
+      "validation": {
+        "nameRequired": "Укажите название места.",
+        "addressRequired": "Укажите адрес.",
+        "coordsRequired": "Укажите местоположение на карте.",
+        "sortOrderInvalid": "Порядок не может быть отрицательным."
+      }
+    }
+  },
+  "search": {
+    "title": "Поиск заказов",
+    "filters": {
+      "dateFrom": "С",
+      "dateTo": "По",
+      "status": "Статус",
+      "allStatuses": "Все статусы",
+      "driver": "Водитель",
+      "allDrivers": "Все водители",
+      "search": "Искать",
+      "searchPlaceholder": "Код, телефон или имя",
+      "apply": "Применить",
+      "exportCsv": "Экспорт в CSV"
+    },
+    "table": {
+      "code": "Код",
+      "created": "Создано",
+      "when": "Когда",
+      "customer": "Клиент",
+      "route": "Маршрут",
+      "price": "Цена",
+      "driver": "Водитель",
+      "status": "Статус",
+      "noDriver": "—",
+      "asap": "ASAP",
+      "noResults": "Нет результатов",
+      "loading": "Загрузка..."
+    },
+    "pagination": {
+      "page": "Страница {{page}} / {{total}}",
+      "prev": "Назад",
+      "next": "Вперёд"
+    }
+  },
+  "driver": {
+    "login": {
+      "title": "Вход водителя",
+      "fleetSlug": "Код автопарка",
+      "fleetSlugPlaceholder": "например, kolintaxi",
+      "email": "Эл. почта",
+      "emailPlaceholder": "vas@email.cz",
+      "password": "Пароль",
+      "staySignedIn": "Оставаться в системе",
+      "submit": "Войти",
+      "loading": "Выполняется вход...",
+      "invalidCredentials": "Неверные учётные данные. Попробуй ещё раз.",
+      "networkError": "Не удаётся подключиться к серверу. Проверь подключение.",
+      "unknownError": "Произошла непредвиденная ошибка. Попробуй ещё раз.",
+      "validation": {
+        "fleetSlugRequired": "Укажи код автопарка.",
+        "emailRequired": "Укажи эл. почту.",
+        "emailInvalid": "Введи корректный адрес эл. почты.",
+        "passwordRequired": "Укажи пароль."
+      }
+    },
+    "install": {
+      "bannerTitle": "Установить приложение",
+      "bannerDescription": "Добавь приложение на главный экран для быстрого доступа.",
+      "installButton": "Установить",
+      "dismissButton": "Нет, спасибо",
+      "iosInstructions": "Добавить на главный экран: нажми «Поделиться», затем «На экран „Домой“»."
+    },
+    "permissions": {
+      "locationTitle": "Местоположение",
+      "locationDescription": "Приложению нужно знать твоё местоположение, чтобы принимать и отслеживать поездки.",
+      "notificationsTitle": "Уведомления",
+      "notificationsDescription": "Разреши уведомления, чтобы получать новые предложения поездок.",
+      "allow": "Разрешить",
+      "skip": "Пропустить"
+    },
+    "home": {
+      "title": "Taxi Водитель",
+      "status": {
+        "startShift": "Начать смену",
+        "endShift": "Завершить смену",
+        "waitingForOrder": "Жду заказ",
+        "rideInProgress": "Идёт поездка",
+        "viewRide": "Показать поездку"
+      },
+      "summary": {
+        "rides": "Поездки",
+        "cash": "Наличные",
+        "card": "Карта",
+        "hours": "Часы в сети"
+      },
+      "connection": {
+        "connected": "Подключено",
+        "connecting": "Подключение...",
+        "reconnecting": "Переподключение...",
+        "disconnected": "Отключено"
+      },
+      "vehicle": {
+        "label": "Автомобиль",
+        "placeholder": "Выбери автомобиль",
+        "noVehicleHint": "Выбери автомобиль, чтобы начать смену",
+        "noLocationHint": "Разреши местоположение, чтобы начать смену"
+      },
+      "errors": {
+        "goOnlineConflict": "Ты уже в сети",
+        "goOnlineNotFound": "Автомобиль не найден или неактивен",
+        "goOnlineFailed": "Не удалось начать смену. Попробуй ещё раз."
+      }
+    },
+    "ride": {
+      "navigate": "Навигация",
+      "navigateToDropoff": "Навигация к месту высадки",
+      "arrive": "Я на месте",
+      "start": "Начать поездку",
+      "complete": "Завершить поездку",
+      "noShow": "Клиент не пришёл",
+      "noShowCountdown": "Доступно через {{sec}} с",
+      "noShowConfirm": "Клиент не пришёл ({{min}} мин ожидания)",
+      "phone": "Телефон",
+      "pickup": "Подача",
+      "dropoff": "Назначение",
+      "note": "Примечание",
+      "map": "Карта",
+      "mapShow": "Показать карту",
+      "mapHide": "Скрыть карту",
+      "reassigned": "Заказ был переназначен",
+      "loading": "Загрузка поездки...",
+      "noRide": "Нет активной поездки",
+      "backHome": "На главную"
+    },
+    "complete": {
+      "title": "Завершить поездку",
+      "price": "Цена (Kč)",
+      "pricePlaceholder": "Введи цену",
+      "changePrice": "Изменить цену",
+      "overrideReason": "Причина изменения цены",
+      "overrideReasonPlaceholder": "Укажи причину (мин. 5 символов)",
+      "paymentTitle": "Способ оплаты",
+      "paymentCash": "Наличными",
+      "paymentCard": "Картой",
+      "paymentInvoice": "Счёт",
+      "submit": "Завершить",
+      "submitting": "Завершение...",
+      "successOverlay": "Готово ✓",
+      "queuedOverlay": "Будет отправлено после подключения",
+      "fixedLocked": "Фиксированная цена",
+      "staleRefetched": "Статус поездки изменился, проверь данные.",
+      "offlineHint": "Нет подключения, попробуй ещё раз.",
+      "keypad": {
+        "delete": "Удалить",
+        "clear": "Очистить"
+      },
+      "errors": {
+        "priceRequired": "Введи цену больше 0.",
+        "paymentRequired": "Выбери способ оплаты.",
+        "overrideReasonTooShort": "Причина изменения должна содержать минимум 5 символов."
+      }
+    },
+    "offer": {
+      "accept": "Принять",
+      "decline": "Отклонить",
+      "pickup": "Подача",
+      "dropoff": "Назначение",
+      "distance": "{{km}} км",
+      "eta": "{{min}} мин",
+      "priceFixed": "ФИКС.",
+      "priceEstimate": "Оценка",
+      "priceMeter": "Таксометр",
+      "priceCzk": "{{amount}} Kč",
+      "customerName": "Клиент",
+      "note": "Примечание",
+      "scheduledAt": "Запланировано",
+      "expired": "Предложение истекло",
+      "staleOffer": "Предложение больше недоступно",
+      "offlineHint": "Нет подключения, попробуй ещё раз",
+      "declineReasonTitle": "Причина отказа",
+      "declineReasonFar": "Далеко",
+      "declineReasonBreak": "У меня перерыв",
+      "declineReasonOther": "Другая причина",
+      "declineReasonRequired": "Выбери причину отказа",
+      "silentMode": "Тихий режим",
+      "accepting": "Принимаю...",
+      "declining": "Отклоняю..."
+    },
+    "position": {
+      "stale": "Местоположение не отправляется"
+    },
+    "queue": {
+      "pending": "ожидает отправки"
+    },
+    "nav": {
+      "label": "Навигация",
+      "home": "Главная",
+      "history": "История",
+      "settings": "Настройки"
+    },
+    "history": {
+      "title": "История поездок",
+      "dateLabel": "Дата",
+      "today": "Сегодня",
+      "empty": "В этот день поездок нет.",
+      "loading": "Загрузка...",
+      "ride": "Поездка",
+      "active": "Идёт",
+      "totalsTitle": "Сводка",
+      "ridesCount": "Поездок",
+      "cashTotal": "Наличные",
+      "cardTotal": "Карта",
+      "invoiceTotal": "Счёт",
+      "payment": {
+        "Cash": "Наличными",
+        "Card": "Картой",
+        "Invoice": "Счёт"
+      }
+    },
+    "settings": {
+      "title": "Настройки",
+      "navAppTitle": "Навигация",
+      "navAppGeo": "Карта по умолчанию",
+      "navAppGoogle": "Google Maps",
+      "navAppMapy": "Mapy.cz",
+      "navAppWaze": "Waze",
+      "silentModeTitle": "Тихий режим",
+      "silentModeDescription": "Отключает звук и вибрацию для новых предложений.",
+      "versionLabel": "Версия приложения",
+      "logout": "Выйти",
+      "diagnostika": {
+        "title": "Диагностика",
+        "hint": "Эти данные ты можешь продиктовать диспетчеру.",
+        "locationPermission": "Разрешение на местоположение",
+        "pushPermission": "Разрешение на уведомления",
+        "lastPositionSent": "Последнее отправленное местоположение",
+        "connectionState": "Состояние подключения",
+        "never": "Никогда",
+        "unknown": "Неизвестно",
+        "permission": {
+          "granted": "Разрешено",
+          "denied": "Запрещено",
+          "prompt": "Не запрошено",
+          "default": "Не запрошено"
+        },
+        "connection": {
+          "connected": "Подключено",
+          "connecting": "Подключение",
+          "reconnecting": "Переподключение",
+          "disconnected": "Отключено"
+        }
+      }
+    }
+  },
+  "orders": {
+    "drawer": {
+      "title": "Детали заказа",
+      "close": "Закрыть",
+      "edit": "Изменить",
+      "save": "Сохранить",
+      "saving": "Сохранение...",
+      "cancel": "Отменить",
+      "conflict": "Заказ тем временем изменил кто-то другой",
+      "editableStatuses": "Можно изменять только в статусе «Новый» или «Назначен»",
+      "fields": {
+        "pickup": "Подача",
+        "dropoff": "Назначение",
+        "scheduledAt": "Запланированное время",
+        "note": "Примечание",
+        "passengers": "Пассажиры"
+      }
+    },
+    "timeline": {
+      "title": "История",
+      "noEvents": "Нет событий",
+      "actor": {
+        "System": "Система",
+        "Driver": "Водитель",
+        "Dispatcher": "Диспетчер",
+        "Customer": "Клиент"
+      },
+      "event": {
+        "Created": "Заказ создан",
+        "Assigned": "Назначен водителю",
+        "Accepted": "Водитель принял",
+        "Declined": "Водитель отклонил",
+        "Timeout": "Истекло время предложения",
+        "Arrived": "Водитель прибыл",
+        "Started": "Поездка начата",
+        "Completed": "Поездка завершена",
+        "Cancelled": "Заказ отменён",
+        "Reassigned": "Переназначен другому водителю",
+        "PriceOverridden": "Цена изменена",
+        "NoteAdded": "Добавлено примечание",
+        "Updated": "Заказ изменён"
+      }
+    },
+    "actions": {
+      "assign": "Назначить",
+      "reassign": "Переназначить",
+      "cancel": "Отменить",
+      "accept": "Принять",
+      "arrive": "На месте",
+      "start": "Начать поездку",
+      "complete": "Завершить",
+      "decline": "Отклонить",
+      "title": "Действия"
+    },
+    "loading": "Загрузка...",
+    "notFound": "Заказ не найден"
+  },
+  "customer": {
+    "appName": "Taxi",
+    "footer": {
+      "gdpr": "Защита персональных данных"
+    },
+    "call": "Позвонить",
+    "callAria": "Позвонить в диспетчерскую {{phone}}",
+    "callUnavailableAria": "Номер телефона диспетчерской пока недоступен",
+    "offline": {
+      "title": "Вы не в сети — позвоните нам",
+      "orderingDisabled": "Оформление заказа сейчас недоступно. Пожалуйста, позвоните нам."
+    },
+    "home": {
+      "commonRoutesTitle": "Популярные маршруты",
+      "customAddress": "Свой адрес",
+      "activeOrderTitle": "У вас есть активный заказ {{code}} — отслеживать",
+      "activeOrderAria": "Отслеживать активный заказ {{code}}"
+    },
+    "order": {
+      "fixedPrice": "Цена {{price}} — фиксированная",
+      "noteLabel": "Где именно вас забрать?",
+      "notePlaceholder": "например, у главного входа",
+      "whenLabel": "Когда вас забрать",
+      "whenNow": "Сейчас",
+      "whenScheduled": "К времени",
+      "scheduledAtLabel": "Дата и время подачи",
+      "passengersLabel": "Число пассажиров",
+      "passengersDecrease": "Убрать пассажира",
+      "passengersIncrease": "Добавить пассажира",
+      "morePassengers": "Больше пассажиров? Позвоните нам.",
+      "submit": "Заказать",
+      "submitting": "Оформляем заказ...",
+      "loginPrompt": "Чтобы завершить заказ, пожалуйста, войдите.",
+      "zonePickupLabel": "Откуда вас забрать? (в зоне)",
+      "zoneDropoffLabel": "Куда вы едете? (в целевой зоне)",
+      "zonePickupRequired": "Сначала выберите место подачи в зоне.",
+      "zoneConfirmed": "Адрес в зоне — цена фиксированная.",
+      "outsideZone": "Указанный адрес находится вне зоны этого маршрута. Выберите другое место или позвоните нам.",
+      "offlineBlocked": "Вы не в сети. Сейчас заказ создать нельзя — пожалуйста, позвоните нам.",
+      "errorTooSoon": "Подача возможна не ранее чем через 20 минут.",
+      "errorTooLate": "Подачу можно запланировать не более чем на 7 дней вперёд.",
+      "errorScheduledInvalid": "Пожалуйста, введите корректные дату и время.",
+      "errorCreateFailed": "Не удалось создать заказ. Пожалуйста, попробуйте ещё раз.",
+      "routeNotFound": "Не удалось загрузить маршрут."
+    },
+    "custom": {
+      "title": "Свой заказ",
+      "pickupLabel": "Откуда вас забрать?",
+      "pickupPlaceholder": "Введите адрес подачи",
+      "dropoffLabel": "Куда вы едете? (необязательно)",
+      "dropoffPlaceholder": "Скажу водителю",
+      "useMyLocation": "Использовать моё местоположение",
+      "myLocationLabel": "Моё местоположение (GPS)",
+      "locationDenied": "Не удалось определить местоположение. Введите адрес вручную или передвиньте маркер на карте.",
+      "suggestionsLabel": "Варианты адресов",
+      "noSuggestions": "Нет вариантов",
+      "showMap": "Указать на карте",
+      "hideMap": "Скрыть карту",
+      "mapLabel": "Карта для выбора места подачи",
+      "dragHint": "Передвиньте маркер точно на место подачи.",
+      "quoteFixed": "Цена {{price}} — фиксированная",
+      "quoteEstimate": "Оценка {{low}} – {{high}}",
+      "quoteEstimateOrientacni": "Ориентировочная оценка {{low}} – {{high}}",
+      "quoteMeter": "По таксометру",
+      "quoteUnavailable": "Цену рассчитать невозможно, позвоните нам.",
+      "submit": "Заказать",
+      "submitting": "Оформляем заказ...",
+      "pickupRequired": "Сначала выберите место подачи.",
+      "loginPrompt": "Чтобы завершить заказ, пожалуйста, войдите."
+    },
+    "tracking": {
+      "title": "Отслеживание поездки",
+      "loading": "Загружаем...",
+      "expired": "Срок ссылки истёк",
+      "expiredHint": "Срок действия ссылки для отслеживания истёк. Пожалуйста, позвоните нам.",
+      "notFound": "Не удалось найти заказ.",
+      "loginNeeded": "Чтобы отслеживать эту поездку, пожалуйста, войдите.",
+      "headline": {
+        "new": "Ищем водителя…",
+        "assignedEta": "Водитель {{name}} приедет через ~{{eta}} мин",
+        "assignedNoEta": "Водитель {{name}} в пути",
+        "arrived": "Водитель на месте",
+        "inProgress": "Вы едете",
+        "completed": "Готово — {{price}} Kč",
+        "completedNoPrice": "Готово",
+        "cancelled": "Заказ был отменён"
+      },
+      "vehicleLabel": "Автомобиль",
+      "dropoffLabel": "Назначение",
+      "mapLabel": "Карта с отслеживанием автомобиля",
+      "showMap": "Показать карту",
+      "hideMap": "Скрыть карту",
+      "carLabel": "Местоположение автомобиля",
+      "pickupLabel": "Место подачи",
+      "detailsTitle": "Подробности",
+      "showDetails": "Показать подробности",
+      "hideDetails": "Скрыть подробности",
+      "codeLabel": "Код заказа",
+      "pickupAddress": "Откуда",
+      "dropoffAddress": "Куда",
+      "timeLabel": "Время",
+      "timeAsap": "Как можно скорее",
+      "priceLabel": "Цена",
+      "driverLabel": "Водитель",
+      "cancel": "Отменить заказ",
+      "cancelAcceptedHint": "Водитель уже едет, отменяйте, пожалуйста, только в случае необходимости.",
+      "cancelDialogTitle": "Отменить заказ?",
+      "cancelDialogBody": "Вы действительно хотите отменить этот заказ?",
+      "cancelConfirm": "Да, отменить",
+      "cancelDismiss": "Нет, оставить",
+      "cancelTooLate": "Заказ уже нельзя отменить.",
+      "cancelFailed": "Не удалось отменить заказ. Пожалуйста, попробуйте ещё раз.",
+      "cancelling": "Отменяем...",
+      "ratingSeam": "Пожалуйста, оцените свою поездку.",
+      "pushPromptTitle": "Хотите получить уведомление, когда водитель приедет?",
+      "pushAllow": "Включить уведомления",
+      "pushDismiss": "Не сейчас"
+    },
+    "login": {
+      "title": "Вход",
+      "phoneLabel": "Номер телефона",
+      "phonePlaceholder": "123 456 789",
+      "sendCode": "Отправить код",
+      "sending": "Отправляем...",
+      "codeLabel": "Код подтверждения",
+      "codeHint": "Введите 6-значный код, который мы отправили вам по SMS.",
+      "verifying": "Проверяем...",
+      "resend": "Отправить код повторно",
+      "resendIn": "Отправить код повторно через {{seconds}} с",
+      "resent": "Мы отправили вам новый код.",
+      "changePhone": "Изменить номер",
+      "invalidPhone": "Введите корректный номер телефона.",
+      "codeMismatch": "Код не совпадает, попробуйте ещё раз.",
+      "tooManyRequests": "Подождите немного и попробуйте ещё раз.",
+      "networkError": "Не удаётся подключиться к серверу. Проверьте подключение.",
+      "unknownError": "Произошла непредвиденная ошибка. Попробуйте ещё раз."
+    },
+    "rating": {
+      "title": "Оцените свою поездку",
+      "starsLegend": "Число звёзд",
+      "starLabel": "Оценить на {{stars}} звёзд",
+      "commentLabel": "Комментарий (необязательно)",
+      "commentPlaceholder": "Напишите нам, как вам понравилась поездка",
+      "submit": "Отправить оценку",
+      "submitting": "Отправляем...",
+      "thanks": "Спасибо за оценку.",
+      "yourRating": "Ваша оценка: {{stars}} из 5",
+      "submitFailed": "Не удалось отправить оценку. Пожалуйста, попробуйте ещё раз.",
+      "offline": "Оценку можно отправить только в сети."
+    },
+    "history": {
+      "title": "История поездок",
+      "empty": "Поездок пока нет",
+      "reorder": "Заказать снова",
+      "openAria": "Показать поездку {{code}}",
+      "statusCompleted": "Завершено",
+      "statusCancelled": "Отменено",
+      "statusActive": "Идёт",
+      "priceUnknown": "—",
+      "offline": "Вы не в сети — показываем последние известные данные."
+    }
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "empty": "Уведомлений пока нет.",
+    "failedSmsIcon": "Не удалось отправить SMS — позвоните клиенту",
+    "statusOf": "Статус: {{status}}",
+    "status": {
+      "sent": "Отправлено",
+      "failed": "Ошибка",
+      "queued": "В очереди",
+      "skippedCap": "Пропущено (лимит)",
+      "skippedNoChannel": "Пропущено (нет канала)",
+      "unknown": "Неизвестный статус"
+    },
+    "channel": {
+      "sms": "SMS",
+      "push": "Push",
+      "unknown": "Канал"
+    },
+    "event": {
+      "OrderCreatedForCustomer": "Заказ принят",
+      "DriverAssigned": "Назначен водитель",
+      "DriverArrived": "Водитель на месте",
+      "RideStarted": "Поездка начата",
+      "RideCompleted": "Поездка завершена",
+      "OrderCancelledByFleet": "Отменено диспетчерской",
+      "OrderCancelledByCustomer": "Отменено клиентом",
+      "OfferToDriver": "Предложение водителю",
+      "DriverDeclined": "Водитель отклонил",
+      "DriverTimedOut": "Водитель не ответил",
+      "NewAppOrderForDispatch": "Новый заказ из приложения",
+      "ScheduledOrderReminder": "Напоминание о запланированной поездке"
+    },
+    "settings": {
+      "title": "SMS-уведомления",
+      "monthlyCount": "Отправлено SMS в этом месяце",
+      "estimatedCost": "Ориентировочная стоимость",
+      "cap": "Месячный лимит",
+      "nearCap": "Вы приближаетесь к месячному лимиту SMS.",
+      "overCap": "Месячный лимит SMS исчерпан — отправляются только SMS о прибытии водителя."
+    }
+  },
+  "reports": {
+    "title": "Отчёты",
+    "driverReport": {
+      "title": "Отчёт по водителям",
+      "driver": "Водитель",
+      "allDrivers": "Все водители",
+      "from": "С",
+      "to": "По",
+      "downloadCsv": "Скачать CSV",
+      "downloading": "Скачивание...",
+      "selectDriver": "Выберите водителя, чтобы показать его отчёт."
+    },
+    "table": {
+      "day": "День",
+      "completed": "Завершённые",
+      "cancelled": "Отменённые",
+      "cash": "Наличные",
+      "card": "Карта",
+      "invoice": "Счёт",
+      "total": "Итого",
+      "hoursOnline": "Часов в сети",
+      "priceOverrides": "Изменения цены",
+      "totalsRow": "Итого",
+      "avgRating": "Средняя оценка",
+      "noRating": "–",
+      "empty": "Нет данных за выбранный период"
+    },
+    "fleet": {
+      "title": "Отчёт по автопарку",
+      "rides": "Поездки",
+      "revenue": "Выручка",
+      "avgPrice": "Средняя цена",
+      "timeToAssign": "Время до назначения",
+      "timeToPickup": "Время до подачи",
+      "cancellationRate": "Доля отмен",
+      "appShare": "Доля из приложения",
+      "phoneShare": "Доля по телефону",
+      "fixedRouteShare": "Доля фиксированных маршрутов",
+      "smsCount": "Число SMS",
+      "smsCost": "Ориентировочная стоимость SMS"
+    },
+    "chart": {
+      "title": "Поездки по дням",
+      "empty": "Нет поездок за период",
+      "barLabel": "{{day}}: {{rides}} поездок"
+    },
+    "topRoutes": {
+      "title": "Самые частые маршруты",
+      "count": "{{count}}×",
+      "empty": "Нет маршрутов"
+    },
+    "ratings": {
+      "title": "Оценки",
+      "stars": "{{stars}} из 5",
+      "order": "Заказ",
+      "driver": "Водитель",
+      "noComment": "Без комментария",
+      "empty": "Оценок нет"
+    },
+    "loading": "Загрузка отчёта...",
+    "error": "Не удалось загрузить отчёт.",
+    "accessDenied": "У вас нет доступа к этой странице."
+  },
+  "audit": {
+    "title": "Аудит",
+    "filters": {
+      "actor": "Автор",
+      "entity": "Сущность",
+      "from": "С",
+      "to": "По",
+      "orderCode": "Код заказа",
+      "apply": "Фильтровать",
+      "clear": "Сбросить фильтр",
+      "allEntities": "Все сущности"
+    },
+    "table": {
+      "time": "Время",
+      "actor": "Автор",
+      "entity": "Сущность",
+      "event": "Событие",
+      "order": "Заказ"
+    },
+    "empty": "Записей нет",
+    "loading": "Загрузка аудита...",
+    "error": "Не удалось загрузить аудит.",
+    "accessDenied": "У вас нет доступа к этой странице.",
+    "page": "Страница {{page}}",
+    "prev": "Назад",
+    "next": "Вперёд",
+    "event": {
+      "StatusOverride": "Ручное изменение статуса",
+      "Unknown": "Неизвестное событие"
+    }
+  },
+  "analytics": {
+    "ranges": {
+      "dnes": "Сегодня",
+      "7dni": "Последние 7 дней",
+      "tentoMesic": "Этот месяц",
+      "minulyMesic": "Прошлый месяц",
+      "kvartal": "Квартал",
+      "rok": "Год",
+      "vlastni": "Свой"
+    },
+    "period": {
+      "label": "Период"
+    },
+    "granularity": {
+      "label": "Гранулярность",
+      "day": "По дням",
+      "week": "По неделям",
+      "month": "По месяцам"
+    },
+    "compare": "Сравнить с предыдущим периодом",
+    "revenue": {
+      "empty": "Нет данных за выбранный период",
+      "loading": "Загрузка выручки…",
+      "error": "Не удалось загрузить аналитические данные.",
+      "series": {
+        "title": "Динамика выручки по способу оплаты",
+        "tableCaption": "Выручка по периодам (доступно для программ чтения с экрана)",
+        "tableBucket": "Период",
+        "tableCash": "Наличные (Kč)",
+        "tableCard": "Карта (Kč)",
+        "tableInvoice": "Счёт (Kč)",
+        "tableTotal": "Итого (Kč)"
+      },
+      "source": {
+        "title": "Доля выручки по источнику заказа",
+        "tableCaption": "Выручка по источнику (доступно для программ чтения с экрана)",
+        "tableSource": "Источник",
+        "tableRevenue": "Выручка (Kč)"
+      },
+      "priceType": {
+        "title": "Доля выручки по типу цены",
+        "tableCaption": "Выручка по типу цены (доступно для программ чтения с экрана)",
+        "tablePriceType": "Тип цены",
+        "tableRevenue": "Выручка (Kč)"
+      },
+      "aovTrend": {
+        "title": "Тренд средней стоимости поездки (AOV)",
+        "tableCaption": "AOV по периодам (доступно для программ чтения с экрана)",
+        "tableBucket": "Период",
+        "tableAov": "AOV (Kč)"
+      },
+      "priceOverride": {
+        "title": "Влияние отклонений цены",
+        "count": "Число отклонений",
+        "totalDelta": "Общее влияние (Kč)",
+        "reasonsTitle": "Самые частые причины",
+        "tableReason": "Причина",
+        "tableCount": "Число"
+      },
+      "topRoutes": {
+        "title": "Самые прибыльные маршруты",
+        "tableCaption": "Выручка по маршрутам",
+        "tableFrom": "Откуда",
+        "tableTo": "Куда",
+        "tableRides": "Поездки",
+        "tableRevenue": "Выручка (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "Экспорт в CSV"
+      },
+      "zoneRevenue": {
+        "title": "Выручка по зонам",
+        "tableCaption": "Выручка по зонам",
+        "tableZone": "Зона",
+        "tableRides": "Поездки",
+        "tableRevenue": "Выручка (Kč)",
+        "tableAov": "AOV (Kč)",
+        "csvLabel": "Экспорт в CSV"
+      },
+      "smsCost": {
+        "title": "Расходы на SMS",
+        "tableCaption": "Расходы на SMS по периодам (доступно для программ чтения с экрана)",
+        "tableBucket": "Период",
+        "tableSmsCount": "Число SMS",
+        "tableCost": "Расходы (Kč)"
+      }
+    },
+    "drivers": {
+      "loading": "Загрузка водителей…",
+      "error": "Не удалось загрузить аналитические данные.",
+      "empty": "Нет данных за выбранный период",
+      "league": {
+        "title": "Рейтинг водителей",
+        "tableCaption": "Статистика водителей",
+        "tableDriver": "Водитель",
+        "tableRides": "Поездки",
+        "tableRevenue": "Выручка (Kč)",
+        "tableOnline": "В сети (ч.)",
+        "tableUtil": "Загрузка (%)",
+        "tableRevenuePerHour": "Выручка/ч.",
+        "tableAcceptance": "Принятие (%)",
+        "tableDeclines": "Отказы",
+        "tableCancellations": "Отмены",
+        "tableNoShows": "No-show",
+        "tableRating": "Оценка",
+        "sortAsc": "Сортировать по возрастанию",
+        "sortDesc": "Сортировать по убыванию",
+        "csvLabel": "Экспорт в CSV"
+      },
+      "retention": {
+        "title": "Удержание водителей (по неделям)",
+        "tableCaption": "Удержание водителей по неделям (доступно для программ чтения с экрана)",
+        "tableWeek": "Неделя",
+        "tableActive": "Активные",
+        "tableNew": "Новые",
+        "tableChurned": "Ушедшие",
+        "activeLabel": "Активные",
+        "newLabel": "Впервые активные",
+        "churnedLabel": "Ушедшие"
+      },
+      "drilldown": {
+        "backLabel": "Назад к таблице",
+        "weeklyTitle": "Недельный тренд",
+        "weeklyCaption": "Недельная статистика водителя (доступно для программ чтения с экрана)",
+        "tableWeek": "Неделя",
+        "tableRides": "Поездки",
+        "tableRevenue": "Выручка (Kč)",
+        "tableRating": "Оценка",
+        "lowRatedTitle": "Поездки с низкой оценкой (≤ 3 звёзды)",
+        "tableCode": "Код",
+        "tableCompleted": "Завершено",
+        "tableStars": "Звёзды",
+        "tableComment": "Комментарий",
+        "tablePickup": "Подача",
+        "tableDropoff": "Высадка",
+        "noComment": "—",
+        "noLowRated": "Нет поездок с оценкой ≤ 3 звёзды."
+      }
+    },
+    "customers": {
+      "loading": "Загрузка клиентов…",
+      "error": "Не удалось загрузить аналитические данные.",
+      "empty": "Нет данных за выбранный период",
+      "summary": {
+        "title": "Сводка",
+        "totalRides": "Всего поездок",
+        "totalRevenue": "Всего выручка (Kč)",
+        "newIdentities": "Новые клиенты",
+        "returningIdentities": "Вернувшиеся клиенты",
+        "repeatRate": "Доля повторных (%)",
+        "freqOne": "Частота 1×",
+        "freqTwoToFive": "Частота 2–5×",
+        "freqSixPlus": "Частота 6+×"
+      },
+      "newVsReturning": {
+        "title": "Новые и вернувшиеся клиенты",
+        "tableCaption": "Новые и вернувшиеся клиенты по периодам (доступно для программ чтения с экрана)",
+        "tableBucket": "Период",
+        "tableNew": "Новые",
+        "tableReturning": "Вернувшиеся",
+        "newLabel": "Новые клиенты",
+        "returningLabel": "Вернувшиеся клиенты"
+      },
+      "cohort": {
+        "title": "Когортное удержание клиентов",
+        "tableCaption": "Когортное удержание (клиенты, активные в данном месяце после привлечения)",
+        "tableAcqMonth": "Когорта",
+        "monthHeader": "Месяц {{n}}",
+        "csvLabel": "Экспорт в CSV"
+      },
+      "topCustomers": {
+        "title": "Лучшие клиенты",
+        "tableCaption": "Лучшие клиенты по числу поездок",
+        "tableCustomer": "Клиент",
+        "tablePhone": "Телефон",
+        "tableRides": "Поездки",
+        "tableRevenue": "Выручка (Kč)",
+        "unknown": "Неизвестный"
+      },
+      "ratings": {
+        "title": "Оценки клиентов",
+        "avgRating": "Средняя оценка",
+        "totalRated": "Оценено поездок",
+        "distribution": {
+          "title": "Распределение оценок (1–5 звёзд)",
+          "tableCaption": "Распределение оценок (доступно для программ чтения с экрана)",
+          "tableStars": "Звёзды",
+          "tableCount": "Число",
+          "datasetLabel": "Число оценок"
+        },
+        "trend": {
+          "title": "Тренд средней оценки",
+          "tableCaption": "Тренд оценок по периодам (доступно для программ чтения с экрана)",
+          "tableBucket": "Период",
+          "tableAvg": "Среднее",
+          "tableRides": "Поездок"
+        },
+        "worstRated": {
+          "title": "Поездки с худшей оценкой (≤ 3 звёзды)",
+          "tableCaption": "Поездки с худшими оценками",
+          "tableCode": "Код",
+          "tableCompleted": "Завершено",
+          "tableStars": "Звёзды",
+          "tableComment": "Комментарий",
+          "tableDriver": "Водитель",
+          "noComment": "—",
+          "empty": "Нет поездок с оценкой ≤ 3."
+        }
+      }
+    },
+    "tabs": {
+      "prehled": "Обзор",
+      "poptavka": "Спрос",
+      "provoz": "Работа",
+      "trzby": "Выручка",
+      "ridici": "Водители",
+      "zakaznici": "Клиенты",
+      "placeholder": "Эта вкладка будет доступна в будущей версии."
+    },
+    "overview": {
+      "title": "Обзор",
+      "rides": "Поездки",
+      "revenueCzk": "Выручка",
+      "aov": "Средняя поездка",
+      "fulfillmentRate": "Выполнено",
+      "cancellationRate": "Доля отмен",
+      "activeCustomers": "Активные клиенты",
+      "newCustomers": "Новые клиенты",
+      "activeDrivers": "Активные водители",
+      "onlineDriverHours": "Ч. в сети",
+      "revenuePerOnlineHour": "Выручка / ч.",
+      "avgRating": "Средняя оценка",
+      "chartLabel": "Динамика поездок и выручки",
+      "chartTableCaption": "Тренд поездок и выручки (доступно для программ чтения с экрана)",
+      "chartTableBucket": "Период",
+      "chartTableRides": "Поездки",
+      "chartTableRevenue": "Выручка (Kč)",
+      "empty": "Нет данных за выбранный период",
+      "deltaPositive": "+{{value}}",
+      "deltaNegative": "{{value}}",
+      "loading": "Загрузка обзора…",
+      "error": "Не удалось загрузить аналитические данные."
+    },
+    "demand": {
+      "loading": "Загрузка спроса…",
+      "error": "Не удалось загрузить аналитические данные.",
+      "empty": "Нет данных за выбранный период",
+      "heatmap": {
+        "title": "Тепловая карта спроса (час × день)",
+        "tableCaption": "Спрос по часам и дням (доступно для программ чтения с экрана)",
+        "tableHour": "Час",
+        "csvLabel": "Экспорт в CSV"
+      },
+      "supplyDemand": {
+        "title": "Предложение и спрос по часам",
+        "tableCaption": "Предложение и спрос по часам (доступно для программ чтения с экрана)",
+        "tableHour": "Час",
+        "tableOrders": "Спрос (поездки)",
+        "tableSupplyHours": "Предложение (ч. в сети)"
+      },
+      "unmetDemand": {
+        "title": "Неудовлетворённый спрос по часам",
+        "tableCaption": "Неудовлетворённый спрос по часам (доступно для программ чтения с экрана)",
+        "tableHour": "Час",
+        "tableCount": "Не выполнено"
+      },
+      "utilization": {
+        "title": "Загрузка автопарка",
+        "fleetLabel": "Загрузка автопарка",
+        "driverTableCaption": "Загрузка водителей (доступно для программ чтения с экрана)",
+        "tableDriver": "Водитель",
+        "tableBusyH": "Занято (ч.)",
+        "tableOnlineH": "В сети (ч.)",
+        "tableUtil": "Загрузка"
+      },
+      "zonePickups": {
+        "title": "Подачи по зонам",
+        "tableCaption": "Подачи по зонам",
+        "tableZone": "Зона",
+        "tableCount": "Подачи",
+        "csvLabel": "Экспорт в CSV"
+      },
+      "topRoutes": {
+        "title": "Самые частые маршруты",
+        "tableCaption": "Самые частые маршруты",
+        "tableFrom": "Откуда",
+        "tableTo": "Куда",
+        "tableCount": "Число",
+        "csvLabel": "Экспорт в CSV"
+      }
+    },
+    "operations": {
+      "loading": "Загрузка работы…",
+      "error": "Не удалось загрузить аналитические данные.",
+      "sla": {
+        "title": "Метрики SLA",
+        "tableCaption": "Метрики SLA (доступно для программ чтения с экрана)",
+        "tableMetric": "Метрика",
+        "tableP50": "p50 (медиана)",
+        "tableP90": "p90",
+        "tableSampleCount": "Число поездок"
+      },
+      "offerFunnel": {
+        "title": "Воронка предложений",
+        "tableCaption": "Воронка предложений (доступно для программ чтения с экрана)",
+        "tableStage": "Этап",
+        "tableCount": "Число",
+        "labelOffersMade": "Предложения отправлены",
+        "labelAccepted": "Принято",
+        "labelDeclined": "Отклонено",
+        "labelTimeouts": "Истечения",
+        "avgOffersLabel": "Среднее число предложений на поездку"
+      },
+      "lifecycle": {
+        "title": "Воронка жизненного цикла",
+        "tableCaption": "Жизненный цикл заказов (доступно для программ чтения с экрана)",
+        "tableStage": "Этап",
+        "tableCount": "Число",
+        "labelCreated": "Создано",
+        "labelAssigned": "Назначено",
+        "labelAccepted": "Принято",
+        "labelArrived": "На месте",
+        "labelInProgress": "Выполняется",
+        "labelCompleted": "Завершено"
+      },
+      "cancellations": {
+        "title": "Отмены",
+        "byRoleCaption": "Отмены по роли (доступно для программ чтения с экрана)",
+        "byStatusCaption": "Отмены по статусу на момент отмены",
+        "byHourTitle": "Отмены по часу дня",
+        "byHourCaption": "Отмены по часу дня",
+        "tableRole": "Роль",
+        "tableStatus": "Статус при отмене",
+        "tableHour": "Час",
+        "tableCount": "Число",
+        "noShowShareLabel": "Доля отмен no-show"
+      }
+    }
+  }
+}

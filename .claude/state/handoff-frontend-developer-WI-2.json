@@ -1,0 +1,52 @@
+{
+  "wi_id": "WI-2",
+  "status": "done",
+  "files_changed": [
+    "web/src/shared/i18n/resolveInitialLanguage.ts (new; pure registry-driven detection + tl->fil-PH alias)",
+    "web/src/shared/i18n/resolveInitialLanguage.test.ts (new)",
+    "web/src/shared/i18n/languageStorage.ts (new; key 'app.language', try/catch, SUPPORTED_LOCALES validation)",
+    "web/src/shared/i18n/languageStorage.test.ts (new)",
+    "web/src/shared/i18n/useLanguage.ts (new; { current, setLanguage })",
+    "web/src/shared/i18n/useLanguage.test.ts (new)",
+    "web/src/shared/i18n/applyInitialLanguage.ts (new; startup-only wiring, called from main.tsx)",
+    "web/src/shared/i18n/formatStaysCs.test.ts (new; AC#6 non-goal regression guard)",
+    "web/src/main.tsx (call applyInitialLanguage() before render)",
+    "web/playwright.config.ts (top-level use.locale = 'cs-CZ')"
+  ],
+  "files_touched": [
+    "web/src/shared/i18n/resolveInitialLanguage.ts",
+    "web/src/shared/i18n/resolveInitialLanguage.test.ts",
+    "web/src/shared/i18n/languageStorage.ts",
+    "web/src/shared/i18n/languageStorage.test.ts",
+    "web/src/shared/i18n/useLanguage.ts",
+    "web/src/shared/i18n/useLanguage.test.ts",
+    "web/src/shared/i18n/applyInitialLanguage.ts",
+    "web/src/shared/i18n/formatStaysCs.test.ts",
+    "web/src/main.tsx",
+    "web/playwright.config.ts"
+  ],
+  "tests_added": [
+    "src/shared/i18n/resolveInitialLanguage.test.ts — 9 tests (stored-wins, exact culture match, 6 registry-derived subtag matches, tl+tl-PH->fil-PH alias, per-entry preference order ['de','en-US']->de-DE, skip-unsupported ['ja','uk-UA']->uk-UA, unknown ['ja']->cs-CZ, empty []->cs-CZ, invalid stored ignored)",
+    "src/shared/i18n/languageStorage.test.ts — 5 tests (round-trip, empty->null, unsupported 'xx-YY'->null, getItem throws->null, setItem throws->no throw)",
+    "src/shared/i18n/useLanguage.test.ts — 2 tests (current reflects i18n.language; setLanguage('de-DE') calls changeLanguage + persists via setStoredLanguage + sets <html lang>; restores cs-CZ in afterEach)",
+    "src/shared/i18n/formatStaysCs.test.ts — 2 tests (AC#6: after changeLanguage('de-DE'), formatCzk(1200) stays '1\\u00A0200 Kč'/cs-CZ grouping; defaultThisMonthRange stays Europe/Prague-anchored; restores cs-CZ in afterEach)"
+  ],
+  "tests_passing": 1487,
+  "coverage_delta": "+18 net i18n tests vs WI-1 baseline (1469 -> 1487). Full suite: 218 test files, 1487 tests, all green.",
+  "hit_max_turns": false,
+  "notes": [
+    "Resolution order (AC#3): valid stored value wins -> per navigator entry (exact culture match, then primary-subtag) in caller preference order -> DEFAULT_LOCALE ('cs-CZ'). DECISION (WI left implicit): iteration is PER-ENTRY exact-then-subtag, NOT two global passes. So ['de','en-US'] -> 'de-DE' (the user's first preference wins over a later exact), matching standard language-detector semantics and AC#8 intent. Pinned by an explicit test.",
+    "Subtag map is DERIVED from SUPPORTED_LOCALES (code.split('-')[0] -> code) via a Map built at module load; the ONLY hardcoded literal is the legacy tl->fil-PH (Tagalog) alias, which is not derivable. A hypothetical 7th locale (es-ES) auto-detects from 'es' with NO edit to resolveInitialLanguage.ts (AC#8). resolveInitialLanguage.ts is on WI-8's AC#8 whitelist for exactly this tl alias.",
+    "languageStorage: key 'app.language', NOT in authStorage (survives logout — device preference). Mirrors driverSettings.ts try/catch: getStoredLanguage swallows getItem throws -> null; setStoredLanguage swallows setItem throws -> no-op. Validation is SUPPORTED_LOCALES.some(l => l.code === value) — registry-derived, no hardcoded code list.",
+    "useLanguage: uses const { i18n } = useTranslation() so `current` re-renders consumers on language change (react-i18next). setLanguage = i18n.changeLanguage + setStoredLanguage + document.documentElement.lang = code (AC#5). No reload. A benign React act() warning appears in the useLanguage test (react-i18next's languageChanged re-render lands just after the awaited changeLanguage) — same tolerated pattern as the existing renderHook precedent; tests pass and lint is clean. Left as-is rather than over-engineering.",
+    "applyInitialLanguage.ts is the only impure wiring (reads navigator.languages + getStoredLanguage, resolves, changeLanguage, sets <html lang>). Called ONCE from main.tsx ONLY, never from index.ts — index.ts keeps static lng: DEFAULT_LOCALE so the ~1,464 existing unit tests stay Czech. Verified: no test file and no non-main module imports applyInitialLanguage.",
+    "Playwright pin (AC#7): added locale: 'cs-CZ' to the TOP-LEVEL use block only. The three projects (chromium, mobile-driver, mobile-customer) do NOT override locale, so it applies to all — Chromium navigator.language becomes cs-CZ and applyInitialLanguage() keeps every existing e2e spec Czech. Did NOT run e2e (Phase 5 covers it, per task).",
+    "AC#6 format guard (formatStaysCs.test.ts): this test has NO genuine RED — money.ts builds Intl.NumberFormat('cs-CZ') at module load and never reads i18n; analyticsRange.ts uses a fixed Europe/Prague tz. It is a non-goal REGRESSION guard (spec §21), not a red-green cycle: it actually switches i18n to de-DE mid-test before asserting formatCzk(1200) still yields the cs-CZ nbsp-grouped '1 200 Kč' and defaultThisMonthRange stays Prague-anchored, then restores cs-CZ. It bites the day someone wires Intl.NumberFormat(i18n.language) or a UI-language date formatter into either module. Money nbsp is U+00A0 (verified via node), asserted with the money.test.ts \\s-normalization idiom. Date target chosen: defaultThisMonthRange (the only Prague-anchored shared date fn) — asserted identical + fixed value across the language switch.",
+    "Language restored to cs-CZ in afterEach of BOTH useLanguage.test.ts and formatStaysCs.test.ts (the two suites that changeLanguage) — the one thing that could turn the full-suite Czech baseline red if vitest isolation weren't perfect. Full suite re-run confirmed green (1487).",
+    "TDD honesty: each of the three pure/hook cycles was written test-FIRST and RED was observed (module-not-found transform error) before implementing to GREEN. Order followed rules/web-testing.md#test-ordering: pure (resolveInitialLanguage, languageStorage) -> hook (useLanguage) -> guard (formatStaysCs).",
+    "AC#8 / WI-8 forward-compat: three new NON-whitelisted production files (languageStorage.ts, useLanguage.ts, applyInitialLanguage.ts) + edited main.tsx all derive from SUPPORTED_LOCALES/LocaleCode with ZERO hardcoded non-default culture-code literals, so WI-8's extensibility.test.ts (flags {en-US,ru-RU,uk-UA,fil-PH,de-DE} outside its whitelist) stays green. The single locale-code literal introduced by WI-2 is tl->fil-PH, which lives in the already-whitelisted resolveInitialLanguage.ts. Kept literal-free by design.",
+    "Confirmed via grep: applyInitialLanguage is imported ONLY by main.tsx (the index.ts occurrence is a code comment, not an import); no test or provider module imports it, so component tests keep the static cs-CZ baseline. lint re-run standalone: EXIT=0 (--max-warnings 0).",
+    "No CLAUDE.md fact appended — no new non-obvious trap surfaced (the cs-CZ U+00A0 grouping and the money.test.ts \\s-normalization idiom are already established in the codebase)."
+  ],
+  "verification_output": "npm run tsc: no errors. npm run lint: check:geo OK, eslint 0 warnings/errors (--max-warnings 0). npm run test -- \"i18n\" (WI verification filter, fresh, EXIT=0): 6 files / 24 tests green (4 new WI-2 + 2 WI-1 locales tests). npm run test (FULL suite, Czech-baseline gate): 218 files, 1487 tests all passing, ~39s. git add web/ complete (all staged paths under web/; api/ untouched; nothing outside web/ newly staged; nothing committed)."
+}
