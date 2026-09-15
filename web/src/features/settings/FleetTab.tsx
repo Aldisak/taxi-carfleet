@@ -4,6 +4,7 @@ import styled from 'styled-components'
 import { useQuery } from '@tanstack/react-query'
 import { getPublicFleet } from '../../shared/api/client'
 import { useFleetSettings } from './useFleetSettings'
+import { GeoUsagePanel } from './geoUsage/GeoUsagePanel'
 import { useUpdateFleetSettings, useUploadFleetLogo } from './useFleetSettingsMutations'
 import {
   validateFleetSettingsForm,
@@ -247,6 +248,7 @@ export function FleetTab() {
   }
 
   return (
+    <>
     <Section onSubmit={handleSubmit} noValidate aria-label={t('settings.fleet.title')}>
       <Title>{t('settings.fleet.title')}</Title>
 
@@ -377,5 +379,7 @@ export function FleetTab() {
         </PrimaryButton>
       </Actions>
     </Section>
+    <GeoUsagePanel />
+    </>
   )
 }

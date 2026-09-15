@@ -12,7 +12,7 @@ import type { PriceQuoteResponse } from '../api/client'
  */
 export type PriceQuoteView =
   | { kind: 'fixed'; priceCzk: number; routeId: string }
-  | { kind: 'estimate'; lowCzk: number; highCzk: number; distanceKm: number; durationMin: number }
+  | { kind: 'estimate'; lowCzk: number; highCzk: number; distanceKm: number; durationMin: number; degraded: boolean }
   | { kind: 'meter' }
   | { kind: 'unknown' }
 
@@ -25,6 +25,11 @@ const MIN_ESTIMATE_SPREAD_CZK = 20
  * high is guaranteed strictly greater than its low (AC #4), carrying distance/duration;
  * Meter → the taximeter fallback; any malformed shape → 'unknown' so the UI shows no price
  * rather than a bogus exact number.
+ *
+ * When the estimate came from the haversine fallback (`estimateMode === 'Estimated'`, UC-010
+ * AC#5) the view is flagged `degraded: true` so the UI shows the WIDER band under an
+ * "orientační odhad" label. The width itself is NOT recomputed here — the backend already
+ * returns the wider ±20% band; interpretQuote only threads the flag through.
  */
 export function interpretQuote(res: PriceQuoteResponse): PriceQuoteView {
   switch (res.type) {
@@ -35,7 +40,14 @@ export function interpretQuote(res: PriceQuoteResponse): PriceQuoteView {
       const low = res.lowCzk
       // Widen a degenerate (equal) band so an estimate is NEVER a single exact number.
       const high = res.highCzk > low ? res.highCzk : low + MIN_ESTIMATE_SPREAD_CZK
-      return { kind: 'estimate', lowCzk: low, highCzk: high, distanceKm: res.distanceKm, durationMin: res.durationMin }
+      return {
+        kind: 'estimate',
+        lowCzk: low,
+        highCzk: high,
+        distanceKm: res.distanceKm,
+        durationMin: res.durationMin,
+        degraded: res.estimateMode === 'Estimated',
+      }
     }
 
     case 'Meter':

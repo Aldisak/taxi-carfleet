@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=true eslint . --max-warnings 0",
+    "lint": "npm run check:geo && cross-env ESLINT_USE_FLAT_CONFIG=true eslint . --max-warnings 0",
+    "check:geo": "node scripts/check-no-osm.mjs",
     "tsc": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",

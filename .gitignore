@@ -38,6 +38,9 @@ desktop.ini
 .env.local
 appsettings.*.Local.json
 
+# Data Protection key ring (local dev default; never commit key material)
+.dp-keys/
+
 # Docker
 *.override.yml
 

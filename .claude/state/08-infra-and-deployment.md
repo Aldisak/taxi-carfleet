@@ -23,6 +23,7 @@ GitHub Actions, backups + restore test, monitoring/alerts on the cheap, secrets,
 ### 2. Compose
 - `infra/docker-compose.dev.yml`: `db` (postgres:16, volume), `api` (hot reload via `dotnet watch`), `web` (Vite dev server), `mailhog`-style SMS console is just logs. Seeds on start.
 - `infra/docker-compose.prod.yml`: `caddy`, `web`, `api`, `db`, `backup`. Resource limits: api 512 MB, db 1 GB. Restart policies `unless-stopped`. Only Caddy exposes ports 80/443. Postgres has no public port.
+- **DataProtection key-ring persistence (UC-010 WI-18):** the `api` service MUST mount a persistent named volume (`dp_keys` in prod, `dev_dp_keys` in dev) at `/keys` and set `DataProtection__KeysDirectory=/keys`. The WI-03 fail-fast guard refuses to boot in Production when this directory is missing/unset. **Do not prune this volume on redeploy** — losing the key-ring makes every encrypted per-fleet Mapy API key permanently undecryptable, forcing every fleet to re-enter its keys.
 - `.env.example` documenting every variable. Real `.env` never committed.
 
 ### 3. Caddy
@@ -55,9 +56,15 @@ Step-by-step, tested, in plain language:
 6. Restore from backup (with the exact commands).
 7. "Site is down" checklist: Caddy logs → api health → db → disk → rollback.
 8. Monthly cost sheet with the actual numbers after first month.
+9. **Mapy.com console setup (UC-010).** In the Mapy.com developer console (https://developer.mapy.com):
+   - Create a project for the deployment.
+   - Create **two API keys** per fleet-tier: a **browser key** and a **server key**. Restrict the **browser key by HTTP referrer** to the fleet domain(s) (`https://*.{domain}`) so a leaked browser key cannot be abused from another origin — the browser key is served publicly via `GET /geo/config`. The **server key** stays in the API only (`Mapy__ServerKey` env / encrypted per-fleet column) and is never sent to the browser.
+   - Set a **consumption cap** on the project to bound credit spend; the app additionally enforces per-fleet monthly budgets + 80 %/100 % alerts from `geo_usage` (cache misses only).
+   - Demo/first-day fleets use the env fallback keys (`Mapy__BrowserKey` / `Mapy__ServerKey`); per-fleet keys are entered later in fleet settings.
+   - **Confirm the DataProtection `dp_keys` volume is mounted before first boot** — encrypted per-fleet Mapy keys depend on the persisted key-ring (see Deliverable 2).
 
 ### 8. Cost sheet `docs/costs.md`
-Table with VPS, object storage, domain, SMS estimate (e.g. 300 rides × 1.5 SMS × 1 CZK), DNS. Show total for 1 fleet and marginal cost for each additional fleet (should be ~SMS only).
+Table with VPS, object storage, domain, SMS estimate (e.g. 300 rides × 1.5 SMS × 1 CZK), DNS, and **Mapy.com credit estimate** (UC-010: tile + suggest + geocode + route credits; only cache misses spend credits — see the two-tier cache + `geo_usage` budget in `docs/costs.md`, populated in WI-13). Show total for 1 fleet and marginal cost for each additional fleet (should be ~SMS + Mapy credits only).
 
 ## Acceptance criteria
 

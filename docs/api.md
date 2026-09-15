@@ -15,6 +15,7 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | GET | `/admin/fleets` | List fleets (SuperAdmin) | Bearer |
 | POST | `/admin/fleets` | Create fleet (SuperAdmin) | Bearer |
 | GET | `/admin/analytics` | Platform analytics (SuperAdmin) | Bearer |
+| GET | `/admin/geo-usage` | Geo usage per fleet (SuperAdmin) | Bearer |
 | POST | `/admin/fleets/{id}/deactivate` | Deactivate fleet (SuperAdmin) | Bearer |
 
 ## Analytics
@@ -77,7 +78,10 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
 | GET | `/geo/suggest` | Address autocomplete | Bearer |
-| GET | `/geo/route` | Get route distance and duration | Bearer |
+| POST | `/geo/route` | Get route distance and duration | Bearer |
+| GET | `/geo/reverse` | Reverse geocode | Bearer |
+| GET | `/geo/geocode` | Forward geocode | Bearer |
+| GET | `/geo/config` | Get geo tile configuration | Anonymous |
 
 ## Health
 
@@ -156,6 +160,12 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | GET | `/routes` | List routes (admin) | Bearer |
 | POST | `/routes` | Create a route | Bearer |
 | GET | `/routes/common` | List common routes (anonymous, fleet-scoped) | Anonymous |
+
+## Settings
+
+| Method | Route | Summary | Auth |
+|--------|-------|---------|------|
+| GET | `/settings/geo-usage` | Get geo usage for the current month | Bearer |
 
 ## Staff
 

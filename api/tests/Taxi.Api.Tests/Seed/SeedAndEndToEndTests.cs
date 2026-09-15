@@ -454,11 +454,16 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "POST /api/v1/admin/fleets/{id}/deactivate",
             // Admin — SuperAdmin platform analytics (UC-009 WI-10)
             "GET /api/v1/admin/analytics",
+            // Admin — SuperAdmin geo usage (UC-010 WI-14)
+            "GET /api/v1/admin/geo-usage",
             // Customers — GDPR self-deletion (UC-007)
             "DELETE /api/v1/customers/me",
             // Geo
             "GET /api/v1/geo/suggest",
-            "GET /api/v1/geo/route",
+            "POST /api/v1/geo/route",
+            "GET /api/v1/geo/geocode",
+            "GET /api/v1/geo/reverse",
+            "GET /api/v1/geo/config",
             // Pricing (UC-004 → UC-006: migrated from GET to POST)
             "POST /api/v1/pricing/quote",
             // Routes (UC-004)
@@ -494,6 +499,8 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "GET /api/v1/analytics/drivers",
             "GET /api/v1/analytics/drivers/{id}",
             "GET /api/v1/analytics/customers",
+            // Settings (UC-010 WI-12)
+            "GET /api/v1/settings/geo-usage",
             // Health / welcome
             "GET /api/v1/welcome",
         };

@@ -70,6 +70,15 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
     /// <summary>Idempotency markers recording that the weekly digest was sent for a given ISO week per fleet.</summary>
     public DbSet<WeeklyDigestMarker> WeeklyDigestMarkers => Set<WeeklyDigestMarker>();
 
+    /// <summary>Geo-provider API response cache keyed by (FleetId, Kind, Key). No global query filter.</summary>
+    public DbSet<GeoCacheEntry> GeoCacheEntries => Set<GeoCacheEntry>();
+
+    /// <summary>Per-fleet, per-day, per-kind aggregate of geo-provider API usage and credit consumption. No global query filter.</summary>
+    public DbSet<GeoUsage> GeoUsage => Set<GeoUsage>();
+
+    /// <summary>Idempotency markers recording that a geo budget alert was sent for a given fleet, month, and threshold.</summary>
+    public DbSet<GeoBudgetAlertMarker> GeoBudgetAlertMarkers => Set<GeoBudgetAlertMarker>();
+
     /// <inheritdoc />
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -113,6 +122,7 @@ internal class TaxiDbContext(DbContextOptions<TaxiDbContext> options, ICurrentTe
         modelBuilder.Entity<NotificationOutbox>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<NotificationLog>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
         modelBuilder.Entity<WeeklyDigestMarker>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
+        modelBuilder.Entity<GeoBudgetAlertMarker>().HasQueryFilter(e => e.FleetId == currentTenant.FleetId);
 
         // Nullable FleetId entities: include rows with null FleetId (customers/superadmin are tenant-agnostic)
         // plus rows belonging to the current fleet.

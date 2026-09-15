@@ -40,9 +40,9 @@ public sealed class PricingQuoteTests(PostgresFixture fixture)
 
     private void SetFakeRoute(int distanceMeters)
     {
-        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoProvider>();
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
         fake.Reset();
-        fake.RouteResult = new GeoRouteResult(distanceMeters, 900);
+        fake.RouteResult = new MapyRouteResultData(distanceMeters, 900, []);
     }
 
     private HttpClient DemoAnonymousClient()
@@ -297,9 +297,10 @@ public sealed class PricingQuoteTests(PostgresFixture fixture)
         body.Type.Should().NotBe("Fixed", "fleet B's route must not apply to fleet A's quote");
     }
 
-    /// <summary>OSRM upstream failure (dropoff known, no route) → 502 Geo.RouteUnavailable.</summary>
+    /// <summary>OSRM upstream failure (dropoff known, no route) → 200 degraded Estimate with EstimateMode="Estimated"
+    /// and a wider ±20% band (orientační odhad — WI-10 AC#1 behaviour reversal).</summary>
     [Fact]
-    public async Task Quote_OsrmDown_Returns502()
+    public async Task HandleAsync_QuoteGeoUnavailable_FallsBackWiderBandOrientacniOdhad()
     {
         var ct = TestContext.Current.CancellationToken;
         var suffix = Guid.NewGuid().ToString("N")[..8];
@@ -315,9 +316,9 @@ public sealed class PricingQuoteTests(PostgresFixture fixture)
             await db.SaveChangesAsync(ct);
         }
 
-        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoProvider>();
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
         fake.Reset();
-        fake.RouteShouldThrow = true;
+        fake.RouteShouldReturnUnavailable = true;
 
         var client = fixture.Factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Fleet-Slug", fleet.Slug);
@@ -328,9 +329,124 @@ public sealed class PricingQuoteTests(PostgresFixture fixture)
             dropoffLat = 49.60,
             dropoffLng = 13.60
         }, ct);
-        resp.StatusCode.Should().Be(HttpStatusCode.BadGateway);
 
-        fixture.Factory.Services.GetRequiredService<FakeGeoProvider>().Reset();
+        resp.StatusCode.Should().Be(HttpStatusCode.OK, "degraded geo falls back to an estimate, not 502");
+        var body = (await resp.Content.ReadFromJsonAsync<QuoteResponse>(JsonOptions, ct))!;
+        body.Type.Should().Be("Estimate");
+        body.EstimateMode.Should().Be("Estimated", "haversine fallback → orientační odhad");
+        body.LowCzk.Should().NotBeNull();
+        body.HighCzk.Should().NotBeNull();
+        body.LowCzk!.Value.Should().BeLessThan(body.HighCzk!.Value, "estimate is a range, never exact");
+
+        // ±20% band: high-low spread should be ≥ 20% of the central estimate (wider than the exact ±10%).
+        var spread = body.HighCzk!.Value - body.LowCzk!.Value;
+        var central = (body.HighCzk!.Value + body.LowCzk!.Value) / 2.0;
+        (spread / central).Should().BeGreaterOrEqualTo(0.20, "degraded estimate uses wider ±20% band");
+
+        fixture.Factory.Services.GetRequiredService<FakeGeoService>().Reset();
+    }
+
+    /// <summary>Quote with a known dropoff calls RouteAsync exactly once; creating an order from the quote
+    /// persists DistanceM and DurationS without calling RouteAsync again (quote-once AC#3).</summary>
+    [Fact]
+    public async Task HandleAsync_QuoteKnownDropoff_CallsRouteOnceAndPersistsDistance()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await EnsureDemoAsync();
+        Guid fleetId;
+        Guid dispatcherUserId;
+        using (var scope = fixture.Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+            var fleet = await db.Fleets.AsNoTracking().FirstAsync(f => f.Slug == "demo", ct);
+            fleetId = fleet.Id;
+            // Use a real seeded dispatcher user as the actor (actor_user_id has a FK to users — CLAUDE.md).
+            var dispatcher = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                .FirstAsync(u => u.FleetId == fleetId && u.Role == UserRole.Dispatcher, ct);
+            dispatcherUserId = dispatcher.Id;
+        }
+
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
+        fake.Reset();
+        fake.RouteResult = new MapyRouteResultData(15_000, 1200, []);
+
+        // Quote for an unknown route (Prague → random) → Estimate.
+        var client = fixture.Factory.CreateClient().AsDispatcher(fleetId, userId: dispatcherUserId, fleetSlug: "demo");
+        var quoteResp = await client.PostAsJsonAsync("api/v1/pricing/quote", new
+        {
+            pickupLat = 50.0755, // Prague — no route match
+            pickupLng = 14.4378,
+            dropoffLat = 50.0900,
+            dropoffLng = 14.5100
+        }, ct);
+        quoteResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var quote = (await quoteResp.Content.ReadFromJsonAsync<QuoteResponse>(JsonOptions, ct))!;
+        quote.Type.Should().Be("Estimate");
+        quote.DistanceM.Should().Be(15_000, "DistanceM is propagated from the geo route result");
+        quote.DurationS.Should().Be(1200, "DurationS is propagated from the geo route result");
+
+        var callCountAfterQuote = fake.RouteCallCount;
+        callCountAfterQuote.Should().Be(1, "quote calls RouteAsync exactly once");
+
+        // Create an order using the DistanceM/DurationS from the quote (quote-once: no second RouteAsync call).
+        var createResp = await client.PostAsJsonAsync("api/v1/orders", new
+        {
+            pickupAddress = "Prague",
+            pickupLat = 50.0755,
+            pickupLng = 14.4378,
+            dropoffAddress = "Outer Prague",
+            dropoffLat = 50.0900,
+            dropoffLng = 14.5100,
+            customerPhone = "+420600000001",
+            priceType = "Estimate",
+            estimatedPriceCzk = quote.LowCzk,
+            distanceM = quote.DistanceM,
+            durationS = quote.DurationS
+        }, ct);
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // RouteAsync must NOT have been called again for create.
+        fake.RouteCallCount.Should().Be(1, "create-order must not call RouteAsync again (quote-once)");
+
+        // Verify the order row has DistanceM/DurationS persisted.
+        var createBody = await createResp.Content.ReadFromJsonAsync<JsonElement>(ct);
+        var orderId = Guid.Parse(createBody.GetProperty("order").GetProperty("id").GetString()!);
+        using var verifyScope = fixture.Factory.Services.CreateScope();
+        var verifyTenant = verifyScope.ServiceProvider.GetRequiredService<CurrentTenant>();
+        verifyTenant.FleetId = fleetId;
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+        var savedOrder = await verifyDb.Orders.AsNoTracking()
+            .FirstAsync(o => o.Id == orderId, ct);
+        savedOrder.DistanceM.Should().Be(15_000, "DistanceM must be persisted on the order");
+        savedOrder.DurationS.Should().Be(1200, "DurationS must be persisted on the order");
+
+        fake.Reset();
+    }
+
+    /// <summary>A fixed-route match (Zone or PointToPoint) returns Fixed price with zero RouteAsync calls —
+    /// the matcher runs on in-memory data, no geo calls needed (WI-10 AC#4).</summary>
+    [Fact]
+    public async Task HandleAsync_QuoteFixedRoute_ZeroGeoCalls()
+    {
+        await EnsureDemoAsync();
+
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
+        fake.Reset();
+
+        // KH station → KH centre → seeded Fixed 100 PointToPoint route.
+        var body = await PostQuoteAsync(DemoAnonymousClient(), new
+        {
+            pickupLat = KhStationLat,
+            pickupLng = KhStationLng,
+            dropoffLat = KhCenterLat,
+            dropoffLng = KhCenterLng
+        });
+        body.Type.Should().Be("Fixed");
+        body.PriceCzk.Should().Be(100);
+
+        fake.RouteCallCount.Should().Be(0, "Fixed route match must not call RouteAsync at all");
+
+        fake.Reset();
     }
 
     /// <summary>No fleet resolved (no slug, no auth) → 400.</summary>

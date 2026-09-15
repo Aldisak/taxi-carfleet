@@ -1,0 +1,33 @@
+{
+  "wi_id": "WI-12",
+  "files_changed": [
+    "api/src/Taxi.Api/Features/Settings/SettingsFeatureConfiguration.cs",
+    "api/src/Taxi.Api/Features/Settings/GetGeoUsage/GetGeoUsageEndpoint.cs",
+    "api/src/Taxi.Api/Features/Settings/GetGeoUsage/GetGeoUsageResponse.cs",
+    "api/src/Taxi.Api/Infrastructure/Entities/GeoBudgetAlertMarker.cs",
+    "api/src/Taxi.Api/Infrastructure/Configurations/GeoBudgetAlertMarkerConfiguration.cs",
+    "api/src/Taxi.Api/Infrastructure/Geo/GeoBudgetAlertService.cs",
+    "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
+    "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+    "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+    "api/src/Taxi.Api/Infrastructure/Migrations/20260915014803_AddGeoBudgetAlertMarker.cs",
+    "api/src/Taxi.Api/Infrastructure/Migrations/20260915014803_AddGeoBudgetAlertMarker.Designer.cs",
+    "api/src/Taxi.Api/Infrastructure/Migrations/TaxiDbContextModelSnapshot.cs",
+    "api/tests/Taxi.Api.Tests/Geo/GeoBudgetAlertTests.cs",
+    "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+    "docs/api.md"
+  ],
+  "tests_added": [
+    "Taxi.Api.Tests.Geo.GeoBudgetAlertTests.GetGeoUsage_CurrentMonth_ReturnsEstimateAndPercent",
+    "Taxi.Api.Tests.Geo.GeoBudgetAlertTests.GetGeoUsage_Dispatcher_Returns403",
+    "Taxi.Api.Tests.Geo.GeoBudgetAlertTests.GetGeoUsage_Driver_Returns403",
+    "Taxi.Api.Tests.Geo.GeoBudgetAlertTests.GeoUsage_Budget100_At80Percent_FiresAlertOnce",
+    "Taxi.Api.Tests.Geo.GeoBudgetAlertTests.GeoUsage_Budget100_At100Percent_FiresAlertOnce",
+    "Taxi.Api.Tests.Geo.GeoBudgetAlertTests.GeoUsage_Budget100_At80Percent_MessageTagContainsThreshold"
+  ],
+  "tests_passing": 6,
+  "coverage_delta": "+6 integration tests",
+  "hit_max_turns": false,
+  "notes": "WI-12 implemented with two deliverables: (1) GET /api/v1/settings/geo-usage (FleetAdminOnly, month-to-date credits + budget + percent); (2) GeoBudgetAlertService called from GeoUsageRecorder.RecordAsync after every genuine upstream miss. Alert is idempotent per fleet-month-threshold via GeoBudgetAlertMarker entity (migration AddGeoBudgetAlertMarker). Direct push via IPushSender to FleetAdmin users (WeeklyDigestJob pattern) — no NotificationEvent enum value needed. Prague timezone used for month window computation. Integer overflow-safe crossing check: creditsUsed*100 >= threshold*budget. NotificationEvent.cs untouched (direct-push path). GeoBudgetAlertService registered as Scoped in GeoFeatureConfiguration and creates its own inner scope to set CurrentTenant.FleetId before querying. OpenAPI allowlist and docs/api.md updated.",
+  "verification_output": "Passed! - Failed: 0, Passed: 6, Skipped: 0, Total: 6, Duration: 2s - Taxi.Api.Tests.dll (net10.0)"
+}

@@ -54,8 +54,9 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Frame-Options "DENY"
 		# The API returns JSON; the SPA is same-origin. Keep CSP conservative but
-		# allow the app shell, OSM tiles and the API/hub origin (same host).
-		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self' https://*.tile.openstreetmap.org wss: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
+		# allow the app shell, Mapy.com tiles + logo (UC-010: api.mapy.cz raster tiles
+		# fetched directly with the per-fleet browser key) and the API/hub origin (same host).
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://api.mapy.cz; connect-src 'self' https://api.mapy.cz wss: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
 		-Server
 	}
 }

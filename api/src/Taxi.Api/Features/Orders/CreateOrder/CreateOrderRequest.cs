@@ -55,4 +55,12 @@ public sealed class CreateOrderRequest
     /// distinguishes a Phone-source order (customer has no app) from a Dispatcher-created order;
     /// defaults to Dispatcher when omitted.</summary>
     public OrderSource? Source { get; init; }
+
+    /// <summary>Route distance in metres from the preceding price quote (quote-once AC#3).
+    /// When provided, persisted to <c>orders.distance_m</c> without a second RouteAsync call.</summary>
+    public int? DistanceM { get; init; }
+
+    /// <summary>Travel duration in seconds from the preceding price quote (quote-once AC#3).
+    /// When provided, persisted to <c>orders.duration_s</c> without a second RouteAsync call.</summary>
+    public int? DurationS { get; init; }
 }

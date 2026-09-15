@@ -1,0 +1,18 @@
+{
+  "wi_id": "WI-03",
+  "files_changed": [
+    "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
+    "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
+    "api/src/Taxi.Api/Common/Security/DataProtectionKeyRingGuard.cs",
+    "api/src/Taxi.Api/Program.cs",
+    "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs",
+    "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorWiringTests.cs",
+    ".gitignore"
+  ],
+  "tests_added": 4,
+  "tests_passing": 4,
+  "coverage_delta": null,
+  "hit_max_turns": false,
+  "notes": "UC-010 WI-03 — IFleetKeyProtector + DataProtection wiring + fail-fast key-ring guard.\n\nImplementation:\n- IFleetKeyProtector (internal interface): Protect(string)→string, Unprotect(string?)→string?.\n- FleetKeyProtector (internal sealed): wraps IDataProtectionProvider.CreateProtector(\"FleetSettings.MapyKeys\"). Unprotect returns null when the input is null/empty.\n- DataProtectionKeyRingGuard (internal sealed IHostedService): in non-Development, throws InvalidOperationException mentioning 'DataProtection:KeysDirectory' when the config key is absent or the configured directory does not exist. In Development it logs at Debug and returns without throwing.\n- Program.cs: added 'using Microsoft.AspNetCore.DataProtection;', wired AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysDir)).SetApplicationName(\"taxi\"); keysDir defaults to ContentRootPath/.dp-keys in Development. Registered IFleetKeyProtector + FleetKeyProtector as Singleton. Registered DataProtectionKeyRingGuard as AddHostedService.\n- .gitignore: added .dp-keys/ so the local dev key-ring XML is never committed.\n\nTests (4 total across 2 files):\n1. FleetKeyProtectorTests (isolation, no DB): Protect_ThenUnprotect_RoundTripsPlaintext, Unprotect_WithPersistedRing_SurvivesSimulatedRestart, Boot_WithEphemeralKeysDir_FailsFast.\n2. FleetKeyProtectorWiringTests ([Collection(Database)]): Program_RegistersGuardAndProtector — asserts IHostedService collection contains DataProtectionKeyRingGuard and IFleetKeyProtector is resolvable; fails instantly if Program.cs registration is dropped.\n\nDesign decisions:\n- WAF always runs in Development (TaxiApiFactory.UseEnvironment(\"Development\")), so the guard never fires for the shared test factory. The Boot_WithEphemeralKeysDir_FailsFast test drives the guard directly with a minimal ServiceCollection + IHostEnvironment stub (ProductionEnvironment) — same behavioural contract, deterministic, no Postgres required. WAF-based boot testing was attempted and abandoned: hosted-service startup exceptions are swallowed by WebApplicationFactory, surfacing instead as 'Cannot access a disposed object' wrapping exceptions.\n- FleetKeyProtector.Unprotect returns null for null/empty input so callers (WI-04 FleetSettings loader) can handle missing keys without null-check gymnastics.\n- PersistKeysToFileSystem extension is in Microsoft.AspNetCore.DataProtection namespace; needed an explicit 'using' in Program.cs (ImplicitUsings does not include it).",
+  "verification_output": "dotnet test --filter \"FullyQualifiedName~FleetKeyProtector\": Passed: 4, Failed: 0, Skipped: 0, exit 0.\nFull suite: Passed: 555, Failed: 0, Skipped: 4 (pre-existing perf skips), exit 0.\ndotnet build -warnaserror: 0 warnings, 0 errors."
+}

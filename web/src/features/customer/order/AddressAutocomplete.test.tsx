@@ -65,6 +65,27 @@ describe('AddressAutocomplete', () => {
     })
   })
 
+  it('shows street + municipality on each suggestion so two same-named places are distinguishable (AC#2)', async () => {
+    const user = userEvent.setup()
+    mockSuggest.mockResolvedValue({
+      items: [
+        { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
+        { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
+      ],
+    })
+    renderAc()
+
+    await user.type(screen.getByLabelText(/odkud vás vyzvedneme/i), 'Náměstí')
+
+    // Both options carry the town in their accessible name (rendered as plain text, not
+    // aria-hidden) so a screen-reader user can tell Kolín from Kutná Hora.
+    const kolin = await screen.findByRole('option', { name: /kolín/i })
+    const kutna = await screen.findByRole('option', { name: /kutná hora/i })
+    expect(kolin).toHaveTextContent('Náměstí')
+    expect(kolin).toHaveTextContent('Kolín')
+    expect(kutna).toHaveTextContent('Kutná Hora')
+  })
+
   it('shows "Žádné návrhy" when the server returns an empty list', async () => {
     const user = userEvent.setup()
     mockSuggest.mockResolvedValue({ items: [] })

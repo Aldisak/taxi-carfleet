@@ -25,15 +25,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
 })
 
-/** OSM tile layer URL (standard tiles). */
-export const OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-/** OSM tile layer attribution string. */
-export const OSM_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-
-/** Default map center: Kolín / Kutná Hora area. */
-export const DEFAULT_CENTER: [number, number] = [50.03, 15.2]
-
-/** Default zoom level showing the fleet area. */
-export const DEFAULT_ZOOM = 11
+// The former OSM_TILE_URL / OSM_ATTRIBUTION / DEFAULT_CENTER / DEFAULT_ZOOM constants
+// were removed in UC-010 (WI-18). Map tiles now come from Mapy.com via GET /geo/config
+// (see useGeoConfig / MapyMap / tileTemplate); the map center + zoom are carried in that
+// config response. This module now only performs the one-time Leaflet default-icon fix.

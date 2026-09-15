@@ -1,0 +1,16 @@
+{
+  "wi_id": "WI-01",
+  "lane": "api",
+  "title": "Verify resilience dependency + record docs/decisions.md",
+  "files_changed": [
+    "api/src/Taxi.Api/Taxi.Api.csproj",
+    "docs/decisions.md"
+  ],
+  "tests_added": [],
+  "tests_passing": true,
+  "coverage_delta": 0,
+  "hit_max_turns": false,
+  "notes": "Microsoft.Extensions.Http.Resilience 10.10.0 added to Taxi.Api.csproj. No EF-pin conflict: the package and its transitive deps (Polly 8.4.2, Microsoft.Extensions.Telemetry 10.10.0, etc.) share no assembly with the Microsoft.EntityFrameworkCore.* 10.0.12 pins in Directory.Build.props. dotnet build -warnaserror: 0 warnings, 0 errors. DelegatingHandler fallback NOT needed — library adopted. docs/decisions.md received a dated UC-010 entry recording: Mapy.com choice and rationale, credit prices (1/tile, 4/suggest+geocode+reverse+route; 250k free/month then 1.60 CZK/1000 overage), estimated monthly consumption (~1000 rides → 28k-52k credits under normal load, up to 400k under heavy viewer-refresh scenarios per spec), and the resilience-library decision (adopted, exact version 10.10.0, no conflict). No production code beyond the csproj package reference was written. Resilience path: adopted Microsoft.Extensions.Http.Resilience. Research subagent (needs_library_research: true) could not be dispatched — no Agent/Task tool available in this agent context; library version and credit prices were determined empirically (dotnet add package resolved 10.10.0 from nuget.org) and from the WI spec respectively.",
+  "verification_output": "dotnet build -warnaserror (C:/Users/alesm/AppData/Local/Microsoft/dotnet/dotnet.exe):\n  Taxi.Api -> ...bin/Debug/net10.0/Taxi.Api.dll\n  Taxi.Api.Tests -> ...bin/Debug/net10.0/Taxi.Api.Tests.dll\nBuild succeeded. 0 Warning(s). 0 Error(s). Elapsed time 00:00:02.38",
+  "resilience_path": "adopted — Microsoft.Extensions.Http.Resilience 10.10.0 added, no EF-pin version conflict, build clean"
+}

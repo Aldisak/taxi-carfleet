@@ -1,0 +1,16 @@
+{
+  "wi_id": "WI-14",
+  "files_changed": [
+    "api/src/Taxi.Api/Features/Admin/GetGeoUsage/GetAdminGeoUsageEndpoint.cs",
+    "api/src/Taxi.Api/Features/Admin/GetGeoUsage/GetGeoUsageResponse.cs",
+    "api/tests/Taxi.Api.Tests/Admin/AdminGeoUsageTests.cs",
+    "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+    "docs/api.md"
+  ],
+  "tests_added": 5,
+  "tests_passing": 641,
+  "coverage_delta": "+5 integration tests (HandleAsync_SuperAdmin_ReturnsPerFleetGeoUsage, HandleAsync_FleetWithNoUsage_AppearsWithZeros, HandleAsync_LastMonthRows_AreExcluded, HandleAsync_NonSuperAdmin_Returns403, HandleAsync_Dispatcher_Returns403)",
+  "hit_max_turns": false,
+  "notes": "WI-14 implemented: GET /api/v1/admin/geo-usage (SuperAdminOnly, EndpointWithoutRequest, cross-tenant). Key decisions: (1) Endpoint class named GetAdminGeoUsageEndpoint (not GetGeoUsageEndpoint) to avoid duplicate name conflict with Features/Settings/GetGeoUsage/GetGeoUsageEndpoint — FastEndpoints requires globally unique endpoint names. (2) Used DateOnly month window (monthStart/nextMonthStart) directly for GeoUsage.Day filtering — no UTC conversion needed as Day is already Prague-local. (3) Zero-usage fleets appear in the list by joining active fleets then looking up usage from a dictionary (missing key = 0). (4) Budget retrieved via IgnoreQueryFilters() on FleetSettings with (int?) cast to avoid 0-default trap for missing settings rows. (5) Plain LINQ GroupBy(u => u.FleetId) translates correctly — no raw SQL needed, no MAX(uuid) trap. FakeTimeProvider pinned to 2026-09-10 12:00 UTC; September 2026 is the current month for tests. allowlist + docs/api.md updated and staged.",
+  "verification_output": "dotnet test --filter FullyQualifiedName~AdminGeoUsage: Passed=5, Failed=0, Skipped=0. Full suite: Passed=641, Failed=0, Skipped=4. Build -warnaserror: 0 warnings, 0 errors."
+}

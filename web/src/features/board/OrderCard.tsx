@@ -3,6 +3,7 @@ import styled, { css, keyframes } from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useNewOrderHighlight } from './useNewOrderHighlight'
+import { orderHasNoCoords } from './orderCoords'
 import { useMapHighlightStore } from './useMapHighlight'
 import { getElapsedSeconds, isElapsedRed } from './elapsedTimer'
 import { useAssignOrder } from './useAssignOrder'
@@ -195,6 +196,15 @@ const FailedSmsIcon = styled.span`
   line-height: 1;
 `
 
+const NoCoordsBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: ${({ theme }) => theme.typography.fontSizeXs};
+  color: ${({ theme }) => theme.colors.warning};
+  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
+`
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -266,6 +276,10 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
     enabled: false,
   })
   const showFailedSms = order.hasFailedSms === true || hasFailedSms(cachedDetail?.notifications)
+
+  // "bez souřadnic" indicator (UC-010 AC#2): the order was accepted without pickup coordinates
+  // (suggest/geocode degraded), so it cannot be map-placed or distance-sorted.
+  const noCoords = orderHasNoCoords(order)
 
   function handleConflict() {
     setConflictMsg(true)
@@ -376,6 +390,11 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
       </PhoneName>
 
       <AddressLine aria-label="pickup-address">{order.pickupAddress}</AddressLine>
+      {noCoords && (
+        <NoCoordsBadge>
+          <span aria-hidden="true">⚠</span> {t('map.noCoords')}
+        </NoCoordsBadge>
+      )}
       {order.dropoffAddress && (
         <AddressLine aria-label="dropoff-address">→ {order.dropoffAddress}</AddressLine>
       )}

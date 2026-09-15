@@ -1,8 +1,8 @@
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { Marker } from 'react-leaflet'
 import L from 'leaflet'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
-import { OSM_TILE_URL, OSM_ATTRIBUTION, DEFAULT_ZOOM } from '../../../shared/map/leafletSetup'
+import { MapyMap } from '../../../shared/map/MapyMap'
 import type { LatLng } from './trackingMarker'
 
 const MapWrapper = styled.div`
@@ -14,9 +14,6 @@ const MapWrapper = styled.div`
     height: 100%;
   }
 `
-
-/** Prague centre — the default map centre when no coordinates are known yet. */
-const PRAGUE_CENTER: [number, number] = [50.0755, 14.4378]
 
 const PICKUP_ICON = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
@@ -50,15 +47,20 @@ export interface TrackingMapInnerProps {
  */
 export default function TrackingMapInner({ car, pickup }: TrackingMapInnerProps) {
   const { t } = useTranslation()
-  const center: [number, number] = car ? [car.lat, car.lng] : pickup ? [pickup.lat, pickup.lng] : PRAGUE_CENTER
+  // Center on the car, else the pickup; when neither is known yet fall back to the fleet
+  // default center from /geo/config (MapyMap resolves it when center is omitted).
+  const center: [number, number] | undefined = car
+    ? [car.lat, car.lng]
+    : pickup
+      ? [pickup.lat, pickup.lng]
+      : undefined
 
   return (
     <MapWrapper>
-      <MapContainer center={center} zoom={DEFAULT_ZOOM} style={{ width: '100%', height: '100%' }} aria-label={t('customer.tracking.mapLabel')}>
-        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
+      <MapyMap center={center} ariaLabel={t('customer.tracking.mapLabel')}>
         {pickup && <Marker position={[pickup.lat, pickup.lng]} icon={PICKUP_ICON} title={t('customer.tracking.pickupLabel')} />}
         {car && <Marker position={[car.lat, car.lng]} icon={CAR_ICON} title={t('customer.tracking.carLabel')} />}
-      </MapContainer>
+      </MapyMap>
     </MapWrapper>
   )
 }

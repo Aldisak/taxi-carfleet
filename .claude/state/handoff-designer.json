@@ -1,198 +1,518 @@
 {
-  "uc": "UC-009",
-  "spec": "docs/specs/in-progress/009_UC_009_admin-analytics.md",
-  "doc": "docs/specs/in-progress/admin-analytics-work-items.md",
+  "uc": "UC-010",
+  "spec": "docs/specs/in-progress/010_UC_010_mapy.md",
+  "doc": "docs/specs/in-progress/010_UC_010_mapy-work-items.md",
   "assumptions": [
-    "Zone attribution uses bounding-box SQL approximation (no NetTopologySuite/PostGIS); documented approximate in WI-05.",
-    "Top-customer masking = NONE (board-consistent): the dispatcher board (OrderCard.tsx) shows customer name/phone unmasked and no mask util exists, so 'same format the board uses' plainly means unmasked; analytics is FleetAdmin-only (same trust level). Client-side masking over raw API fields would not aid GDPR (PII already crosses the wire); if data-minimization is wanted it belongs API-side in WI-09. No maskCustomerIdentity util.",
-    "Analytics table CSV is a client-side pure builder promoted to src/shared/csv (BOM + ';' + CRLF), reusing the orders/csvExport.ts logic.",
-    "reportDateRange + CSV builder promoted from features/ to src/shared/ per web-architecture cross-feature-import ban; touches reports import lines additively only (no /reports screen or /reports/* endpoint behavior change).",
-    "50k perf seeder extended with driver spread, shifts, offer events, staged cancellations, rating comments, and customer-identity mix.",
-    "Digest recipients = FleetAdmin users with a PushSubscription per fleet, via IPushSender.",
-    "Shared query contract from/to/granularity/compare is one request base + validator reused by all 6 fleet endpoints."
+    "CONFIG ENDPOINT (fork resolved to recommended default; user to confirm): the spec §1 + AC#7 mention GET /me/config, which does NOT exist in the codebase. We add a dedicated GET /geo/config (anonymous + X-Fleet-Slug, mirroring the existing anonymous GET /public/fleet) carrying browser key + tile template + attribution + map center/zoom. AC#7's key-leak scan targets /geo/config and /public/fleet. No /me/config is created.",
+    "AC#3 ETA GATING (fork resolved): SignalR exposes no native group-membership count, so the driver->pickup ETA refresh throttle (<=60s, gated on an active viewer of order:{id} or the dispatcher detail) needs a custom subscriber-tracker or an order.LastEtaRefreshAt + viewer-count heuristic. It gets its own backend WI (WI-11), flagged needs_library_research, so the impl agent designs the tracking mechanism. The create-time single quote call lives separately in WI-10.",
+    "WI GRANULARITY (fork resolved): budget-alert + cache-cleanup TTL sweep are merged into one geo-jobs WI (WI-13). §7 doc edits are distributed onto their motivating code WIs (decisions.md->WI-01; costs.md + runbook->WI-13/WI-18); a thin AC#8 docs WI (WI-18) covers 00-PROJECT-CONTEXT + assignments 02/04/06/08 and confirms the decisions.md/costs.md entries exist.",
+    "Circuit breaker uses Microsoft.Extensions.Http.Resilience 10.x (verified .NET 10-compatible on nuget.org, 2026). WI-01 verifies the exact pinned version and records docs/decisions.md; if a version conflict with the EF pin surfaces, WI-01 falls back to a ~40-line DelegatingHandler breaker exposing IsOpen.",
+    "The geo seam evolves into two Infrastructure/Geo/ layers: IMapyClient (low-level typed HttpClient + resilience + server key) and IGeoService (high-level cache->client->degradation orchestration, successor to IGeoProvider). QuoteEndpoint calls the provider IN-PROCESS (not HTTP), so it is repointed to IGeoService, not to an HTTP call.",
+    "Demo/first-day fleets use env fallback keys (Mapy__ServerKey/Mapy__BrowserKey); DevelopmentSeeder writes NO encrypted key columns (leaves them null) and TaxiDbContextFactory/seeder stay untouched.",
+    "Encrypted keys use IDataProtectionProvider via a Common/ IFleetKeyProtector (NOT an EF ValueConverter, which would break the design-time factory). AddDataProtection().PersistKeysToFileSystem(<mounted volume>).SetApplicationName(\"taxi\") is MANDATORY — without a persisted key-ring the stored fleet keys become permanently undecryptable on restart. Persistence is enforced two ways, not by a runbook note alone: (1) PRIMARY — a fail-fast DataProtectionKeyRingGuard in WI-03 refuses to boot in non-Development when the keys dir is ephemeral/non-persistent; (2) a persistent named keys volume mounted onto the api service in the infra compose (WI-18).",
+    "geo_cache and geo_usage are NOT ITenantEntity (no query filter) — read from varied scopes incl background jobs, mirroring the RefreshToken/SmsCode no-filter decision. Explicit Where(c => c.FleetId == .. && ..) instead.",
+    "GeoResult is a discriminated result union (Success | Unavailable); the client boundary maps 4s-timeout / retry-exhausted-5xx / breaker-open to Unavailable (sanctioned log-and-continue carve-out of rules/error-handling.md). Endpoints guard-clause on the result — no handler try/catch, never null.",
+    "The customer-facing \"orientacni odhad\"/wider +-20% band (AC#5) is a RESPONSE-BODY estimate-mode field, NOT the debug X-Geo-* header. X-Geo-Source/X-Geo-Cache are debug-only headers on the 4 proxy endpoints; /geo/config uses Cache-Control max-age instead."
   ],
   "work_items": [
     {
       "id": "WI-01",
       "lane": "api",
-      "title": "Analytics migration — composite indexes + WeeklyDigestMarker table",
+      "title": "Verify resilience dependency + record docs/decisions.md",
       "depends_on": [],
-      "estimated_complexity": "S",
-      "needs_library_research": false,
+      "estimated_complexity": "XS",
+      "needs_library_research": true,
       "required_reads": [
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#migrations",
-        "rules/naming.md#migrations",
-        "CLAUDE.md#SpotDbContext",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderEventConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/DriverShiftConfiguration.cs"
+        "api/src/Taxi.Api/Taxi.Api.csproj",
+        "api/Directory.Build.props",
+        "docs/decisions.md"
       ],
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Entities/WeeklyDigestMarker.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/WeeklyDigestMarkerConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/OrderEventConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Configurations/DriverShiftConfiguration.cs",
-        "api/src/Taxi.Api/Infrastructure/Migrations/*_AddAnalyticsIndexesAndDigestMarker.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/AnalyticsMigrationTests.cs"
+        "api/src/Taxi.Api/Taxi.Api.csproj",
+        "docs/decisions.md"
       ],
       "acceptance_criteria": [
-        "WeeklyDigestMarker entity + config with unique index (FleetId, IsoYear, IsoWeek); DbSet registered.",
-        "Composite indexes added only where not already present: orders (fleet_id, driver_id, completed_at), (fleet_id, completed_at), (fleet_id, customer_user_id, completed_at), (fleet_id, source, created_at), (fleet_id, payment_type, completed_at); order_events (fleet_id, type, at); driver_shifts (fleet_id, started_at).",
-        "One migration AddAnalyticsIndexesAndDigestMarker via --output-dir Infrastructure/Migrations; generated SQL reviewed for destructive ops.",
-        "Migration applies cleanly on fresh Testcontainers Postgres; duplicate (fleet, iso_year, iso_week) marker insert is rejected."
+        "Add Microsoft.Extensions.Http.Resilience (10.x, .NET 10-compatible) to Taxi.Api.csproj; solution restores + builds -warnaserror with no EF/EF-pin version conflict (the Directory.Build.props pins are respected).",
+        "If a version conflict surfaces, fall back to documenting the ~40-line DelegatingHandler breaker approach instead — decisions.md records which path was taken.",
+        "docs/decisions.md gains a UC-010 entry: choice of Mapy.com, the credit prices verified on the day (1 credit/tile, 4 credits/suggest+geocode+reverse+route; 250k free/month, 1.60 CZK/1000 after), estimated monthly consumption (~1000 rides -> 200-400k credits), and the resilience-library decision.",
+        "No production code changes beyond the package reference — this WI unblocks WI-04's resilience pipeline."
       ],
       "test_cases": [
-        "Migration_AnalyticsIndexesAndDigestMarker_AppliesAndEnforcesUniqueMarker"
+        "Build_WithResiliencePackage_RestoresAndBuildsWarnAsError"
       ],
       "verification": { "tool": "dotnet-build" },
       "rule_citations": [
-        "rules/ef-core.md#indexes",
-        "rules/ef-core.md#dbset-registration",
-        "rules/ef-core.md#migrations",
-        "rules/naming.md#migrations",
-        "rules/csharp-style.md#guid-primary-keys",
-        "rules/csharp-style.md#xml-documentation"
+        "CLAUDE.md#EF-Core-package-version-conflict"
       ]
     },
     {
       "id": "WI-02",
       "lane": "api",
-      "title": "SQL translation spike — percentile_cont, heatmap, cohort, shift-clamp, bounding-box",
-      "depends_on": ["WI-01"],
-      "estimated_complexity": "M",
+      "title": "Geo schema — fleet_settings + orders columns, geo_cache, geo_usage entities + migration",
+      "depends_on": [],
+      "estimated_complexity": "L",
       "needs_library_research": false,
       "required_reads": [
-        "api/tests/Taxi.Api.Tests/Reports/TranslationSpikeTests.cs",
-        "CLAUDE.md#UC-007-A2-SqlQuery-snake_case",
-        "api/src/Taxi.Api/Common/Geo/ZoneService.cs"
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#indexes",
+        "rules/ef-core.md#enums-as-strings",
+        "rules/ef-core.md#migrations",
+        "rules/ef-core.md#date-types",
+        "rules/naming.md#migrations",
+        "rules/csharp-style.md#guid-primary-keys",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#SpotDbContext",
+        "CLAUDE.md#JsonDocument-for-jsonb",
+        "CLAUDE.md#UUIDv7-value-generator",
+        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/RefreshToken.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/SmsCode.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/FleetSettingsConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/OrderEventConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContextFactory.cs"
       ],
       "files_touched": [
-        "api/tests/Taxi.Api.Tests/Analytics/AnalyticsTranslationSpikeTests.cs"
+        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheEntry.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheKind.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/GeoUsage.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/FleetSettingsConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/OrderConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/GeoCacheEntryConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/Configurations/GeoUsageConfiguration.cs",
+        "api/src/Taxi.Api/Infrastructure/TaxiDbContext.cs",
+        "api/src/Taxi.Api/Infrastructure/Migrations/*_AddMapyGeoSchema.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoSchemaMigrationTests.cs"
       ],
       "acceptance_criteria": [
-        "percentile_cont(0.5)/(0.9) WITHIN GROUP over EXTRACT(EPOCH FROM (assigned_at - created_at)) per Prague bucket translates; keyless record uses snake_case aliases (p50_seconds, p90_seconds, bucket). Contract: every SLA percentile metric filters to rows where BOTH interval endpoints are non-null before aggregation (WHERE assigned_at IS NOT NULL AND created_at IS NOT NULL etc.) — NULL-endpoint rows excluded, never fed as NULL epochs; fixture includes a NULL-later-endpoint row.",
-        "Demand heatmap GROUP BY EXTRACT(HOUR ...), EXTRACT(DOW ...) at Prague TZ translates to (hour, dow, count).",
-        "Cohort triangle grouping via date_trunc('month', ... AT TIME ZONE 'Europe/Prague') translates.",
-        "driver_shifts per-hour-bucket online-seconds clamp in SQL translates OR a documented in-memory-over-aggregates fallback is written into the spike file.",
-        "Bounding-box zone attribution FILTER (WHERE pickup_lat/lng BETWEEN ...) translates; the C#-side bbox derivation covers BOTH ZoneService shapes: Polygon (min/max lat/lng of vertices) AND Circle (center +/- radius-in-degrees; lat delta = radiusMeters/111320, lng delta = radiusMeters/(111320*cos(centerLat)) scaled by cos(lat)). Fixture includes one Circle + one Polygon zone.",
-        "week/month bucket variants (date_trunc) translate.",
-        "percentile matches hand-computed values on odd + even counts (AC#2)."
+        "fleet_settings gains MapyServerKey string? (text, HasMaxLength(512), holds protected base64), MapyBrowserKey string? (same), MapCenterLat double (HasDefaultValue 50.08), MapCenterLng double (HasDefaultValue 14.42), MapZoom int (HasDefaultValue 12), GeoMonthlyCreditBudget int (HasDefaultValue 250000). Every NON-NULL new column MUST have HasDefaultValue (backfill on the populated table). XML-doc each property; keys are never logged.",
+        "orders gains DistanceM int? and DurationS int? (nullable -> metadata-only ADD COLUMN, no table rewrite, no index). XML-doc each.",
+        "GeoCacheEntry entity: composite PK (FleetId, Kind, Key) which IS the lookup index (no separate index); Kind is a C# enum GeoCacheKind{Suggest,Geocode,Reverse,Route,QuickPlace} (enum-as-string, HasMaxLength on the string PK col); Value JsonDocument? .HasColumnType(\"jsonb\"); CreatedAt DateTimeOffset with HasIndex for the TTL sweep; cascade FK to Fleet; NOT ITenantEntity and NO query filter; DbSet registered.",
+        "GeoUsage entity: composite PK (FleetId, Day, Kind) with Day DateOnly (date column); Calls int; CreditsEst int; NOT ITenantEntity / no query filter; PK covers monthly aggregation (WHERE fleet_id=.. AND day>=monthStart AND day<monthEnd GROUP BY); DbSet registered.",
+        "Migration AddMapyGeoSchema created with --output-dir Infrastructure/Migrations from api/src/Taxi.Api; generated SQL is additive-only (ADD COLUMN + CREATE TABLE, no drops/renames, no index on orders); a test applies it against Testcontainers Postgres and asserts the geo_cache composite PK uniqueness + geo_usage upsert PK.",
+        "TaxiDbContextFactory (NullCurrentTenant) still constructs the context at design time (no EF ValueConverter on the key columns)."
       ],
       "test_cases": [
-        "Spike_PercentileCont_TranslatesAndMatchesHandComputed",
-        "Spike_DemandHeatmapBuckets_TranslatesToSql",
-        "Spike_CohortTriangle_TranslatesToSql",
-        "Spike_ShiftHourClamp_TranslatesToSql",
-        "Spike_ZoneBoundingBox_TranslatesToSql",
-        "Spike_WeekMonthBuckets_TranslatesToSql"
+        "Migration_AddMapyGeoSchema_AppliesAndEnforcesCompositeKeys",
+        "GeoCache_DuplicateFleetKindKey_ViolatesPrimaryKey"
       ],
-      "verification": { "tool": "dotnet-test", "filter": "AnalyticsTranslationSpikeTests" },
+      "verification": { "tool": "dotnet-test", "filter": "GeoSchema" },
       "rule_citations": [
-        "rules/ef-core.md#projections",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#test-naming"
+        "rules/ef-core.md#dbset-registration",
+        "rules/ef-core.md#indexes",
+        "rules/ef-core.md#enums-as-strings",
+        "rules/ef-core.md#migrations",
+        "rules/ef-core.md#date-types",
+        "rules/ef-core.md#entity-naming",
+        "rules/ef-core.md#primary-keys",
+        "rules/naming.md#migrations",
+        "rules/naming.md#files-and-types",
+        "rules/csharp-style.md#guid-primary-keys",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/architecture.md#one-type-per-file"
       ]
     },
     {
       "id": "WI-03",
       "lane": "api",
-      "title": "Extend the 50k perf seeder with ratings/shifts/events/cancellations spread",
-      "depends_on": ["WI-01"],
-      "estimated_complexity": "S",
+      "title": "IFleetKeyProtector + DataProtection wiring (persisted key-ring)",
+      "depends_on": [],
+      "estimated_complexity": "M",
       "needs_library_research": false,
       "required_reads": [
-        "api/src/Taxi.Api/Infrastructure/Seed/ReportSeedScript.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/DriverShift.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/OrderEvent.cs",
-        "CLAUDE.md#UC-007-A2-generate_series-seeder"
+        "rules/architecture.md#common-infrastructure",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/src/Taxi.Api/Common/Tenancy/ICurrentTenant.cs"
       ],
       "files_touched": [
-        "api/src/Taxi.Api/Infrastructure/Seed/ReportSeedScript.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/ReportSeedExtendedTests.cs"
+        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
+        "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
+        "api/src/Taxi.Api/Common/Security/DataProtectionKeyRingGuard.cs",
+        "api/src/Taxi.Api/Program.cs",
+        "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs"
       ],
       "acceptance_criteria": [
-        "Deterministic driver_id spread + matching driver_shifts rows across the 180-day window.",
-        "order_events seeded: Assigned/Accepted/Completed for completed share; Declined/Reassigned/Timeout for an offer-funnel share.",
-        "Cancellations spread across stages (New, Assigned, after Arrived no-show) with cancelled_by_role.",
-        "rating_comment + rated_at populated for the rated share; ratings 1-5 spread.",
-        "Customer-identity mix: returning (customer_user_id set), one-timers (distinct phones), anonymized +420000000000 rows.",
-        "Seeder stays idempotent (skip if fleet already seeded) and bounded."
+        "IFleetKeyProtector { string Protect(string plaintext); string Unprotect(string ciphertext); } in Common/Security/, implemented over IDataProtectionProvider.CreateProtector(\"FleetSettings.MapyKeys\"). Round-trip test: Unprotect(Protect(x)) == x.",
+        "Program.cs registers AddDataProtection().PersistKeysToFileSystem(<configured keys dir>).SetApplicationName(\"taxi\") — the persisted key-ring is MANDATORY (without it stored fleet keys become permanently undecryptable on restart). The keys directory path comes from configuration (env/volume mount) with a sensible local default.",
+        "A test proves two protectors built from the SAME persisted key-ring directory can decrypt each other's ciphertext (simulating a restart); protectors from different app-names/rings cannot.",
+        "Keys are never logged (verified by the logging rule); the columns stay plain nullable text holding base64 ciphertext (no EF ValueConverter).",
+        "PRIMARY persistence safeguard: a DataProtectionKeyRingGuard fails-fast at startup (throws before the app boots) when the configured keys directory is non-persistent/ephemeral — missing, unwritable, or pointing at a container-ephemeral path (e.g. the default temp/app-local dir when a persistent volume mount is expected). A redeploy without a persistent ring makes every stored fleet Mapy key permanently undecryptable, so the app MUST refuse to boot rather than silently mint a throwaway ring. In Development the guard is relaxed to allow the sensible local default dir; in non-Development it requires an explicitly configured persistent path.",
+        "The Docker keys-volume mount is ALSO captured as a note for the ops runbook (delivered in WI-18/§8) and as a concrete mounted-keys volume in the infra compose (delivered in WI-18) — the startup guard is the primary safeguard, the mounted volume is the deployment provision."
       ],
       "test_cases": [
-        "ReportSeed_Extended_PopulatesAllAnalyticsShapes"
+        "Protect_ThenUnprotect_RoundTripsPlaintext",
+        "Unprotect_WithPersistedRing_SurvivesSimulatedRestart",
+        "Boot_WithEphemeralKeysDir_FailsFast"
       ],
-      "verification": { "tool": "dotnet-test", "filter": "ReportSeedExtended" },
+      "verification": { "tool": "dotnet-test", "filter": "FleetKeyProtector" },
       "rule_citations": [
-        "rules/ef-core.md#date-types",
-        "rules/csharp-style.md#timeprovider"
+        "rules/architecture.md#common-infrastructure",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/naming.md#files-and-types"
       ]
     },
     {
       "id": "WI-04",
       "lane": "api",
-      "title": "Shared analytics query contract + GET /analytics/overview",
-      "depends_on": ["WI-02", "WI-03"],
-      "estimated_complexity": "M",
+      "title": "IMapyClient typed HttpClient + resilience/breaker + HttpMessageHandler test seam",
+      "depends_on": ["WI-01", "WI-03"],
+      "estimated_complexity": "XL",
+      "needs_library_research": true,
+      "required_reads": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#banned-patterns",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/csharp-style.md#async-await",
+        "rules/logging.md#style-message-templates",
+        "CLAUDE.md#FakeGeoProvider-shared-singleton",
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
+        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Common/Notifications/INotificationService.cs",
+        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Geo/IMapyClient.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/MapyClient.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoResult.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/MapyDtos.cs",
+        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+        "api/tests/Taxi.Api.Tests/Geo/MapyClientHandlerTests.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/StubMapyHttpHandler.cs"
+      ],
+      "acceptance_criteria": [
+        "IMapyClient exposes typed methods for /v1/suggest, /v1/geocode, /v1/rgeocode, /v1/routing/route, each returning a GeoResult<T> discriminated union (Success(value) | Unavailable(reason)) — never throws for degradation, never returns null.",
+        "MapyClient is a typed HttpClient registered in GeoFeatureConfiguration.AddFeatureDependencies with a resilience pipeline: 4s timeout, 1 retry on 5xx, circuit breaker after 5 failures / 30s with half-open probes; breaker-open is queryable and short-circuits (no upstream call, no credit spent). The old photon/osrm named clients are removed.",
+        "The server key is resolved per-fleet via MapyKeyResolver (Unprotect(fleet.MapyServerKey) else env Mapy__ServerKey fallback) and attached to every Mapy call; the key is never logged (log templates use event phrases only).",
+        "try/catch for infra (timeout, retry-exhausted 5xx, breaker-open) lives INSIDE MapyClient and maps to GeoResult.Unavailable there (the sanctioned degradation carve-out).",
+        "A REAL MapyClient over a stubbed HttpMessageHandler (ConfigurePrimaryHttpMessageHandler / StubMapyHttpHandler) proves: (a) a 200 maps to Success with parsed street+municipality+lat+lng; (b) five consecutive 503s open the breaker and the sixth call returns Unavailable WITHOUT hitting the handler (assert on the handler's call counter); (c) the request URL carries type=regional.address,regional.street,poi and lang=cs for suggest."
+      ],
+      "test_cases": [
+        "SuggestAsync_Success_ParsesStreetAndMunicipality",
+        "SuggestAsync_FiveConsecutive503_OpensBreakerAndSkipsUpstream",
+        "RouteAsync_Timeout_ReturnsUnavailableNotThrow"
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "MapyClient" },
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#banned-patterns",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/error-handling.md#no-exceptions-for-control-flow",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/csharp-style.md#async-await",
+        "rules/logging.md#style-message-templates",
+        "rules/logging.md#what-must-not-appear-in-logs",
+        "rules/naming.md#files-and-types"
+      ]
+    },
+    {
+      "id": "WI-05",
+      "lane": "api",
+      "title": "Common/Geo pure helpers — cache-key folding/rounding, haversine, ETA fallback",
+      "depends_on": [],
+      "estimated_complexity": "S",
       "needs_library_research": false,
       "required_reads": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#common-infrastructure",
+        "rules/csharp-style.md#expression-bodied",
+        "rules/csharp-style.md#xml-documentation",
+        "api/src/Taxi.Api/Common/Geo/ZoneBbox.cs"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Common/Geo/GeoCacheKey.cs",
+        "api/src/Taxi.Api/Common/Geo/HaversineDistance.cs",
+        "api/src/Taxi.Api/Common/Geo/GeoEstimateFallback.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoHelpersTests.cs"
+      ],
+      "acceptance_criteria": [
+        "GeoCacheKey: pure folding — suggest key = lowercased+trimmed+diacritics-folded q + near rounded to 2 decimals; geocode = folded q; reverse = lat,lng at 4 decimals; route = from+to at 4 decimals. Deterministic and tested for diacritics (\"Nadrazi\" == \"nadrazi\").",
+        "HaversineDistance.Meters(lat1,lng1,lat2,lng2) returns great-circle metres; a known Prague pair matches an expected value within tolerance.",
+        "GeoEstimateFallback: distance = haversine x 1.3 road factor; ETA = distanceM / (35 km/h); the +-20% band bounds are pure functions. All covered by unit tests.",
+        "All helpers are pure static (no DI, no I/O) beside ZoneBbox.cs per architecture#common-infrastructure."
+      ],
+      "test_cases": [
+        "GeoCacheKey_DiacriticsAndCase_FoldToSameKey",
+        "HaversineDistance_KnownPair_WithinTolerance",
+        "GeoEstimateFallback_Distance_AppliesRoadFactorAndBand"
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "GeoHelpers" },
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/csharp-style.md#expression-bodied",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types"
+      ]
+    },
+    {
+      "id": "WI-06",
+      "lane": "api",
+      "title": "GeoCache two-tier (MemoryCache L1 + Postgres L2) + geo_usage accounting",
+      "depends_on": ["WI-02", "WI-04", "WI-05"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#JsonDocument-projection-in-EF-Core-LINQ-queries",
+        "CLAUDE.md#geo_usage-atomic-upsert",
+        "api/src/Taxi.Api/Common/Geo/GeoCacheKey.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheEntry.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/GeoUsage.cs"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoCache.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
+        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoCacheTests.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoUsageRecorderTests.cs"
+      ],
+      "acceptance_criteria": [
+        "GeoCache is SCOPED (composes singleton IMemoryCache L1 + scoped TaxiDbContext L2 + TimeProvider) — a singleton capturing DbContext would be a captive-dependency bug; the WI proves the registration lifetime is scoped.",
+        "Read path: L1 hit -> return; L1 miss + L2 hit (and CreatedAt + ttlForKind >= now) -> hydrate L1 + return; else miss. TTL is app-enforced per kind (suggest 7d, geocode 30d, reverse 30d, route 24h, quickplace forever) — a stale L2 row is treated as a miss. jsonb Value is loaded then read (RootElement), never projected in a Select.",
+        "GeoUsageRecorder increments geo_usage via an ATOMIC INSERT..ON CONFLICT (fleet_id,day,kind) DO UPDATE SET calls=geo_usage.calls+EXCLUDED.calls, credits_est=geo_usage.credits_est+EXCLUDED.credits_est using ExecuteSqlInterpolatedAsync (NOT read-modify-write — concurrent misses must not race). A concurrent-misses test asserts the final count equals the number of misses.",
+        "Accounting is caller-driven (the single accounting site is the cache-miss in WI-07's IGeoService, not a decorator): +4 credits per suggest/geocode/reverse/route miss. GeoCache itself does not increment on hit or on breaker-open.",
+        "A test proves: two identical reads -> first is a miss (writes L1+L2), second is an L1 hit with no L2 query and no usage increment."
+      ],
+      "test_cases": [
+        "GeoCache_SecondIdenticalRead_IsL1HitNoDbNoUsage",
+        "GeoCache_StaleL2Row_TreatedAsMiss",
+        "GeoUsageRecorder_ConcurrentMisses_AtomicUpsertNoRace"
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "GeoCache" },
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#banned-patterns",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types"
+      ]
+    },
+    {
+      "id": "WI-07",
+      "lane": "api",
+      "title": "IGeoService orchestration (cache->client->degradation) + high-level test fake",
+      "depends_on": ["WI-04", "WI-06"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/error-handling.md#core-principle",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#pattern-matching",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#FakeGeoProvider-shared-singleton",
+        "api/src/Taxi.Api/Infrastructure/Geo/IMapyClient.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoResult.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoCache.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
+        "api/src/Taxi.Api/Common/Geo/GeoEstimateFallback.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/FakeGeoProvider.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoService.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoService.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoProvider.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/PhotonOsrmGeoProvider.cs",
+        "api/src/Taxi.Api/Features/Geo/GeoFeatureConfiguration.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/FakeGeoService.cs",
+        "api/tests/Taxi.Api.Tests/Infrastructure/TaxiApiFactory.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoServiceTests.cs"
+      ],
+      "acceptance_criteria": [
+        "IGeoService high-level surface (Suggest/Geocode/Reverse/Route + a QuickPlace lookup that never calls Mapy) composes cache -> client -> degradation and returns a result carrying a source/cache/degraded signal so endpoints can set X-Geo-* headers and the estimate-mode body field. Successor to IGeoProvider; PhotonOsrmGeoProvider and the old IGeoProvider are deleted.",
+        "On cache miss: call IMapyClient; on Success -> write L1+L2, increment geo_usage +4 (the single accounting site), signal cache=miss/source=mapy; on Unavailable (breaker-open/timeout/5xx) -> NO usage increment, return a degraded result (haversine x1.3 / ETA fallback for route, empty for suggest, coords-only for reverse).",
+        "A high-level FakeGeoService (successor to FakeGeoProvider, carrying the shared-singleton Reset() discipline: Reset() FIRST then set fields) is wired into TaxiApiFactory and used by most integration tests; it can be told to return Unavailable to drive AC#5 degradation without a real HTTP stub.",
+        "GeoServiceTests prove: cache-hit path spends no credit and does not call the client; Unavailable route returns the haversine x1.3 estimate with the wider band flagged; QuickPlace lookup never touches the client or usage.",
+        "QuoteEndpoint and the Geo endpoints compile against IGeoService (the swap itself is completed in WI-08/WI-09/WI-10)."
+      ],
+      "test_cases": [
+        "Route_CacheHit_NoClientCallNoCredit",
+        "Route_ClientUnavailable_ReturnsHaversineEstimateFlaggedWider",
+        "QuickPlace_NeverCallsClientOrIncrementsUsage"
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "GeoService" },
+      "rule_citations": [
+        "rules/architecture.md#common-infrastructure",
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/architecture.md#banned-patterns",
+        "rules/error-handling.md#core-principle",
+        "rules/error-handling.md#exceptions-for-infrastructure",
+        "rules/csharp-style.md#sealed-internal",
+        "rules/csharp-style.md#pattern-matching",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types"
+      ]
+    },
+    {
+      "id": "WI-08",
+      "lane": "api",
+      "title": "Geo proxy endpoints — suggest (enriched) + geocode + reverse + rate limit + X-Geo headers",
+      "depends_on": ["WI-07"],
+      "estimated_complexity": "XL",
+      "needs_library_research": true,
+      "required_reads": [
+        "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
-        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#routes",
+        "rules/api-design.md#authorization",
         "rules/validation.md#when-to-add-a-validator",
-        "rules/ef-core.md#asnotracking",
-        "CLAUDE.md#WithTag-Common.Features",
-        "CLAUDE.md#UC-007-A2-SqlQuery-snake_case",
-        "CLAUDE.md#OpenAPI-allowlist-docs-api-md",
-        "CLAUDE.md#FastEndpoints-double-query-param-locale-A1",
-        "api/src/Taxi.Api/Features/Reports/GetFleetReport/GetFleetReportEndpoint.cs",
-        "api/src/Taxi.Api/Features/Audit/GetAudit/GetAuditEndpoint.cs",
+        "rules/validation.md#error-codes",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#FastEndpoints-double-query-param-binding-is-locale-sensitive",
+        "CLAUDE.md#required-on-STJ-deserialized-request-properties",
+        "CLAUDE.md#WithTag-needs-using",
+        "CLAUDE.md#OpenAPI-route-allowlist-test",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestItemDto.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestValidator.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
         "api/src/Taxi.Api/Authorization/AuthorizationPolicies.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs",
         "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
       ],
       "files_touched": [
-        "api/src/Taxi.Api/Features/Analytics/AnalyticsFeatureConfiguration.cs",
-        "api/src/Taxi.Api/Features/Analytics/Shared/AnalyticsRangeRequest.cs",
-        "api/src/Taxi.Api/Features/Analytics/Shared/AnalyticsRangeValidator.cs",
-        "api/src/Taxi.Api/Features/Analytics/Shared/AnalyticsWindow.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetOverview/GetOverviewEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetOverview/GetOverviewResponse.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/GetOverviewTests.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestItemDto.cs",
+        "api/src/Taxi.Api/Features/Geo/Suggest/SuggestResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Geocode/GeocodeValidator.cs",
+        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Reverse/ReverseValidator.cs",
+        "api/src/Taxi.Api/Common/Geo/GeoRateLimiter.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoProxyTests.cs",
         "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
         "docs/api.md"
       ],
       "acceptance_criteria": [
-        "Features/Analytics/ slice with AnalyticsFeatureConfiguration : IFeatureConfiguration (parameterless, internal sealed).",
-        "AnalyticsRangeRequest (from/to default this Prague month, granularity day|week|month default day, compare bool) + validator with .WithErrorCode and granularity enum + to>=from + ISO-parse guards; from/to parsed defensively (InvariantCulture).",
-        "GET /api/v1/analytics/overview (FleetAdminOnly) returns all KPI cards with compare deltas + rides+revenue trend, SQL-aggregated (no in-memory grouping of raw orders).",
-        "Route added to SeedAndEndToEndTests allowlist HashSet; docs/api.md regenerated.",
-        "Numbers match hand-computed AC#1 fixture; compare returns prior equal-length period.",
-        "Tenant isolation: fleet A cannot read fleet B (AC#4).",
-        "< 500 ms against the 50k seed with compare=true (the shipped doubled-cost path that recomputes the prior equal-length period); measured ms recorded (AC#3)."
+        "GET /geo/suggest keeps its verb + CustomerOrStaff policy; gains Near (string?, parsed InvariantCulture in-handler, lenient/ignore-if-malformed). SuggestItemDto grows to (Label, Street?, Municipality?, Lat, Lng) so \"Kollarova\" and \"nadrazi Kolin\" return street+town. Upstream Unavailable -> 200 empty (never 502). A second identical query returns X-Geo-Cache: hit with no client call.",
+        "GET /geo/geocode?q= (NEW, CustomerOrStaff): min 3 chars -> 400 Geo.GeocodeQueryTooShort; a geocode match -> 200 Found=true with resolved Lat/Lng + Label; no match -> 200 Found=false (not 404).",
+        "GET /geo/reverse?lat=&lng= (NEW, CustomerOrStaff): Lat/Lng declared as string? (GET-query double-binding trap), parsed + range-checked + rounded to 4 decimals in-handler; valid coords -> 200 with a resolved street + municipality address; invalid -> 400 Geo.ReverseCoordsInvalid; upstream Unavailable -> 200 nulls (client shows coords).",
+        "5 req/s per USER rate limit on suggest/geocode/reverse via GeoRateLimiter (a PreProcessor or DelegatingHandler token-bucket keyed on the authenticated user id — FE Throttle keys on IP and does not fit); over-limit -> 429 Geo.RateLimited. Error codes added to ErrorCodes.Geo.",
+        "All three proxy endpoints set X-Geo-Source: mapy and X-Geo-Cache: hit|miss BEFORE Send.*Async (debug-only headers).",
+        "SeedAndEndToEndTests expected allowlist adds GET /api/v1/geo/geocode and GET /api/v1/geo/reverse; docs/api.md regenerated and staged."
       ],
       "test_cases": [
-        "HandleAsync_HandComputedFixture_ReturnsCorrectKpis",
-        "HandleAsync_CompareTrue_ReturnsPriorPeriodDeltas",
-        "HandleAsync_FleetAScopedFromFleetB_ReturnsOnlyOwnData",
-        "HandleAsync_50kSeed_RespondsUnder500ms",
-        "Validate_InvalidGranularity_FailsWithCorrectCode"
+        "HandleAsync_SuggestSecondIdenticalQuery_ReturnsCacheHitHeaderNoClientCall",
+        "HandleAsync_GeocodeMatch_Returns200Found",
+        "HandleAsync_GeocodeQueryTooShort_Returns400",
+        "HandleAsync_ReverseValidCoords_Returns200Address",
+        "HandleAsync_ReverseUpstreamUnavailable_Returns200Nulls",
+        "HandleAsync_SuggestOverRateLimit_Returns429RateLimited"
       ],
-      "verification": { "tool": "dotnet-test", "filter": "Analytics.GetOverview" },
+      "verification": { "tool": "dotnet-test", "filter": "GeoProxy" },
       "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/architecture.md#feature-configuration",
-        "rules/architecture.md#no-horizontal-layers",
-        "rules/architecture.md#banned-patterns",
+        "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#configure-structure",
         "rules/api-design.md#send-pattern",
-        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#routes",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
         "rules/validation.md#when-to-add-a-validator",
-        "rules/ef-core.md#asnotracking",
+        "rules/validation.md#error-codes",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#test-naming"
+      ]
+    },
+    {
+      "id": "WI-09",
+      "lane": "api",
+      "title": "POST /geo/route (verb+contract change) + GET /geo/config + allowlist",
+      "depends_on": ["WI-07", "WI-08"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#error-codes",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#required-on-STJ-deserialized-request-properties",
+        "CLAUDE.md#OpenAPI-route-allowlist-test",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteValidator.cs",
+        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetEndpoint.cs",
+        "api/src/Taxi.Api/Features/Public/GetFleet/GetFleetResponse.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Geo/Route/RouteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteRequest.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/GeoPoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteResponse.cs",
+        "api/src/Taxi.Api/Features/Geo/Route/RouteValidator.cs",
+        "api/src/Taxi.Api/Features/Geo/Config/GeoConfigEndpoint.cs",
+        "api/src/Taxi.Api/Features/Geo/Config/GeoConfigResponse.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoRouteTests.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoConfigTests.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+        "docs/api.md"
+      ],
+      "acceptance_criteria": [
+        "GET /geo/route becomes POST /geo/route with body { from:{lat,lng}, to:{lat,lng} }; GeoPoint uses REAL double (STJ is invariant-culture for bodies) and NO `required` (required -> STJ 500 not 400). Validator: NotNull From/To + lat/lng range + reject (0,0). Response gains a simplified geometry (max 200 points) and an estimate-mode field. Upstream Unavailable still -> 502 Geo.RouteUnavailable (the endpoint does not invent an estimate — Pricing does the fallback in WI-10). X-Geo-* headers set.",
+        "GET /geo/config (NEW): AllowAnonymous() + X-Fleet-Slug resolution mirroring GetFleetEndpoint (the logged-out customer tracking map must render without a JWT). Response: TileUrlTemplate, BrowserKey (Unprotect(fleet.MapyBrowserKey) else env Mapy__BrowserKey fallback), AttributionHtml, MapCenterLat/Lng, MapZoom. Cache-Control: public, max-age=604800. NO server key anywhere in the DTO.",
+        "AC#7 structural guard: a test asserts /geo/config and /public/fleet responses never contain the server key value; GeoConfigResponse has no server-key member.",
+        "SeedAndEndToEndTests expected allowlist: CHANGE GET /api/v1/geo/route -> POST /api/v1/geo/route and ADD GET /api/v1/geo/config; docs/api.md regenerated and staged.",
+        "This WI depends_on WI-08 so the two shared files (SeedAndEndToEndTests.cs + docs/api.md) are edited strictly after WI-08 (no impl-agent collision)."
+      ],
+      "test_cases": [
+        "HandleAsync_PostRouteValidBody_ReturnsDistanceDurationGeometry",
+        "HandleAsync_RouteBodyZeroZero_Returns400",
+        "HandleAsync_RouteUpstreamUnavailable_Returns502",
+        "HandleAsync_GeoConfigAnonymous_ReturnsBrowserKeyNotServerKey",
+        "GeoConfig_And_PublicFleet_NeverExposeServerKey"
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "GeoRoute" },
+      "rule_citations": [
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#error-codes",
         "rules/error-handling.md#send-for-expected-errors",
         "rules/csharp-style.md#records-for-dtos",
         "rules/csharp-style.md#xml-documentation",
@@ -201,761 +521,536 @@
       ]
     },
     {
-      "id": "WI-05",
-      "lane": "api",
-      "title": "GET /analytics/demand — heatmap, supply/demand, unmet demand, utilization, zone/route",
-      "depends_on": ["WI-04"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/ef-core.md#n-plus-one",
-        "api/src/Taxi.Api/Common/Geo/ZoneService.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/AnalyticsTranslationSpikeTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Analytics/GetDemand/GetDemandEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetDemand/GetDemandResponse.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/GetDemandTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /api/v1/analytics/demand (FleetAdminOnly): hour x day-of-week heatmap (Prague), supply-vs-demand per hour bucket (orders vs clamped online driver-hours) + fulfillment rate, unmet demand (never-accepted cancellations incl Timeout) by hour, utilization fleet-wide + per driver, pickups-per-zone via bounding-box SQL, top routes by count.",
-        "Zone attribution uses bounding-box approximation; the approximation is documented in the endpoint XML doc. The bbox for each zone is derived for BOTH shapes ZoneService supports: Polygon (min/max lat/lng of vertices) AND Circle (center +/- radius-in-degrees; lat delta = radiusMeters/111320, lng delta = radiusMeters/(111320*cos(centerLat)) scaled by cos(lat)). Circle zones must not be dropped or mis-bounded.",
-        "Route added to allowlist; docs/api.md regenerated.",
-        "Hand-computed fixture match; tenant isolation; < 500 ms @ 50k seed with compare=true (the shipped doubled-cost path); measured ms recorded."
-      ],
-      "test_cases": [
-        "HandleAsync_HandComputedFixture_ReturnsHeatmapAndSupplyDemand",
-        "HandleAsync_UnmetDemand_CountsNeverAcceptedCancellations",
-        "HandleAsync_ZoneBoundingBox_AttributesPickups",
-        "HandleAsync_FleetAScopedFromFleetB_ReturnsOnlyOwnData",
-        "HandleAsync_50kSeed_RespondsUnder500ms"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "Analytics.GetDemand" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-06",
-      "lane": "api",
-      "title": "GET /analytics/operations — SLA p50/p90, offer + lifecycle funnels, cancellations",
-      "depends_on": ["WI-05"],
-      "schedule_note": "Chained after WI-05 (not merely WI-04): every api endpoint WI edits docs/api.md and the SeedAndEndToEndTests allowlist HashSet, so endpoint WIs must run serially to avoid merge conflicts on those two shared files.",
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/error-handling.md#send-for-expected-errors",
-        "api/src/Taxi.Api/Infrastructure/Entities/OrderEvent.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/AnalyticsTranslationSpikeTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Analytics/GetOperations/GetOperationsEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetOperations/GetOperationsResponse.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/GetOperationsTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /api/v1/analytics/operations (FleetAdminOnly): SLA p50/p90 series per bucket (time-to-assign/accept/pickup, ride duration) via percentile_cont; each metric filters to rows where BOTH endpoints of its interval are non-null before percentile_cont (NULL-endpoint rows excluded, never fed as NULL epochs); offer funnel from order_events (Assigned+Reassigned made, accepted, declined, timed out, avg offers per completed); lifecycle funnel conversion counts; cancellation breakdown by role/stage/hour + no-show share.",
-        "Route added to allowlist; docs/api.md regenerated.",
-        "p50/p90 match hand-computed (odd + even counts, AC#2); tenant isolation; < 500 ms @ 50k seed with compare=true (the shipped doubled-cost path); measured ms recorded."
-      ],
-      "test_cases": [
-        "HandleAsync_HandComputedFixture_MatchesP50P90",
-        "HandleAsync_OfferFunnel_CountsReassignAndTimeout",
-        "HandleAsync_CancellationBreakdown_SplitsByRoleAndStage",
-        "HandleAsync_FleetAScopedFromFleetB_ReturnsOnlyOwnData",
-        "HandleAsync_50kSeed_RespondsUnder500ms"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "Analytics.GetOperations" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-07",
-      "lane": "api",
-      "title": "GET /analytics/revenue — splits, override impact, route/zone economics, SMS cost",
-      "depends_on": ["WI-06"],
-      "schedule_note": "Chained after WI-06 to serialize shared docs/api.md + allowlist edits.",
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
-        "api/src/Taxi.Api/Infrastructure/Entities/NotificationLog.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
-        "api/src/Taxi.Api/Common/Geo/ZoneService.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Analytics/GetRevenue/GetRevenueEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetRevenue/GetRevenueResponse.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/GetRevenueTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /api/v1/analytics/revenue (FleetAdminOnly): revenue series per bucket stacked by payment type, split by source and price type; AOV trend; price-override impact (count, total CZK delta FinalPriceCzk vs Fixed/Estimated, top reasons); top-N routes + pickup zones (bbox) by revenue/rides/avg; SMS cost line = count Sent SMS x SmsUnitCostCzk per bucket. Money integer CZK.",
-        "Route added to allowlist; docs/api.md regenerated.",
-        "Hand-computed fixture match; tenant isolation; < 500 ms @ 50k seed with compare=true (the shipped doubled-cost path); measured ms recorded."
-      ],
-      "test_cases": [
-        "HandleAsync_HandComputedFixture_StacksRevenueByPaymentType",
-        "HandleAsync_PriceOverride_ComputesCzkDelta",
-        "HandleAsync_SmsCostLine_MatchesUnitCostTimesSent",
-        "HandleAsync_FleetAScopedFromFleetB_ReturnsOnlyOwnData",
-        "HandleAsync_50kSeed_RespondsUnder500ms"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "Analytics.GetRevenue" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/ef-core.md#asnotracking",
-        "rules/ef-core.md#n-plus-one",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-08",
-      "lane": "api",
-      "title": "GET /analytics/drivers + /drivers/{id} — league table, drill-down, retention",
-      "depends_on": ["WI-07"],
-      "schedule_note": "Chained after WI-07 to serialize shared docs/api.md + allowlist edits.",
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#n-plus-one",
-        "api/src/Taxi.Api/Features/Reports/GetDriverReport/GetDriverReportEndpoint.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/AnalyticsTranslationSpikeTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Analytics/GetDrivers/GetDriversEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetDrivers/GetDriversResponse.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetDriverDrilldown/GetDriverDrilldownEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetDriverDrilldown/GetDriverDrilldownResponse.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/GetDriversTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /api/v1/analytics/drivers (FleetAdminOnly): league table (rides, revenue, online hours, utilization %, revenue/online-hour, acceptance rate, avg time-to-accept, declines+timeouts, cancellations, no-shows, avg rating) via SQL + single driver-name join (no N+1).",
-        "GET /api/v1/analytics/drivers/{id:guid} (FleetAdminOnly): weekly rides/revenue/rating trend + recent low-rated (<=3) orders; 404 for cross-fleet/unknown id.",
-        "Driver retention per week: active, newly activated, churned classification.",
-        "Both routes added to allowlist; docs/api.md regenerated.",
-        "Hand-computed fixture match; tenant isolation; < 500 ms @ 50k seed with compare=true (the shipped doubled-cost path); measured ms recorded."
-      ],
-      "test_cases": [
-        "HandleAsync_HandComputedFixture_RanksTwoDrivers",
-        "HandleAsync_DrillDown_ReturnsWeeklyTrendAndLowRated",
-        "HandleAsync_DriverFromOtherFleet_Returns404",
-        "HandleAsync_Retention_ClassifiesActivatedAndChurned",
-        "HandleAsync_50kSeed_RespondsUnder500ms"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "Analytics.GetDrivers" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/api-design.md#routes",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#asnotracking",
-        "rules/error-handling.md#send-for-expected-errors",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
-      "id": "WI-09",
-      "lane": "api",
-      "title": "GET /analytics/customers — new/returning, cohorts, top, ratings, GDPR exclusion",
-      "depends_on": ["WI-08"],
-      "schedule_note": "Chained after WI-08 to serialize shared docs/api.md + allowlist edits.",
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/ef-core.md#n-plus-one",
-        "api/tests/Taxi.Api.Tests/Analytics/AnalyticsTranslationSpikeTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        ".claude/state/09-admin-analytics.md#6"
-      ],
-      "files_touched": [
-        "api/src/Taxi.Api/Features/Analytics/GetCustomers/GetCustomersEndpoint.cs",
-        "api/src/Taxi.Api/Features/Analytics/GetCustomers/GetCustomersResponse.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/GetCustomersTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
-      ],
-      "acceptance_criteria": [
-        "GET /api/v1/analytics/customers (FleetAdminOnly): new vs returning per bucket (identity = CustomerUserId else normalized CustomerPhone); repeat rate + frequency distribution (1 / 2-5 / 6+); monthly cohort retention triangle (<=6 cols); top customers by rides + revenue (raw identity fields; masking is client-side); ratings distribution 1-5 + avg trend + worst-rated list.",
-        "Anonymized +420000000000 orders count toward volume/revenue but are excluded from new/returning, cohort, and top-customer outputs (explicit test, AC#5).",
-        "Route added to allowlist; docs/api.md regenerated.",
-        "Hand-computed fixture match; tenant isolation; < 500 ms @ 50k seed with compare=true (the shipped doubled-cost path); measured ms recorded."
-      ],
-      "test_cases": [
-        "HandleAsync_HandComputedFixture_SplitsNewVsReturning",
-        "HandleAsync_CohortTriangle_MatchesHandComputed",
-        "HandleAsync_AnonymizedCustomer_ExcludedFromIdentityMetricsOnly",
-        "HandleAsync_TopCustomers_RanksByRidesAndRevenue",
-        "HandleAsync_50kSeed_RespondsUnder500ms"
-      ],
-      "verification": { "tool": "dotnet-test", "filter": "Analytics.GetCustomers" },
-      "rule_citations": [
-        "rules/api-design.md#endpoint-pattern",
-        "rules/api-design.md#send-pattern",
-        "rules/ef-core.md#n-plus-one",
-        "rules/ef-core.md#asnotracking",
-        "rules/csharp-style.md#records-for-dtos",
-        "rules/naming.md#test-naming"
-      ]
-    },
-    {
       "id": "WI-10",
       "lane": "api",
-      "title": "GET /admin/analytics (SuperAdmin cross-tenant) + WeeklyDigestJob",
-      "depends_on": ["WI-09", "WI-01"],
-      "schedule_note": "Chained after WI-09 to serialize shared docs/api.md + allowlist edits; also needs WI-01's WeeklyDigestMarker table.",
-      "estimated_complexity": "L",
+      "title": "Pricing/Quote on IGeoService + persist order DistanceM/DurationS (quote-once)",
+      "depends_on": ["WI-07", "WI-09"],
+      "estimated_complexity": "M",
       "needs_library_research": false,
       "required_reads": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/api-design.md#authorization",
-        "rules/api-design.md#endpoint-pattern",
-        "rules/logging.md",
-        "api/src/Taxi.Api/Features/Admin/ListFleets/ListFleetsEndpoint.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/OfferTimeoutJob.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
-        "api/src/Taxi.Api/Infrastructure/Notifications/IPushSender.cs",
-        "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
-        "CLAUDE.md#WI-14-job-facts",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/error-handling.md#core-principle",
+        "rules/ef-core.md#asnotracking",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
+        "api/src/Taxi.Api/Common/Geo/GeoEstimateFallback.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoService.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Order.cs",
+        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
       ],
       "files_touched": [
-        "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsEndpoint.cs",
-        "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsResponse.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/WeeklyDigestJob.cs",
-        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
-        "api/tests/Taxi.Api.Tests/Analytics/AdminAnalyticsAndDigestTests.cs",
-        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
-        "docs/api.md"
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteEndpoint.cs",
+        "api/src/Taxi.Api/Features/Pricing/Quote/QuoteResponse.cs",
+        "api/src/Taxi.Api/Features/Orders/CreateOrder/CreateOrderEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Pricing/PricingQuoteTests.cs"
       ],
       "acceptance_criteria": [
-        "GET /api/v1/admin/analytics (SuperAdminOnly, IgnoreQueryFilters documented at query site): per-fleet rides+revenue this/last month + MoM delta, active drivers, active customers, SMS count + est cost, last order timestamp, 12-week rides sparkline, health flag (growing/stable/declining/inactive), platform totals row.",
-        "FleetAdmin gets 403 on /admin/analytics (AC#4).",
-        "WeeklyDigestJob: internal RunTickAsync shell, PeriodicTimer via injected TimeProvider, Monday 06:00 Europe/Prague; per active fleet last ISO week vs prior; Web Push via IPushSender.SendAsync (Task<PushSendResult>) to FleetAdmin users; idempotent per (fleet, ISO week) via WeeklyDigestMarker; zero-activity fleets skipped; Czech text, no PII beyond top driver first name; registered in AddJobs().",
-        "Per-recipient push outcome handling: a PushSendOutcome.Gone (410, subscription auto-deleted by sender) or any send failure is logged (no PII — fleet id + outcome + counts only) and does NOT abort the fleet's remaining recipients nor block the idempotency-marker insert; the WeeklyDigestMarker is written once per (fleet, ISO week) regardless of partial send failures.",
-        "Same ISO week processed twice sends exactly one push per fleet (AC#8); digest numbers match overview endpoint for that week (AC#8).",
-        "Route added to allowlist; docs/api.md regenerated; logs fleet id + counts only (no PII)."
+        "QuoteEndpoint injects IGeoService (not IGeoProvider); on a known dropoff it calls Route once; on GeoResult.Unavailable it no longer 502s — it falls back to the haversine x1.3 estimate with a WIDER +-20% band and an estimate-mode = \"orientacni odhad\" body field (AC#5); a matched Fixed route still short-circuits with zero geo calls.",
+        "The Estimate quote result carries DistanceM/DurationS so the order-create path persists them onto the order (DistanceM, DurationS) — the create-time route call happens at most once (AC#3 first clause).",
+        "A test with the fake returning Unavailable proves an order can still be created with the wider-band estimate and \"orientacni odhad\" label; a happy-path test proves exactly one route call at create.",
+        "geo_usage reflects the create-time miss only (no double counting)."
       ],
       "test_cases": [
-        "GetAdminAnalytics_SuperAdmin_ReturnsCrossTenantHealth",
-        "GetAdminAnalytics_FleetAdmin_Returns403",
-        "RunTickAsync_SameIsoWeekTwice_SendsExactlyOncePerFleet",
-        "RunTickAsync_DigestNumbers_MatchOverviewEndpoint",
-        "RunTickAsync_ZeroActivityFleet_Skipped",
-        "RunTickAsync_RecipientPushGone_ContinuesAndWritesMarkerOnce"
+        "HandleAsync_QuoteKnownDropoff_CallsRouteOnceAndPersistsDistance",
+        "HandleAsync_QuoteGeoUnavailable_FallsBackWiderBandOrientacniOdhad",
+        "HandleAsync_QuoteFixedRoute_ZeroGeoCalls"
       ],
-      "verification": { "tool": "dotnet-test", "filter": "AdminAnalyticsAndDigestTests" },
+      "verification": { "tool": "dotnet-test", "filter": "PricingQuote" },
       "rule_citations": [
-        "rules/architecture.md#vertical-slice-layout",
-        "rules/api-design.md#authorization",
         "rules/api-design.md#endpoint-pattern",
         "rules/api-design.md#send-pattern",
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/error-handling.md#core-principle",
         "rules/error-handling.md#send-for-expected-errors",
-        "rules/logging.md#property-names",
-        "rules/csharp-style.md#timeprovider",
-        "rules/csharp-style.md#records-for-dtos",
+        "rules/ef-core.md#asnotracking",
+        "rules/csharp-style.md#guard-clauses",
+        "rules/csharp-style.md#xml-documentation",
         "rules/naming.md#test-naming"
       ]
     },
     {
       "id": "WI-11",
-      "lane": "web",
-      "title": "Promote shared date-range + CSV builder; range/granularity/compare controls",
-      "depends_on": [],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
+      "lane": "api",
+      "title": "Driver->pickup ETA — accept-time single call + throttled viewer-gated refresh",
+      "depends_on": ["WI-07", "WI-10"],
+      "estimated_complexity": "XL",
+      "needs_library_research": true,
       "required_reads": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-accessibility.md#semantics",
-        "web/src/features/reports/reportDateRange.ts",
-        "web/src/features/orders/csvExport.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/architecture.md#banned-patterns",
+        "rules/error-handling.md#core-principle",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#style-message-templates",
+        "CLAUDE.md#SignalR-hub-tenant-scope",
+        "CLAUDE.md#Background-job-testability-pattern",
+        "api/src/Taxi.Api/Realtime/FleetHub.cs",
+        "api/src/Taxi.Api/Realtime/SignalRRealtimePublisher.cs",
+        "api/src/Taxi.Api/Common/Orders/OrderService.cs",
+        "api/src/Taxi.Api/Features/Orders/AcceptOrder/AcceptOrderEndpoint.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/IGeoService.cs"
       ],
       "files_touched": [
-        "web/src/shared/date/analyticsRange.ts",
-        "web/src/shared/date/analyticsRange.test.ts",
-        "web/src/shared/csv/toCsv.ts",
-        "web/src/shared/csv/toCsv.test.ts",
-        "web/src/features/reports/reportDateRange.ts",
-        "web/src/features/orders/csvExport.ts",
-        "web/src/features/analytics/controls/AnalyticsControls.tsx",
-        "web/src/features/analytics/controls/AnalyticsControls.test.tsx",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
+        "api/src/Taxi.Api/Realtime/FleetHub.cs",
+        "api/src/Taxi.Api/Common/Geo/OrderSubscriptionTracker.cs",
+        "api/src/Taxi.Api/Common/Geo/PickupEtaService.cs",
+        "api/src/Taxi.Api/Features/Orders/AcceptOrder/AcceptOrderEndpoint.cs",
+        "api/tests/Taxi.Api.Tests/Geo/PickupEtaTests.cs"
       ],
       "acceptance_criteria": [
-        "analyticsRange.ts (shared) exposes presets dnes/7 dní/tento měsíc/minulý měsíc/kvartál/rok/vlastní (pure, now-injected, Prague-local ISO) + previousPeriodOf(range); defaultThisMonthRange still available to reports (re-export, no behavior change).",
-        "toCsv.ts (shared) builds UTF-8 BOM + ';' + CRLF RFC-4180-escaped CSV; downloadCsv triggers browser download; byte-tested (AC#7). reports/orders re-use it additively.",
-        "AnalyticsControls component (preset select, granularity switch, compare toggle) is presentational (state up via props); labelled, aria-pressed on toggle; axe clean.",
-        "New i18n keys in both cs.json and en.json; parity test passes.",
-        "No /x/reports screen behavior change and no /reports/* endpoint change."
+        "SCOUT FIRST (why needs_library_research): SignalR exposes no native group-member count. The impl agent must design a viewer-tracking mechanism — an OrderSubscriptionTracker (in-memory count incremented in FleetHub.Subscribe / decremented in OnDisconnectedAsync for order:{id}, plus a dispatcher-detail-open signal) — and confirm it is queryable from the ETA refresh path. Document the chosen mechanism in the WI notes.",
+        "OrderSubscriptionTracker is an in-memory singleton (mirrors the DriverPositionStore precedent) — it MUST be DI-registered with singleton lifetime and reset per-test (shared across the test collection, so tests must clear/reset it to avoid cross-test leakage exactly like FakeGeoProvider/DriverPositionStore).",
+        "On Accept: exactly one route call computes the initial driver->pickup ETA (AC#3 second clause). Assigning + accepting together cause at most one more route call beyond create.",
+        "While at least one viewer is subscribed to order:{id} (or the dispatcher has the detail open), the ETA refreshes at most every 60s -> a customer watching for 5 minutes causes <= 5 further route calls; nobody watching -> 0 calls, and between refreshes the ETA is EXTRAPOLATED from remaining distance and last average speed (no API call).",
+        "The dispatcher board assign-picker driver->pickup distances use haversine only (no API call) — verified: opening the picker triggers zero route calls.",
+        "PickupEtaTests (using the fake geo service + a controllable TimeProvider + a controllable subscriber tracker) assert the call-count bounds for: create=1, accept=+1, 5-min watch<=5, no-watcher=0."
       ],
       "test_cases": [
-        "analyticsRange presets and previousPeriodOf (incl Prague DST edge)",
-        "toCsv byte-exact BOM + ';' + escaping",
-        "AnalyticsControls preset/granularity/compare interactions + axe",
-        "locales.parity"
+        "Accept_ComputesPickupEta_ExactlyOneRouteCall",
+        "TrackingWatched5Minutes_AtMostFiveRefreshCalls",
+        "NoSubscriber_ZeroRefreshCalls_ExtrapolatesEta",
+        "AssignPicker_UsesHaversine_ZeroRouteCalls"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "dotnet-test", "filter": "PickupEta" },
       "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-accessibility.md#semantics"
+        "rules/api-design.md#endpoint-pattern",
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/architecture.md#banned-patterns",
+        "rules/error-handling.md#core-principle",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#style-message-templates",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#test-naming"
       ]
     },
     {
       "id": "WI-12",
-      "lane": "web",
-      "title": "Chart.js 4 + react-chartjs-2 dependency intro + analytics-chunk budget",
-      "depends_on": [],
-      "estimated_complexity": "S",
-      "needs_library_research": true,
-      "web_verification": "web quality gate: eslint + tsc + vitest + build + size (the size budget is the load-bearing check here); not dotnet-build (routed by lane: web).",
+      "lane": "api",
+      "title": "Geo usage settings read + 80%/100% budget alert via notification engine",
+      "depends_on": ["WI-06", "WI-09"],
+      "estimated_complexity": "M",
+      "needs_library_research": false,
       "required_reads": [
-        "rules/web-performance.md#code-splitting",
-        "rules/web-performance.md#bundle-budget",
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-testing.md#network-mocking",
-        "web/package.json",
-        "docs/decisions.md"
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#OpenAPI-route-allowlist-test",
+        "api/src/Taxi.Api/Common/Notifications/INotificationService.cs",
+        "api/src/Taxi.Api/Common/Notifications/NotificationService.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationEvent.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationLog.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
       ],
       "files_touched": [
-        "web/package.json",
-        "web/package-lock.json",
-        "web/src/features/analytics/charts/registerCharts.ts",
-        "web/src/features/analytics/charts/registerCharts.test.ts",
-        "web/src/features/analytics/charts/chartMock.ts",
-        "docs/decisions.md"
+        "api/src/Taxi.Api/Infrastructure/Entities/NotificationEvent.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/GeoUsageRecorder.cs",
+        "api/src/Taxi.Api/Features/Settings/GetGeoUsage/GetGeoUsageEndpoint.cs",
+        "api/src/Taxi.Api/Features/Settings/GetGeoUsage/GetGeoUsageResponse.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoBudgetAlertTests.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+        "docs/api.md"
       ],
       "acceptance_criteria": [
-        "chart.js@^4 + react-chartjs-2@^5 installed; imports confined to the lazy analytics chunk.",
-        "registerCharts.ts registers only the controllers the tabs use (Line, Bar, Doughnut, matrix/heatmap or Bar fallback); tree-shaken; idempotent.",
-        "jsdom mock pattern documented (vi.mock('react-chartjs-2')) so tabs never touch canvas.",
-        "New size-limit budget entry for dist/assets/analytics-*.js; /d, /c, eager /x budgets unchanged (AC#6); npm run size passes; number recorded in handoff notes.",
-        "docs/decisions.md entry '2026-09-13 — Charts: Chart.js 4 + react-chartjs-2 (analytics only)' with rationale + chunk confinement + budget."
+        "A settings read endpoint (GET /settings/geo-usage) uses Policies(nameof(AuthorizationPolicies.FleetAdminOnly)) — the settings/budget page is a FleetAdmin surface, so the single concrete policy is FleetAdminOnly (NOT DispatcherOnly). It returns this month's estimated credits + % of GeoMonthlyCreditBudget for the current fleet (plain-LINQ GroupBy over geo_usage WHERE fleet_id AND day in [monthStart,monthEnd) — no SqlQuery aliasing needed on read).",
+        "When a cache-miss upsert crosses 80% or 100% of GeoMonthlyCreditBudget for the fleet-month, a FleetAdmin alert is enqueued via the notification engine (new NotificationEvent member, e.g. GeoBudgetWarning) and a notification_log row is written; each threshold fires at most once per fleet-month (dedup on the existing NotificationLog unique index shape).",
+        "A test with GeoMonthlyCreditBudget = 100 credits proves the 80% alert fires exactly once when usage crosses 80 (AC#6); usage below threshold fires nothing; a further miss that keeps usage in the 80-100% band does NOT re-fire the 80% alert (dedup per fleet + ISO-month).",
+        "A test proves the 100% alert fires exactly once when usage crosses 100% of GeoMonthlyCreditBudget (AC#6 requires alerts at BOTH 80% and 100%); an already-sent 100% alert is not re-fired on subsequent misses in the same fleet-month.",
+        "geo_usage reflects cache MISSES only (verified: a cache-hit read does not move the counter).",
+        "SeedAndEndToEndTests allowlist + docs/api.md updated for the new settings endpoint (depends_on WI-09 serializes the shared-file edits)."
       ],
       "test_cases": [
-        "registerCharts registers expected controllers and is idempotent",
-        "chart mock renders without canvas"
+        "GeoUsage_Budget100_At80Percent_FiresAlertOnce",
+        "GeoUsage_Budget100_At100Percent_FiresAlertOnce",
+        "GetGeoUsage_CurrentMonth_ReturnsEstimateAndPercent",
+        "GeoUsage_CacheHit_DoesNotIncrement"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "dotnet-test", "filter": "GeoBudgetAlert" },
       "rule_citations": [
-        "rules/web-performance.md#code-splitting",
-        "rules/web-performance.md#bundle-budget",
-        "rules/web-architecture.md#banned-patterns",
-        "rules/web-testing.md#network-mocking"
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/ef-core.md#asnotracking",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#test-naming"
       ]
     },
     {
       "id": "WI-13",
-      "lane": "web",
-      "title": "/x/analytics route + nav + Overview tab + A4 print stylesheet",
-      "depends_on": ["WI-11", "WI-12", "WI-04"],
-      "estimated_complexity": "L",
+      "lane": "api",
+      "title": "Geo background jobs — cache TTL cleanup sweep + costs.md measurement note",
+      "depends_on": ["WI-06"],
+      "estimated_complexity": "M",
       "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
       "required_reads": [
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-accessibility.md#semantics",
-        "web/src/app/router.tsx",
-        "web/src/app/AppLayout.tsx",
-        "web/src/features/settings/roleGating.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/features/reports/FleetKpiCards.tsx",
-        "web/src/shared/theme/theme.ts"
+        "rules/ef-core.md#asnotracking",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#style-message-templates",
+        "CLAUDE.md#Background-job-testability-pattern",
+        "api/src/Taxi.Api/Infrastructure/Jobs/StalePositionJob.cs",
+        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/GeoCacheEntry.cs"
       ],
       "files_touched": [
-        "web/src/app/router.tsx",
-        "web/src/app/AppLayout.tsx",
-        "web/src/features/analytics/AnalyticsPage.tsx",
-        "web/src/features/analytics/AnalyticsPage.test.tsx",
-        "web/src/features/analytics/overview/OverviewTab.tsx",
-        "web/src/features/analytics/overview/OverviewTab.test.tsx",
-        "web/src/features/analytics/overview/overviewChart.ts",
-        "web/src/features/analytics/overview/overviewChart.test.ts",
-        "web/src/features/analytics/useAnalyticsOverview.ts",
-        "web/src/features/analytics/useAnalyticsOverview.test.ts",
-        "web/src/features/analytics/analyticsPrint.css",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
+        "api/src/Taxi.Api/Infrastructure/Jobs/GeoCacheCleanupJob.cs",
+        "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoCacheCleanupJobTests.cs",
+        "docs/costs.md"
       ],
       "acceptance_criteria": [
-        "Lazy /x/analytics route group (own chunk) in router.tsx; nav item Analytika in AppLayout gated by canAccessSettings (FleetAdmin).",
-        "Tab shell (Přehled/Poptávka/Provoz/Tržby/Řidiči/Zákazníci) with shared AnalyticsControls.",
-        "client.ts: typed getAnalyticsOverview + DTOs mirroring backend envelope.",
-        "Overview tab: KPI cards with compare delta badges + rides+revenue sparkline (Chart.js Line via pure overviewChart builder) + data-table/aria fallback for the chart.",
-        "@media print stylesheet hides nav/controls and lays out KPI + charts for A4.",
-        "Size-budget re-validation: re-run npm run size after build (WI-13 is the first real content in the analytics chunk that WI-12's budget was set against); if the real chunk exceeds the WI-12 budget, adjust the number with a docs/decisions.md note (rules/web-performance.md#bundle-budget); confirm /d, /c, eager /x budgets unchanged (AC#6). Each later tab WI (WI-14a->14b->14c->15->16) also re-runs npm run size as the chunk grows.",
-        "i18n keys both locales; axe clean; empty-range shows empty state not blank."
+        "GeoCacheCleanupJob follows the RunTickAsync PeriodicTimer shell (internal RunTickAsync(ct) with all logic; ExecuteAsync a thin timer shell) and is registered in JobsServiceExtensions.AddJobs().",
+        "Per tick it ExecuteDeleteAsync's expired geo_cache rows per-kind (CreatedAt + ttlForKind < now) EXCEPT QuickPlace (forever — cleanup skips it; QuickPlace invalidation happens on Place edit, not here).",
+        "A test seeds cache rows of each kind at varying ages, constructs the job and calls RunTickAsync directly (advancing FakeTimeProvider), and asserts only the expired non-QuickPlace rows are deleted.",
+        "docs/costs.md gains the UC-010 tile-credit estimate line (§5: tiles are not counted server-side; estimate them from a measured week) as a placeholder to be filled after the first real week."
       ],
       "test_cases": [
-        "overviewChart pure config builder",
-        "useAnalyticsOverview (mocked client)",
-        "OverviewTab renders KPI cards + delta badges + chart mock + data-table fallback",
-        "router lazy-loads /x/analytics and nav is FleetAdmin-gated",
-        "axe assertion",
-        "locales.parity"
+        "RunTickAsync_ExpiredNonQuickPlaceRows_Deleted",
+        "RunTickAsync_QuickPlaceRows_NeverDeleted"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "dotnet-test", "filter": "GeoCacheCleanup" },
       "rule_citations": [
-        "rules/web-architecture.md#route-groups",
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-performance.md#code-splitting",
-        "rules/web-react-style.md#styled-components",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#touch-targets"
+        "rules/ef-core.md#asnotracking",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/logging.md#style-message-templates",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#test-naming"
       ]
     },
     {
-      "id": "WI-14a",
-      "lane": "web",
-      "title": "Demand tab (Poptávka) — heatmap, supply/demand, unmet, utilization, zone/route",
-      "depends_on": ["WI-13", "WI-05"],
+      "id": "WI-14",
+      "lane": "api",
+      "title": "GET /admin/geo-usage — SuperAdmin per-fleet monthly totals",
+      "depends_on": ["WI-06", "WI-12"],
       "estimated_complexity": "M",
       "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
       "required_reads": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-performance.md#virtualization",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-accessibility.md#semantics",
-        ".claude/state/09-admin-analytics.md#2",
-        "web/src/features/analytics/charts/registerCharts.ts",
-        "web/src/shared/csv/toCsv.ts"
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "CLAUDE.md#OpenAPI-route-allowlist-test",
+        "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsEndpoint.cs",
+        "api/src/Taxi.Api/Features/Admin/GetPlatformAnalytics/GetPlatformAnalyticsResponse.cs",
+        "api/src/Taxi.Api/Features/Admin/AdminFeatureConfiguration.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs"
       ],
       "files_touched": [
-        "web/src/features/analytics/demand/DemandTab.tsx",
-        "web/src/features/analytics/demand/DemandTab.test.tsx",
-        "web/src/features/analytics/demand/demandCharts.ts",
-        "web/src/features/analytics/demand/demandCharts.test.ts",
-        "web/src/features/analytics/demand/demandCsv.ts",
-        "web/src/features/analytics/demand/demandCsv.test.ts",
-        "web/src/features/analytics/useAnalyticsDemand.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
+        "api/src/Taxi.Api/Features/Admin/GetGeoUsage/GetGeoUsageEndpoint.cs",
+        "api/src/Taxi.Api/Features/Admin/GetGeoUsage/GetGeoUsageResponse.cs",
+        "api/tests/Taxi.Api.Tests/Admin/AdminGeoUsageTests.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+        "docs/api.md"
       ],
       "acceptance_criteria": [
-        "Poptávka: heatmap (matrix/Bar), supply-vs-demand chart, unmet-demand chart, utilization, zone/route tables + CSV; heatmap CSV opens in Czech Excel (AC#7).",
-        "Typed client fn getAnalyticsDemand + DTOs.",
-        "CSV on every table (AC#7); every chart has data-table/aria fallback (AC#10); charts mocked in jsdom.",
-        "i18n keys both locales; axe clean."
+        "GET /api/v1/admin/geo-usage (SuperAdminOnly, EndpointWithoutRequest, IgnoreQueryFilters, current month) mirrors GetPlatformAnalyticsEndpoint: per-fleet rows (fleet name + calls + credits_est + % of that fleet's budget) plus platform totals, from a plain-LINQ GroupBy over geo_usage for the current month.",
+        "A cross-fleet test (fleet A + fleet B usage) proves the SuperAdmin sees both fleets' rows; a non-SuperAdmin gets 403.",
+        "SeedAndEndToEndTests allowlist adds GET /api/v1/admin/geo-usage; docs/api.md regenerated and staged (depends_on WI-12 serializes the shared-file edits)."
       ],
       "test_cases": [
-        "demandCharts pure config builders",
-        "demandCsv heatmap byte test (Czech Excel)",
-        "useAnalyticsDemand (mocked client)",
-        "DemandTab component (charts mocked, tables + CSV button present)",
-        "axe assertion",
-        "locales.parity"
+        "HandleAsync_SuperAdmin_ReturnsPerFleetGeoUsage",
+        "HandleAsync_NonSuperAdmin_Returns403"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "dotnet-test", "filter": "AdminGeoUsage" },
       "rule_citations": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-performance.md#virtualization",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#a11y-assertion"
-      ]
-    },
-    {
-      "id": "WI-14b",
-      "lane": "web",
-      "title": "Operations tab (Provoz) — SLA p50/p90, offer + lifecycle funnels, cancellations",
-      "depends_on": ["WI-13", "WI-06", "WI-14a"],
-      "schedule_note": "Chained after WI-14a (not merely WI-13): every web tab WI edits web/src/shared/api/client.ts + cs.json + en.json, so web tab WIs run serially (WI-14a->14b->14c->15->16) to avoid merge conflicts + locales.parity race. Also re-run npm run size (analytics chunk grows).",
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
-      "required_reads": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-accessibility.md#semantics",
-        ".claude/state/09-admin-analytics.md#3",
-        "web/src/features/analytics/charts/registerCharts.ts"
-      ],
-      "files_touched": [
-        "web/src/features/analytics/operations/OperationsTab.tsx",
-        "web/src/features/analytics/operations/OperationsTab.test.tsx",
-        "web/src/features/analytics/operations/operationsCharts.ts",
-        "web/src/features/analytics/operations/operationsCharts.test.ts",
-        "web/src/features/analytics/useAnalyticsOperations.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "acceptance_criteria": [
-        "Provoz: SLA p50/p90 line charts, offer funnel (horizontal bars), lifecycle funnel, cancellation breakdown (doughnut + table).",
-        "Typed client fn getAnalyticsOperations + DTOs.",
-        "Every chart has data-table/aria fallback (AC#10); charts mocked in jsdom.",
-        "i18n keys both locales; axe clean."
-      ],
-      "test_cases": [
-        "operationsCharts pure config builders",
-        "useAnalyticsOperations (mocked client)",
-        "OperationsTab component (charts mocked, funnel table present)",
-        "axe assertion",
-        "locales.parity"
-      ],
-      "verification": { "tool": "dotnet-build" },
-      "rule_citations": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#a11y-assertion"
-      ]
-    },
-    {
-      "id": "WI-14c",
-      "lane": "web",
-      "title": "Revenue tab (Tržby) — splits, override impact, route/zone economics, SMS cost",
-      "depends_on": ["WI-13", "WI-07", "WI-14b"],
-      "schedule_note": "Chained after WI-14b to serialize shared client.ts + cs.json + en.json edits (merge conflict + locales.parity race). Re-run npm run size (analytics chunk grows).",
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
-      "required_reads": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-accessibility.md#semantics",
-        ".claude/state/09-admin-analytics.md#4",
-        "web/src/features/analytics/charts/registerCharts.ts",
-        "web/src/shared/csv/toCsv.ts"
-      ],
-      "files_touched": [
-        "web/src/features/analytics/revenue/RevenueTab.tsx",
-        "web/src/features/analytics/revenue/RevenueTab.test.tsx",
-        "web/src/features/analytics/revenue/revenueCharts.ts",
-        "web/src/features/analytics/revenue/revenueCharts.test.ts",
-        "web/src/features/analytics/revenue/revenueCsv.ts",
-        "web/src/features/analytics/revenue/revenueCsv.test.ts",
-        "web/src/features/analytics/useAnalyticsRevenue.ts",
-        "web/src/shared/api/client.ts",
-        "web/src/shared/i18n/cs.json",
-        "web/src/shared/i18n/en.json"
-      ],
-      "acceptance_criteria": [
-        "Tržby: stacked bar by payment type, source/price-type splits, AOV trend, price-override table, route/zone economics tables + CSV, SMS cost line. Money integer CZK, formatted at render.",
-        "Typed client fn getAnalyticsRevenue + DTOs.",
-        "CSV on economics tables (AC#7); every chart has data-table/aria fallback (AC#10); charts mocked in jsdom.",
-        "i18n keys both locales; axe clean."
-      ],
-      "test_cases": [
-        "revenueCharts pure config builders",
-        "revenueCsv economics byte test",
-        "useAnalyticsRevenue (mocked client)",
-        "RevenueTab component (charts mocked, tables + CSV button present)",
-        "axe assertion",
-        "locales.parity"
-      ],
-      "verification": { "tool": "dotnet-build" },
-      "rule_citations": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-react-style.md#dates-and-money",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#a11y-assertion"
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/ef-core.md#projections",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#test-naming"
       ]
     },
     {
       "id": "WI-15",
       "lane": "web",
-      "title": "Drivers + Customers tabs (league table, drill-down, cohorts)",
-      "depends_on": ["WI-13", "WI-08", "WI-09", "WI-14c"],
-      "schedule_note": "Chained after WI-14c to serialize shared client.ts + cs.json + en.json edits (merge conflict + locales.parity race). Re-run npm run size (analytics chunk grows).",
-      "estimated_complexity": "M",
+      "title": "Shared MapyMap + /geo/config client + tile swap across all map components",
+      "depends_on": ["WI-09"],
+      "estimated_complexity": "L",
       "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
       "required_reads": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-performance.md#virtualization",
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-architecture.md#banned-patterns",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#component-conventions",
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
+        "rules/web-performance.md#query-keys",
+        "rules/web-performance.md#code-splitting",
         "rules/web-accessibility.md#semantics",
-        ".claude/state/09-admin-analytics.md#5",
-        ".claude/state/09-admin-analytics.md#6",
-        "web/src/shared/csv/toCsv.ts",
-        "web/src/features/analytics/charts/registerCharts.ts"
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity",
+        "web/src/shared/map/leafletSetup.ts",
+        "web/src/features/board/MapPanel.tsx",
+        "web/src/features/customer/tracking/TrackingMapInner.tsx",
+        "web/src/shared/api/client.ts",
+        "web/src/features/customer/order/PickupMapInner.tsx"
       ],
       "files_touched": [
-        "web/src/features/analytics/drivers/DriversTab.tsx",
-        "web/src/features/analytics/drivers/DriversTab.test.tsx",
-        "web/src/features/analytics/drivers/leagueSort.ts",
-        "web/src/features/analytics/drivers/leagueSort.test.ts",
-        "web/src/features/analytics/drivers/DriverDrilldown.tsx",
-        "web/src/features/analytics/drivers/DriverDrilldown.test.tsx",
-        "web/src/features/analytics/customers/CustomersTab.tsx",
-        "web/src/features/analytics/customers/CustomersTab.test.tsx",
-        "web/src/features/analytics/customers/cohortCsv.ts",
-        "web/src/features/analytics/customers/cohortCsv.test.ts",
-        "web/src/features/analytics/useAnalyticsDrivers.ts",
-        "web/src/features/analytics/useAnalyticsCustomers.ts",
+        "web/src/shared/map/MapyMap.tsx",
+        "web/src/shared/map/MapyMap.test.tsx",
+        "web/src/shared/map/useGeoConfig.ts",
+        "web/src/shared/map/useGeoConfig.test.ts",
+        "web/src/shared/map/tileTemplate.ts",
+        "web/src/shared/map/tileTemplate.test.ts",
+        "web/src/shared/map/leafletSetup.ts",
         "web/src/shared/api/client.ts",
+        "web/src/features/board/MapPanel.tsx",
+        "web/src/features/customer/order/PickupMapInner.tsx",
+        "web/src/features/customer/tracking/TrackingMapInner.tsx",
+        "web/src/features/driver/ride/RideMapInner.tsx",
+        "web/src/features/settings/routesZones/PinPickerMap.tsx",
+        "web/src/features/settings/routesZones/zones/ZoneEditorMap.tsx",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
-      "masking_decision_note": "Default: NO client-side masking of top customers — 'same format the board already uses' plainly means unmasked (the board shows name/phone unmasked; analytics is FleetAdmin-only, same trust level). Client-side masking over raw API fields would not aid GDPR since PII already crosses the wire. If the user wants real data-minimization, it belongs API-side in WI-09 (return pre-masked fields), not as a display cosmetic — escalate before adding maskCustomerIdentity.",
       "acceptance_criteria": [
-        "Řidiči: sortable league table (virtualized if >100 rows) + CSV via toCsv (byte-tested, AC#7); driver drill-down (weekly trend chart + recent low-rated orders); retention chart.",
-        "Zákazníci: new-vs-returning chart, repeat/frequency distribution, cohort retention triangle (table + CSV opens in Czech Excel, AC#7), top customers (name/phone shown as the board shows them — unmasked default per masking_decision_note), ratings distribution + worst-rated list.",
-        "Typed client fns getAnalyticsDrivers, getAnalyticsDriverDrilldown(id), getAnalyticsCustomers + DTOs.",
-        "i18n keys both locales; axe clean; charts mocked in jsdom."
+        "getGeoConfig() in client.ts calls GET /geo/config (X-Fleet-Slug attached like getPublicFleet); DTO { tileUrlTemplate, browserKey, attributionHtml, mapCenterLat, mapCenterLng, mapZoom }. useGeoConfig is a TanStack Query hook keyed ['geo','config'].",
+        "tileTemplate.ts (pure) builds the Mapy raster URL from the template + browser key + basic set, 256px, choosing @2x only when devicePixelRatio > 1.5 — covered by a pure unit test (test-first).",
+        "MapyMap.tsx is one shared component in shared/map/ wrapping react-leaflet MapContainer + a Mapy TileLayer + a mandatory Mapy logo control (their SVG linking to mapy.com) + text attribution in the Leaflet attribution control; it renders the fleet's center/zoom from /geo/config. Has an axe assertion with an i18n'd logo aria-label.",
+        "All TileLayer users (MapPanel, PickupMapInner, TrackingMapInner, RideMapInner, PinPickerMap, ZoneEditorMap) render via MapyMap instead of the OSM TileLayer; OSM_TILE_URL/OSM_ATTRIBUTION are removed from leafletSetup.ts (DEFAULT_CENTER/ZOOM kept as fallbacks).",
+        "New i18n keys (map logo aria-label, attribution) land in both cs.json and en.json (parity test passes)."
       ],
       "test_cases": [
-        "leagueSort pure module",
-        "league-table CSV byte test",
-        "cohort CSV byte test",
-        "chart-config builders",
-        "tab component tests (charts mocked)",
-        "axe assertions",
-        "locales.parity"
+        "tileTemplate builds the basic 256px url and only uses @2x above devicePixelRatio 1.5",
+        "MapyMap renders the Mapy attribution control and logo with an accessible label",
+        "MapyMap has no axe violations"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "vitest", "filter": "shared/map" },
       "rule_citations": [
-        "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-performance.md#virtualization",
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-architecture.md#banned-patterns",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#component-conventions",
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-performance.md#query-keys",
+        "rules/web-performance.md#code-splitting",
         "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#a11y-assertion"
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity",
+        "rules/web-testing.md#queries-over-testids"
       ]
     },
     {
       "id": "WI-16",
       "lane": "web",
-      "title": "/admin Platform analytics screen (per-fleet health table + sparklines)",
-      "depends_on": ["WI-10", "WI-13", "WI-15"],
-      "schedule_note": "Chained after WI-15 to serialize shared client.ts + cs.json + en.json edits (merge conflict + locales.parity race). Re-run npm run size (analytics chunk grows).",
+      "title": "Suggest hooks enriched (street+town) + geo route client GET->POST",
+      "depends_on": ["WI-08", "WI-09", "WI-15"],
       "estimated_complexity": "M",
       "needs_library_research": false,
-      "web_verification": "web quality gate: eslint --max-warnings 0 + tsc + vitest + build + size; not dotnet-build (routed by lane: web).",
       "required_reads": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-react-style.md#styled-components",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-react-style.md#component-conventions",
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-accessibility.md#semantics",
-        "web/src/features/admin/AdminFleetsPage.tsx",
-        "web/src/features/admin/AdminGuard.tsx",
-        "web/src/shared/api/client.ts"
+        "rules/web-performance.md#query-keys",
+        "rules/web-performance.md#high-frequency-events",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#network-mocking",
+        "rules/web-testing.md#i18n-parity",
+        "web/src/shared/api/client.ts",
+        "web/src/features/customer/order/useSuggest.ts",
+        "web/src/features/customer/order/AddressAutocomplete.tsx",
+        "web/src/features/board/useAddressSuggest.ts",
+        "web/src/features/board/OrderForm.tsx",
+        "web/src/features/board/useRouteEstimate.ts",
+        "web/src/features/driver/offer/useOfferRoute.ts"
       ],
       "files_touched": [
-        "web/src/features/admin/PlatformScreen.tsx",
-        "web/src/features/admin/PlatformScreen.test.tsx",
-        "web/src/features/admin/healthFlag.ts",
-        "web/src/features/admin/healthFlag.test.ts",
-        "web/src/features/admin/useAdminAnalytics.ts",
-        "web/src/features/admin/useAdminAnalytics.test.ts",
-        "web/src/app/router.tsx",
         "web/src/shared/api/client.ts",
+        "web/src/features/customer/order/useSuggest.ts",
+        "web/src/features/customer/order/AddressAutocomplete.tsx",
+        "web/src/features/customer/order/AddressAutocomplete.test.tsx",
+        "web/src/features/board/useAddressSuggest.ts",
+        "web/src/features/board/OrderForm.tsx",
+        "web/src/features/board/useRouteEstimate.ts",
+        "web/src/features/board/useRouteEstimate.test.ts",
+        "web/src/features/driver/offer/useOfferRoute.ts",
+        "web/src/features/driver/offer/useOfferRoute.test.ts",
         "web/src/shared/i18n/cs.json",
         "web/src/shared/i18n/en.json"
       ],
       "acceptance_criteria": [
-        "/admin Platform screen next to fleet list: per-fleet health table (rides/revenue MoM, active drivers/customers, SMS cost, last order, health flag) + 12-week rides sparklines (analytics/admin chunk, not eager); platform totals row; CSV via toCsv.",
-        "Typed getAdminAnalytics() + DTOs (envelope unwrap).",
-        "Health-flag classification is a pure tested module (growing/stable/declining/inactive bands).",
-        "SuperAdmin-gated by AdminGuard; i18n both locales; axe clean; sparkline mocked in jsdom."
+        "GeoSuggestItem DTO in client.ts grows street? + municipality? (matching the enriched backend); both suggest lists (AddressAutocomplete + OrderForm's AddressInput) render the regionalStructure (street, town) so \"Kolin\" vs \"Kutna Hora\" is distinguishable at a glance. Rendered via getByText assertions (test-first).",
+        "getGeoRoute flips from a GET query-string call to a POST body { from:{lat,lng}, to:{lat,lng} }; GeoRouteResponse gains geometry + estimateMode. Both callers (useRouteEstimate, useOfferRoute) and their tests are updated; the 502/degraded path still degrades silently (form never blocked).",
+        "Debounce (350ms) + min-3-chars + request cancellation behavior is preserved (existing tests still green); no unthrottled setState per keystroke.",
+        "New/changed i18n keys land in both cs.json and en.json (parity)."
       ],
       "test_cases": [
-        "healthFlag classification per band",
-        "useAdminAnalytics (mocked client)",
-        "PlatformScreen renders table + totals + sparkline mock",
-        "axe assertion",
-        "locales.parity"
+        "AddressAutocomplete shows street and municipality for a suggestion",
+        "useRouteEstimate posts a from/to body and maps geometry",
+        "useOfferRoute degrades silently when the route call is unavailable"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "vitest", "filter": "features/board/useRouteEstimate" },
       "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-react-style.md#styled-components",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-react-style.md#component-conventions",
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-testing.md#a11y-assertion"
+        "rules/web-performance.md#query-keys",
+        "rules/web-performance.md#high-frequency-events",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#network-mocking",
+        "rules/web-testing.md#i18n-parity"
       ]
     },
     {
       "id": "WI-17",
       "lane": "web",
-      "title": "Playwright e2e — fleet-admin tabs + superadmin platform (AC#9)",
-      "depends_on": ["WI-14a", "WI-14b", "WI-14c", "WI-15", "WI-16"],
+      "title": "Degradation UI (grey-tile banner, no-coords, orientacni odhad) + settings credits panel",
+      "depends_on": ["WI-15", "WI-16"],
       "estimated_complexity": "M",
       "needs_library_research": false,
-      "web_verification": "web quality gate: Playwright (1 worker, chromium) under the real API harness + seeded data; not dotnet-build (routed by lane: web). This is the only WI whose real verification is the e2e run — a dotnet build would trivially pass without exercising AC#9.",
       "required_reads": [
-        "rules/web-testing.md#e2e-conventions",
-        "web/e2e",
-        "CLAUDE.md#Playwright-chromium-pin",
-        "CLAUDE.md#vitest-excludes-e2e"
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-realtime.md#last-known-state",
+        "rules/web-realtime.md#offline-ux",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity",
+        "web/src/features/board/DisconnectBanner.tsx",
+        "web/src/shared/map/MapyMap.tsx",
+        "web/src/shared/api/client.ts"
       ],
       "files_touched": [
-        "web/e2e/analytics.spec.ts"
+        "web/src/shared/map/MapUnavailableBanner.tsx",
+        "web/src/shared/map/MapUnavailableBanner.test.tsx",
+        "web/src/shared/map/MapyMap.tsx",
+        "web/src/features/settings/geoUsage/GeoUsagePanel.tsx",
+        "web/src/features/settings/geoUsage/GeoUsagePanel.test.tsx",
+        "web/src/features/settings/geoUsage/useGeoUsage.ts",
+        "web/src/shared/api/client.ts",
+        "web/src/shared/i18n/cs.json",
+        "web/src/shared/i18n/en.json"
       ],
       "acceptance_criteria": [
-        "FleetAdmin logs in, opens /x/analytics, switches tab + date range, sees populated KPI cards + a chart + a table from seeded data.",
-        "SuperAdmin logs in, opens /admin Platform, sees the per-fleet table (AC#9).",
-        "Spec is serial (1 worker), chromium, runs under existing webServer harness with seeded data.",
-        "Lighthouse a11y >= 90 on /x/analytics recorded in DEMO notes (AC#10, manual)."
+        "When /geo/config fails or tiles fail to load, MapyMap shows a grey background with markers still placed by coordinates + a role=\"alert\" banner \"Mapa docasne nedostupna\" (MapUnavailableBanner). Test-first component + axe assertion.",
+        "The order card shows a warning \"bez souradnic\" when an order was created without coordinates (suggest/geocode degraded); reverse-geocode degraded shows coordinates instead of an address. (Consumes the estimateMode/no-coords signals from WI-16's DTOs.)",
+        "The estimate display shows the wider range with the label \"orientacni odhad\" when estimateMode indicates the haversine fallback (AC#5).",
+        "The dispatcher settings page GeoUsagePanel shows this month's estimated credits + % (getGeoUsage client fn + useGeoUsage hook against GET /settings/geo-usage).",
+        "All new strings in both cs.json + en.json (parity); banner + panel pass axe."
       ],
       "test_cases": [
-        "analytics.spec.ts fleet-admin + superadmin flow"
+        "MapUnavailableBanner renders a role=alert message and has no axe violations",
+        "estimate shows the wider range with orientacni odhad label when degraded",
+        "GeoUsagePanel shows the month estimate and percent"
       ],
-      "verification": { "tool": "dotnet-build" },
+      "verification": { "tool": "vitest", "filter": "shared/map/MapUnavailableBanner" },
       "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#pure-logic-modules",
+        "rules/web-realtime.md#last-known-state",
+        "rules/web-realtime.md#offline-ux",
+        "rules/web-react-style.md#styled-components",
+        "rules/web-react-style.md#i18n-czech-first",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity"
+      ]
+    },
+    {
+      "id": "WI-18",
+      "lane": "web",
+      "title": "Remove OSM/OSRM/Nominatim/Photon refs + CI grep guard + docs §7",
+      "depends_on": ["WI-15", "WI-16"],
+      "estimated_complexity": "S",
+      "needs_library_research": false,
+      "required_reads": [
+        "rules/web-architecture.md#banned-patterns",
+        "rules/web-testing.md#test-ordering",
+        "web/eslint.config.js",
+        "web/src/shared/map/leafletSetup.ts",
+        "docs/decisions.md",
+        "infra/docker-compose.prod.yml",
+        "infra/docker-compose.dev.yml"
+      ],
+      "files_touched": [
+        "web/src/shared/map/leafletSetup.ts",
+        "web/eslint.config.js",
+        "web/src/shared/map/noLegacyMapHosts.test.ts",
+        ".claude/state/00-PROJECT-CONTEXT.md",
+        ".claude/state/02-dispatcher-web.md",
+        ".claude/state/04-customer-pwa.md",
+        ".claude/state/06-pricing-routing.md",
+        ".claude/state/08-infra-ops.md",
+        "infra/docker-compose.prod.yml",
+        "infra/docker-compose.dev.yml"
+      ],
+      "acceptance_criteria": [
+        "No reference to router.project-osrm.org, nominatim.openstreetmap.org, photon.komoot.io, or tile.openstreetmap.org remains anywhere under web/src (AC#1). A test (noLegacyMapHosts.test.ts) greps the source tree and fails if any of the four hostnames reappear; wire the same check as an eslint no-restricted-syntax rule or an npm script so CI fails on reintroduction.",
+        "00-PROJECT-CONTEXT.md §4 replaces \"Leaflet + OpenStreetMap tiles\" and \"OSRM\" with \"Mapy.com REST API via backend proxy\", adds the caching-rules summary + two-key model, and adds mapy.com to the no-vendor-lock-in note as replaceable behind IMapyClient.",
+        "Assignments 02, 04, 06 replace the old endpoint names with the Mapy geo endpoints; assignment 08 gains the Mapy.com console runbook steps (create project, restrict browser key by referrer, set monthly cap) AND the DataProtection keys-volume mount note from WI-03 AND the cost-sheet line.",
+        "The infra compose files (docker-compose.prod.yml + docker-compose.dev.yml) mount a PERSISTENT named volume for the DataProtection key-ring onto the api service's configured keys directory, so the ring survives redeploys (paired with WI-03's fail-fast startup guard which is the primary safeguard). Without a persistent ring every stored fleet Mapy key becomes permanently undecryptable on redeploy.",
+        "This WI closes AC#1 and the code portion of AC#8 (docs)."
+      ],
+      "test_cases": [
+        "no legacy map hostname appears anywhere under web/src"
+      ],
+      "verification": { "tool": "vitest", "filter": "shared/map/noLegacyMapHosts" },
+      "rule_citations": [
+        "rules/web-architecture.md#banned-patterns",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#network-mocking"
+      ]
+    },
+    {
+      "id": "WI-19",
+      "lane": "web",
+      "title": "E2E — degraded-mode order lifecycle + Mapy tiles/attribution render",
+      "depends_on": ["WI-17", "WI-18"],
+      "estimated_complexity": "M",
+      "needs_library_research": false,
+      "required_reads": [
         "rules/web-testing.md#e2e-conventions",
-        "rules/web-accessibility.md#a11y-gate"
+        "CLAUDE.md#e2e-harness-seeds-only-DevelopmentSeeder",
+        "CLAUDE.md#SuperAdmin-reachable-in-e2e",
+        "web/e2e/analytics.spec.ts"
+      ],
+      "files_touched": [
+        "web/e2e/mapy-degraded.spec.ts"
+      ],
+      "acceptance_criteria": [
+        "With the geo service forced to 503/Unavailable (fake client), the dispatcher can still create, assign and complete an order end-to-end; the degraded banners are visible and the estimate shows the wider range with \"orientacni odhad\" (AC#5).",
+        "A happy-path assertion confirms the Mapy attribution control + logo render on the board map (AC#4). Numeric assertions stay minimal per the e2e-harness seeding note.",
+        "The spec is its own serial file; test-results/ and playwright-report/ stay gitignored."
+      ],
+      "test_cases": [
+        "dispatcher completes an order in degraded mode and sees the orientacni odhad banner"
+      ],
+      "verification": { "tool": "playwright" },
+      "rule_citations": [
+        "rules/web-testing.md#e2e-conventions"
       ]
     }
   ]

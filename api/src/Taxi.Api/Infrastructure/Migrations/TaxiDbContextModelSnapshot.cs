@@ -262,6 +262,40 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("auto_dispatch_enabled");
 
+                    b.Property<int>("GeoMonthlyCreditBudget")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(250000)
+                        .HasColumnName("geo_monthly_credit_budget");
+
+                    b.Property<double>("MapCenterLat")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(50.079999999999998)
+                        .HasColumnName("map_center_lat");
+
+                    b.Property<double>("MapCenterLng")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(14.42)
+                        .HasColumnName("map_center_lng");
+
+                    b.Property<int>("MapZoom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(12)
+                        .HasColumnName("map_zoom");
+
+                    b.Property<string>("MapyBrowserKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("mapy_browser_key");
+
+                    b.Property<string>("MapyServerKey")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("mapy_server_key");
+
                     b.Property<int>("MaxOfferRadiusKm")
                         .HasColumnType("integer")
                         .HasColumnName("max_offer_radius_km");
@@ -296,6 +330,105 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasName("pk_fleet_settings");
 
                     b.ToTable("fleet_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.GeoBudgetAlertMarker", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer")
+                        .HasColumnName("month");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<int>("Threshold")
+                        .HasColumnType("integer")
+                        .HasColumnName("threshold");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_geo_budget_alert_markers");
+
+                    b.HasIndex("FleetId", "Year", "Month", "Threshold")
+                        .IsUnique()
+                        .HasDatabaseName("ix_geo_budget_alert_markers_fleet_id_year_month_threshold");
+
+                    b.ToTable("geo_budget_alert_markers", (string)null);
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.GeoCacheEntry", b =>
+                {
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<JsonDocument>("Value")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("value");
+
+                    b.HasKey("FleetId", "Kind", "Key")
+                        .HasName("pk_geo_cache");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_geo_cache_created_at");
+
+                    b.ToTable("geo_cache", (string)null);
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.GeoUsage", b =>
+                {
+                    b.Property<Guid>("FleetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fleet_id");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date")
+                        .HasColumnName("day");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("Calls")
+                        .HasColumnType("integer")
+                        .HasColumnName("calls");
+
+                    b.Property<int>("CreditsEst")
+                        .HasColumnType("integer")
+                        .HasColumnName("credits_est");
+
+                    b.HasKey("FleetId", "Day", "Kind")
+                        .HasName("pk_geo_usage");
+
+                    b.ToTable("geo_usage", (string)null);
                 });
 
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.IdempotencyRecord", b =>
@@ -544,6 +677,10 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("customer_user_id");
 
+                    b.Property<int?>("DistanceM")
+                        .HasColumnType("integer")
+                        .HasColumnName("distance_m");
+
                     b.Property<Guid?>("DriverId")
                         .HasColumnType("uuid")
                         .HasColumnName("driver_id");
@@ -560,6 +697,10 @@ namespace Taxi.Api.Infrastructure.Migrations
                     b.Property<double?>("DropoffLng")
                         .HasColumnType("double precision")
                         .HasColumnName("dropoff_lng");
+
+                    b.Property<int?>("DurationS")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_s");
 
                     b.Property<int?>("EstimatedPriceCzk")
                         .HasColumnType("integer")
@@ -1417,6 +1558,36 @@ namespace Taxi.Api.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_fleet_settings_fleets_fleet_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.GeoBudgetAlertMarker", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_geo_budget_alert_markers_fleets_fleet_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.GeoCacheEntry", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_geo_cache_fleets_fleet_id");
+                });
+
+            modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.GeoUsage", b =>
+                {
+                    b.HasOne("Taxi.Api.Infrastructure.Entities.Fleet", null)
+                        .WithMany()
+                        .HasForeignKey("FleetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_geo_usage_fleets_fleet_id");
                 });
 
             modelBuilder.Entity("Taxi.Api.Infrastructure.Entities.IdempotencyRecord", b =>

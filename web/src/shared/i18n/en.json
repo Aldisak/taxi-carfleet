@@ -230,11 +230,24 @@
     "toggleShow": "Show map",
     "toggleHide": "Hide map",
     "driverPopup": "Driver: {{name}}",
-    "orderPopup": "Order: {{code}}"
+    "orderPopup": "Order: {{code}}",
+    "mapyLogoAlt": "Mapy.com – view on mapy.com",
+    "attributionLabel": "Map data source",
+    "unavailable": "Map temporarily unavailable",
+    "noCoords": "no coordinates"
   },
   "settings": {
     "title": "Settings",
     "accessDenied": "Access denied. This section is only available to fleet administrators.",
+    "geoUsage": {
+      "title": "Map credit usage",
+      "creditsUsed": "Credits this month",
+      "budget": "Monthly budget",
+      "percent": "{{percent}}% of budget",
+      "loading": "Loading credit usage…",
+      "error": "Could not load credit usage.",
+      "overBudget": "Budget exceeded"
+    },
     "tabs": {
       "vehicles": "Vehicles",
       "people": "People",
@@ -859,6 +872,7 @@
       "dragHint": "Drag the pin to the exact pickup spot.",
       "quoteFixed": "Price {{price}} – fixed",
       "quoteEstimate": "Estimate {{low}} – {{high}}",
+      "quoteEstimateOrientacni": "Approximate estimate {{low}} – {{high}}",
       "quoteMeter": "By the meter",
       "quoteUnavailable": "We can't compute a price, please call us.",
       "submit": "Order",

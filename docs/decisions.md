@@ -293,3 +293,46 @@ Added `chart.js@^4` and `react-chartjs-2@^5` for UC-009 admin analytics (WI-12).
 
 **2026-09-13 — WI-14b analytics chunk budget raised to 115 KB:** After WI-14a (Demand) and WI-14b (Operations), the analytics chunk stands at **89.59 KB brotli** against the 90 KB limit — only 0.41 KB headroom. Three more tab WIs remain (Tržby/Revenue, Řidiči/Drivers, Zákazníci/Customers); each adds chart config builders, a hook, a component, and i18n keys, historically contributing ~1–3 KB brotli per tab. Keeping the 90 KB limit guarantees an overflow on the first line of the next tab WI. Budget raised to **115 KB** — matching the WI-12 task's suggested 110–120 KB band — to provide ~25 KB runway for the remaining three tabs without forced mid-WI raises. The chart.js fixed cost (~60 KB) is already fully loaded; incremental growth is purely per-tab feature code. Eager bundle unchanged at ~215 KB brotli.
 
+---
+
+## 2026-09-14 — UC-010: Mapy.com REST API migration
+
+### Map provider: Mapy.com
+
+Replacing the OSM/OSRM/Photon/Nominatim stack with the [Mapy.com REST API](https://api.mapy.cz/) as the single map + geocoding + routing provider for all three clients (dispatcher, driver PWA, customer PWA).
+
+**Credit prices (verified 2026-09-14 on api.mapy.cz):**
+
+| Operation | Credits |
+|-----------|---------|
+| Tile requests | 1 credit / tile |
+| Suggest (autocomplete) | 4 credits / call |
+| Geocode (address → coords) | 4 credits / call |
+| Reverse geocode (coords → address) | 4 credits / call |
+| Route (navigation) | 4 credits / call |
+
+**Pricing tier — Basic:**
+- **250 000 credits / month free** (no charge)
+- Overage: **1.60 CZK per 1 000 credits** after the free tier
+
+**Estimated monthly consumption (~1 000 rides / month):**
+
+- Tiles: not counted server-side; client-fetched (no credit cost to the backend).
+- Suggest calls: ~2–4 per order (pickup + dropoff) → 2 000–4 000 calls → 8 000–16 000 credits.
+- Route calls (backend proxy): create-time (1) + accept-time (1) + viewer-gated refresh (≤5 / 5 min) per order → ~3–7 calls/order → 3 000–7 000 calls → 12 000–28 000 credits.
+- Geocode / reverse: ~0–2 per order → up to 8 000 credits.
+- **Total backend credits: ~28 000–52 000 credits/month at 1 000 rides.**
+- Well within the 250 000 free tier. The spec's `~1 000 rides → 200–400k credits` upper bound covers heavier viewer-refresh scenarios (many dispatchers watching orders simultaneously) and is the budget ceiling for `GeoMonthlyCreditBudget` defaults.
+
+At 1 000 rides with heavy usage: ~400 000 credits → 150 000 credits above the free tier → **~240 CZK/month** (150 × 1.60 CZK). At lighter usage (200–400k total credits, free tier): **0 CZK**.
+
+### Resilience library decision: Microsoft.Extensions.Http.Resilience 10.10.0 (adopted)
+
+`Microsoft.Extensions.Http.Resilience` version **10.10.0** was added to `api/src/Taxi.Api/Taxi.Api.csproj` and verified against the EF Core pin in `api/Directory.Build.props`.
+
+**Conflict check result:** No conflict. The package and its transitive dependencies (Polly.Core 8.4.2, Polly.Extensions 8.4.2, Polly.RateLimiting 8.4.2, Microsoft.Extensions.Resilience 10.10.0, Microsoft.Extensions.Http.Diagnostics 10.10.0, Microsoft.Extensions.Telemetry 10.10.0, etc.) share no assembly with the EF-pinned packages (`Microsoft.EntityFrameworkCore.*` 10.0.12). Build with `-warnaserror` passes clean: 0 warnings, 0 errors.
+
+**Decision: adopt the library.** WI-04 will use `AddResilienceHandler` / `AddStandardResilienceHandler` (or a custom pipeline) from this package to wire the 4 s timeout, 1 retry on 5xx, and circuit breaker (5 failures / 30 s half-open) onto the typed `MapyClient`. The ~40-line `DelegatingHandler` fallback is NOT needed.
+
+**Why not the DelegatingHandler fallback:** The library installed cleanly with no version conflicts, and `Microsoft.Extensions.Http.Resilience` is the canonical .NET 10 pattern for named/typed HttpClient resilience (Polly v8 integration). Hand-rolling a 40-line breaker would duplicate what the library provides and would need its own test coverage; the library has tested semantics (half-open probes, concurrent-call tracking, metrics) that a bespoke handler would lack.
+

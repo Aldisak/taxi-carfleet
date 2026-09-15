@@ -1,6 +1,6 @@
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { Marker, useMapEvents } from 'react-leaflet'
 import styled from 'styled-components'
-import { OSM_TILE_URL, OSM_ATTRIBUTION, DEFAULT_CENTER, DEFAULT_ZOOM } from '../../../shared/map/leafletSetup'
+import { MapyMap } from '../../../shared/map/MapyMap'
 
 const MapWrapper = styled.div`
   width: 100%;
@@ -45,12 +45,7 @@ function ClickCapture({ onPick }: Pick<PinPickerMapProps, 'onPick'>) {
 export default function PinPickerMap({ value, onPick }: PinPickerMapProps) {
   return (
     <MapWrapper>
-      <MapContainer
-        center={value ? [value.lat, value.lng] : DEFAULT_CENTER}
-        zoom={DEFAULT_ZOOM}
-        style={{ width: '100%', height: '100%' }}
-      >
-        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
+      <MapyMap center={value ? [value.lat, value.lng] : undefined}>
         {value && (
           <Marker
             position={[value.lat, value.lng]}
@@ -64,7 +59,7 @@ export default function PinPickerMap({ value, onPick }: PinPickerMapProps) {
           />
         )}
         <ClickCapture onPick={onPick} />
-      </MapContainer>
+      </MapyMap>
     </MapWrapper>
   )
 }

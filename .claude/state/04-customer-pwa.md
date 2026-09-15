@@ -51,7 +51,7 @@ and live tracking, cancel, history, rating, "call us" fallback everywhere.
 ### 5. Tracking (`/c/t/:code`)
 - Status headline in human words, one line, large:
   - New: "Hledáme řidiče…"
-  - Assigned/Accepted: "Řidič Petr přijede za ~6 min" (ETA from OSRM driver→pickup, refreshed every 15 s)
+  - Assigned/Accepted: "Řidič Petr přijede za ~6 min" (ETA from Mapy.com route driver→pickup, refreshed at most every 60 s while a viewer is watching — UC-010 WI-11 viewer-gated refresh)
   - Arrived: "Řidič je na místě" + car plate and color prominently
   - InProgress: "Jedete" + dropoff
   - Completed: "Hotovo – 110 Kč" + rating prompt

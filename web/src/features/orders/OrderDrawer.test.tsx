@@ -109,6 +109,28 @@ describe('OrderDrawer — route open/close', () => {
     expect(await screen.findByText(/KH-001/i)).toBeInTheDocument()
   })
 
+  it('shows a "bez souřadnic" warning for an order with no pickup coordinates (0,0 sentinel, AC#2)', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ pickupLat: 0, pickupLng: 0 }))
+
+    render(createElement(OrderDrawer), {
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
+    })
+
+    await screen.findByRole('dialog')
+    expect(await screen.findByText(/bez souřadnic/i)).toBeInTheDocument()
+  })
+
+  it('does NOT show "bez souřadnic" for an order with real pickup coordinates', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ pickupLat: 50.03, pickupLng: 15.2 }))
+
+    render(createElement(OrderDrawer), {
+      wrapper: makeWrapper('/dispatcher/orders/order-abc'),
+    })
+
+    await screen.findByRole('dialog')
+    expect(screen.queryByText(/bez souřadnic/i)).not.toBeInTheDocument()
+  })
+
   it('navigates back to /x when the overlay is clicked', async () => {
     mockGetOrder.mockResolvedValue(makeOrder())
 

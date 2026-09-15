@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { MapContainer, TileLayer, Circle, Polygon, Polyline, CircleMarker, Tooltip, useMapEvents } from 'react-leaflet'
+import { Circle, Polygon, Polyline, CircleMarker, Tooltip, useMapEvents } from 'react-leaflet'
 import styled from 'styled-components'
-import { OSM_TILE_URL, OSM_ATTRIBUTION, DEFAULT_CENTER, DEFAULT_ZOOM } from '../../../../shared/map/leafletSetup'
+import { MapyMap } from '../../../../shared/map/MapyMap'
 import type { ZoneDto } from '../../../../shared/api/client'
 import { canClosePolygon, haversineMeters, type DrawPoint } from './zoneDraw'
 
@@ -86,14 +86,7 @@ function DrawLayer({ mode, onCircleDrawn, onPolygonDrawn }: Omit<ZoneEditorMapPr
 export default function ZoneEditorMap({ zones, mode, onCircleDrawn, onPolygonDrawn }: ZoneEditorMapProps) {
   return (
     <MapWrapper>
-      <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={DEFAULT_ZOOM}
-        doubleClickZoom={false}
-        style={{ width: '100%', height: '100%' }}
-      >
-        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
-
+      <MapyMap doubleClickZoom={false}>
         {zones.map((z) =>
           z.shape === 'Circle' && z.centerLat != null && z.centerLng != null && z.radiusMeters != null ? (
             <Circle
@@ -116,7 +109,7 @@ export default function ZoneEditorMap({ zones, mode, onCircleDrawn, onPolygonDra
         )}
 
         <DrawLayer mode={mode} onCircleDrawn={onCircleDrawn} onPolygonDrawn={onPolygonDrawn} />
-      </MapContainer>
+      </MapyMap>
     </MapWrapper>
   )
 }

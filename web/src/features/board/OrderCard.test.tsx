@@ -149,6 +149,22 @@ describe('OrderCard — card renders fields', () => {
     expect(screen.getByText('+420777123456 · Jan Novák')).toBeInTheDocument()
   })
 
+  it('shows a "bez souřadnic" warning when the order was created without coordinates (AC#2)', () => {
+    render(
+      createElement(OrderCard, { order: makeOrder({ pickupLat: null, pickupLng: null }) }),
+      { wrapper: makeWrapper() },
+    )
+    expect(screen.getByText(/bez souřadnic/i)).toBeInTheDocument()
+  })
+
+  it('does NOT show "bez souřadnic" when the order has real pickup coordinates', () => {
+    render(
+      createElement(OrderCard, { order: makeOrder({ pickupLat: 50.027, pickupLng: 15.2 }) }),
+      { wrapper: makeWrapper() },
+    )
+    expect(screen.queryByText(/bez souřadnic/i)).not.toBeInTheDocument()
+  })
+
   it('renders pickup address', () => {
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper: makeWrapper() })
     expect(screen.getByLabelText('pickup-address')).toHaveTextContent('Nádraží Kolín')

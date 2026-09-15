@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import type { GeoSuggestItem } from '../../../shared/api/client'
+import { suggestionMeta } from '../../../shared/geo/suggestionMeta'
 import { useSuggest } from './useSuggest'
 
 const Field = styled.div`
@@ -45,6 +46,16 @@ const Option = styled.li`
     outline: 2px solid ${({ theme }) => theme.colors.primary};
     outline-offset: -2px;
   }
+`
+
+const OptionLabel = styled.span`
+  display: block;
+`
+
+const OptionMeta = styled.span`
+  display: block;
+  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  color: ${({ theme }) => theme.colors.textSecondary};
 `
 
 const Empty = styled.p`
@@ -189,23 +200,27 @@ export function AddressAutocomplete({
 
       {showList && items.length > 0 && (
         <List role="listbox" aria-label={t('customer.custom.suggestionsLabel')}>
-          {items.map((item) => (
-            <Option
-              key={`${item.label}-${item.lat}-${item.lng}`}
-              role="option"
-              aria-selected={value.address === item.label}
-              tabIndex={0}
-              onClick={() => handlePick(item)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handlePick(item)
-                }
-              }}
-            >
-              {item.label}
-            </Option>
-          ))}
+          {items.map((item) => {
+            const meta = suggestionMeta(item)
+            return (
+              <Option
+                key={`${item.label}-${item.lat}-${item.lng}`}
+                role="option"
+                aria-selected={value.address === item.label}
+                tabIndex={0}
+                onClick={() => handlePick(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handlePick(item)
+                  }
+                }}
+              >
+                <OptionLabel>{item.label}</OptionLabel>
+                {meta && <OptionMeta>{meta}</OptionMeta>}
+              </Option>
+            )
+          })}
         </List>
       )}
 

@@ -1,0 +1,51 @@
+{
+  "wi_id": "WI-19",
+  "lane": "web",
+  "files_changed": [
+    "web/e2e/geo.spec.ts"
+  ],
+  "files_touched": [
+    "web/e2e/geo.spec.ts"
+  ],
+  "tests_added": [
+    "web/e2e/geo.spec.ts :: AC5_DegradedOrderLifecycle (dispatcher creates via quick chip + assigns in UI to geo's OWN driver (Karel Dvořák/driver3) made Free in beforeAll + drives to Completed via driver API, zero map API; degraded MapUnavailableBanner role=alert 'Mapa dočasně nedostupná')",
+    "web/e2e/geo.spec.ts :: AC4_MapyTilesAttribution (stubbed Mapy tiles + logo; asserts a maptiles request fires (Mapy-wired, not OSM), Mapy logo img + Leaflet 'Seznam.cz' attribution render, degraded banner ABSENT)"
+  ],
+  "tests_passing": true,
+  "coverage_delta": "n/a (e2e spec; no product code changed)",
+  "hit_max_turns": false,
+  "blocked": false,
+  "isolation_fix": {
+    "defect": "AC5_DegradedOrderLifecycle PASSED in isolation (npx playwright test geo.spec.ts) but FAILED in the full serial suite (npm run e2e) at geo.spec.ts:154 — expect(freeName, 'a Free known-password driver is available for the assign').toBeTruthy() received undefined. Root cause: the chromium project runs analytics → dispatcher → geo (alphabetical, 1 worker, shared DB); by geo's turn the seeder's Free drivers were consumed/absent and the old code scanned listDrivers for ANY Free known-password driver, which returned nothing.",
+    "seeded_driver_reality": "DevelopmentSeeder: driver1 Jan Novák (vehicle1) — Free at seed, Assigned to DEMO02 (Assign does NOT change DriverStatus) + Completed DEMO05 → net Free, consumed by dispatcher.spec/customer.spec. driver2 Petr Svoboda (vehicle2) — Free then Assigned+Accepted DEMO03 → Busy, consumed by driver.spec. driver3 Karel Dvořák (vehicle3) — seeded Offline then brought online-with-vehicle3 and driven to InProgress on DEMO04; NOT touched by any other chromium spec.",
+    "fix": "Added a test.describe.serial beforeAll (ensureGeoDriverFree) that makes geo's OWN deterministic Free driver — Karel Dvořák (driver3), the one seeded driver no other chromium spec touches and which the seeder leaves online-with-vehicle (mid-ride, not offline, so it keeps its vehicle3). It releases the driver's non-terminal orders: InProgress → Complete via the driver API (Cancel is ILLEGAL from InProgress per OrderStateMachine line 104; Complete sets DriverStatus→Free per line 333), Arrived → Start+Complete, New/Assigned/Accepted → Cancel via the dispatcher; then getMe-asserts status=Free, currentVehicleId!=null, activeOrderId==null. AC5 now assigns to THAT named driver (asserts geoDriver.status==='Free' by name, failing loudly) instead of scanning for any Free driver. Resolved driverId/name via listDrivers (never hardcoded). Rewrote the stale header comment (was claiming a runtime-Free guarantee the old code did not deliver).",
+    "no_offline_online_route": "Deliberately did NOT use the 'offline-then-online' recipe the task text suggested: goOnline(session, vehicleId) needs a vehicleId, and for an OFFLINE driver getMe.currentVehicleId is null and listDrivers only returns the plate — so there is no way to obtain the vehicleId. driver3 is seeded online-with-vehicle3 (only mid-ride), so completing its ride returns it to Free WITHOUT ever going offline, keeping vehicle3. This mirrors the driver.spec beforeAll pattern (cancel-non-terminal-then-assert-Free), adapted for an InProgress order that must be Completed rather than Cancelled.",
+    "no_contamination_of_later_specs": "geo drives its OWN fresh order to Completed (releasing driver3 to Free again), and driver3 is not pre-depended-on by the later mobile-driver (driver2) or mobile-customer (driver1) projects. Verified empirically: the full-suite run shows all 3 mobile-driver + all 5 mobile-customer tests green after geo."
+  },
+  "helper_reuse": "No helper file was added or modified. Reused existing web/e2e/helpers/apiDriver.ts exports: loginAsDispatcher, loginAsDriver, listDrivers, acceptOrder, getOrder, getMe, listOrdersByDriver, cancelOrder, DriverSession. (getMe/listOrdersByDriver/cancelOrder were already present from the driver/customer specs' beforeAll cleanup.)",
+  "verification": {
+    "command": "npm run --prefix web e2e  (FULL suite, all 3 projects, single shared webServer harness)",
+    "summary_line": "16 passed (1.4m)",
+    "passed": 16,
+    "failed": 0,
+    "did_not_run": 0,
+    "exit_code": 0,
+    "by_project": {
+      "chromium": "8 passed — analytics x2, dispatcher x2, geo x2 (AC5 line 208 + AC4 line 304 both ok), onboarding x2",
+      "mobile-driver": "3 passed — driver.spec x3 (no regression from geo)",
+      "mobile-customer": "5 passed — customer.spec x5 (no contamination from geo)"
+    },
+    "geo_tests": "both geo tests green IN THE FULL SUITE: 'ok 5 [chromium] geo.spec.ts:208 AC5_DegradedOrderLifecycle (2.2s)' and 'ok 6 [chromium] geo.spec.ts:304 AC4_MapyTilesAttribution (2.3s)'",
+    "tsc": "npm run --prefix web tsc -> exit 0",
+    "lint": "npm run --prefix web lint -> exit 0 (check:geo clean + eslint --max-warnings 0)"
+  },
+  "verification_output": "Running 16 tests using 1 worker\n  ok 1 [chromium] analytics.spec.ts:99 AC9_FleetAdminAnalytics (4.5s)\n  ok 2 [chromium] analytics.spec.ts:148 AC9_SuperAdminPlatform (1.5s)\n  ok 3 [chromium] dispatcher.spec.ts:52 AC1_CreateAndAssign (1.5s)\n  ok 4 [chromium] dispatcher.spec.ts:136 AC2_RealtimeCardMove (1.4s)\n  ok 5 [chromium] geo.spec.ts:208 AC5_DegradedOrderLifecycle (2.2s)\n  ok 6 [chromium] geo.spec.ts:304 AC4_MapyTilesAttribution (2.3s)\n  ok 7 [chromium] onboarding.spec.ts:221 AC3_Onboarding (861ms)\n  ok 8 [chromium] onboarding.spec.ts:242 AC4_RuntimeBranding (979ms)\n  ok 9 [mobile-driver] driver.spec.ts:100 Driver_FullFlow_StartShiftToCompleteFixed_ShowsTotals (3.4s)\n  ok 10 [mobile-driver] driver.spec.ts:162 Driver_Decline_ReturnsOrderToNew (1.5s)\n  ok 11 [mobile-driver] driver.spec.ts:189 Driver_OfflineArrive_QueuedThenDeliveredExactlyOnce (2.1s)\n  ok 12 [mobile-customer] customer.spec.ts:118 Customer_LiveHeadlineAndMarker_OnAssignAccept (16.7s)\n  ok 13 [mobile-customer] customer.spec.ts:166 Customer_PublicTrackingLink_ValidVsExpired (1.6s)\n  ok 14 [mobile-customer] customer.spec.ts:189 Customer_CancelInAccepted_ReasonCustomer_DriverLosesOrder (2.1s)\n  ok 15 [mobile-customer] customer.spec.ts:227 Customer_Rating_AfterCompleted_VisibleServerSide (1.7s)\n  ok 16 [mobile-customer] customer.spec.ts:292 Customer_ThreeTapCommonRoute_ToTracking (1.9s)\n  16 passed (1.4m)\nEXIT_CODE=0",
+  "playwright_pass_count": 16,
+  "geo_pass_count": 2,
+  "staged": [
+    "web/e2e/geo.spec.ts"
+  ],
+  "not_staged_note": "Only web/e2e/geo.spec.ts staged (git add web/e2e/geo.spec.ts). No helper file changed. Confirmed no test-results/ or playwright-report/ paths are staged (both gitignored). The large pre-existing staged set (api/, docs/, other web/ + prior handoffs) predates this session and was NOT touched.",
+  "committed": false,
+  "notes": "Isolation-only fix. The prior AC4/AC5 assertion behavior (quick-chip create, optimistic-assign response wait, read-after-assign driver derivation, bodyless-transition Content-Type omission, tile-abort for the degraded banner, AC4 tile+logo stubs) is UNCHANGED and still green. The single change is making geo self-sufficient for driver state via a beforeAll that frees geo's dedicated driver (Karel Dvořák/driver3) instead of scanning for any pre-existing Free driver. Verified with the REAL full suite (docker postgres + dotnet Development + Vite), not just geo.spec in isolation: 16/16 passed, 0 failed, 0 did-not-run, exit 0. tsc + lint clean. Did NOT touch api/. No new CLAUDE.md fact needed — the InProgress-only-Complete + Complete-frees-driver behaviors are already documented in the state-machine facts."
+}

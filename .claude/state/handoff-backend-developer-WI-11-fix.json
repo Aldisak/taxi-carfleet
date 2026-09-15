@@ -1,0 +1,14 @@
+{
+  "wi_id": "WI-11-fix",
+  "files_changed": [
+    "api/src/Taxi.Api/Common/Geo/PickupEtaService.cs",
+    "api/tests/Taxi.Api.Tests/Geo/PickupEtaTests.cs",
+    "CLAUDE.md"
+  ],
+  "tests_added": 1,
+  "tests_passing": 642,
+  "coverage_delta": null,
+  "hit_max_turns": false,
+  "notes": "ROOT CAUSE: PickupEtaService was registered AddSingleton but its primary constructor accepted IGeoService (registered AddScoped in GeoFeatureConfiguration). .NET DI scope validation (ValidateScopes=true, ValidateOnBuild=true) throws 'Cannot consume scoped service IGeoService from singleton PickupEtaService' at startup. Integration tests passed because TaxiApiFactory overrides IGeoService to AddSingleton (the captive dep only fires when the dependency is scoped, which the factory override masks). CORRECT FIX: PickupEtaService ctor now takes IServiceScopeFactory instead of IGeoService. ComputeRouteAsync opens a per-call AsyncScope (await using var scope = scopeFactory.CreateAsyncScope()) and resolves IGeoService from scope.ServiceProvider for the single RouteAsync call. The ConcurrentDictionary throttle state remains on the singleton. This mirrors OfferTimeoutJob exactly. REGRESSION GUARD: PickupEtaService_WithScopedIGeoService_DIValidationDoesNotThrow uses a focused ServiceCollection with AddScoped<IGeoService> + BuildServiceProvider(ValidateScopes=true, ValidateOnBuild=true) — this reproduces the production lifetime rather than the factory's singleton override. Confirmed RED against unfixed code (throws InvalidOperationException), GREEN after fix. EXISTING TEST ADAPTATION: BuildService helper in PickupEtaTests.cs now builds a ServiceCollection that registers the fake as a singleton instance, obtains IServiceScopeFactory from it, and passes that to the PickupEtaService ctor. Fake as singleton means RouteCallCount accumulates correctly across per-call scopes — all 3 throttle tests (Accept=1, 5-min-watch<=5, NoSubscriber=0) remain green. FULL SUITE: 642 passed, 4 skipped (perf tests), 0 failed. BUILD: dotnet build -warnaserror exits 0 (0 warnings, 0 errors). CLAUDE.md appended: TaxiApiFactory singleton IGeoService override masks captive-dependency DI bugs — regression tests for DI lifetime must use a focused ServiceCollection, not a factory-based test.",
+  "verification_output": "dotnet build -warnaserror: Vytváření sestavení bylo úspěšně dokončeno. 0 upozornění, 0 chyb. dotnet test --filter FullyQualifiedName~PickupEta: Uspesne! Neuspesne: 0, Uspesne: 13, Preskoceno: 0, Celkem: 13, Doba trvani: 1 s. dotnet test (full suite): Uspesne! Neuspesne: 0, Uspesne: 642, Preskoceno: 4, Celkem: 646, Doba trvani: 1 m 2 s."
+}

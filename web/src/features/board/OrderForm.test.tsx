@@ -90,6 +90,33 @@ describe('OrderForm — quick chip fill', () => {
   })
 })
 
+describe('OrderForm — enriched suggestions (AC#2)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders street + municipality under each suggestion so same-named places differ', async () => {
+    const user = userEvent.setup()
+    const { getGeoSuggest } = await import('../../shared/api/client')
+    vi.mocked(getGeoSuggest).mockResolvedValue({
+      items: [
+        { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
+        { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
+      ],
+    })
+
+    renderForm()
+
+    await user.type(screen.getByRole('textbox', { name: /nástup/i }), 'Náměstí')
+
+    // The town is part of each option's accessible name (plain text, not aria-hidden).
+    const kolin = await screen.findByRole('option', { name: /kolín/i })
+    const kutna = await screen.findByRole('option', { name: /kutná hora/i })
+    expect(kolin).toHaveTextContent('Náměstí')
+    expect(kutna).toHaveTextContent('Kutná Hora')
+  })
+})
+
 describe('OrderForm — F2 focus shortcut', () => {
   afterEach(() => {
     vi.restoreAllMocks()

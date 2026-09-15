@@ -50,9 +50,14 @@ services:
       Cors__WebOrigin: "http://localhost:5173"
       # Log-only SMS in dev — no real provider is called.
       Notifications__SmsProvider: "Console"
+      # DataProtection key-ring dir (UC-010 WI-18). In Development the WI-03 guard is
+      # relaxed, but we still mount a persistent volume so encrypted fleet Mapy keys
+      # survive `docker compose` restarts during local testing.
+      DataProtection__KeysDirectory: /keys
     volumes:
       - ../api:/src/api
       - dev_nuget:/root/.nuget/packages
+      - dev_dp_keys:/keys
     ports:
       - "5249:8080"
     depends_on:
@@ -81,3 +86,5 @@ volumes:
   taxi_pgdata:
   dev_nuget:
   dev_web_node_modules:
+  # Persistent DataProtection key-ring for local runs (UC-010 WI-18).
+  dev_dp_keys:

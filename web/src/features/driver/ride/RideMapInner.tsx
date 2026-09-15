@@ -1,8 +1,8 @@
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { Marker } from 'react-leaflet'
 import L from 'leaflet'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
-import { OSM_TILE_URL, OSM_ATTRIBUTION, DEFAULT_ZOOM } from '../../../shared/map/leafletSetup'
+import { MapyMap } from '../../../shared/map/MapyMap'
 
 const MapWrapper = styled.div`
   width: 100%;
@@ -66,8 +66,7 @@ export default function RideMapInner({
 
   return (
     <MapWrapper>
-      <MapContainer center={center} zoom={DEFAULT_ZOOM} style={{ width: '100%', height: '100%' }} aria-label={t('driver.ride.map')}>
-        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
+      <MapyMap center={center} ariaLabel={t('driver.ride.map')}>
         <Marker position={[pickupLat, pickupLng]} icon={PICKUP_ICON} />
         {dropoffLat != null && dropoffLng != null && (
           <Marker position={[dropoffLat, dropoffLng]} icon={DROPOFF_ICON} />
@@ -75,7 +74,7 @@ export default function RideMapInner({
         {ownLat != null && ownLng != null && (
           <Marker position={[ownLat, ownLng]} icon={OWN_ICON} />
         )}
-      </MapContainer>
+      </MapyMap>
     </MapWrapper>
   )
 }

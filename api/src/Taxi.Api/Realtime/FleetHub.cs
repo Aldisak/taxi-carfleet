@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Taxi.Api.Common.Geo;
 using Taxi.Api.Common.Tenancy;
 using Taxi.Api.Infrastructure;
 using Taxi.Api.Infrastructure.Entities;
@@ -40,6 +41,8 @@ internal sealed class FleetHub(
     TaxiDbContext dbContext,
     CurrentTenant currentTenant,
     DriverPositionStore positionStore,
+    OrderSubscriptionTracker subscriptionTracker,
+    PickupEtaService pickupEtaService,
     IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
     ILogger<FleetHub> logger) : Hub
@@ -73,13 +76,17 @@ internal sealed class FleetHub(
         await base.OnConnectedAsync();
     }
 
-    /// <summary>Called when a client disconnects. Cleans up position store state for drivers.</summary>
+    /// <summary>Called when a client disconnects. Cleans up position store state for drivers
+    /// and removes any order-group subscriptions tracked by <see cref="OrderSubscriptionTracker"/>.</summary>
     public override Task OnDisconnectedAsync(Exception? exception)
     {
         if (Context.Items.TryGetValue("DriverId", out var driverIdObj) && driverIdObj is Guid driverId)
         {
             positionStore.Remove(driverId);
         }
+
+        // Clean up order subscriptions so viewer counts remain accurate.
+        subscriptionTracker.RemoveConnection(Context.ConnectionId);
 
         return base.OnDisconnectedAsync(exception);
     }
@@ -120,6 +127,7 @@ internal sealed class FleetHub(
 
         await Groups.AddToGroupAsync(Context.ConnectionId, OrderGroup(orderId),
             Context.ConnectionAborted);
+        subscriptionTracker.Add(Context.ConnectionId, orderId);
         logger.LogDebug("Customer subscribed {ConnectionId} {OrderId}", Context.ConnectionId, orderId);
     }
 
@@ -179,12 +187,23 @@ internal sealed class FleetHub(
         await Clients.Group(dispatchGroup)
             .SendAsync("DriverPositionChanged", positionPayload, Context.ConnectionAborted);
 
-        // Broadcast to the driver's active order group (if any).
-        var activeOrderId = await GetActiveOrderIdAsync(driverId.Value);
-        if (activeOrderId.HasValue)
+        // Broadcast to the driver's active order group (if any) and refresh ETA.
+        var activeOrder = await GetActiveOrderAsync(driverId.Value);
+        if (activeOrder is not null)
         {
-            await Clients.Group(OrderGroup(activeOrderId.Value))
+            await Clients.Group(OrderGroup(activeOrder.Id))
                 .SendAsync("DriverPositionChanged", positionPayload, Context.ConnectionAborted);
+
+            // Refresh pickup ETA for customer viewer (Accepted status means en-route to pickup).
+            if (activeOrder.Status == OrderStatus.Accepted)
+            {
+                await pickupEtaService.RefreshEtaAsync(
+                    activeOrder.Id, activeOrder.FleetId,
+                    lat, lng,
+                    activeOrder.PickupLat, activeOrder.PickupLng,
+                    speed,
+                    Context.ConnectionAborted);
+            }
         }
 
         // Flush Driver.LastLat/Lng/PositionAt to DB when due.
@@ -250,17 +269,20 @@ internal sealed class FleetHub(
         return driverId;
     }
 
-    /// <summary>Returns the active order ID for a driver (one of Accepted/Arrived/InProgress).
-    /// Returns null when the driver has no active order.</summary>
-    private async Task<Guid?> GetActiveOrderIdAsync(Guid driverId)
+    /// <summary>Returns the active order data for a driver (one of Accepted/Arrived/InProgress):
+    /// order ID, fleet ID, and pickup coordinates. Returns null when the driver has no active order.</summary>
+    private async Task<ActiveOrderInfo?> GetActiveOrderAsync(Guid driverId)
     {
         var activeStatuses = new[] { OrderStatus.Accepted, OrderStatus.Arrived, OrderStatus.InProgress };
         var order = await dbContext.Orders.AsNoTracking()
             .Where(o => o.DriverId == driverId && activeStatuses.Contains(o.Status))
-            .Select(o => new { o.Id })
+            .Select(o => new { o.Id, o.FleetId, o.PickupLat, o.PickupLng, o.Status })
             .FirstOrDefaultAsync(Context.ConnectionAborted);
-        return order?.Id;
+        return order is null ? null
+            : new ActiveOrderInfo(order.Id, order.FleetId, order.PickupLat, order.PickupLng, order.Status);
     }
+
+    private record ActiveOrderInfo(Guid Id, Guid FleetId, double PickupLat, double PickupLng, OrderStatus Status);
 
     /// <summary>Flushes the driver position to the database using a new DI scope (the hub's
     /// scoped DbContext may have been disposed after the hub method completes).

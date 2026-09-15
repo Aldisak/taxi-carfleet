@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common.Features;
+using Taxi.Api.Common.Geo;
 using Taxi.Api.Common.Idempotency;
 using Taxi.Api.Common.Orders;
 using Taxi.Api.Features.Orders.Shared;
@@ -11,7 +12,11 @@ using Taxi.Api.Infrastructure;
 namespace Taxi.Api.Features.Orders.AcceptOrder;
 
 /// <summary>The assigned driver accepts an order (moves Assigned → Accepted).</summary>
-internal sealed class AcceptOrderEndpoint(TaxiDbContext dbContext, OrderService orderService, TimeProvider timeProvider)
+internal sealed class AcceptOrderEndpoint(
+    TaxiDbContext dbContext,
+    OrderService orderService,
+    PickupEtaService pickupEtaService,
+    TimeProvider timeProvider)
     : Endpoint<AcceptOrderRequest, TransitionOrderResponse>
 {
     private readonly OrdersFeatureConfiguration _featureConfiguration = new();
@@ -68,6 +73,28 @@ internal sealed class AcceptOrderEndpoint(TaxiDbContext dbContext, OrderService 
                 var response = new TransitionOrderResponse(OrderDetailMapper.ToDto(order, allowedActions));
                 await storeAsync(200, response);
                 await Send.OkAsync(response, ct2);
+
+                // Compute and broadcast the initial driver→pickup ETA (AC#3 — accept + 1 route call).
+                // Requires the driver's last known position; skip when not available.
+                if (actor.DriverId.HasValue)
+                {
+                    var driver = await dbContext.Drivers.AsNoTracking()
+                        .Where(d => d.Id == actor.DriverId.Value)
+                        .Select(d => new { d.LastLat, d.LastLng })
+                        .FirstOrDefaultAsync(ct2);
+
+                    if (driver?.LastLat is not null && driver?.LastLng is not null)
+                    {
+                        await pickupEtaService.BroadcastAcceptEtaAsync(
+                            order.Id,
+                            order.FleetId,
+                            driver.LastLat.Value,
+                            driver.LastLng.Value,
+                            order.PickupLat,
+                            order.PickupLng,
+                            ct2);
+                    }
+                }
             }, ct);
     }
 }

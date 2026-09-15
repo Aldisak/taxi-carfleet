@@ -23,8 +23,8 @@ Three-column layout, no navigation away needed for normal work:
 
 **Left column — New order form (always visible, never a modal)**
 - Fields in this order, one tab-stop each: Phone → Name (optional, auto-filled if phone is known from past orders) → Pickup → Dropoff (optional) → When (ASAP / time picker) → Passengers → Note.
-- Pickup/dropoff: address autocomplete (Nominatim/Photon via backend proxy `/api/v1/geo/suggest?q=`), plus **quick chips** for the fleet's most used places (train station Kolín, train station KH, hospital, bus station — configurable later in 06; hardcode from fleet settings JSON for now). Clicking a chip fills the field with coordinates.
-- Price preview appears live: fixed route price if matched (call `/api/v1/pricing/quote`, to be implemented in 06 — until then show estimate from tariff × OSRM distance via `/api/v1/geo/route`), else estimate.
+- Pickup/dropoff: address autocomplete (Mapy.com suggest via backend proxy `/api/v1/geo/suggest?q=`), plus **quick chips** for the fleet's most used places (train station Kolín, train station KH, hospital, bus station — configurable later in 06; hardcode from fleet settings JSON for now). Clicking a chip fills the field with coordinates.
+- Price preview appears live: fixed route price if matched (call `/api/v1/pricing/quote`, to be implemented in 06 — until then show estimate from tariff × Mapy.com route distance via `POST /api/v1/geo/route`), else estimate.
 - Big primary button **"Vytvořit objednávku"** (Enter key submits from any field). After submit the form clears, focus returns to Phone, and the new order appears at the top of the middle column highlighted for 3 s.
 - Keyboard shortcut `F2` focuses the form from anywhere.
 
@@ -41,7 +41,7 @@ Three-column layout, no navigation away needed for normal work:
 - Click driver → map centers on them.
 
 **Map (toggle to replace the middle column, or a fourth panel on wide screens ≥ 1600 px)**
-- Leaflet, OSM tiles. Driver markers with heading arrow, colored by status. Order pickup pins for New/Assigned orders. Click pin → highlights card and vice versa.
+- Leaflet rendering Mapy.com tiles (browser key + logo + attribution from `GET /geo/config`). Driver markers with heading arrow, colored by status. Order pickup pins for New/Assigned orders. Click pin → highlights card and vice versa.
 - Updates from `DriverPositionChanged`. Throttle marker redraw to 1 s.
 
 ### 3. Order detail (`/x/orders/:id`, opens as right-side drawer, not a page)

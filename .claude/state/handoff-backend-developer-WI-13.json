@@ -1,0 +1,29 @@
+{
+  "wi_id": "WI-13",
+  "files_changed": [
+    "api/src/Taxi.Api/Common/Geo/GeoCacheTtl.cs",
+    "api/src/Taxi.Api/Infrastructure/Geo/GeoCache.cs",
+    "api/src/Taxi.Api/Infrastructure/Jobs/GeoCacheCleanupJob.cs",
+    "api/src/Taxi.Api/Infrastructure/Jobs/JobsServiceExtensions.cs",
+    "api/tests/Taxi.Api.Tests/Geo/GeoCacheCleanupJobTests.cs",
+    "docs/costs.md"
+  ],
+  "tests_added": 4,
+  "tests_passing": 640,
+  "coverage_delta": "+4 tests (4 new GeoCacheCleanupJob integration tests; 636 pre-existing passing)",
+  "hit_max_turns": false,
+  "notes": {
+    "job_schedule": "Hourly (PeriodicTimer with 1-hour interval). The shortest swept TTL is Route at 24h, so hourly is frequent enough to bound delete lag to under 1 hour without burning extra DB cycles. KEY FACTS hint said 'hourly'.",
+    "ttl_reuse_approach": "Extracted private TTL constants and TtlForKind from GeoCache.cs into a new internal static class Common/Geo/GeoCacheTtl.cs. GeoCache.cs now delegates to GeoCacheTtl.ForKind(kind). GeoCacheCleanupJob uses GeoCacheTtl.SweptKinds (all kinds except QuickPlace) and GeoCacheTtl.ForKind to compute per-kind cutoffs. No constants duplicated.",
+    "costs_md": "Added the UC-010 geo cost section to the existing docs/costs.md. Includes: credit price table (1/tile, 4/suggest+geocode+reverse+route), tile-estimate note with a clearly-marked [PLACEHOLDER] for measured-week data, and estimated monthly consumption showing well within the 250k free tier for a single small fleet.",
+    "quickplace_never_swept": "GeoCacheTtl.SweptKinds is an explicit array [Suggest, Geocode, Reverse, Route] — QuickPlace is intentionally excluded. The cleanup job never touches QuickPlace rows; this is verified by the RunTickAsync_QuickPlaceEntryPast30Days_NeverDeleted test.",
+    "delete_predicate": "Uses CreatedAt < now - ttl.Value, matching exactly the staleness check in GeoCache.GetOrAddAsync (isValid = ttl is null || CreatedAt + ttl >= now), so the job never deletes a row the cache would still serve.",
+    "log_style": "Single batch-summary log: LogInformation('Geo cache swept {Count}', totalDeleted) only when totalDeleted > 0. Matches RetentionJob style: present-tense phrase, structured property, no period."
+  },
+  "verification_output": {
+    "command": "dotnet test --filter FullyQualifiedName~GeoCacheCleanup",
+    "exit_code": 0,
+    "summary": "Failed: 0, Passed: 5, Skipped: 0, Total: 5, Duration: 850ms",
+    "build_result": "dotnet build -warnaserror: 0 warnings, 0 errors"
+  }
+}

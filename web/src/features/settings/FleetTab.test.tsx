@@ -18,6 +18,7 @@ vi.mock('../../shared/api/client', async (importOriginal) => {
     getPublicFleet: vi.fn(),
     putFleetSettings: vi.fn(),
     postFleetLogo: vi.fn(),
+    getGeoUsage: vi.fn(),
   }
 })
 
@@ -77,6 +78,13 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetFleetSettings.mockResolvedValue(settings())
   mockGetPublicFleet.mockResolvedValue(publicFleet())
+  vi.mocked(client.getGeoUsage).mockResolvedValue({
+    creditsUsedThisMonth: 40000,
+    creditBudget: 250000,
+    usagePercent: 16,
+    year: 2026,
+    month: 9,
+  })
 })
 
 describe('FleetTab — self-service form (UC-007 A6)', () => {

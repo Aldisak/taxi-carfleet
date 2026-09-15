@@ -95,9 +95,16 @@ services:
       Push__Vapid__PrivateKey: ${VAPID_PRIVATE_KEY}
       Tracking__HmacKey: ${TRACKING_HMAC_KEY}
       Ops__FleetSlug: ${OPS_FLEET_SLUG:-ops}
+      # DataProtection key-ring directory (UC-010 WI-03/WI-18). MUST point at the
+      # persistent dp_keys volume below. The WI-03 fail-fast guard refuses to boot in
+      # Production if this dir is missing/unset — without a persisted ring, every stored
+      # fleet Mapy API key becomes permanently undecryptable after a redeploy.
+      DataProtection__KeysDirectory: /keys
     volumes:
       # Logo storage — shared read-only with caddy (served at the edge) and read by backup.
       - fleet_data:/data/fleets
+      # Persistent DataProtection key-ring — survives redeploys (UC-010 WI-18).
+      - dp_keys:/keys
     depends_on:
       db:
         condition: service_healthy
@@ -208,5 +215,8 @@ volumes:
   caddy_data:
   caddy_config:
   fleet_data:
+  # DataProtection key-ring persistence (UC-010 WI-18). Losing this volume makes every
+  # encrypted per-fleet Mapy key undecryptable — never prune it on a redeploy.
+  dp_keys:
   grafana_data:
   prometheus_data:

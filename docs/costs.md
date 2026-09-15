@@ -60,6 +60,59 @@ The whole business model — "resell to other fleets, a new fleet is a row not a
 adding fleets adds only SMS, never infrastructure, until the single CX22 runs out of RAM/CPU (many
 small fleets away), at which point the next step is a larger Hetzner plan, not new architecture.
 
+## Mapy.com REST API credits (UC-010)
+
+Mapy.com uses a **credit-based billing model** (spec §5/§7). Credits are consumed per API call,
+not per byte or per tile. Tile requests from browsers are NOT counted server-side and are estimated
+from a measured usage week — see placeholder below.
+
+### Credit price sheet (Mapy.com published rates)
+
+| Call type | Credits per call | Notes |
+|---|---|---|
+| Map tile (browser-side) | 1 credit / tile | Not tracked server-side — estimate from a measured period |
+| Suggest | 4 credits / call | Server-side proxy; only cache-misses hit Mapy.com |
+| Geocode | 4 credits / call | Server-side proxy; only cache-misses hit Mapy.com |
+| Reverse geocode | 4 credits / call | Server-side proxy; only cache-misses hit Mapy.com |
+| Route | 4 credits / call | Server-side proxy; only cache-misses hit Mapy.com |
+| QuickPlace | 0 credits (static data) | Served from local DB; no Mapy.com call |
+
+**Free tier:** 250,000 credits / month at no cost.
+**Overage:** 1.60 CZK per 1,000 credits above the free tier.
+
+### Tile consumption estimate
+
+Tiles are delivered directly from Mapy.com CDN to the browser — they do NOT pass through this
+backend proxy and are therefore **not counted by the server-side `geo_usage` table**. To estimate
+tile consumption, measure browser network requests for a representative week in production and
+multiply by 4 (weekly → monthly).
+
+> **[PLACEHOLDER — fill after first measured production week]**
+> Estimated tile requests / month: `___` (measured week × 4)
+> Estimated tile credits / month: `___` (tile requests × 1)
+
+Until measured, the budget estimate below is conservative (zero tile credits counted) — the free
+250k tier is assumed sufficient for API calls.
+
+### Estimated monthly credit consumption — one small fleet (~300 rides/mo)
+
+| Source | Calls/mo (estimate) | Credits/mo | Notes |
+|---|---|---|---|
+| Suggest (create-order form) | ~900 | ~3,600 | ~3 suggest queries per order, ~100 % cache-miss rate on first day, heavy cache reuse after |
+| Geocode (address resolution) | ~600 | ~2,400 | ~2 geocode calls per order on average |
+| Route (create + accept) | ~600 | ~2,400 | 2 route calls per order (create-once + accept-time ETA) |
+| Reverse (driver position) | ~300 | ~1,200 | ~1 reverse per order session |
+| Tiles | — | **[PLACEHOLDER]** | Browser-direct; not tracked server-side |
+| **Total API credits** | | **~9,600 / mo** | Well within the 250k free tier |
+
+For a single small fleet the Mapy.com bill is expected to be **€0/mo** (within the free tier).
+The budget guard (`FleetSettings.GeoCreditsBudget`, default 100) + 80/100 % alerts (WI-12)
+prevent surprise overages if cache hit-rate drops or ride volume spikes.
+
+At ~100 fleets the aggregate usage would be ~960,000 credits/month — roughly 710,000 credits
+above the free tier → **~1,136 CZK / mo overage** (~€45) across all fleets. At this scale
+negotiate a Mapy.com commercial plan.
+
 ## Sources (published prices, retrieved 2026-09-13)
 
 - Hetzner Cloud CX22 (€4.35/mo): <https://vpsfor.dev/posts/hetzner-cx22-pricing-2026/>, <https://www.hetzner.com/cloud/>

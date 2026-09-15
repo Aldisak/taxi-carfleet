@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type React from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { getDrivers, getOrders } from '../../shared/api/client'
-import { OSM_TILE_URL, OSM_ATTRIBUTION, DEFAULT_CENTER, DEFAULT_ZOOM } from '../../shared/map/leafletSetup'
+import { MapyMap } from '../../shared/map/MapyMap'
 import { usePositionStore } from '../../shared/realtime/usePositionStore'
 import { useDriverFocusStore } from './useDriverFocusStore'
 import { createMarkerThrottle } from './markerThrottle'
@@ -232,14 +232,7 @@ export function MapPanel() {
 
   return (
     <MapWrapper data-testid="map-panel">
-      <MapContainer
-        center={DEFAULT_CENTER}
-        zoom={DEFAULT_ZOOM}
-        style={{ width: '100%', height: '100%' }}
-        aria-label={t('board.columns.map')}
-      >
-        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
-
+      <MapyMap ariaLabel={t('board.columns.map')}>
         {/* MapCenterController reads positions via getState() to avoid reactive subscription */}
         <MapCenterController focusedDriverId={focusedDriverId} />
 
@@ -273,7 +266,7 @@ export function MapPanel() {
             <Popup>{t('map.orderPopup', { code: pin.publicCode })}</Popup>
           </Marker>
         ))}
-      </MapContainer>
+      </MapyMap>
     </MapWrapper>
   )
 }

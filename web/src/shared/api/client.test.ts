@@ -499,3 +499,97 @@ describe('reports + audit client (UC-007 B1/B2 — REAL laneA7 contracts)', () =
     expect(calledUrl).toContain('page=2')
   })
 })
+
+// UC-010 WI-16: geo/route migrated GET (query string) → POST with a nested JSON body
+// { from: { lat, lng }, to: { lat, lng } } (mirrors the backend RouteRequest/GeoPoint). The
+// response gained a `geometry: number[][] | null` field. A drift here (still sending a query
+// string, or the flat fromLat/toLat body) sends the backend zeros → a wrong/failed route.
+// This asserts the exact wire body against a mocked fetch — the same regression style that
+// caught the {routes} and pricing/quote GET→POST bugs.
+describe('getGeoRoute — POST nested body + geometry parse (UC-010 WI-16)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  it('POSTs a nested { from:{lat,lng}, to:{lat,lng} } JSON body to /geo/route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        distanceMeters: 15000,
+        durationSeconds: 900,
+        estimatedPriceCzk: 220,
+        geometry: null,
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { getGeoRoute } = await import('./client')
+    await getGeoRoute({ fromLat: 50.027, fromLng: 15.2, toLat: 49.946, toLng: 15.267 })
+
+    const [url, init] = fetchMock.mock.calls[0]!
+    expect(url).toBe('/api/v1/geo/route')
+    expect(init.method).toBe('POST')
+    const body = JSON.parse(init.body as string)
+    expect(body).toEqual({
+      from: { lat: 50.027, lng: 15.2 },
+      to: { lat: 49.946, lng: 15.267 },
+    })
+  })
+
+  it('parses the geometry (number[][]) from the route response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        distanceMeters: 15000,
+        durationSeconds: 900,
+        estimatedPriceCzk: 220,
+        geometry: [[50.027, 15.2], [49.946, 15.267]],
+      }),
+    }))
+
+    const { getGeoRoute } = await import('./client')
+    const res = await getGeoRoute({ fromLat: 50.027, fromLng: 15.2, toLat: 49.946, toLng: 15.267 })
+
+    expect(res.distanceMeters).toBe(15000)
+    expect(res.geometry).toEqual([[50.027, 15.2], [49.946, 15.267]])
+  })
+})
+
+// UC-010 WI-16: geo/suggest items enriched with street + municipality (SuggestItemDto) so
+// two same-named places (Kolín vs Kutná Hora) are distinguishable. Optional fields — a payload
+// without them still parses (backward-compatible).
+describe('getGeoSuggest — enriched items (street + municipality, UC-010 WI-16)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  it('parses street + municipality on suggest items', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        items: [
+          { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
+        ],
+      }),
+    }))
+
+    const { getGeoSuggest } = await import('./client')
+    const res = await getGeoSuggest('Náměstí')
+
+    expect(res.items[0]!.street).toBe('Náměstí')
+    expect(res.items[0]!.municipality).toBe('Kolín')
+  })
+})

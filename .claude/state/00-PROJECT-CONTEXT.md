@@ -57,7 +57,11 @@ A user belongs to exactly one fleet (except SuperAdmin). Customers are global us
 - React 18 + TypeScript + Vite, single codebase, role-based route groups: `/c/*` customer, `/d/*` driver, `/x/*` dispatcher.
 - **styled-components** for styling (user decision 2026-09-11, replaces Tailwind — see `docs/decisions.md`). No component library except headless primitives if needed.
 - React Router 6, TanStack Query, Zustand (only for tiny cross-cutting state).
-- Maps: **Leaflet** + OpenStreetMap tiles. Routing/estimates: **OSRM** public API (`router.project-osrm.org`) behind a backend proxy so we can self-host later.
+- Maps: **Leaflet** rendering **Mapy.com REST API** raster tiles. Routing/estimates/geocoding/autocomplete: **Mapy.com REST API** behind our backend proxy (UC-010, replaces OpenStreetMap tiles + OSRM + Nominatim + Photon). Details:
+  - **Two-key model:** a per-fleet **browser key** (used client-side for tiles + logo, restricted by HTTP referrer, served anonymously via `GET /geo/config`) and a **server key** (used only server-side by `IMapyClient`, never sent to the browser). Demo/first-day fleets fall back to env keys (`Mapy__BrowserKey` / `Mapy__ServerKey`).
+  - **Caching rules:** two-tier `GeoCache` (in-memory L1 + `geo_cache` Postgres L2) with per-kind TTLs; `geo_usage` counts **cache misses only** (real upstream credit spend) for per-fleet monthly budgets + 80 %/100 % alerts. QuickPlace lookups are cached forever.
+  - **Graceful degradation:** the resilience boundary (4 s timeout, 1 retry on 5xx, circuit breaker) lives inside `MapyClient`; on failure it returns `GeoResult.Unavailable` and the UI shows degraded banners + a wider "orientační odhad" estimate rather than a hard error.
+  - **No vendor lock-in:** all Mapy access sits behind `IMapyClient`/`IGeoService`, so the provider is replaceable without touching endpoints or the frontend.
 - PWA: `vite-plugin-pwa` (Workbox). Web Push with VAPID.
 - i18n: `i18next`. **Czech is the default language.** All user-facing strings go through i18n; no hardcoded text.
 - Tests: Vitest for logic, Playwright for the three critical flows (create order, driver accept, customer order).
@@ -79,7 +83,7 @@ A user belongs to exactly one fleet (except SuperAdmin). Customers are global us
     /Features/<Feature>/   ← vertical slices: endpoint + request/response + validator + errors + feature configuration
     /Common/               ← shared logic used by 2+ features: OrderStateMachine, ICurrentTenant, value objects
     /Authorization/        ← policies, handlers
-    /Infrastructure/       ← DbContext, entities, migrations, SMS, push, OSRM client, jobs
+    /Infrastructure/       ← DbContext, entities, migrations, SMS, push, Mapy.com geo client, jobs
     /Realtime/             ← SignalR hub + event broadcasting
     Program.cs
   /tests/Taxi.Api.Tests

@@ -39,7 +39,7 @@ customer route list, driver price badge already exists (03) — verify it render
   1. Candidate routes = enabled, valid at `at` (default now), not deleted.
   2. Order of precedence: PointToPoint → ZoneToZone → Zone. Within a type, highest `Priority`, then lowest price.
   3. If matched → `{ type: "Fixed", priceCzk, routeId, routeName }`.
-  4. Else if dropoff known → OSRM distance/duration → tariff: `max(Minimum, Base + PerKm × km)` rounded **up** to 10 CZK → `{ type: "Estimate", lowCzk, highCzk, distanceKm, durationMin }` where low/high = ±10 % rounded to 10.
+  4. Else if dropoff known → Mapy.com route distance/duration → tariff: `max(Minimum, Base + PerKm × km)` rounded **up** to 10 CZK → `{ type: "Estimate", lowCzk, highCzk, distanceKm, durationMin }` where low/high = ±10 % rounded to 10. (UC-010: if Mapy is `Unavailable`, fall back to a haversine ×1.3 estimate with a **wider ±20 % band** flagged as "orientační odhad" — never a 502.)
   5. Else → `{ type: "Meter", tariff summary }`.
 - `GET /api/v1/routes/available?at=` → routes valid now, for the customer home screen (public, fleet from slug). Return only `id, name, type, priceCzk, fromLabel, toLabel`.
 - Order creation calls the same service and **locks** `PriceType`, `FixedPriceCzk`/`EstimatedPriceCzk`, `RouteId` on the order. Later route edits never touch existing orders (test this).

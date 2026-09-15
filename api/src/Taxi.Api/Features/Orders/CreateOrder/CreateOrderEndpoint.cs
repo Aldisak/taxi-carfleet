@@ -181,7 +181,11 @@ internal sealed class CreateOrderEndpoint(
             CreatedByUserId = createdByUserId,
             CreatedAt = now,
             UpdatedAt = now,
-            Version = 1
+            Version = 1,
+            // Quote-once (WI-10 AC#3): persist the distance/duration from the preceding price quote.
+            // The client passes these from QuoteResponse so no second RouteAsync call is needed here.
+            DistanceM = req.DistanceM,
+            DurationS = req.DurationS
         };
 
         var createdEvent = new OrderEvent

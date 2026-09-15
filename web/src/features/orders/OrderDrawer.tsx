@@ -16,7 +16,9 @@ import { DriverPicker } from '../board/DriverPicker'
 import { CANCEL_REASON_CODES, buildCancelReason, reasonRequiresFreeText } from '../board/cancelReasons'
 import type { CancelReasonCode } from '../board/cancelReasons'
 import { useAddressSuggest } from '../board/useAddressSuggest'
+import { orderHasNoCoords } from '../board/orderCoords'
 import type { UpdateOrderRequest, GeoSuggestItem } from '../../shared/api/client'
+import { suggestionMeta } from '../../shared/geo/suggestionMeta'
 
 // ---------------------------------------------------------------------------
 // Address autocomplete sub-component (edit mode only)
@@ -56,6 +58,12 @@ const SuggestItem = styled.li<{ $highlighted: boolean }>`
     background: ${({ theme }) => theme.colors.primary};
     color: #fff;
   }
+`
+
+const SuggestMeta = styled.span<{ $highlighted: boolean }>`
+  display: block;
+  font-size: ${({ theme }) => theme.typography.fontSizeXs};
+  color: ${({ $highlighted, theme }) => ($highlighted ? '#fff' : theme.colors.textSecondary)};
 `
 
 /** Address input with Photon autocomplete — used during edit mode in the drawer. */
@@ -105,20 +113,24 @@ function AddressEditInput({ value, onChange, onSelect, 'aria-label': ariaLabel }
       />
       {items.length > 0 && (
         <SuggestList role="listbox">
-          {items.map((item, i) => (
-            <SuggestItem
-              key={`${item.lat}-${item.lng}`}
-              role="option"
-              aria-selected={i === highlightedIndex}
-              $highlighted={i === highlightedIndex}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                handleItemMouseDown(item)
-              }}
-            >
-              {item.label}
-            </SuggestItem>
-          ))}
+          {items.map((item, i) => {
+            const meta = suggestionMeta(item)
+            return (
+              <SuggestItem
+                key={`${item.lat}-${item.lng}`}
+                role="option"
+                aria-selected={i === highlightedIndex}
+                $highlighted={i === highlightedIndex}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  handleItemMouseDown(item)
+                }}
+              >
+                <span>{item.label}</span>
+                {meta && <SuggestMeta $highlighted={i === highlightedIndex}>{meta}</SuggestMeta>}
+              </SuggestItem>
+            )
+          })}
         </SuggestList>
       )}
     </div>
@@ -207,6 +219,18 @@ const SectionTitle = styled.h3`
 const FieldValue = styled.div`
   font-size: ${({ theme }) => theme.typography.fontSizeMd};
   color: ${({ theme }) => theme.colors.text};
+`
+
+// "bez souřadnic" warning shown under the pickup address when the order has no usable pickup
+// coordinates (UC-010 AC#2 — suggest/geocode was degraded when the order was created).
+const NoCoordsWarning = styled.p`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 0;
+  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  color: ${({ theme }) => theme.colors.warning};
+  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
 `
 
 const FieldInput = styled.input`
@@ -591,7 +615,14 @@ export function OrderDrawer() {
                     aria-label={t('orders.drawer.fields.pickup')}
                   />
                 ) : (
-                  <FieldValue>{order.pickupAddress}</FieldValue>
+                  <>
+                    <FieldValue>{order.pickupAddress}</FieldValue>
+                    {orderHasNoCoords(order) && (
+                      <NoCoordsWarning>
+                        <span aria-hidden="true">⚠</span> {t('map.noCoords')}
+                      </NoCoordsWarning>
+                    )}
+                  </>
                 )}
               </Section>
 

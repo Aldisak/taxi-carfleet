@@ -204,6 +204,66 @@ export function getPublicFleet(): Promise<PublicFleetResponse> {
 }
 
 // ---------------------------------------------------------------------------
+// Geo tile configuration (Mapy.com) — GET geo/config (AllowAnonymous)
+// ---------------------------------------------------------------------------
+
+/**
+ * Response for GET geo/config — the Mapy.com tile configuration for the current fleet.
+ * camelCase mirror of the backend GeoConfigResponse (UC-010 WI-09). Carries ONLY the browser
+ * key; the server key is structurally absent from the backend DTO.
+ */
+export interface GeoConfigResponse {
+  /** Mapy raster tile URL template with {z}/{x}/{y} and {apikey} placeholders. */
+  tileUrlTemplate: string
+  /** Mapy browser API key for this fleet — the {apikey} value. */
+  browserKey: string
+  /** Mandatory Mapy attribution HTML for the Leaflet attribution control. */
+  attributionHtml: string
+  /** Default map center latitude for this fleet (WGS84). */
+  mapCenterLat: number
+  /** Default map center longitude for this fleet (WGS84). */
+  mapCenterLng: number
+  /** Default map zoom level for this fleet. */
+  mapZoom: number
+}
+
+/**
+ * GET geo/config — Mapy tile configuration for the current fleet.
+ * AllowAnonymous (the customer tracking map must render before login); the fleet is resolved
+ * server-side from the X-Fleet-Slug header (attached from authStorage). The backend sends
+ * Cache-Control: max-age=604800 (7 days), so the query is cached long client-side too.
+ */
+export function getGeoConfig(): Promise<GeoConfigResponse> {
+  return apiRequest<GeoConfigResponse>('/geo/config')
+}
+
+/**
+ * Response for GET settings/geo-usage — this fleet's month-to-date geo API credit usage vs its
+ * monthly budget (UC-010 WI-12, FleetAdmin only). camelCase mirror of the backend
+ * GetGeoUsageResponse. Drives the dispatcher Settings credits panel (WI-17).
+ */
+export interface GeoUsageResponse {
+  /** Sum of estimated credits consumed so far in the current Prague-local calendar month. */
+  creditsUsedThisMonth: number
+  /** The fleet's configured monthly geo credit budget (GeoMonthlyCreditBudget). */
+  creditBudget: number
+  /** Usage as a percentage of the budget, rounded to one decimal place. May exceed 100. */
+  usagePercent: number
+  /** Prague-local calendar year of the reported month. */
+  year: number
+  /** Prague-local calendar month of the reported data (1–12). */
+  month: number
+}
+
+/**
+ * GET settings/geo-usage — month-to-date geo credit consumption + budget for the current fleet.
+ * FleetAdmin only (the backend enforces AuthorizationPolicies.FleetAdminOnly → 403 otherwise).
+ */
+export function getGeoUsage(): Promise<GeoUsageResponse> {
+  return apiRequest<GeoUsageResponse>('/settings/geo-usage')
+}
+
+// ---------------------------------------------------------------------------
 // Customer phone-code auth (AllowAnonymous — X-Fleet-Slug from authStorage)
 // ---------------------------------------------------------------------------
 
@@ -250,8 +310,18 @@ export function verifyCustomerCode(phone: string, code: string): Promise<VerifyC
 // Geo endpoints
 // ---------------------------------------------------------------------------
 
+/**
+ * A single address suggestion from GET /geo/suggest (SuggestItemDto). Enriched by UC-010 WI-08:
+ * `street` and `municipality` (the regional structure) let the UI distinguish two same-named
+ * places — e.g. "Náměstí, Kolín" vs "Náměstí, Kutná Hora" (AC#2). Both are optional: an upstream
+ * that omits them (or an older payload) still parses.
+ */
 export interface GeoSuggestItem {
   label: string
+  /** Street line of the address, or null/absent when Mapy did not resolve one. */
+  street?: string | null
+  /** Municipality / town, or null/absent. Rendered alongside the label to disambiguate (AC#2). */
+  municipality?: string | null
   lat: number
   lng: number
 }
@@ -260,12 +330,24 @@ export interface GeoSuggestResponse {
   items: GeoSuggestItem[]
 }
 
+/**
+ * Response for POST /geo/route (RouteResponse). Distance/duration are integers; estimatedPriceCzk
+ * is server-priced (null when no default tariff). `geometry` is a simplified lat/lng polyline
+ * (max 200 points) or null when unavailable — WI-17 draws it; WI-16 only threads the contract.
+ */
 export interface GeoRouteResponse {
   distanceMeters: number
   durationSeconds: number
   estimatedPriceCzk: number | null
+  /** Simplified route polyline as [lat, lng] pairs (max 200 points), or null when unavailable. */
+  geometry?: number[][] | null
 }
 
+/**
+ * getGeoRoute arguments — kept FLAT (fromLat/fromLng/toLat/toLng) so every consumer
+ * (useRouteEstimate, useOfferRoute) is unchanged; getGeoRoute transforms them into the backend's
+ * nested POST body { from:{lat,lng}, to:{lat,lng} } at the client boundary.
+ */
 export interface GeoRouteRequest {
   fromLat: number
   fromLng: number
@@ -278,14 +360,21 @@ export function getGeoSuggest(q: string): Promise<GeoSuggestResponse> {
   return apiRequest<GeoSuggestResponse>(`/geo/suggest?${params}`)
 }
 
+/**
+ * POST /geo/route — route distance/duration/estimate + geometry. Migrated from the old
+ * GET+query-string to a nested JSON body { from:{lat,lng}, to:{lat,lng} } (UC-010 WI-09); the
+ * body coords are numbers, sidestepping the cs-CZ double query-binding locale trap (CLAUDE.md).
+ * Throws ApiResponseError(502) Geo.RouteUnavailable when the upstream route is down — callers
+ * degrade silently (never block the form).
+ */
 export function getGeoRoute(req: GeoRouteRequest): Promise<GeoRouteResponse> {
-  const params = new URLSearchParams({
-    fromLat: String(req.fromLat),
-    fromLng: String(req.fromLng),
-    toLat: String(req.toLat),
-    toLng: String(req.toLng),
+  return apiRequest<GeoRouteResponse>('/geo/route', {
+    method: 'POST',
+    body: JSON.stringify({
+      from: { lat: req.fromLat, lng: req.fromLng },
+      to: { lat: req.toLat, lng: req.toLng },
+    }),
   })
-  return apiRequest<GeoRouteResponse>(`/geo/route?${params}`)
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +411,13 @@ export interface EstimatePriceQuote {
   distanceKm: number
   /** Driving duration in minutes from the route computation. */
   durationMin: number
+  /**
+   * Precision of the estimate (UC-010 WI-10): "Exact" = a real Mapy.com route (±10% band);
+   * "Estimated" = the geo upstream was unavailable and a haversine×1.3 fallback was used —
+   * the backend already returns the WIDER ±20% band and the UI labels it "orientační odhad"
+   * (AC#5). Optional/absent → treated as Exact (backward compatible).
+   */
+  estimateMode?: 'Exact' | 'Estimated' | null
 }
 
 /**

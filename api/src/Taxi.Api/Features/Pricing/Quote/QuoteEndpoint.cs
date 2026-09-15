@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Taxi.Api.Common;
 using Taxi.Api.Common.Features;
+using Taxi.Api.Common.Geo;
 using Taxi.Api.Common.Pricing;
 using Taxi.Api.Common.Tenancy;
 using Taxi.Api.Infrastructure;
@@ -15,7 +16,7 @@ namespace Taxi.Api.Features.Pricing.Quote;
 /// <summary>Price quote for a prospective order. Runs the <see cref="RouteMatcher"/> over the fleet's
 /// enabled, non-deleted routes + zones (loaded in memory — the jsonb Polygon is read in memory, never
 /// LINQ-projected, CLAUDE.md WI-10). Precedence: a matching route → Fixed; else a known dropoff →
-/// OSRM + tariff → Estimate range; else → Meter tariff summary.
+/// Mapy.com + tariff → Estimate range; else → Meter tariff summary.
 /// <para><b>Access</b>: anonymous-by-slug (customer home) AND any authenticated role (driver badge,
 /// dispatcher Otestovat panel). The fleet is resolved by the tenant middleware (JWT claim or
 /// X-Fleet-Slug) and the read is query-filter-scoped; no fleet resolved → 400 (mirrors
@@ -23,7 +24,7 @@ namespace Taxi.Api.Features.Pricing.Quote;
 /// <para><b>Zone-no-dropoff</b>: the matcher runs even when dropoff is null — a Zone route matches on
 /// pickup-in-zone alone.</para></summary>
 internal sealed class QuoteEndpoint(
-    IGeoProvider geoProvider,
+    IGeoService geoService,
     TaxiDbContext dbContext,
     ICurrentTenant currentTenant,
     TimeProvider timeProvider,
@@ -52,12 +53,12 @@ internal sealed class QuoteEndpoint(
         {
             s.Summary = "Get a price quote";
             s.Description = "Returns a Fixed price (matching route rule), an Estimate range (tariff price " +
-                            "+/- 10% rounded to 10 CZK), or a Meter tariff summary. Anonymous-by-slug and any " +
-                            "authenticated role. The matcher runs even without a dropoff (Zone routes match on " +
-                            "pickup alone).";
-            s.Responses[StatusCodes.Status200OK] = "A Fixed price, an Estimate range, or a Meter summary.";
+                            "+/- 10% rounded to 10 CZK, or ±20% orientační odhad when geo is unavailable), " +
+                            "or a Meter tariff summary. Anonymous-by-slug and any authenticated role. " +
+                            "The matcher runs even without a dropoff (Zone routes match on pickup alone). " +
+                            "On geo upstream failure, falls back to haversine×1.3 estimate (EstimateMode=Estimated) — never 502.";
+            s.Responses[StatusCodes.Status200OK] = "A Fixed price, an Estimate range (Exact or Estimated), or a Meter summary.";
             s.Responses[StatusCodes.Status400BadRequest] = "Invalid coords or no fleet resolved.";
-            s.Responses[StatusCodes.Status502BadGateway] = "Upstream route unavailable.";
         });
     }
 
@@ -65,7 +66,7 @@ internal sealed class QuoteEndpoint(
     public override async Task HandleAsync(QuoteRequest req, CancellationToken ct)
     {
         // Guard: tenant must be resolved (quote prices from the caller's fleet routes/tariff only).
-        if (currentTenant.FleetId is null)
+        if (currentTenant.FleetId is not { } fleetId)
         {
             AddError("No fleet resolved for this request.", ErrorCodes.Validation.NoTenantResolved);
             await Send.ErrorsAsync(400, ct);
@@ -107,36 +108,52 @@ internal sealed class QuoteEndpoint(
             return;
         }
 
-        // ── 3. Dropoff known → OSRM + tariff Estimate range ──
-        GeoRouteResult routeResult;
-        try
+        // ── 3. Dropoff known → Mapy.com + tariff Estimate range ──
+        // GeoService.RouteAsync never 502s: on upstream failure it degrades to haversine×1.3
+        // and returns IsEstimate=true wrapped in a Success result. The cast is always safe.
+        var routeResult = await geoService.RouteAsync(fleetId, req.PickupLat, req.PickupLng, dropLat, dropLng, ct);
+
+        if (routeResult.IsEstimate)
         {
-            routeResult = await geoProvider.RouteAsync(req.PickupLat, req.PickupLng, dropLat, dropLng, ct);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Pricing quote upstream failed {Reason}", "GeoUpstreamUnavailable");
-            AddError("Route upstream is unavailable.", ErrorCodes.Geo.RouteUnavailable);
-            await Send.ErrorsAsync(502, ct);
-            return;
+            logger.LogDebug("Pricing quote using degraded haversine estimate {Reason}", "GeoUpstreamUnavailable");
         }
 
-        var distanceKm = routeResult.DistanceMeters / 1000.0;
-        var durationMin = (int)Math.Round(routeResult.DurationSeconds / 60.0);
+        var routeData = ((GeoResult<MapyRouteResultData>.Success)routeResult.Result).Value;
+        var distanceKm = routeData.DistanceMeters / 1000.0;
+        var durationMin = (int)Math.Round(routeData.DurationSeconds / 60.0);
 
         // Tariff price = Max(Minimum, Base + PerKm*km) rounded UP to 10.
         var rawPrice = tariff is not null
             ? Math.Max(tariff.MinimumFareCzk, RoundUpTo10((int)Math.Ceiling(tariff.BaseFareCzk + tariff.PerKmCzk * distanceKm)))
             : 0;
 
-        // ±10% rounded to 10 CZK, with a guaranteed minimum spread so low < high always.
-        var low = RoundTo10((int)Math.Round(rawPrice * 0.9));
-        var high = RoundTo10((int)Math.Round(rawPrice * 1.1));
+        int low, high;
+        string estimateMode;
+
+        if (routeResult.IsEstimate)
+        {
+            // Degraded haversine×1.3 fallback: ±20% band (orientační odhad).
+            var (lower, upper) = GeoEstimateFallback.WideBand(rawPrice);
+            low = RoundTo10((int)Math.Round(lower));
+            high = RoundTo10((int)Math.Round(upper));
+            estimateMode = "Estimated";
+        }
+        else
+        {
+            // Real Mapy.com route: ±10% band.
+            low = RoundTo10((int)Math.Round(rawPrice * 0.9));
+            high = RoundTo10((int)Math.Round(rawPrice * 1.1));
+            estimateMode = "Exact";
+        }
+
         (low, high) = EnsureSpread(low, high);
 
         await Send.OkAsync(new QuoteResponse("Estimate",
             LowCzk: low, HighCzk: high,
-            DistanceKm: Math.Round(distanceKm, 1), DurationMin: durationMin), ct);
+            DistanceKm: Math.Round(distanceKm, 1), DurationMin: durationMin,
+            EstimateMode: estimateMode,
+            DistanceM: routeData.DistanceMeters,
+            DurationS: routeData.DurationSeconds), ct);
     }
 
     private static int RoundTo10(int value) => (int)(Math.Round(value / 10.0) * 10);

@@ -230,11 +230,24 @@
     "toggleShow": "Zobrazit mapu",
     "toggleHide": "Skrýt mapu",
     "driverPopup": "Řidič: {{name}}",
-    "orderPopup": "Objednávka: {{code}}"
+    "orderPopup": "Objednávka: {{code}}",
+    "mapyLogoAlt": "Mapy.com – zobrazit na mapy.com",
+    "attributionLabel": "Zdroj mapových podkladů",
+    "unavailable": "Mapa dočasně nedostupná",
+    "noCoords": "bez souřadnic"
   },
   "settings": {
     "title": "Nastavení",
     "accessDenied": "Přístup odepřen. Tato sekce je dostupná pouze pro správce flotily.",
+    "geoUsage": {
+      "title": "Spotřeba mapových kreditů",
+      "creditsUsed": "Kredity tento měsíc",
+      "budget": "Měsíční rozpočet",
+      "percent": "{{percent}} % rozpočtu",
+      "loading": "Načítám spotřebu kreditů…",
+      "error": "Spotřebu kreditů se nepodařilo načíst.",
+      "overBudget": "Rozpočet překročen"
+    },
     "tabs": {
       "vehicles": "Vozidla",
       "people": "Lidé",
@@ -859,6 +872,7 @@
       "dragHint": "Posuňte špendlík na přesné místo vyzvednutí.",
       "quoteFixed": "Cena {{price}} – pevná",
       "quoteEstimate": "Odhad {{low}} – {{high}}",
+      "quoteEstimateOrientacni": "Orientační odhad {{low}} – {{high}}",
       "quoteMeter": "Podle taximetru",
       "quoteUnavailable": "Cenu nelze spočítat, zavolejte nám.",
       "submit": "Objednat",

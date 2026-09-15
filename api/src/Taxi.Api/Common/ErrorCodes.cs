@@ -254,6 +254,15 @@ public static class ErrorCodes
 
         /// <summary>The suggest query is too short (fewer than 3 characters).</summary>
         public const string SuggestQueryTooShort = "Geo.SuggestQueryTooShort";
+
+        /// <summary>The geocode query is too short (fewer than 3 characters).</summary>
+        public const string GeocodeQueryTooShort = "Geo.GeocodeQueryTooShort";
+
+        /// <summary>The reverse-geocode coordinates are invalid or out of WGS84 range.</summary>
+        public const string ReverseCoordsInvalid = "Geo.ReverseCoordsInvalid";
+
+        /// <summary>The caller has exceeded the per-user geo rate limit (5 requests/second).</summary>
+        public const string RateLimited = "Geo.RateLimited";
     }
 
     /// <summary>Order-domain error codes.</summary>

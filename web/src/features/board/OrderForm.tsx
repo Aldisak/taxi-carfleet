@@ -9,6 +9,7 @@ import { validateOrderForm } from './orderFormSchema'
 import { QUICK_CHIPS } from './quickChips'
 import type { OrderFormValues, AddressField, OrderFormErrors } from './orderFormSchema'
 import type { GeoSuggestItem } from '../../shared/api/client'
+import { suggestionMeta } from '../../shared/geo/suggestionMeta'
 
 // ---------------------------------------------------------------------------
 // Styled components
@@ -113,6 +114,12 @@ const SuggestItem = styled.li<{ $highlighted: boolean }>`
     background: ${({ theme }) => theme.colors.primary};
     color: #fff;
   }
+`
+
+const SuggestMeta = styled.span<{ $highlighted: boolean }>`
+  display: block;
+  font-size: ${({ theme }) => theme.typography.fontSizeXs};
+  color: ${({ $highlighted, theme }) => ($highlighted ? '#fff' : theme.colors.textSecondary)};
 `
 
 const WhenRow = styled.div`
@@ -235,20 +242,24 @@ function AddressInput({ id, label, value, onChange, onSelect, onClear, error }: 
       {error && <ErrorMsg role="alert">{error}</ErrorMsg>}
       {items.length > 0 && (
         <SuggestList role="listbox">
-          {items.map((item, i) => (
-            <SuggestItem
-              key={`${item.lat}-${item.lng}`}
-              role="option"
-              aria-selected={i === highlightedIndex}
-              $highlighted={i === highlightedIndex}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                handleItemClick(item)
-              }}
-            >
-              {item.label}
-            </SuggestItem>
-          ))}
+          {items.map((item, i) => {
+            const meta = suggestionMeta(item)
+            return (
+              <SuggestItem
+                key={`${item.lat}-${item.lng}`}
+                role="option"
+                aria-selected={i === highlightedIndex}
+                $highlighted={i === highlightedIndex}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  handleItemClick(item)
+                }}
+              >
+                <span>{item.label}</span>
+                {meta && <SuggestMeta $highlighted={i === highlightedIndex}>{meta}</SuggestMeta>}
+              </SuggestItem>
+            )
+          })}
         </SuggestList>
       )}
     </div>

@@ -1,9 +1,9 @@
 import { useRef } from 'react'
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { Marker } from 'react-leaflet'
 import L from 'leaflet'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
-import { OSM_TILE_URL, OSM_ATTRIBUTION, DEFAULT_ZOOM } from '../../../shared/map/leafletSetup'
+import { MapyMap } from '../../../shared/map/MapyMap'
 
 const MapWrapper = styled.div`
   width: 100%;
@@ -42,17 +42,14 @@ export interface PickupMapInnerProps {
 export default function PickupMapInner({ lat, lng, onPinMove }: PickupMapInnerProps) {
   const { t } = useTranslation()
   const markerRef = useRef<L.Marker | null>(null)
-  const position: [number, number] = lat != null && lng != null ? [lat, lng] : PRAGUE_CENTER
+  const hasCoords = lat != null && lng != null
+  const position: [number, number] = hasCoords ? [lat, lng] : PRAGUE_CENTER
+  // When coords are set center on them; otherwise let MapyMap use the fleet default center.
+  const center = hasCoords ? position : undefined
 
   return (
     <MapWrapper>
-      <MapContainer
-        center={position}
-        zoom={DEFAULT_ZOOM}
-        style={{ width: '100%', height: '100%' }}
-        aria-label={t('customer.custom.mapLabel')}
-      >
-        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
+      <MapyMap center={center} ariaLabel={t('customer.custom.mapLabel')}>
         <Marker
           position={position}
           icon={PIN_ICON}
@@ -67,7 +64,7 @@ export default function PickupMapInner({ lat, lng, onPinMove }: PickupMapInnerPr
             },
           }}
         />
-      </MapContainer>
+      </MapyMap>
     </MapWrapper>
   )
 }

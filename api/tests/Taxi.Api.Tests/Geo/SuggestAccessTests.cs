@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Taxi.Api.Infrastructure.Geo;
@@ -13,14 +14,15 @@ public sealed class SuggestAccessTests(PostgresFixture fixture)
 {
     private const string SuggestUrl = "/api/v1/geo/suggest?q=Prague";
 
-    private const string RouteUrl =
-        "/api/v1/geo/route?fromLat=50.08&fromLng=14.43&toLat=50.09&toLng=14.44";
+    private const string RouteUrl = "/api/v1/geo/route";
+    private static readonly object RouteBody =
+        new { from = new { lat = 50.08, lng = 14.43 }, to = new { lat = 50.09, lng = 14.44 } };
 
     private void SetupFakeSuggest()
     {
-        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoProvider>();
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
         fake.Reset();
-        fake.SuggestResult = [new GeoSuggestItem("Prague, CZ", 50.08, 14.43)];
+        fake.SuggestResult = [new MapySuggestResult("Prague, CZ", null, null, 50.08, 14.43)];
     }
 
     /// <summary>A Customer caller now receives 200 from geo/suggest.</summary>
@@ -64,7 +66,7 @@ public sealed class SuggestAccessTests(PostgresFixture fixture)
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    /// <summary>A Customer caller receives 403 from geo/route (route is NOT widened).</summary>
+    /// <summary>A Customer caller receives 403 from POST geo/route (route is NOT widened to customers).</summary>
     [Fact]
     public async Task Route_Customer_Returns403()
     {
@@ -73,7 +75,7 @@ public sealed class SuggestAccessTests(PostgresFixture fixture)
         var client = fixture.Factory.CreateClient();
         client.AsCustomer();
 
-        var resp = await client.GetAsync(RouteUrl, ct);
+        var resp = await client.PostAsJsonAsync(RouteUrl, RouteBody, ct);
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

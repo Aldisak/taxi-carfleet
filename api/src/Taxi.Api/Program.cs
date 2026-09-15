@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using FastEndpoints;
+using Microsoft.AspNetCore.DataProtection;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -12,6 +13,7 @@ using Serilog.Formatting.Compact;
 using Taxi.Api.Authorization;
 using Taxi.Api.Common;
 using Taxi.Api.Common.Admin;
+using Taxi.Api.Common.Security;
 using Taxi.Api.Common.Cli;
 using Taxi.Api.Common.Features;
 using Taxi.Api.Common.Notifications;
@@ -175,6 +177,18 @@ try
 
     // ── TimeProvider ──────────────────────────────────────────────────────────
     builder.Services.AddSingleton(TimeProvider.System);
+
+    // ── Data Protection + fleet key protector (UC-010 WI-03) ─────────────────
+    // Keys are persisted to a configurable directory so the ring survives restarts/redeployments.
+    // Losing the ring makes every stored fleet Mapy key permanently undecryptable.
+    var keysDirectory = builder.Configuration["DataProtection:KeysDirectory"]
+        ?? Path.Combine(builder.Environment.ContentRootPath, ".dp-keys");
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory))
+        .SetApplicationName("taxi");
+    builder.Services.AddSingleton<IFleetKeyProtector, FleetKeyProtector>();
+    // Guard: fails fast at startup in non-Development when DataProtection:KeysDirectory is not set.
+    builder.Services.AddHostedService<DataProtectionKeyRingGuard>();
 
     // ── SuperAdmin CLI bootstrapper (resolved by the create-superadmin args intercept below) ──
     builder.Services.AddScoped<SuperAdminBootstrapper>();

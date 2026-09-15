@@ -119,6 +119,12 @@ public class Order : ITenantEntity
     /// <summary>Optimistic concurrency token. Incremented on every write by the caller.</summary>
     public int Version { get; set; }
 
+    /// <summary>Route distance in metres returned by the geo provider. Null until the route is calculated.</summary>
+    public int? DistanceM { get; set; }
+
+    /// <summary>Estimated travel duration in seconds returned by the geo provider. Null until the route is calculated.</summary>
+    public int? DurationS { get; set; }
+
     /// <summary>Customer star rating (1..5). Null until the customer rates a completed order.</summary>
     public int? RatingStars { get; set; }
 

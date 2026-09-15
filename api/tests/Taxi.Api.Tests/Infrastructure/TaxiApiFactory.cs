@@ -27,10 +27,11 @@ public class TaxiApiFactory : WebApplicationFactory<Program>
     public FakeTimeProvider FakeTime { get; } =
         new FakeTimeProvider(new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero));
 
-    /// <summary>Gets the <see cref="FakeGeoProvider"/> registered in this factory's DI container.
-    /// Tests set <see cref="FakeGeoProvider.SuggestResult"/> / <see cref="FakeGeoProvider.RouteResult"/>
-    /// before each call to control the geo upstream behaviour without real HTTP calls.</summary>
-    public FakeGeoProvider FakeGeo { get; } = new FakeGeoProvider();
+    /// <summary>Gets the <see cref="FakeGeoService"/> registered in this factory's DI container.
+    /// Tests set <see cref="FakeGeoService.SuggestResult"/> / <see cref="FakeGeoService.RouteResult"/>
+    /// before each call to control the geo upstream behaviour without real HTTP calls.
+    /// Always call <see cref="FakeGeoService.Reset"/> first (shared singleton discipline — CLAUDE.md UC-004).</summary>
+    public FakeGeoService FakeGeo { get; } = new FakeGeoService();
 
     /// <summary>Per-factory temp directory used as the fleet-logo storage root so uploads in tests never
     /// touch the production <c>/data</c> path.</summary>
@@ -60,13 +61,13 @@ public class TaxiApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("FleetLogo:StorageRoot", LogoStorageRoot);
 
         // Replace TimeProvider with the exposed FakeTimeProvider so tests can advance time.
-        // Replace IGeoProvider with the FakeGeoProvider so tests avoid real HTTP calls.
-        // Register both as the concrete type AND the interface so tests can resolve FakeGeoProvider directly.
+        // Replace IGeoService with the FakeGeoService so tests avoid real HTTP calls.
+        // Register both as the concrete type AND the interface so tests can resolve FakeGeoService directly.
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<TimeProvider>(FakeTime);
             services.AddSingleton(FakeGeo);
-            services.AddSingleton<IGeoProvider>(sp => sp.GetRequiredService<FakeGeoProvider>());
+            services.AddSingleton<IGeoService>(sp => sp.GetRequiredService<FakeGeoService>());
         });
     }
 }

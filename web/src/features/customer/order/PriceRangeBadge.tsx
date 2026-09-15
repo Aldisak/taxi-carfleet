@@ -60,9 +60,13 @@ export function PriceRangeBadge({ view, errorKey = null }: PriceRangeBadgeProps)
     return <Badge $fixed={false} role="status">{t('customer.custom.quoteMeter')}</Badge>
   }
 
+  // A degraded (haversine-fallback) estimate shows the WIDER band under an "orientační odhad"
+  // label (UC-010 AC#5); an exact estimate keeps the plain "Odhad" label.
+  const estimateKey = view.degraded ? 'customer.custom.quoteEstimateOrientacni' : 'customer.custom.quoteEstimate'
+
   return (
     <Badge $fixed={false} role="status">
-      {t('customer.custom.quoteEstimate', { low: formatCzk(view.lowCzk), high: formatCzk(view.highCzk) })}
+      {t(estimateKey, { low: formatCzk(view.lowCzk), high: formatCzk(view.highCzk) })}
     </Badge>
   )
 }
