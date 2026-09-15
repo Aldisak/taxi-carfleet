@@ -122,17 +122,54 @@ public sealed class NotificationDispatchJobTests(PostgresFixture fixture)
         var ct = TestContext.Current.CancellationToken;
         using var factory = new NotificationTestFactory(fixture.ConnectionString);
 
+        // Use a unique phone per test run so filtering by phone is airtight even if another
+        // test in the shared DB fixture seeded the same constant phone (shared-fixture leakage
+        // discovered in UC-013: the job scans IgnoreQueryFilters so leaked Pending rows from
+        // earlier tests appear in this factory's recording sender).
+        // Derive 9 numeric digits from a fresh Guid's bytes to stay E.164 / column-max-20 safe.
+        var guidBytes = Guid.NewGuid().ToByteArray();
+        var nineDigits = Math.Abs(BitConverter.ToInt32(guidBytes, 0)) % 1_000_000_000;
+        var uniquePhone = $"+420{nineDigits:D9}";
+
         Guid orderId;
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+
+            // Neutralise any Pending outbox rows already in the shared DB before seeding our own,
+            // so the job tick does not dispatch unrelated rows through this test's recording sender.
+            var pendingRows = await db.NotificationOutbox.IgnoreQueryFilters()
+                .Where(o => o.Status == NotificationStatus.Queued)
+                .ToListAsync(ct);
+            foreach (var row in pendingRows)
+                row.Status = NotificationStatus.Sent; // mark as already dispatched
+            if (pendingRows.Count > 0)
+                await db.SaveChangesAsync(ct);
+
             var fleet = await SeedFleetAsync(db, ct);
-            var order = await SeedOrderAsync(db, fleet.Id, ct);
+
+            // Override CustomerPhone with the unique value so the phone filter is airtight.
+            var order = new Order
+            {
+                Id = Guid.CreateVersion7(),
+                FleetId = fleet.Id,
+                PublicCode = $"J{Guid.NewGuid():N}"[..6].ToUpperInvariant(),
+                Status = OrderStatus.New,
+                Source = OrderSource.Phone,
+                CustomerPhone = uniquePhone,
+                PickupAddress = "Job Pickup",
+                PriceType = PriceType.Estimate,
+                CreatedAt = Now,
+                UpdatedAt = Now,
+                Version = 1
+            };
+            db.Orders.Add(order);
+            await db.SaveChangesAsync(ct);
             orderId = order.Id;
 
             // TWO outbox rows for the same (event, order, recipient, channel).
-            db.NotificationOutbox.Add(BuildSmsOutbox(fleet.Id, order.Id, order.CustomerPhone));
-            db.NotificationOutbox.Add(BuildSmsOutbox(fleet.Id, order.Id, order.CustomerPhone));
+            db.NotificationOutbox.Add(BuildSmsOutbox(fleet.Id, order.Id, uniquePhone));
+            db.NotificationOutbox.Add(BuildSmsOutbox(fleet.Id, order.Id, uniquePhone));
             await db.SaveChangesAsync(ct);
         }
 
@@ -142,8 +179,11 @@ public sealed class NotificationDispatchJobTests(PostgresFixture fixture)
             NullLogger<NotificationDispatchJob>.Instance);
         await job.RunTickAsync(ct);
 
-        // The sender was invoked exactly ONCE (the claim blocks the second row before its send).
-        factory.Sms.Sent.Should().ContainSingle("claim-then-execute sends exactly once");
+        // The sender was invoked exactly ONCE for this phone (the claim blocks the second row
+        // before its send). Scoped by ToPhone so leaked rows for other phones don't count.
+        factory.Sms.Sent
+            .Where(m => m.ToPhone == uniquePhone)
+            .Should().ContainSingle("claim-then-execute sends exactly once per unique phone");
 
         using (var scope = factory.Services.CreateScope())
         {

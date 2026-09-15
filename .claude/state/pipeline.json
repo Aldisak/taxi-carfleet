@@ -1,43 +1,36 @@
 {
   "version": 1,
-  "uc_id": "UC-012",
-  "title": "SuperAdmin per-tenant settings editor (incl. encrypted Mapy keys)",
-  "stack": "mixed",
-  "complexity_tag": "moderate",
+  "uc_id": "UC-013",
+  "title": "Development-only customer OTP code log",
+  "stack": "api",
+  "complexity_tag": "routine",
   "phase": "done",
-  "spec_path": "docs/specs/done/012_UC_012_admin-tenant-settings.md",
-  "assignment_path": "docs/specs/done/012_UC_012_admin-tenant-settings.md",
-  "spec_final": "docs/specs/done/012_UC_012_admin-tenant-settings.md",
-  "work_items_doc_final": "docs/specs/done/012_UC_012_admin-tenant-settings-work-items.md",
+  "spec_path": "docs/specs/done/013_UC_013_dev-otp-log.md",
+  "assignment_path": "docs/specs/done/013_UC_013_dev-otp-log.md",
+  "spec_final": "docs/specs/done/013_UC_013_dev-otp-log.md",
+  "work_items_doc": "docs/specs/done/013_UC_013_dev-otp-log-work-items.md",
   "gates_final": [
-    "A (2026-09-15): user-approved spec via AskUserQuestion",
-    "B (2026-09-15): user-approved 4-WI graph",
-    "C (round-1): design-review blocks_merge=false, 1 MEDIUM + 4 LOW, user accepted with findings folded into WI dispatches",
-    "D (autonomous per-WI, user directive): WI-1..4 each RED-observed TDD, impl-reviewer blocks_merge=false on every WI (WI-1 2 LOW, WI-2 1 MEDIUM[verified-false API-KEYS clobber]+1 LOW, WI-3 2 LOW, WI-4 3 LOW incl. observed-not-introduced #ffffff)",
-    "E (autonomous 2026-09-15): backend build -warnaserror clean + dotnet test 687 pass/4 skip; web lint 0 (incl check:geo) + tsc clean + 1547 unit pass (1 flake under CPU contention: noLegacyMapHosts.test.ts timeout -> green isolated + green on uncontended full re-run) + build ok + size 3/3 buckets under budget (app 196.3/260, analytics 94.79/115, admin 63.96/70) + e2e 16/16. dotnet format: informational, 4 pre-existing whitespace hits in GeoHelpersTests/OrderWriteTests (NOT UC-012 files) -> non-blocking per Phase 5."
+    "A+B combined (routine deferred-A): user approved spec + single WI",
+    "C: 2 rounds at user request (round-1 1 MEDIUM+2 LOW -> designer amend -> round-2 PASS 0 findings); user kept design review (declined fast-path)",
+    "D: WI-1 RED-observed TDD, impl-review blocks_merge=false (1 LOW cosmetic)",
+    "E: backend build -warnaserror clean + 692 pass/0 fail/4 skip (Phase 5 fixed a pre-existing UC-005 order-dependent flake test-side; production code untouched). No web gate (backend-only)."
   ],
-  "ship_note": "No git remote -> ship = local commit on uc-012-admin-tenant-settings + ff-merge to main (UC-009/010/011 precedent; superpowers:finishing-a-development-branch absent = scaffold gap). Commit EXCLUDES two pre-existing non-UC-012 working-tree files: README.md and api/src/Taxi.Api/Properties/launchSettings.json (user's, left uncommitted). docs/API-KEYS.md included (this session's docs deliverable, also updated by WI-2 §1.3).",
-  "followups": "Non-blocking: (1) codebase-wide sweep to replace hardcoded #ffffff with theme.colors.textOnPrimary (31 files incl. sibling admin pages, pre-existing); (2) native-speaker review of the ru/uk/fil/de admin.tenant.* translations before real launch; (3) optional explicit 'clear' affordance for the public browser key (currently blank=keep, F4); (4) confirm Mapy developer-portal steps + tile URL against live docs (API-KEYS.md best-effort caveat).",
-  "branch": "uc-012-admin-tenant-settings (off main @ 272789a)",
+  "ship_note": "No git remote -> local commit on uc-013-dev-otp-log + ff-merge to main (UC-009..012 precedent). Commit EXCLUDES pre-existing non-UC-013 files: README.md (untracked) and api/src/Taxi.Api/Properties/launchSettings.json (modified) - both the user's, left uncommitted. Includes the NotificationDispatchJobTests.cs flake fix (test robustness, surfaced by this gate).",
+  "topo_order": "WI-1 only (api, S)",
+  "branch": "uc-013-dev-otp-log (off main @ 3555a7a)",
   "gates_passed": [
-    "A (2026-09-15): user approved spec via AskUserQuestion; spec authored interactively this session (scope confirmed: all Fleet+FleetSettings fields, Tariff out, Edit button per fleet row, write-only server key, TryUnprotect resilience fix); complexity_tag=moderate chosen by user",
-    "B (2026-09-15): user approved 4-WI graph (WI-1 api S root, WI-2 api L, WI-3 web M root, WI-4 web L; no cross-lane edges; blank=keep server-key semantic pinned as RED test in WI-2/3/4)",
-    "C (round-1, 2026-09-15): blocks_merge=false, 1 MEDIUM + 4 LOW; user accepted with findings folded into WI dispatches (F1 record DTO -> WI-2, F2 ciphertext-absence assertion -> WI-2, F3 by-id predicate + second-fleet-untouched test -> WI-2, F4 keep-on-blank hint -> WI-3/4, F5 resolver fallback guard + test -> WI-1). Note: design-reviewer agent lacks Write tool; conductor persisted its handoff verbatim."
+    "A+B combined (2026-09-15, routine deferred-A path): user approved spec + single WI via one AskUserQuestion; spec moved todo/ -> in-progress/",
+    "fast-path declined: user kept design review (default)",
+    "C (2026-09-15, 2 rounds at user request): round-1 blocks_merge=false with 1 MEDIUM (DI-selection untested) + 2 LOW (dev-branch phone PII, stale XML summary); user chose formal designer amend + re-review; round-2 PASS zero findings (amendments verified incl. IHostEnvironment-stub DI trap). User approved implementation."
   ],
-  "key_constraints": "Mapy server key NEVER returned to browser (GET carries mapyServerKeyConfigured flag only); key write semantics null=keep, empty=clear, value=Protect(); cross-tenant write = IgnoreQueryFilters load + stamp currentTenant.FleetId before SaveChanges (CreateFleet/DeactivateFleet precedent); no new entity/migration; TryUnprotect degrades bad ciphertext to config fallback in GeoConfigEndpoint + MapyKeyResolver; request DTO no `required` (STJ 500-trap WI-11); i18n keys in all 6 locales; OpenAPI allowlist + docs/api.md regeneration; user-local dotnet SDK required (bare dotnet = SDK 9 NETSDK1045)",
-  "complexity_rationale": "Every pattern exists in-repo (Features/Fleet/UpdateFleetSettings shape, Admin cross-tenant writes, FleetKeyProtector, web features/settings FleetTab form, admin hooks/routes). Two lanes + a security contract but no new entity, no migration. No kit specialists.",
-  "work_items_doc": "docs/specs/in-progress/012_UC_012_admin-tenant-settings-work-items.md",
-  "topo_order": "WI-1 (api,S root), WI-3 (web,M root), WI-2 (api,L after WI-1), WI-4 (web,L after WI-3); no cross-lane edges — web built against the agreed JSON contract",
-  "autonomous_mode": true,
-  "autonomous_mode_authority": "user directive 2026-09-15 ('/conductor continue autonomously until you finish all assignments'): gates D and E pre-approved; ship = local commit + ff-merge to main per UC-009/010/011 precedent (no git remote).",
+  "gate_a_deferred": "complexity_tag=routine (user-chosen 2026-09-15) -> Gate A deferred per SKILL.md; spec+work-items presented together after designer returns. Spec was authored interactively with the user this session (root cause traced: OTP masked in logs by design + hashed in DB; user chose the Development-only code-log option).",
+  "key_constraints": "Backend-only. OTP may appear in logs ONLY when IHostEnvironment.IsDevelopment() (hard guard in the sender) AND Sms:DevLogCode=true (DI flag gate in AuthFeatureConfiguration). RequestCodeEndpoint unchanged. The Notifications-namespace SMS senders (GoSms/SmsBrana/operational ConsoleSmsSender) are OUT of scope — only the Auth-path Infrastructure/Sms sender family. Non-dev environments stay masked even with the flag on (unit-tested). User-local dotnet SDK required (bare dotnet = SDK 9 NETSDK1045).",
   "in_progress_wis": [],
   "completed_wis": [
-    "WI-1 TryUnprotect on IFleetKeyProtector/FleetKeyProtector + adoption in GeoConfigEndpoint & MapyKeyResolver (F5 guard preserved); RED observed 3 cycles; raw-value regression pinned (reviewer traced old code -> would 500); suite 651 pass, -warnaserror clean; impl-review round 1 blocks_merge=false (2 LOW nits accepted as-is)",
-    "WI-2 GET+PUT admin/fleets/{id}/settings slices (property-record DTOs per F1, configured-flag in-memory per F2, by-id predicate + FleetB-untouched test per F3, null=keep/''=clear/value=Protect both keys, no key logging); 11 new ErrorCodes; 13 integration + 23 validator tests; OpenAPI allowlist + docs/api.md regen (Seed 4/4 re-run by reviewer); admin suite 41 pass, full 687 pass, -warnaserror clean; impl-review blocks_merge=false (MEDIUM API-KEYS.md-clobber concern verified false by conductor — all 9 sections intact, only §1.3 changed)",
-    "WI-3 client.ts admin DTOs/fns + adminTenantSettingsForm pure module (validate/toUpdateRequest/fromDto); RED observed; keep-on-blank->null pinned with toBeNull()+not.toBe('') for both keys; lat/lng float trap avoided (Number.isFinite not isInteger); 30 new tests, suite 1533 pass, tsc clean, lint 0; impl-review blocks_merge=false (2 LOW notes forwarded to WI-4)",
-    "WI-4 useAdminTenantSettings hooks + AdminTenantSettingsPage (grouped sections, write-only password server-key field w/ configured+keep-on-blank hints, role=alert/status a11y, axe clean) + /admin/fleets/:fleetId/settings route + Edit link + 56 admin.tenant.* keys x 6 locales (17 validation keys byte-match form K map); DEVIATION (documented in docs/decisions.md): new manualChunks 'admin' group + size-limit bucket — baseline app js was 99.2% of budget, admin chunk moves ~61KB SuperAdmin-only code out of end-user bundle, byte-conservation proves no duplication, glob verified matches chunk name; suite 1547 pass, tsc/lint/build/size clean; impl-review blocks_merge=false (3 LOW; hardcoded #ffffff observed-not-introduced, pre-existing in 31 files)"
+    "WI-1 DevConsoleSmsSender (dev->full body log, non-dev->masked marker identical to ConsoleSmsSender, phone masked last-4 in BOTH branches, IHostEnvironment.IsDevelopment() production guard) + Sms:DevLogCode flag gate in AuthFeatureConfiguration (XML summary rewritten per AC#6) + appsettings.Development.json flag + docs/API-KEYS.md §2 note; 5 tests (2 behavior incl. Production-masks pin + 3 DI-selection with IHostEnvironment stub) via hand-rolled ILogger spy; RED observed (CS0246); build -warnaserror clean; impl-review round-1 blocks_merge=false (1 LOW: LoggerSpy field naming). During Phase 5 surfaced a PRE-EXISTING order-dependent flake (NotificationDispatchJobTests.NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce, from UC-005) where the shared-DB job tick dispatched leaked outbox rows through the test's recording sender -> fixed test-side (unique per-run phone + pre-seed cleanup of leaked Queued rows + phone-scoped Sent assertion); production code untouched."
   ],
-  "predecessors": "UC-001..011 all on main @ 272789a",
-  "pre_existing_worktree_note": "Uncommitted at pipeline start (NOT part of UC-012, do not revert/commit): README.md (staged, user's), api/src/Taxi.Api/Properties/launchSettings.json (modified, user's), docs/API-KEYS.md (staged, authored earlier this session on user request)",
+  "phase5_gate": "backend build -warnaserror clean (Release; Debug apphost was locked by a running Taxi.Api dev server -> built Release); dotnet test 692 passed / 0 failed / 4 skipped. No web block (backend-only UC, 0 web files). dotnet format: informational, not run to completion (non-blocking per Phase 5).",
+  "predecessors": "UC-001..012 all on main @ 3555a7a",
+  "pre_existing_worktree_note": "Uncommitted at pipeline start (NOT part of UC-013, do not revert/commit): README.md (untracked, user's), api/src/Taxi.Api/Properties/launchSettings.json (modified, user's)",
   "updated_at": "2026-09-15"
 }

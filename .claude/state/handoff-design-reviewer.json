@@ -1,48 +1,42 @@
 {
-  "uc": "UC-012",
-  "round": 1,
+  "uc": "UC-013",
+  "round": 2,
   "blocks_merge": false,
+  "round2_verdict": "PASS — all three round-1 findings resolved (F1: 3 DI-selection tests incl. IHostEnvironment stub trap documented, AC#5; F2: phone masked last-4 in BOTH branches, only {Body} raw, dev test asserts code present + full phone absent, AC#4; F3: XML summary rewrite is AC#6/Deliverable 2). No regressions vs verified_not_findings; WI remains single S. Zero findings. Persisted by conductor for agent a523419b18eeaa45f (no Write tool).",
+  "round1_blocks_merge": false,
   "findings": [
     {
       "id": "F1",
       "severity": "MEDIUM",
-      "wi": "WI-2",
-      "title": "Request DTO called a 'plain class' risks the non-record DTO rule flag",
-      "detail": "WI-2 and the handoff describe UpdateTenantSettingsRequest as a 'plain class ... no required' mirroring the existing UpdateFleetSettingsRequest, which is confirmed a `public sealed class` with mutable `{ get; set; }` auto-props (api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsRequest.cs). rules/csharp-style.md#records-for-dtos wants request/response DTOs as records. The STJ 500-trap (CLAUDE.md WI-11) forbids `required`, but the rule-compliant STJ-safe shape is a property-based record with `{ get; init; }` defaults, not a class. The instruction 'plain class ... { get; init; }' is internally inconsistent and mirrors a pre-existing non-conforming pattern.",
-      "suggested_fix": "Specify UpdateTenantSettingsRequest as a property-based record: `public record UpdateTenantSettingsRequest { public string Name { get; init; } = \"\"; ... public string? MapyServerKey { get; init; } ... }` — no `required`, defaults for value types. This satisfies both records-for-dtos and the STJ trap. (Existing UpdateFleetSettingsRequest is an observed pre-existing class, not introduced here.)"
+      "wi": "WI-1",
+      "title": "Factory sender-selection in AuthFeatureConfiguration has no automated test",
+      "detail": "Both planned unit tests construct DevConsoleSmsSender directly with env stubs; neither exercises the AuthFeatureConfiguration factory (Sms:DevLogCode=true -> DevConsoleSmsSender, false -> ConsoleSmsSender). AC#1 (dev selects the code-logging sender) and AC#3 (masked ConsoleSmsSender is the default when the flag is unset) are therefore only manually verified. The customer-auth regression tests override ISmsSender in ConfigureTestServices, so they bypass the factory entirely. The security-critical branch (runtime env guard) IS pinned by the Production-masks test, and the selection is a 3-line config read mirroring the untested Seed:Enabled precedent — hence MEDIUM, not a blocker.",
+      "suggested_fix": "Optionally add a focused DI test: build a ServiceCollection, run AuthFeatureConfiguration.AddFeatureDependencies with Sms:DevLogCode=true then false, resolve ISmsSender, and assert the concrete type (DevConsoleSmsSender vs ConsoleSmsSender). Accept as-is if matching the Seed:Enabled precedent, but note the coverage gap in the WI handoff."
     },
     {
       "id": "F2",
       "severity": "LOW",
-      "wi": "WI-2",
-      "title": "mapyServerKeyConfigured derivation must not use a JsonDocument-style projection pitfall; confirm AsNoTracking read computes the bool without leaking the value",
-      "detail": "The GET loads Fleet+FleetSettings with IgnoreQueryFilters()+AsNoTracking() and must expose only `mapyServerKeyConfigured = MapyServerKey != null`. The design is sound (server-key field is structurally absent from GetTenantSettingsResponse), but the WI should make explicit that the ciphertext column is read server-side only to compute the bool and is never placed in the response DTO or logged. mapyBrowserKey is decrypted via TryUnprotect (WI-1) — correct.",
-      "suggested_fix": "In WI-2 deliverables, state that the GET computes `MapyServerKeyConfigured = settings?.MapyServerKey is not null` in-memory and that no code path serializes MapyServerKey. Add an assertion in Get_Response_HasConfiguredFlagButNoServerKeyValue that the raw JSON body does not contain the stored ciphertext substring."
+      "wi": "WI-1",
+      "title": "Dev branch logs the raw unmasked phone number (PII), beyond the documented exception",
+      "detail": "The planned dev template `logger.LogInformation(\"Dev SMS {Phone} {Body}\", phone, message)` passes the full E.164 phone unmasked. The spec's documented exception to rules/logging.md authorizes logging the OTP code/body only — it does not mention the phone number. The masked branch (and existing ConsoleSmsSender) log only last-4. This is an additional, unstated PII deviation. Dev-only, so LOW.",
+      "suggested_fix": "Either mask the phone in the dev branch too (reuse the last-4 helper, keeping only {Body} raw), or explicitly widen the bold class comment / spec exception to state the dev branch also logs the full phone and why that is acceptable in Development."
     },
     {
       "id": "F3",
       "severity": "LOW",
-      "wi": "WI-2",
-      "title": "Tracked cross-tenant FleetSettings load must filter by id, and the upsert must set FleetId = route id (not currentTenant)",
-      "detail": "The existing UpdateFleetSettingsEndpoint upsert does `FleetSettings.FirstOrDefaultAsync(ct)` relying on the tenant query filter. In the SuperAdmin path CurrentTenant.FleetId is NULL at load time, so the design must load `FleetSettings.IgnoreQueryFilters().FirstOrDefaultAsync(fs => fs.FleetId == id, ct)` (predicate by route id) and, on upsert, `new FleetSettings { FleetId = id }`. Spec §1.2 says 'load ... by id' and handoff AC says stamp currentTenant.FleetId=id before SaveChanges — correct — but the WI should pin the by-id predicate on both the load and the upsert to avoid the FirstOrDefaultAsync()-with-no-predicate hole (would grab an arbitrary fleet's row once filters are ignored).",
-      "suggested_fix": "WI-2: explicitly require `.IgnoreQueryFilters().FirstOrDefaultAsync(fs => fs.FleetId == req.Id, ct)` for the tracked FleetSettings load and `new FleetSettings { FleetId = req.Id }` for the upsert. Add a test asserting a second seeded fleet's FleetSettings is untouched by the PUT (tenant-isolation of the write)."
-    },
-    {
-      "id": "F4",
-      "severity": "LOW",
-      "wi": "WI-3",
-      "title": "Clearing a visible browser-key field silently keeps the old value (blank=keep for both keys)",
-      "detail": "toUpdateRequest maps blank->null (keep) for BOTH keys. The browser key is seeded visible from dto.mapyBrowserKey; if an operator deletes it intending to clear, blank->null keeps the old value with no clear affordance. This is a documented deliberate choice (\"\"=clear is API-only), so acceptable, but mildly surprising UX for the public browser key.",
-      "suggested_fix": "Optional: give the browser key an explicit clear affordance, or document the keep-on-blank behavior in the field hint (i18n) so the operator understands blank means keep. No change required for correctness."
-    },
-    {
-      "id": "F5",
-      "severity": "LOW",
       "wi": "WI-1",
-      "title": "MapyKeyResolver.Resolve swap to TryUnprotect must preserve the fallback-on-empty branch",
-      "detail": "MapyKeyResolver.Resolve currently does `Unprotect(ciphertext)` then falls back to config when the plaintext is null/whitespace. Swapping to TryUnprotect is correct (raw/legacy values now return null instead of throwing), but the WI should confirm the existing `!string.IsNullOrWhiteSpace(plain)` guard is retained so a decrypted-to-empty value still falls through to Mapy__ServerKey. GeoConfigEndpoint's browser-key line already uses `?? config ?? string.Empty` — consistent.",
-      "suggested_fix": "WI-1: state that Resolve keeps `if (TryUnprotect(...) is { } plain && !string.IsNullOrWhiteSpace(plain)) return plain; return configuration[\"Mapy__ServerKey\"];`. Add a resolver test: raw server-key value -> falls back to config, no throw."
+      "title": "AuthFeatureConfiguration XML summary becomes stale after the factory change",
+      "detail": "The existing AddFeatureDependencies summary states ConsoleSmsSender 'is registered unconditionally — no production SMS gateway exists in v1.' After replacing the unconditional AddSingleton with the gated factory, this is false/misleading. It also mislabels the lifetime as 'scoped' while registration is singleton. Won't trip -warnaserror. rules/csharp-style.md#xml-documentation.",
+      "suggested_fix": "Update the XML summary to describe the Sms:DevLogCode gate (DevConsoleSmsSender when true, else ConsoleSmsSender), correct 'scoped' to 'singleton', and drop the 'registered unconditionally' claim."
     }
   ],
-  "persisted_by": "conductor on behalf of design-reviewer agent a7305e19423ec2455 (agent type has no Write tool); content verbatim from the agent's final message, 2026-09-15"
+  "verified_not_findings": [
+    "Namespace collision: send-sms CLI, CliCommands, NotificationDispatchJob all resolve the Notifications-namespace ISmsSender; only RequestCodeEndpoint consumes the Sms-namespace one UC-013 modifies.",
+    "Double gate sound: DI flag selects sender, runtime env.IsDevelopment() inside the sender is the real guard; Production-masks test is the correct AC#2 pin.",
+    "No captive dependency (ILogger + IHostEnvironment both singleton-safe).",
+    "CustomerAuthTests override ISmsSender via ConfigureTestServices -> existing tests unaffected by the factory.",
+    "appsettings.Development.json has no Sms section today (safe add); base has Sms:ApiKey only -> GetValue defaults false.",
+    "Test file location: api/tests/Taxi.Api.Tests/Infra/ (not Infrastructure/)."
+  ],
+  "persisted_by": "conductor on behalf of design-reviewer agent a0cc6475785022ea4 (no Write tool); content verbatim, 2026-09-15"
 }

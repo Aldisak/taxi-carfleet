@@ -10,16 +10,23 @@ internal sealed class AuthFeatureConfiguration : IFeatureConfiguration
     /// <summary>Swagger tag info for this feature.</summary>
     public FeatureInfo Info => new("Auth", "Authentication: staff login, token refresh, logout, and customer SMS-code login");
 
-    /// <summary>Registers <see cref="JwtIssuer"/> and <see cref="ConsoleSmsSender"/> as scoped services.
-    /// <see cref="ConsoleSmsSender"/> is registered unconditionally — no production SMS gateway exists in v1;
-    /// the spec scope is "SMS/push sending — interfaces only."</summary>
+    /// <summary>Registers <see cref="JwtIssuer"/> as a scoped service and <see cref="ISmsSender"/> as a singleton.
+    /// The <see cref="ISmsSender"/> implementation is selected by the <c>Sms:DevLogCode</c> configuration flag:
+    /// when <c>true</c>, <see cref="DevConsoleSmsSender"/> is registered (logs the full OTP body to the console
+    /// for local development); otherwise the masked <see cref="ConsoleSmsSender"/> is registered (default).</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The updated service collection.</returns>
     public IServiceCollection AddFeatureDependencies(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<JwtIssuer>();
-        services.AddSingleton<ISmsSender, ConsoleSmsSender>();
+        services.AddSingleton<ISmsSender>(sp =>
+            configuration.GetValue<bool>("Sms:DevLogCode")
+                ? new DevConsoleSmsSender(
+                    sp.GetRequiredService<ILogger<DevConsoleSmsSender>>(),
+                    sp.GetRequiredService<IHostEnvironment>())
+                : new ConsoleSmsSender(
+                    sp.GetRequiredService<ILogger<ConsoleSmsSender>>()));
         return services;
     }
 }

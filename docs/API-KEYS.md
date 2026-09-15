@@ -163,6 +163,9 @@ Customer and driver SMS (e.g. the tracking-link message on order creation).
 
 - **Local dev:** no signup needed. The default provider is `Console`
   (`Notifications:SmsProvider = "Console"`) — messages are logged, not sent.
+  Additionally, `Sms:DevLogCode=true` (already set in `appsettings.Development.json`) prints the
+  customer OTP code to the API console so you can complete `/customer` login locally; **never enable
+  this in production**.
 - **Production:** pick **one** provider and set its credentials.
 
 Configuration lives in the `Notifications` section (`NotificationOptions`):

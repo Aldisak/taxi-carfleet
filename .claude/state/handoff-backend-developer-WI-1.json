@@ -1,32 +1,27 @@
 {
-  "wi_id": "WI-1",
   "wi": "WI-1",
-  "status": "done",
+  "uc": "UC-013",
+  "status": "complete",
   "hit_max_turns": false,
   "files_changed": [
-    "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
-    "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
-    "api/src/Taxi.Api/Features/Geo/Config/GeoConfigEndpoint.cs",
-    "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
-    "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs",
-    "api/tests/Taxi.Api.Tests/Geo/GeoConfigTests.cs",
-    "api/tests/Taxi.Api.Tests/Geo/MapyClientHandlerTests.cs",
-    "api/tests/Taxi.Api.Tests/Geo/MapyKeyResolverTests.cs"
+    "api/src/Taxi.Api/Infrastructure/Sms/DevConsoleSmsSender.cs",
+    "api/src/Taxi.Api/Features/Auth/AuthFeatureConfiguration.cs",
+    "api/src/Taxi.Api/appsettings.Development.json",
+    "api/tests/Taxi.Api.Tests/Infra/DevConsoleSmsSenderTests.cs",
+    "docs/API-KEYS.md"
   ],
-  "tests_added": [
-    "FleetKeyProtectorTests.TryUnprotect_ValidCiphertext_ReturnsPlaintext",
-    "FleetKeyProtectorTests.TryUnprotect_RawNonCiphertextValue_ReturnsNull",
-    "FleetKeyProtectorTests.TryUnprotect_NullOrEmpty_ReturnsNull (Theory: null, \"\")",
-    "GeoConfigTests.HandleAsync_FleetHasRawBrowserKey_ReturnsFallbackNot500",
-    "MapyKeyResolverTests.Resolve_ValidEncryptedServerKey_ReturnsDecryptedValue",
-    "MapyKeyResolverTests.Resolve_NullServerKey_FallsBackToConfig",
-    "MapyKeyResolverTests.Resolve_RawNonCiphertextServerKey_FallsBackToConfig",
-    "MapyKeyResolverTests.Resolve_NullFleetSettings_FallsBackToConfig"
-  ],
-  "tests_passing": 651,
-  "coverage_delta": null,
-  "red_observed": true,
-  "full_suite": "pass — 651 passed, 4 skipped (performance tests), 0 failed",
-  "build_warnaserror": "clean — 0 warnings, 0 errors",
-  "notes": "RED observations: (A) CS1061 compile errors on FleetKeyProtectorTests lines 120/145/171 before TryUnprotect was added to IFleetKeyProtector. (B) HttpStatusCode.InternalServerError (500) on HandleAsync_FleetHasRawBrowserKey_ReturnsFallbackNot500 before GeoConfigEndpoint was changed to use TryUnprotect. (C) CryptographicException thrown by FleetKeyProtector.Unprotect inside MapyKeyResolver.Resolve for Resolve_RawNonCiphertextServerKey_FallsBackToConfig before MapyKeyResolver was fixed. All three RED→GREEN cycles completed. NullFleetKeyProtector in MapyClientHandlerTests.cs updated to implement the new TryUnprotect method. F5 design-review finding preserved: MapyKeyResolver.Resolve keeps both guards (!IsNullOrWhiteSpace on ciphertext before calling TryUnprotect, and !IsNullOrWhiteSpace on the decrypted plain value) so a decrypted-to-empty value still falls through to configuration[\"Mapy__ServerKey\"]. Verification filter Taxi.Api.Tests.Geo: 119/119 passed."
+  "tests_added": 5,
+  "tests_passing": 5,
+  "coverage_delta": "new file coverage: DevConsoleSmsSender (dev branch, prod branch) + AuthFeatureConfiguration factory selection (true/false/unset)",
+  "red_observed": "CS0246: The type or namespace name 'DevConsoleSmsSender' could not be found — 5 compile errors in DevConsoleSmsSenderTests.cs confirmed (Release build -c Release) before implementing the class.",
+  "full_suite": {
+    "total": 696,
+    "passed": 692,
+    "failed": 0,
+    "skipped": 4,
+    "fixed_in_post": "NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce — fixed post WI-1 during UC-013 quality gate. Root cause: test ran NotificationDispatchJob.RunTickAsync against the SHARED PostgresFixture database (IgnoreQueryFilters scan), so Pending/Queued outbox rows leaked by earlier tests were dispatched through this test's recording RecordingSmsSender → factory.Sms.Sent.ContainSingle() saw >1 message. Fix (test-side only, production code correct): (1) before seeding, neutralise all pre-existing Queued outbox rows by marking them Sent via the scope DbContext; (2) seed order with a per-run unique phone derived from Guid bytes (9 numeric digits, E.164-safe); (3) replace global ContainSingle() with .Where(m => m.ToPhone == uniquePhone).ContainSingle() so only this test's phone is asserted. Full suite 692 passed, 0 failed, 4 skipped."
+  },
+  "build_warnaserror": "clean — 0 warnings, 0 errors (dotnet build -warnaserror -c Release)",
+  "notes": "Implemented DevConsoleSmsSender (dev/prod branches both mask phone to last-4; dev also logs full body). Used hand-written ILogger<T> spy (FakeItEasy cannot proxy ILogger<T> over internal T — CLAUDE.md documented trap). AuthFeatureConfiguration.AddFeatureDependencies updated with factory lambda selecting DevConsoleSmsSender when Sms:DevLogCode=true, else ConsoleSmsSender; XML summary rewritten per AC#6 (singleton, gated, not unconditional). appsettings.Development.json gains Sms:DevLogCode=true. docs/API-KEYS.md §2 updated with one-line dev note. DI tests add services.AddSingleton<IHostEnvironment>(devStub) for the true branch because the factory lambda calls sp.GetRequiredService<IHostEnvironment>(). Global usings in Taxi.Api already include Microsoft.Extensions.Hosting and Microsoft.Extensions.Logging so no extra usings needed in AuthFeatureConfiguration.cs. Pre-existing failure discriminated: exclusion run (filter FullyQualifiedName!~DevConsoleSmsSender) still fails the same 1 test with the same count — definitively not caused by WI-1 changes.",
+  "verification_output": "dotnet test --filter FullyQualifiedName~DevConsoleSmsSender: Passed 5/5, 0 failures, duration 88ms, exit 0. dotnet build -warnaserror -c Release: 0 warnings, 0 errors. Full suite (exclusion run): 686 passed, 1 pre-existing failure, 4 skipped."
 }
