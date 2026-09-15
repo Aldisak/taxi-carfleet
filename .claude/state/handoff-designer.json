@@ -1,317 +1,285 @@
 {
-  "uc": "UC-011",
-  "spec": "docs/specs/in-progress/011_UC_011_multilingual.md",
+  "uc": "UC-012",
+  "spec": "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md",
   "generated_by": "designer",
   "work_items": [
     {
       "id": "WI-1",
-      "title": "Locale registry + culture-code rename + N-locale parity gate + placeholder JSON seed",
+      "title": "TryUnprotect resilience on IFleetKeyProtector + adoption in GeoConfigEndpoint and MapyKeyResolver",
+      "lane": "api",
+      "depends_on": [],
+      "estimated_complexity": "S",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#14-resilience-tryunprotect-fixes-the-current-500",
+        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
+        "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
+        "api/src/Taxi.Api/Features/Geo/Config/GeoConfigEndpoint.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoConfigTests.cs",
+        "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs"
+      ],
+      "rule_citations": [
+        "rules/csharp-style.md#xml-documentation",
+        "rules/csharp-style.md#nullable-reference-types",
+        "rules/csharp-style.md#expression-bodied",
+        "rules/error-handling.md",
+        "rules/logging.md",
+        "rules/naming.md#test-naming"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
+        "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
+        "api/src/Taxi.Api/Features/Geo/Config/GeoConfigEndpoint.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
+        "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs",
+        "api/tests/Taxi.Api.Tests/Geo/GeoConfigTests.cs"
+      ],
+      "acceptance_criteria": [
+        "AC#4: A previously-stored raw/undecryptable value no longer 500s the map. `string? TryUnprotect(string?)` is added to IFleetKeyProtector and implemented in FleetKeyProtector: returns null on null/empty input AND on System.Security.Cryptography.CryptographicException; otherwise the plaintext.",
+        "GeoConfigEndpoint (line ~71) resolves the browser key via keyProtector.TryUnprotect(settings?.MapyBrowserKey) ?? configuration[\"Mapy:BrowserKey\"] ?? string.Empty — a raw/legacy value falls back instead of throwing.",
+        "MapyKeyResolver.Resolve uses keyProtector.TryUnprotect(ciphertext) (not Unprotect) so an un-decryptable server key falls back to configuration[\"Mapy__ServerKey\"] instead of throwing.",
+        "Unprotect(string?) is left unchanged (still part of the interface); the new behavior is additive.",
+        "Neither Mapy key value is ever logged (rules/logging.md)."
+      ],
+      "test_cases": [
+        "FleetKeyProtectorTests: TryUnprotect_ValidCiphertext_ReturnsPlaintext (Protect then TryUnprotect round-trips).",
+        "FleetKeyProtectorTests: TryUnprotect_RawNonCiphertextValue_ReturnsNull (a literal raw key string does not throw, returns null).",
+        "FleetKeyProtectorTests: TryUnprotect_NullOrEmpty_ReturnsNull.",
+        "GeoConfigTests: HandleAsync_FleetHasRawBrowserKey_ReturnsFallbackNot500 — seed FleetSettings.MapyBrowserKey with a raw (non-ciphertext) string; GET /geo/config returns 200 with the configured fallback browser key, no CryptographicException / 500 (regression for the documented current bug).",
+        "GeoConfigTests: existing happy-path (protected browser key decrypts and is returned) still green.",
+        "Gate: dotnet build -warnaserror clean; full dotnet test green (run via the user-local dotnet SDK — bare `dotnet` is SDK 9 and fails NETSDK1045)."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "Taxi.Api.Tests.Geo" },
+      "notes": "Write the RED test first (raw-value GeoConfig regression + TryUnprotect unit) then implement. Additive change only — do not alter Unprotect. TryUnprotect is a single try/catch around _protector.Unprotect returning null on CryptographicException. This WI is the root of the API lane; WI-2's GET depends on TryUnprotect for the browser-key field."
+    },
+    {
+      "id": "WI-2",
+      "title": "GetTenantSettings + UpdateTenantSettings SuperAdmin slices (+ validator, ErrorCodes, integration/validator tests, OpenAPI allowlist, docs/api.md, API-KEYS.md §1.3)",
+      "lane": "api",
+      "depends_on": ["WI-1"],
+      "estimated_complexity": "L",
+      "needs_library_research": false,
+      "required_reads": [
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#11-gettenantsettings-get-adminfleetsidsettings",
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#12-updatetenantsettings-put-adminfleetsidsettings",
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#13-updatetenantsettingsvalidator",
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#5-documentation",
+        "api/src/Taxi.Api/Features/Admin/CreateFleet/CreateFleetEndpoint.cs",
+        "api/src/Taxi.Api/Features/Admin/DeactivateFleet/DeactivateFleetEndpoint.cs",
+        "api/src/Taxi.Api/Features/Admin/AdminFeatureConfiguration.cs",
+        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsEndpoint.cs",
+        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsRequest.cs",
+        "api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsValidator.cs",
+        "api/src/Taxi.Api/Features/Fleet/GetFleetSettings/GetFleetSettingsEndpoint.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/Fleet.cs",
+        "api/src/Taxi.Api/Infrastructure/Entities/FleetSettings.cs",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
+        "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+        "api/tests/Taxi.Api.Tests/Admin/AdminGeoUsageTests.cs",
+        "docs/API-KEYS.md"
+      ],
+      "rule_citations": [
+        "rules/architecture.md#vertical-slice-layout",
+        "rules/architecture.md#feature-configuration",
+        "rules/architecture.md#no-horizontal-layers",
+        "rules/architecture.md#banned-patterns",
+        "rules/api-design.md#endpoint-pattern",
+        "rules/api-design.md#configure-structure",
+        "rules/api-design.md#send-pattern",
+        "rules/api-design.md#authorization",
+        "rules/api-design.md#dont-catch-exceptions",
+        "rules/validation.md#when-to-add-a-validator",
+        "rules/validation.md#validator-class",
+        "rules/validation.md#error-codes",
+        "rules/error-handling.md#send-for-expected-errors",
+        "rules/ef-core.md#dbcontext-injection",
+        "rules/ef-core.md#asnotracking",
+        "rules/csharp-style.md#records-for-dtos",
+        "rules/csharp-style.md#primary-constructors",
+        "rules/csharp-style.md#timeprovider",
+        "rules/csharp-style.md#xml-documentation",
+        "rules/naming.md#files-and-types",
+        "rules/naming.md#test-naming",
+        "rules/naming.md#error-codes",
+        "rules/logging.md"
+      ],
+      "files_touched": [
+        "api/src/Taxi.Api/Features/Admin/GetTenantSettings/GetTenantSettingsEndpoint.cs (new)",
+        "api/src/Taxi.Api/Features/Admin/GetTenantSettings/GetTenantSettingsResponse.cs (new)",
+        "api/src/Taxi.Api/Features/Admin/UpdateTenantSettings/UpdateTenantSettingsEndpoint.cs (new)",
+        "api/src/Taxi.Api/Features/Admin/UpdateTenantSettings/UpdateTenantSettingsRequest.cs (new)",
+        "api/src/Taxi.Api/Features/Admin/UpdateTenantSettings/UpdateTenantSettingsValidator.cs (new)",
+        "api/src/Taxi.Api/Common/ErrorCodes.cs",
+        "api/tests/Taxi.Api.Tests/Admin/TenantSettingsTests.cs (new)",
+        "api/tests/Taxi.Api.Tests/Admin/UpdateTenantSettingsValidatorTests.cs (new)",
+        "api/tests/Taxi.Api.Tests/Seed/SeedAndEndToEndTests.cs",
+        "docs/api.md (regenerated by OpenApi_Document_GeneratesApiMarkdown — stage, do not hand-edit)",
+        "docs/API-KEYS.md (targeted Edit of §1.3 only)"
+      ],
+      "acceptance_criteria": [
+        "AC#1: GET admin/fleets/{id:guid}/settings (SuperAdminOnly, DontCatchExceptions) loads Fleet + FleetSettings by id with IgnoreQueryFilters() + AsNoTracking(); 404 if the fleet does not exist; if no FleetSettings row, returns entity defaults. Response carries every editable Fleet field (name, phone, currency, timeZone, primaryColorHex, isActive) and FleetSettings field (offerTimeoutSeconds, autoDispatchEnabled, autoDispatchAfterSeconds, maxOfferRadiusKm, smsSenderName, welcomeText, smsMonthlyCapCzk, smsUnitCostCzk, mapCenterLat, mapCenterLng, mapZoom, geoMonthlyCreditBudget).",
+        "AC#3 (security, non-negotiable): GET response carries mapyBrowserKey (public — decrypted via keyProtector.TryUnprotect from WI-1; null if unset/undecryptable) AND mapyServerKeyConfigured: bool ONLY. The server-key plaintext/ciphertext value is STRUCTURALLY ABSENT from GetTenantSettingsResponse — there is no field that could carry it.",
+        "AC#1 write: PUT admin/fleets/{id:guid}/settings (SuperAdminOnly, DontCatchExceptions) loads Fleet + FleetSettings by id with IgnoreQueryFilters() (tracked); upserts a FleetSettings row if missing (mirror UpdateFleetSettingsEndpoint); assigns all fields; stamps currentTenant.FleetId = id BEFORE SaveChangesAsync (inject CurrentTenant concrete, the sanctioned cross-tenant write per CreateFleet/DeactivateFleet); returns 204; 404 if the fleet does not exist.",
+        "AC#2/#3 (Mapy key write semantics, applied identically to MapyServerKey and MapyBrowserKey): request field null -> leave the column unchanged (keep); empty string \"\" -> set the column to null (clear); non-empty -> store keyProtector.Protect(value). This lets a blank write-only server-key field preserve the existing key.",
+        "Request DTO (UpdateTenantSettingsRequest): plain { get; init; } properties, NO C# `required` (STJ 500-trap, CLAUDE.md WI-11); mapCenterLat/Lng are `double` (body binding uses STJ invariant parsing — the FastEndpoints query-binding locale trap does not apply to body). Mirror UpdateFleetSettingsRequest as a plain class.",
+        "Response DTO (GetTenantSettingsResponse): property-based record ({ get; init; } with /// <summary> on each) — NOT a large positional record — to avoid CS1573 all-or-nothing <param> tags under -warnaserror.",
+        "Both endpoints are internal sealed and reuse `new AdminFeatureConfiguration()` (do NOT create a new feature configuration).",
+        "UpdateTenantSettingsValidator (internal sealed : Validator<UpdateTenantSettingsRequest>) mirrors UpdateFleetSettingsValidator: reuses existing ErrorCodes.Validation.* (FleetNameRequired, PhoneRequired, PrimaryColorInvalid when non-empty ^#[0-9a-fA-F]{6}$, OfferTimeoutRange 10..600, SmsCapNonNegative, WelcomeTextTooLong <=2000); adds new ErrorCodes.Validation.* for: timeZone required, currency 3-letter code, autoDispatchAfterSeconds >= 0, maxOfferRadiusKm 1..100, smsUnitCostCzk >= 0, smsSenderName <=100 when set, mapCenterLat -90..90, mapCenterLng -180..180, mapZoom 1..20, geoMonthlyCreditBudget >= 0, mapyServerKey/mapyBrowserKey <=512 when set.",
+        "New ErrorCodes.Validation.* constants added to Common/ErrorCodes.cs with /// <summary>, stable \"Validation.{Name}\" format.",
+        "AC#8: The OpenAPI allowlist `expected` set in SeedAndEndToEndTests.cs gains `GET /api/v1/admin/fleets/{id}/settings` and `PUT /api/v1/admin/fleets/{id}/settings` (constraint-stripped {id}, per the CLAUDE.md OpenAPI fact); the sibling OpenApi_Document_GeneratesApiMarkdown test regenerates docs/api.md — stage it.",
+        "AC#6: only a SuperAdmin token reaches the endpoints; FleetAdmin/driver/customer -> 403; unknown fleet -> 404; the write targets only the specified fleet.",
+        "Neither Mapy key value is logged anywhere (rules/logging.md).",
+        "docs/API-KEYS.md §1.3: targeted Edit only — replace the 'no settings UI yet' note with 'Mapy keys are now set in /admin -> fleet -> Edit, encrypted server-side'; keep the env/appsettings fallback + Data-Protection key-ring warning; note the write-only server-key contract. Preserve the rest of the file (it is pre-staged by the user)."
+      ],
+      "test_cases": [
+        "TenantSettingsTests: SuperAdmin_UpdatesAnotherFleetSettings_Returns204AndRowChanged — PUT as SuperAdmin against a non-owned fleet returns 204; re-reading via IgnoreQueryFilters shows the changed values.",
+        "TenantSettingsTests: MapyServerKey_RoundTripsThroughRealProtector — after PUT with a plaintext server key, the stored MapyServerKey column ciphertext != plaintext AND MapyKeyResolver.Resolve returns the original plaintext (proves Protect+TryUnprotect through the real IFleetKeyProtector; use the real DI protector, not a fake).",
+        "TenantSettingsTests: Get_Response_HasConfiguredFlagButNoServerKeyValue — GET returns mapyServerKeyConfigured true after a key is set, and the serialized JSON contains no field carrying the server-key value.",
+        "TenantSettingsTests: Put_BlankServerKey_KeepsExistingKey — set key, then PUT with mapyServerKey=null (omitted); stored ciphertext unchanged and still decrypts to the original.",
+        "TenantSettingsTests: Put_EmptyStringServerKey_ClearsKey — PUT with mapyServerKey=\"\" sets the column to null; GET shows mapyServerKeyConfigured=false.",
+        "TenantSettingsTests: Put_MapyBrowserKey_SameKeepClearSetSemantics — mirror the three branches for the browser key.",
+        "TenantSettingsTests: NonSuperAdmin_Returns403 — FleetAdmin (or driver) token -> 403 on both GET and PUT.",
+        "TenantSettingsTests: UnknownFleet_Returns404 — random Guid -> 404 on both GET and PUT.",
+        "TenantSettingsTests: InvalidBody_Returns400 — e.g. bad primaryColorHex or offerTimeoutSeconds out of range -> 400 with the stable error code.",
+        "TenantSettingsTests: Get_FleetWithNoSettingsRow_ReturnsDefaults — GET a fleet with no FleetSettings returns entity defaults (offerTimeout 45, mapZoom 12, etc.).",
+        "UpdateTenantSettingsValidatorTests: one .TestValidate(...) case per rule asserting .WithErrorCode(...) for each new and reused code.",
+        "SeedAndEndToEndTests.OpenApi_Document_ListsAllExpectedEndpoints passes with the two new allowlist entries; OpenApi_Document_GeneratesApiMarkdown regenerates docs/api.md.",
+        "Gate: dotnet build -warnaserror clean; full dotnet test green (user-local dotnet SDK)."
+      ],
+      "verification": { "tool": "dotnet-test", "filter": "Taxi.Api.Tests.Admin" },
+      "notes": "TDD: write failing endpoint + validator + integration tests first. Use the CurrentTenant CONCRETE type (not ICurrentTenant) so you can set FleetId — mirror CreateFleetEndpoint / DeactivateFleetEndpoint exactly. The Mapy round-trip test MUST resolve the real IFleetKeyProtector from DI (proves Protect/TryUnprotect symmetry end-to-end), not a fake. Route MUST be admin/fleets/{id:guid}/settings; allowlist entries are constraint-stripped. Depends on WI-1 because the GET browser-key field calls TryUnprotect. Do NOT clobber docs/API-KEYS.md — Edit only §1.3."
+    },
+    {
+      "id": "WI-3",
+      "title": "API client DTOs+functions + adminTenantSettingsForm pure module (validate/toUpdateRequest/fromDto) with tests",
       "lane": "web",
       "depends_on": [],
       "estimated_complexity": "M",
       "needs_library_research": false,
       "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#1-locale-codes-registry-and-files",
-        "docs/specs/in-progress/011_UC_011_multilingual.md#2-i18n-configuration",
-        "docs/specs/in-progress/011_UC_011_multilingual.md#6-test-and-e2e-locale-safety"
-      ],
-      "rule_citations": [
-        "rules/web-architecture.md#feature-folders",
-        "rules/web-testing.md#i18n-parity",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-testing.md#colocation-and-naming",
-        "rules/web-react-style.md#typescript-strict"
-      ],
-      "files_touched": [
-        "web/src/shared/i18n/cs.json -> web/src/shared/i18n/cs-CZ.json (rename)",
-        "web/src/shared/i18n/en.json -> web/src/shared/i18n/en-US.json (rename)",
-        "web/src/shared/i18n/ru-RU.json (new, key-complete copy of cs-CZ)",
-        "web/src/shared/i18n/uk-UA.json (new, key-complete copy of cs-CZ)",
-        "web/src/shared/i18n/fil-PH.json (new, key-complete copy of cs-CZ)",
-        "web/src/shared/i18n/de-DE.json (new, key-complete copy of cs-CZ)",
-        "web/src/shared/i18n/locales.ts (new)",
-        "web/src/shared/i18n/index.ts",
-        "web/src/shared/i18n/locales.parity.test.ts",
-        "web/src/shared/i18n/sentinelKeys.ts (new)",
-        "web/src/shared/i18n/locales.sentinel.test.ts (new)",
-        "web/src/shared/audit/auditEventLabel.test.ts",
-        "web/src/features/orders/eventTimeline.test.ts",
-        "web/src/features/admin/PlatformScreen.test.tsx"
-      ],
-      "acceptance_criteria": [
-        "SUPPORTED_LOCALES in locales.ts lists all six culture codes {cs-CZ,en-US,ru-RU,uk-UA,fil-PH,de-DE} with nativeName; DEFAULT_LOCALE = 'cs-CZ'; LocaleCode type derived from the array (const assertion).",
-        "index.ts builds resources from the six imported JSONs keyed by culture code, init with lng: DEFAULT_LOCALE (static), fallbackLng: 'en-US', supportedLngs from SUPPORTED_LOCALES.map(l => l.code), interpolation.escapeValue false. NO browser detection in index.ts.",
-        "cs.json renamed to cs-CZ.json and en.json to en-US.json with identical content; every importer updated (index.ts, locales.parity.test.ts, auditEventLabel.test.ts, eventTimeline.test.ts).",
-        "PlatformScreen.test.tsx changeLanguage('cs') updated to changeLanguage('cs-CZ').",
-        "Four new files ru-RU.json, uk-UA.json, fil-PH.json, de-DE.json exist as key-complete copies of cs-CZ.json (placeholder Czech values); a new 'common.language' key is added to cs-CZ.json first and propagated to all locales so parity holds.",
-        "locales.parity.test.ts generalized: iterates the resources map exported from index.ts (imports that map, NOT each JSON individually — so parity itself carries zero per-locale literals), asserts every locale's flattened key set equals cs-CZ's, failing with the per-locale missing/extra key list; reuses existing flattenKeys.",
-        "index.ts exports the built resources map (keyed by culture code) so parity and any registry consumer read it instead of re-importing individual JSONs.",
-        "sentinelKeys.ts defines SENTINEL_KEYS: a curated frozen array of exactly six non-brand full-sentence dot-paths shared by all four language WIs — dispatcher: 'login.invalidCredentials', 'board.form.validation.phoneInvalid', 'settings.accessDenied'; customer: 'customer.order.loginPrompt', 'customer.tracking.cancelDialogBody', 'customer.login.codeMismatch'. It also exports ENFORCED_LOCALES (a LocaleCode[] the sentinel test iterates), seeded EMPTY in WI-1 so the four untranslated placeholder locales are not yet enforced and WI-1 stays GREEN; each language WI (WI-3..6) adds its own code to ENFORCED_LOCALES, giving that WI an observable RED (values still equal cs-CZ) → GREEN (real translation). Final state after WI-6 enforces all four. Do NOT add a static 'all four enforced' assertion to WI-1 — with the empty seed that would make WI-1 RED; enforcement accrues one locale per language WI and the conductor's full-suite gate exercises all four at the end.",
-        "locales.sentinel.test.ts: for each code in ENFORCED_LOCALES, asserts every SENTINEL_KEYS value in that locale's resources DIFFERS from the cs-CZ value (reads the index.ts resources map, resolving dot-paths); locales not in ENFORCED_LOCALES are skipped. With ENFORCED_LOCALES empty in WI-1, the suite is GREEN; the test carries no per-locale literals beyond consuming SENTINEL_KEYS + ENFORCED_LOCALES from sentinelKeys.ts."
-      ],
-      "test_cases": [
-        "parity: each of the six locales has a key set identical to cs-CZ (iterate the resources map) — observe RED by adding a locale with a missing key, then GREEN once complete.",
-        "sentinel: with ENFORCED_LOCALES empty, locales.sentinel.test.ts is GREEN (no locale enforced); temporarily enforcing a placeholder locale shows RED (its sentinel values still equal cs-CZ), proving the gate bites before any WI-3..6 translation lands.",
-        "index.ts default: imported i18n singleton resolves i18n.language to 'cs-CZ' and t('app.title') returns the Czech string with no detection call.",
-        "eventTimeline + auditEventLabel tests still pass against the renamed cs-CZ.json / en-US.json paths.",
-        "PlatformScreen suite green after changeLanguage('cs-CZ')."
-      ],
-      "verification": { "tool": "vitest" }
-    },
-    {
-      "id": "WI-2",
-      "title": "Detection + persistence + switching runtime, main.tsx apply, formatting-stays-cs guard, Playwright locale pin",
-      "lane": "web",
-      "depends_on": ["WI-1"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#3-detection-persistence-and-switching",
-        "docs/specs/in-progress/011_UC_011_multilingual.md#6-test-and-e2e-locale-safety"
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#2-frontend-the-editor-web-dispatcher-admin-group",
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#13-updatetenantsettingsvalidator",
+        "web/src/features/settings/fleetSettingsForm.ts",
+        "web/src/features/settings/fleetSettingsForm.test.ts",
+        "web/src/shared/api/client.ts"
       ],
       "rule_citations": [
         "rules/web-architecture.md#pure-logic-modules",
-        "rules/web-architecture.md#state-tiers",
+        "rules/web-architecture.md#api-client",
+        "rules/web-architecture.md#feature-folders",
         "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#dates-and-money",
-        "rules/web-testing.md#test-ordering",
-        "rules/web-testing.md#timers-and-async"
-      ],
-      "files_touched": [
-        "web/src/shared/i18n/languageStorage.ts (new)",
-        "web/src/shared/i18n/languageStorage.test.ts (new)",
-        "web/src/shared/i18n/resolveInitialLanguage.ts (new)",
-        "web/src/shared/i18n/resolveInitialLanguage.test.ts (new)",
-        "web/src/shared/i18n/applyInitialLanguage.ts (new)",
-        "web/src/shared/i18n/useLanguage.ts (new)",
-        "web/src/shared/i18n/useLanguage.test.ts (new)",
-        "web/src/shared/i18n/formatStaysCs.test.ts (new)",
-        "web/src/main.tsx",
-        "web/playwright.config.ts"
-      ],
-      "acceptance_criteria": [
-        "languageStorage.ts uses the driverSettings.ts localStorage try/catch pattern, key 'app.language' (NOT in authStorage): getStoredLanguage() returns a LocaleCode validated against SUPPORTED_LOCALES or null; setStoredLanguage(code) writes; both swallow storage errors.",
-        "resolveInitialLanguage(navigatorLangs, stored) is pure: stored wins -> exact culture-code match -> primary-subtag match -> DEFAULT_LOCALE for unknown/empty. The primary-subtag map is DERIVED from SUPPORTED_LOCALES (code.split('-')[0] -> code: de->de-DE, uk->uk-UA, ru->ru-RU, en->en-US, cs->cs-CZ, fil->fil-PH); ONLY the tl->fil-PH legacy alias (Tagalog, not derivable) is hardcoded. A hypothetical 7th locale (e.g. es-ES) must auto-detect from 'es' with NO edit to resolveInitialLanguage.ts (AC#8).",
-        "applyInitialLanguage() resolves navigator.languages + stored, calls i18n.changeLanguage(code) and sets document.documentElement.lang; invoked once from main.tsx only, never from index.ts.",
-        "useLanguage() returns { current, setLanguage }; setLanguage(code) calls i18n.changeLanguage, setStoredLanguage, and sets document.documentElement.lang; react-i18next re-render switches all t() consumers with no reload.",
-        "main.tsx calls applyInitialLanguage() before render.",
-        "playwright.config.ts top-level use gains locale: 'cs-CZ' so Chromium navigator.language is cs-CZ and detection keeps every existing e2e spec in Czech.",
-        "formatStaysCs.test.ts: after i18n.changeLanguage('de-DE'), money.ts still renders 'Kč' / cs-CZ grouping and the date helper still formats in Europe/Prague (AC#6)."
-      ],
-      "test_cases": [
-        "resolveInitialLanguage: exact ['de-DE']->de-DE; primary-subtag ['de']->de-DE, ['tl']->fil-PH, ['fil']->fil-PH; stored-wins (stored 'ru-RU' beats navigator ['de'])->ru-RU; unknown ['ja']->cs-CZ; empty []->cs-CZ.",
-        "languageStorage: round-trip set/get; invalid stored value ('xx-YY') ignored -> null; getItem throwing -> null (safe); setItem throwing -> no throw.",
-        "useLanguage: setLanguage('de-DE') calls i18n.changeLanguage, persists via setStoredLanguage, sets documentElement.lang='de-DE'; current reflects i18n.language.",
-        "formatStaysCs: money formatCzk stays 'Kč'/cs-CZ and date helper stays Europe/Prague after switching UI language to de-DE (AC#6)."
-      ],
-      "verification": { "tool": "vitest", "filter": "i18n" }
-    },
-    {
-      "id": "WI-3",
-      "title": "ru-RU.json full translation (formal customer / informal driver)",
-      "lane": "web",
-      "depends_on": ["WI-1"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
-      ],
-      "rule_citations": [
-        "rules/web-testing.md#i18n-parity",
         "rules/web-testing.md#red-green-refactor",
-        "rules/web-react-style.md#i18n-czech-first"
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#colocation-and-naming"
       ],
       "files_touched": [
-        "web/src/shared/i18n/ru-RU.json",
-        "web/src/shared/i18n/sentinelKeys.ts"
+        "web/src/shared/api/client.ts",
+        "web/src/features/admin/adminTenantSettingsForm.ts (new)",
+        "web/src/features/admin/adminTenantSettingsForm.test.ts (new)"
       ],
       "acceptance_criteria": [
-        "ru-RU.json has all keys of cs-CZ.json (native-quality Russian), key structure identical.",
-        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens (app name, SMS, PWA, Kč, error-code-like values) left untranslated.",
-        "Register split honored: customer-facing formal Russian, driver-facing informal Russian, mirroring the cs vy/ty split.",
-        "The generalized parity test passes for ru-RU (no missing/extra keys).",
-        "'ru-RU' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate (locales.sentinel.test.ts) then requires every WI-1-defined SENTINEL_KEYS value in ru-RU to DIFFER from cs-CZ — observe RED against the placeholder seed BEFORE translating, GREEN after real Russian lands. Do not restate the sentinel key set; consume it from WI-1's sentinelKeys.ts."
+        "client.ts adds AdminTenantSettingsDto (GET shape: all Fleet+FleetSettings fields, mapyBrowserKey: string | null, mapyServerKeyConfigured: boolean, and NO server-key value field — mirrors the backend GetTenantSettingsResponse), UpdateAdminTenantSettingsRequest (PUT shape: number fields as number, mapyServerKey: string | null, mapyBrowserKey: string | null, other fields typed), getAdminTenantSettings(fleetId: string): Promise<AdminTenantSettingsDto>, and putAdminTenantSettings(fleetId: string, req: UpdateAdminTenantSettingsRequest): Promise<void> — following the existing getAdminFleets/postCreateFleet admin function pattern.",
+        "adminTenantSettingsForm.ts exports AdminTenantSettingsFormValues (number fields carried as strings like fleetSettingsForm.ts; booleans as boolean; server key + browser key as string), validateAdminTenantSettingsForm(values) returning a field->i18n-key map (keys under admin.tenant.validation.*, mirrors the server validator bounds), toUpdateRequest(values) producing UpdateAdminTenantSettingsRequest, and fromDto(dto) seeding form values from AdminTenantSettingsDto.",
+        "SECURITY-CRITICAL key mapping in toUpdateRequest — for BOTH mapyServerKey and mapyBrowserKey: blank/untouched input -> null (KEEP the existing key), NOT \"\" (which would CLEAR it). The form has no clear affordance for the server key; blank server-key submit MUST send null. (The API-only \"\"=clear branch is exercised by backend tests, not the UI.)",
+        "fromDto seeds the server-key field BLANK always (the DTO never carries it) and exposes mapyServerKeyConfigured for the page's configured/not-set hint; the browser-key field is seeded from dto.mapyBrowserKey (public).",
+        "validateAdminTenantSettingsForm mirrors server bounds: name/phone/timeZone required, currency 3-letter, primaryColorHex ^#[0-9a-fA-F]{6}$ when non-empty, offerTimeoutSeconds 10..600, autoDispatchAfterSeconds >=0, maxOfferRadiusKm 1..100, smsMonthlyCapCzk >=0, smsUnitCostCzk >=0, smsSenderName <=100, welcomeText <=2000, mapCenterLat -90..90, mapCenterLng -180..180, mapZoom 1..20, geoMonthlyCreditBudget >=0, mapy keys <=512.",
+        "No `any`; explicit return types on exported functions (rules/web-react-style.md#typescript-strict). No fetch/axios outside client.ts."
       ],
       "test_cases": [
-        "parity: ru-RU key set equals cs-CZ key set (generalized locales.parity.test.ts from WI-1).",
-        "sentinel: after adding 'ru-RU' to ENFORCED_LOCALES, locales.sentinel.test.ts asserts all SENTINEL_KEYS differ from cs-CZ for ru-RU — RED on the seed copy, GREEN after translation."
+        "adminTenantSettingsForm.test.ts: validate returns empty map for a valid form; one failing case per bound returning the expected admin.tenant.validation.* key.",
+        "adminTenantSettingsForm.test.ts: toUpdateRequest — blank server key -> mapyServerKey: null (KEEP); typed server key -> that value; blank browser key -> mapyBrowserKey: null; typed browser key -> that value. (This is the AC#3/AC#2 keep-on-blank guard — write it as a first-class RED test.)",
+        "adminTenantSettingsForm.test.ts: toUpdateRequest converts string number fields to numbers correctly.",
+        "adminTenantSettingsForm.test.ts: fromDto seeds server-key field blank, exposes mapyServerKeyConfigured, seeds browser-key from dto.mapyBrowserKey, seeds all other fields.",
+        "Gate: npm run tsc clean; npm run lint 0 warnings; npm run test green (verification tool below runs the form test file)."
       ],
-      "verification": { "tool": "vitest", "filter": "locales." }
+      "verification": { "tool": "vitest", "filter": "adminTenantSettingsForm" },
+      "notes": "Pure-logic-first TDD: build and test adminTenantSettingsForm.ts fully before any component. Root of the web lane; WI-4 consumes these exports. Web is built against the agreed JSON contract (see Assumptions) so this WI does NOT depend on the API lane. The single correctness risk is blank=keep for the keys — do not let toUpdateRequest emit \"\" on blank."
     },
     {
       "id": "WI-4",
-      "title": "uk-UA.json full translation (formal customer / informal driver)",
+      "title": "useAdminTenantSettings hooks + AdminTenantSettingsPage + router entry + Edit button + i18n (6 locales) + page/axe tests",
       "lane": "web",
-      "depends_on": ["WI-1"],
+      "depends_on": ["WI-3"],
       "estimated_complexity": "L",
       "needs_library_research": false,
       "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#2-frontend-the-editor-web-dispatcher-admin-group",
+        "docs/specs/in-progress/012_UC_012_admin-tenant-settings.md#3-i18n",
+        "web/src/features/settings/FleetTab.tsx",
+        "web/src/features/settings/FleetTab.test.tsx",
+        "web/src/features/settings/useFleetSettingsMutations.ts",
+        "web/src/features/admin/useAdminFleets.ts",
+        "web/src/features/admin/AdminFleetsPage.tsx",
+        "web/src/app/router.tsx",
+        "web/src/shared/i18n/cs-CZ.json",
+        "web/src/shared/i18n/locales.parity.test.ts",
+        "web/src/shared/test/axe.ts"
       ],
       "rule_citations": [
-        "rules/web-testing.md#i18n-parity",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-react-style.md#i18n-czech-first"
-      ],
-      "files_touched": [
-        "web/src/shared/i18n/uk-UA.json",
-        "web/src/shared/i18n/sentinelKeys.ts"
-      ],
-      "acceptance_criteria": [
-        "uk-UA.json has all keys of cs-CZ.json (native-quality Ukrainian), key structure identical.",
-        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens left untranslated.",
-        "Register split honored: customer-facing formal Ukrainian, driver-facing informal Ukrainian.",
-        "The generalized parity test passes for uk-UA.",
-        "'uk-UA' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate then requires every WI-1-defined SENTINEL_KEYS value in uk-UA to DIFFER from cs-CZ — RED against the placeholder seed BEFORE translating, GREEN after real Ukrainian. Consume the key set from WI-1's sentinelKeys.ts; do not restate it."
-      ],
-      "test_cases": [
-        "parity: uk-UA key set equals cs-CZ key set.",
-        "sentinel: after adding 'uk-UA' to ENFORCED_LOCALES, all SENTINEL_KEYS differ from cs-CZ for uk-UA — RED on seed, GREEN after translation."
-      ],
-      "verification": { "tool": "vitest", "filter": "locales." }
-    },
-    {
-      "id": "WI-5",
-      "title": "fil-PH.json full translation (formal customer / informal driver)",
-      "lane": "web",
-      "depends_on": ["WI-1"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
-      ],
-      "rule_citations": [
-        "rules/web-testing.md#i18n-parity",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-react-style.md#i18n-czech-first"
-      ],
-      "files_touched": [
-        "web/src/shared/i18n/fil-PH.json",
-        "web/src/shared/i18n/sentinelKeys.ts"
-      ],
-      "acceptance_criteria": [
-        "fil-PH.json has all keys of cs-CZ.json (native-quality Filipino), key structure identical.",
-        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens left untranslated.",
-        "Register split honored: customer-facing formal (po/opo) and driver-facing informal Filipino.",
-        "The generalized parity test passes for fil-PH.",
-        "'fil-PH' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate then requires every WI-1-defined SENTINEL_KEYS value in fil-PH to DIFFER from cs-CZ — RED against the placeholder seed BEFORE translating, GREEN after real Filipino. Consume the key set from WI-1's sentinelKeys.ts; do not restate it."
-      ],
-      "test_cases": [
-        "parity: fil-PH key set equals cs-CZ key set.",
-        "sentinel: after adding 'fil-PH' to ENFORCED_LOCALES, all SENTINEL_KEYS differ from cs-CZ for fil-PH — RED on seed, GREEN after translation."
-      ],
-      "verification": { "tool": "vitest", "filter": "locales." }
-    },
-    {
-      "id": "WI-6",
-      "title": "de-DE.json full translation (Sie customer / du driver)",
-      "lane": "web",
-      "depends_on": ["WI-1"],
-      "estimated_complexity": "L",
-      "needs_library_research": false,
-      "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#5-translations"
-      ],
-      "rule_citations": [
-        "rules/web-testing.md#i18n-parity",
-        "rules/web-testing.md#red-green-refactor",
-        "rules/web-react-style.md#i18n-czech-first"
-      ],
-      "files_touched": [
-        "web/src/shared/i18n/de-DE.json",
-        "web/src/shared/i18n/sentinelKeys.ts"
-      ],
-      "acceptance_criteria": [
-        "de-DE.json has all keys of cs-CZ.json (native-quality German), key structure identical.",
-        "Every {{placeholder}} preserved verbatim; brand/proper nouns and non-text tokens left untranslated.",
-        "Register split honored: customer-facing 'Sie', driver-facing 'du'.",
-        "The generalized parity test passes for de-DE.",
-        "'de-DE' is added to ENFORCED_LOCALES in sentinelKeys.ts; the sentinel gate then requires every WI-1-defined SENTINEL_KEYS value in de-DE to DIFFER from cs-CZ — RED against the placeholder seed BEFORE translating, GREEN after real German. Consume the key set from WI-1's sentinelKeys.ts; do not restate it."
-      ],
-      "test_cases": [
-        "parity: de-DE key set equals cs-CZ key set.",
-        "sentinel: after adding 'de-DE' to ENFORCED_LOCALES, all SENTINEL_KEYS differ from cs-CZ for de-DE — RED on seed, GREEN after translation."
-      ],
-      "verification": { "tool": "vitest", "filter": "locales." }
-    },
-    {
-      "id": "WI-7",
-      "title": "Shared LanguageSelector + placement in dispatcher, driver settings, customer header",
-      "lane": "web",
-      "depends_on": ["WI-2"],
-      "estimated_complexity": "M",
-      "needs_library_research": false,
-      "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#4-the-selector-and-where-it-goes"
-      ],
-      "rule_citations": [
+        "rules/web-architecture.md#feature-folders",
+        "rules/web-architecture.md#route-groups",
+        "rules/web-architecture.md#state-tiers",
+        "rules/web-architecture.md#banned-patterns",
         "rules/web-react-style.md#styled-components",
         "rules/web-react-style.md#component-conventions",
-        "rules/web-react-style.md#i18n-czech-first",
-        "rules/web-accessibility.md#a11y-gate",
-        "rules/web-accessibility.md#semantics",
-        "rules/web-accessibility.md#touch-targets",
-        "rules/web-testing.md#a11y-assertion",
-        "rules/web-testing.md#queries-over-testids",
-        "rules/web-architecture.md#route-groups"
-      ],
-      "files_touched": [
-        "web/src/shared/i18n/LanguageSelector.tsx (new)",
-        "web/src/shared/i18n/LanguageSelector.test.tsx (new)",
-        "web/src/app/AppLayout.tsx",
-        "web/src/features/driver/settings/DriverSettingsPage.tsx",
-        "web/src/features/customer/shell/CustomerLayout.tsx"
-      ],
-      "acceptance_criteria": [
-        "LanguageSelector.tsx is a styled native <select> (VehicleSelector.tsx pattern), min-height theme.touchTargets.min (>=48px), one <option> per SUPPORTED_LOCALES entry showing nativeName, value = i18n.language, onChange -> useLanguage().setLanguage.",
-        "Accessible name via aria-label={t('common.language')}; renders all six options; passes vitest-axe via the src/shared/test/axe helper.",
-        "Dispatcher: mounted in AppLayout <Nav> before the mute/logout controls.",
-        "Driver: mounted as a settings section in DriverSettingsPage (styled like NavAppPreference), not the bottom nav.",
-        "Customer: mounted in CustomerLayout header actions next to CallButton.",
-        "Component maps SUPPORTED_LOCALES only — no individual locale-code literals (AC#8)."
-      ],
-      "test_cases": [
-        "renders all six options with nativeName labels (getByRole('option')).",
-        "selecting an option calls setLanguage with the chosen code (i18n.changeLanguage + persist), verified via a spied/mocked useLanguage.",
-        "value reflects i18n.language.",
-        "axe: no violations (preconfigured helper).",
-        "AppLayout renders the selector; DriverSettingsPage renders the settings section; CustomerLayout renders it in the header next to CallButton."
-      ],
-      "verification": { "tool": "vitest", "filter": "LanguageSelector" }
-    },
-    {
-      "id": "WI-8",
-      "title": "Docs: i18n rule anchor, project-context note, decisions entry, AC#8 extensibility grep gate",
-      "lane": "web",
-      "depends_on": ["WI-2", "WI-3", "WI-4", "WI-5", "WI-6", "WI-7"],
-      "estimated_complexity": "S",
-      "needs_library_research": false,
-      "required_reads": [
-        "docs/specs/in-progress/011_UC_011_multilingual.md#7-documentation-updates"
-      ],
-      "rule_citations": [
+        "rules/web-react-style.md#typescript-strict",
         "rules/web-react-style.md#i18n-czech-first",
         "rules/web-react-style.md#dates-and-money",
-        "rules/web-architecture.md#feature-folders"
+        "rules/web-performance.md#query-keys",
+        "rules/web-performance.md#memoization-policy",
+        "rules/web-performance.md#code-splitting",
+        "rules/web-performance.md#bundle-budget",
+        "rules/web-accessibility.md#a11y-gate",
+        "rules/web-accessibility.md#semantics",
+        "rules/web-accessibility.md#keyboard-focus",
+        "rules/web-accessibility.md#touch-targets",
+        "rules/web-testing.md#red-green-refactor",
+        "rules/web-testing.md#test-ordering",
+        "rules/web-testing.md#queries-over-testids",
+        "rules/web-testing.md#network-mocking",
+        "rules/web-testing.md#a11y-assertion",
+        "rules/web-testing.md#i18n-parity"
       ],
       "files_touched": [
-        ".claude/rules/web-react-style.md",
-        ".claude/state/00-PROJECT-CONTEXT.md",
-        "docs/decisions.md",
-        "web/src/shared/i18n/extensibility.test.ts (new)"
+        "web/src/features/admin/useAdminTenantSettings.ts (new)",
+        "web/src/features/admin/AdminTenantSettingsPage.tsx (new)",
+        "web/src/features/admin/AdminTenantSettingsPage.test.tsx (new)",
+        "web/src/features/admin/AdminFleetsPage.tsx",
+        "web/src/app/router.tsx",
+        "web/src/shared/i18n/cs-CZ.json",
+        "web/src/shared/i18n/en-US.json",
+        "web/src/shared/i18n/ru-RU.json",
+        "web/src/shared/i18n/uk-UA.json",
+        "web/src/shared/i18n/fil-PH.json",
+        "web/src/shared/i18n/de-DE.json"
       ],
       "acceptance_criteria": [
-        "web-react-style.md#i18n-czech-first notes supported locales are defined by SUPPORTED_LOCALES, parity now covers all of them, and money/date formatting stays cs-CZ/Europe/Prague regardless of UI language.",
-        "00-PROJECT-CONTEXT.md records the six-locale set and the SUPPORTED_LOCALES source-of-truth.",
-        "docs/decisions.md records the six-locale decision, full-culture-code convention, and auto-detect -> Czech-fallback behavior.",
-        "AC#8 extensibility contract enforced by extensibility.test.ts: a scan of NON-TEST production source under web/src (exclude *.test.ts/*.test.tsx and the whitelist files locales.ts, index.ts, resolveInitialLanguage.ts, shared/date/analyticsRange.ts) flags ONLY the FIVE non-default culture codes {en-US, ru-RU, uk-UA, fil-PH, de-DE} and asserts none appears. 'cs-CZ' is DELIBERATELY EXEMPT from the scan: per the spec's formatting non-goal, 'cs-CZ' is spec-MANDATED as a formatting literal in ~30 non-test production files (money.ts Intl.NumberFormat('cs-CZ'), TrackingPage, HistoryRow, PlatformScreen, AuditPage, DriverDrilldown, smsCostDisplay, csvExport, etc.) — those are correct and MUST NOT be 'fixed'. shared/date/analyticsRange.ts is whitelisted because its Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Prague' }) is a locale-agnostic date-parts extractor (NOT a UI-language reference) — the 'en-US' there is a formatting literal, not a supported-locale code. resolveInitialLanguage.ts is whitelisted because it hardcodes exactly one legacy alias (tl -> fil-PH); its primary-subtag map is otherwise derived from the registry.",
-        "The extensibility.test.ts source comment states WHY cs-CZ is exempt (formatting non-goal, ~30 mandated files) so an impl agent does not add cs-CZ back into the flagged set.",
-        "Adding a hypothetical 7th locale (es-ES) requires exactly: one xx-YY.json, one SUPPORTED_LOCALES entry, one import+resources line in index.ts — and NO edit to resolveInitialLanguage.ts (its subtag map derives from the registry) nor to the selector/parity (both read the registry)."
+        "useAdminTenantSettings.ts exports useAdminTenantSettings(fleetId) — useQuery with key ['admin','fleets',fleetId,'settings'] calling getAdminTenantSettings — and useUpdateAdminTenantSettings(fleetId) — useMutation calling putAdminTenantSettings; on success invalidate EXACTLY ['admin','fleets',fleetId,'settings'] AND ['admin','fleets'] (never bare invalidateQueries, rules/web-performance.md#query-keys).",
+        "AC#1/#5: AdminTenantSettingsPage.tsx reads :fleetId from the route, seeds the form via fromDto (WI-3), renders grouped sections — Fleet (name, phone, currency, timeZone, brand color, active), Dispatch (offer timeout, auto-dispatch enabled + after-seconds, max offer radius), SMS (sender name, monthly cap, unit cost, welcome text), Map & Mapy (browser key, server key, center lat/lng, zoom), Geo (monthly credit budget). All strings via t(); styled-components with theme tokens only; touch targets >= 48 px.",
+        "AC#3: the server-key input is type=\"password\", loads BLANK, shows a configured/not-set hint driven by dto.mapyServerKeyConfigured; submitting it blank preserves the stored key (via WI-3 toUpdateRequest blank=null).",
+        "AC#5: save banner role=\"status\" aria-live=\"polite\"; field errors role=\"alert\" + aria-invalid on the input; client-side validation via validateAdminTenantSettingsForm before submit; the page ships a vitest-axe test with no violations (import axe from the shared helper).",
+        "AC#1 entry: AdminFleetsPage.tsx gains an Edit link/button per fleet row navigating to /admin/fleets/${id}/settings (Link from react-router-dom; the label is an i18n key; touch target >= 48 px).",
+        "Route: router.tsx adds { path: '/admin/fleets/:fleetId/settings', element: lazyDispatch(<AdminGuard>{lazyDispatch(<AdminTenantSettingsPage />)}</AdminGuard>) } as a sibling to the existing /admin routes, with a matching lazy import of AdminTenantSettingsPage (rides the existing lazy admin chunk).",
+        "AC#7: admin.tenant.* keys (section titles, every field label + helper hint, save/saving/saved/saveFailed, Mapy key hints incl. configured/not-set, and admin.tenant.validation.* messages matching the WI-3 field->key map, plus the AdminFleetsPage Edit label) are added to ALL SIX locale files with real translations (cs-CZ authoritative; neutral formal register — customer/driver tone rules do NOT apply to this operator screen); locales.parity.test.ts passes.",
+        "AC#8: npm run tsc, npm run lint (0 warnings), npm run test, npm run build, npm run size all green."
       ],
       "test_cases": [
-        "extensibility: scan of non-test production source asserts none of the five non-default culture codes {en-US, ru-RU, uk-UA, fil-PH, de-DE} appears outside the whitelist {locales.ts, index.ts, resolveInitialLanguage.ts, shared/date/analyticsRange.ts}; 'cs-CZ' is NOT in the flagged set (spec-mandated formatting literal) and analyticsRange.ts's en-US is a formatting literal not a UI-language code; selector maps SUPPORTED_LOCALES, parity iterates the index.ts resources map, detection derives its subtag map from the registry."
+        "AdminTenantSettingsPage.test.tsx (vi.mock('@/shared/api/client')): seeds fields from a mocked getAdminTenantSettings response; server-key input is empty on load and shows the configured hint when mapyServerKeyConfigured=true.",
+        "AdminTenantSettingsPage.test.tsx: valid submit calls putAdminTenantSettings with the mapped request and shows the success banner (role=status).",
+        "AdminTenantSettingsPage.test.tsx: SECURITY — blank server-key submit sends mapyServerKey: null (keep); typing a value then submit sends that value (assert on the mocked putAdminTenantSettings arg). Mirror for browser key.",
+        "AdminTenantSettingsPage.test.tsx: an invalid field (e.g. bad hex color) shows an inline role=alert message and aria-invalid, and does NOT call putAdminTenantSettings.",
+        "AdminTenantSettingsPage.test.tsx: mutation failure shows the error banner.",
+        "AdminTenantSettingsPage.test.tsx: axe(container) has no violations (shared helper).",
+        "AdminFleetsPage.test.tsx: each fleet row renders an Edit link pointing at /admin/fleets/{id}/settings.",
+        "locales.parity.test.ts: passes with the new admin.tenant.* keys present in all six locales.",
+        "Gate: npm run tsc + npm run lint (0) + npm run test + npm run build + npm run size all green."
       ],
-      "verification": { "tool": "vitest", "filter": "extensibility" }
+      "verification": { "tool": "vitest", "filter": "features/admin" },
+      "notes": "Test ladder: hooks (renderHook) -> page render/interaction -> axe -> i18n parity. Mock the api client module; never real network. Query-key discipline: invalidate the exact keys only. Add every new key to all 6 locales in this same change (parity test gates it). The page rides the existing lazy admin chunk so bundle budget should be unaffected, but AC#8 requires npm run size green after build. Depends on WI-3 for the client functions + form module. Cross-lane: this WI does NOT depend on the API WIs (built against the agreed contract)."
     }
   ]
 }

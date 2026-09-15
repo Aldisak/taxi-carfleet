@@ -12,6 +12,8 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
+| PUT | `/admin/fleets/{id}/settings` | Update fleet settings (SuperAdmin) | Bearer |
+| GET | `/admin/fleets/{id}/settings` | Get fleet settings (SuperAdmin) | Bearer |
 | GET | `/admin/fleets` | List fleets (SuperAdmin) | Bearer |
 | POST | `/admin/fleets` | Create fleet (SuperAdmin) | Bearer |
 | GET | `/admin/analytics` | Platform analytics (SuperAdmin) | Bearer |

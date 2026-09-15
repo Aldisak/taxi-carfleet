@@ -176,6 +176,19 @@ const Td = styled.td`
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
 `
 
+const EditLink = styled(Link)`
+  color: ${({ theme }) => theme.colors.primary};
+  min-height: ${({ theme }) => theme.touchTargets.min};
+  display: inline-flex;
+  align-items: center;
+  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline-offset: 2px;
+  }
+`
+
 const EMPTY: CreateFleetFormValues = { slug: '', name: '', phone: '', adminEmail: '' }
 
 /**
@@ -306,6 +319,7 @@ export function AdminFleetsPage() {
                 <Th>{t('admin.fleets.fields.name')}</Th>
                 <Th>{t('admin.fleets.fields.phone')}</Th>
                 <Th>{t('admin.fleets.fields.status')}</Th>
+                <Th>{t('admin.fleets.fields.actions')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -315,6 +329,11 @@ export function AdminFleetsPage() {
                   <Td>{fleet.name}</Td>
                   <Td>{fleet.phone}</Td>
                   <Td>{fleet.isActive ? t('admin.fleets.active') : t('admin.fleets.inactive')}</Td>
+                  <Td>
+                    <EditLink to={`/admin/fleets/${fleet.id}/settings`}>
+                      {t('admin.fleets.edit')}
+                    </EditLink>
+                  </Td>
                 </tr>
               ))}
             </tbody>

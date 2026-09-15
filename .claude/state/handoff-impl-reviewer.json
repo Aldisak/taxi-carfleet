@@ -1,22 +1,46 @@
 {
-  "reviewer": "conductor-manual (impl-reviewer subagent hit stream idle timeout after 23 tool calls; conductor performed a focused manual review of the high-risk points)",
-  "wi_id": "WI-04",
-  "kind": "impl",
-  "uc": "UC-010",
+  "uc": "UC-012",
+  "wi": "WI-4",
   "round": 1,
+  "blocks_merge": false,
   "findings": [
-    {"severity": "INFO", "rule": "rules/error-handling.md", "citation": "MapyClient.cs:89", "detail": "A malformed success body throws InvalidOperationException inside the try; it is caught by the generic catch and mapped to Unavailable. Acceptable (malformed upstream => degraded), not a control-flow leak to callers."}
+    {
+      "severity": "LOW",
+      "rule": "rules/web-react-style.md#styled-components",
+      "file": "web/src/features/admin/AdminTenantSettingsPage.tsx",
+      "hunk": "PrimaryButton color: #ffffff (line 152); Banner background alpha-concat ${success}11/${error}11 (lines 174-176); Checkbox 24px (127-129); TextArea min-height 72px (107)",
+      "detail": "Hardcoded #ffffff bypasses the existing theme.colors.textOnPrimary token. This is a pervasive PRE-EXISTING codebase pattern (color: #ffffff appears in 31 files including the sibling AdminFleetsPage/AdminLoginPage this WI mirrors); textOnPrimary is used for button text almost nowhere. Observed, not introduced by this change; classified LOW because holding WI-4 to a standard the whole codebase and its own siblings do not meet would be inconsistent. The alpha-concat and the two magic px are also consistent with existing admin/driver precedents. Recommend a separate cleanup sweep, not a WI-4 blocker."
+    },
+    {
+      "severity": "LOW",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "file": "web/src/features/admin/AdminTenantSettingsPage.tsx",
+      "hunk": "line 314 placeholder=\"#1E88E5\"",
+      "detail": "The color-input placeholder is a literal format token (#RRGGBB example), defensibly exempt like the cs-CZ money/Kc formatting literals — it is not translatable prose. All actual user-facing strings (labels, hints, banners, validation, aria) go through t(). Could route through t() for consistency but no localization value; non-blocking."
+    },
+    {
+      "severity": "LOW",
+      "rule": "rules/web-testing.md#red-green-refactor",
+      "file": "web/src/features/admin/AdminTenantSettingsPage.test.tsx",
+      "hunk": "whole file",
+      "detail": "Developer handoff honestly discloses the page suite was RED only at import-resolution, not per-assertion RED-first. The SECURITY blank->null assertion genuinely guards the blank->\"\" clear-key regression; behaviour coverage is complete and green. Process note, not a defect in delivered code."
+    }
   ],
-  "verified_pass": [
-    "Breaker-open genuinely skips upstream: MapyClientHandlerTests test 2 asserts handler.CallCount is frozen after CircuitOpen (real assertion) -> AC#2/AC#5 accounting safe.",
-    "Caller cancellation propagated: catch (OperationCanceledException) when (ct.IsCancellationRequested) => throw; not swallowed.",
-    "GeoResult<T> Success|Unavailable used throughout; BrokenCircuitException->CircuitOpen, generic Exception->Unavailable; never null.",
-    "Server key never logged: log templates reference only {Operation}/{StatusCode}; MapyKeyResolver resolves per-call.",
-    "Enriched suggest shape (AC#2): Street + Municipality parsed from Mapy regionalStructure.",
-    "Resilience 4s/1-retry/breaker 0.5-5-30s via Microsoft.Extensions.Http.Resilience.",
-    "IGeoProvider/PhotonOsrmGeoProvider kept for build-green; removal deferred to WI-07.",
-    "Build -warnaserror 0/0; suite 580 pass/4 skip; 6 new seam tests green."
+  "verified_ok": [
+    "SECURITY: page submits via WI-3 toUpdateRequest (trimOrNull); blank server-key -> mapyServerKey null (keep), typed -> value; mirror for browser key; all asserted on the mocked put arg. Server-key input type=password autoComplete=new-password, loads blank (fromDto never seeds it), configured/not-set + keep-on-blank hints i18n'd. Page invokes WI-3 helpers, does not reimplement key mapping.",
+    "Query keys: useUpdateAdminTenantSettings invalidates EXACTLY ['admin','fleets',fleetId,'settings'] AND ['admin','fleets'] as two explicit calls, no bare invalidateQueries; asserted in useAdminTenantSettings.test.ts.",
+    "a11y: field errors role=alert + aria-invalid; save banner role=status aria-live=polite; every input htmlFor-bound; axe(container) test present and green; touch targets via theme.touchTargets.min (confirmed 48px).",
+    "Router: sibling /admin/fleets/:fleetId/settings entry uses identical lazyDispatch(<AdminGuard>{lazyDispatch(<Page/>)}</AdminGuard>) pattern + matching lazy import; no cross-feature imports in features/admin; server data lives only in TanStack (useState only for form/error/banner UI state).",
+    "i18n: 56 admin.tenant.* + edit keys present in ALL 6 locales; 17 validation keys byte-match adminTenantSettingsForm.ts K map; ru/uk/fil/de are genuine translations (spot-checked), not Czech copies; parity test green.",
+    "Bundle: manualChunks 'admin' group emits admin-BavtXQQS.js -> glob admin-*.js matches (no CLAUDE.md analytics-glob trap); byte-conservation (257.88 -> 196.3 + 63.96 = 260.26) proves no module duplication and that nothing non-admin imports features/admin/; docs/decisions.md entry is thorough and satisfies rules/web-performance.md#bundle-budget; analytics-exclusion precedent justifies the shape."
   ],
-  "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 1},
-  "blocks_merge": false
+  "verification": {
+    "tool": "vitest",
+    "filter": "features/admin",
+    "result": "14 files / 95 tests passed (incl. locales.parity + axe)",
+    "tsc": "clean",
+    "lint": "clean (0 warnings, check:geo OK)",
+    "build": "clean; admin-BavtXQQS.js chunk emitted (glob admin-*.js matches)",
+    "size": "app js 196.3/260 KB, analytics 94.79/115 KB, admin 63.96/70 KB — all green"
+  }
 }

@@ -1,13 +1,19 @@
 {
-  "wi_id": "WI-3",
-  "files_changed": [
-    "web/src/shared/i18n/ru-RU.json",
-    "web/src/shared/i18n/sentinelKeys.ts"
-  ],
-  "tests_added": 0,
-  "tests_passing": true,
-  "coverage_delta": "none (data + config only; no new test files — WI-1 seeded the parity and sentinel gates this WI drives to GREEN)",
+  "wi": "WI-3",
+  "status": "done",
   "hit_max_turns": false,
-  "notes": "UC-011 WI-3: complete native-quality Russian translation of ru-RU.json (~1,100 keys, previously an exact cs-CZ placeholder copy) + flipped enforcement. RED observed FIRST: appended 'ru-RU' to ENFORCED_LOCALES (was []), ran locales.sentinel.test.ts -> FAILED ('login.invalidCredentials in ru-RU still equals the cs-CZ value'). Translated all values; sentinel + parity now GREEN. Register split applied: customer.*/tracking/public = formal вы; driver.* = informal ты; dispatcher/admin/settings/board/reports/audit/analytics = professional formal. Preserved verbatim: every {{placeholder}} (md5 of placeholder multiset identical between ru-RU and cs-CZ), Kč (29 occurrences, unchanged), brand/token literals (Taxi, SMS, PWA, Push, Google Maps, Mapy.cz, Mapy.com, Waze, AOV, SLA, MoM %, p50, p90, no-show, #RRGGBB, PNG, KB, GPS, CSV), example literals (superadmin@demo.local, vas@email.cz, kolintaxi, Kutná Hora, Nádražní 1, 123 456 789), and English/Czech enum KEYS (status.order.*, orders.timeline.event/actor.*, driver.history.payment.*, roles.*, board.sections.*, board.cancelReasons.*, analytics.ranges.*, analytics.tabs.*, audit.event.*, driver.settings.diagnostika) — translated values only, key structure unchanged (parity holds). Completeness verified by a Cyrillic-vs-Latin scan (grep for Latin-letter values): every remaining Latin hit is a whitelisted token, no untranslated Czech remains. Judgment calls (noted, non-blocking): app.title='Taxi Диспетчерская' / driver.home.title='Taxi Водитель' (kept 'Taxi' as the product brand); admin.platform.csvFilename localized to 'obzor-platformy.csv'; common.language='Язык'. ENFORCED_LOCALES append is parallel-safe (may need a trivial one-line merge with concurrent WI-4/5/6). Did not touch api/. Nothing committed.",
-  "verification_output": "Command (WI verification): npx vitest run locales. -> exit 0, Test Files 2 passed (2), Tests 7 passed (7) [locales.parity.test.ts 5 + locales.sentinel.test.ts 2]. RED confirmation (before translation): locales.sentinel.test.ts FAILED 1 test ('Sentinel key login.invalidCredentials in ru-RU still equals the cs-CZ value — locale not translated'). Full suite: npm run test -> exit 0, Test Files 218 passed (218), Tests 1488 passed (1488) — Czech baseline untouched. npm run tsc -> exit 0. npm run lint -> exit 0 (eslint --max-warnings 0, check:geo OK). Placeholder multiset md5 identical between ru-RU.json and cs-CZ.json; Kč count 29 in both."
+  "files_changed": [
+    "web/src/shared/api/client.ts",
+    "web/src/features/admin/adminTenantSettingsForm.ts",
+    "web/src/features/admin/adminTenantSettingsForm.test.ts",
+    ".claude/state/handoff-frontend-developer-WI-3.json"
+  ],
+  "tests_added": [
+    "web/src/features/admin/adminTenantSettingsForm.test.ts (30 tests)"
+  ],
+  "red_observed": "true — first scoped run (npx vitest run adminTenantSettingsForm) failed to load the module (Failed to load url ./adminTenantSettingsForm; 0 tests collected) because adminTenantSettingsForm.ts and the client DTOs did not exist yet",
+  "full_suite": { "test_files": 221, "tests": 1533, "passed": 1533, "failed": 0 },
+  "tsc": "clean",
+  "lint": "0 warnings",
+  "notes": "UC-012 WI-3 (web lane, pure-logic only — no component). client.ts gained AdminTenantSettingsDto (GET shape; mapyBrowserKey string|null, mapyServerKeyConfigured boolean, NO server-key value field), UpdateAdminTenantSettingsRequest (PUT; mapyServerKey/mapyBrowserKey string|null), getAdminTenantSettings(fleetId), putAdminTenantSettings(fleetId, req) — mirrors getAdminFleets/postCreateFleet exactly (apiRequest). New pure module adminTenantSettingsForm.ts: AdminTenantSettingsFormValues (number fields as strings, both keys as strings, mapyServerKeyConfigured carried for WI-4's hint), validateAdminTenantSettingsForm -> admin.tenant.validation.* i18n-key map, toUpdateRequest, fromDto. SECURITY (RED tests written FIRST, asserted toBeNull + not.toBe('')): toUpdateRequest maps blank AND whitespace-only input for BOTH mapyServerKey and mapyBrowserKey -> null (KEEP the stored key), never '' (which would CLEAR server-side). fromDto ALWAYS seeds mapyServerKey blank (DTO never carries it), passes mapyServerKeyConfigured through, seeds mapyBrowserKey from dto.mapyBrowserKey ?? ''. KEY TRAP AVOIDED (advisor catch): mapCenterLat/Lng validated with Number.isFinite (floats, defaults 50.08/14.42) NOT Number.isInteger — mirroring fleetSettingsForm's isInteger check per-field would have rejected the entity defaults. Integer+range fields (offerTimeout 10..600, autoDispatchAfter >=0, maxOfferRadius 1..100, smsCap >=0, smsUnitCost >=0, mapZoom 1..20, geoBudget >=0) use Number.isInteger + bounds; currency validated as exactly 3 ASCII letters (^[A-Za-z]{3}$). Design-review F4 folded in (keep-on-blank deliberate for both keys; WI-4 page documents via field hint). No locale JSON entries added — WI-4 owns those per instructions. No any; explicit return types on all exports; no fetch/axios outside client.ts; tests colocated. Handoff filename keyed on WI-<n> collided with a stale UC-011 ru-RU handoff (documented CLAUDE.md fact) — overwritten with this UC-012 WI-3 record; recover UC-011 detail from git history if needed. Did NOT touch pre-existing uncommitted tree (README.md, launchSettings.json, docs/*, api/*). Nothing committed."
 }

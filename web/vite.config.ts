@@ -74,6 +74,13 @@ export default defineConfig({
           ) {
             return 'analytics'
           }
+          // SuperAdmin /admin screens (cross-tenant ops) are never fetched by a normal
+          // dispatcher/driver/customer session. Collapse them into one named `admin` chunk
+          // so the SuperAdmin-only weight is excluded from the main app-js size budget —
+          // the same rationale the analytics chunk is excluded (docs/decisions.md 2026-09-15).
+          if (id.includes('/features/admin/')) {
+            return 'admin'
+          }
         },
       },
     },

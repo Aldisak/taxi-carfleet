@@ -456,6 +456,9 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "GET /api/v1/admin/analytics",
             // Admin — SuperAdmin geo usage (UC-010 WI-14)
             "GET /api/v1/admin/geo-usage",
+            // Admin — SuperAdmin per-tenant settings (UC-012 WI-2)
+            "GET /api/v1/admin/fleets/{id}/settings",
+            "PUT /api/v1/admin/fleets/{id}/settings",
             // Customers — GDPR self-deletion (UC-007)
             "DELETE /api/v1/customers/me",
             // Geo

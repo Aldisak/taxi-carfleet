@@ -36,13 +36,15 @@
       "loadFailed": "Hindi na-load ang listahan ng mga fleet.",
       "active": "Aktibo",
       "inactive": "Hindi aktibo",
+      "edit": "I-edit",
       "passwordWarning": "Isang beses na password ng administrador para sa {{email}}. Ipapakita lang ito minsan – kopyahin ito at ibigay nang ligtas.",
       "fields": {
         "slug": "Identifier (slug)",
         "name": "Pangalan",
         "phone": "Telepono",
         "adminEmail": "E-mail ng administrador",
-        "status": "Katayuan"
+        "status": "Katayuan",
+        "actions": "Mga aksiyon"
       },
       "validation": {
         "slugRequired": "Kailangan ang identifier.",
@@ -92,6 +94,71 @@
         "growing": "Mga lumalagong fleet",
         "declining": "Mga bumababang fleet",
         "inactive": "Mga hindi aktibong fleet"
+      }
+    },
+    "tenant": {
+      "title": "Mga setting ng fleet",
+      "loading": "Naglo-load ng mga setting…",
+      "loadFailed": "Hindi ma-load ang mga setting.",
+      "save": "I-save",
+      "saving": "Sine-save…",
+      "saved": "Na-save ang mga setting.",
+      "saveFailed": "Hindi ma-save ang mga setting. Pakisubukang muli.",
+      "back": "Bumalik sa pangangasiwa ng fleet",
+      "sections": {
+        "fleet": "Fleet",
+        "dispatch": "Dispatch",
+        "sms": "SMS",
+        "map": "Mapa at Mapy.com",
+        "geo": "Geolocation"
+      },
+      "fields": {
+        "name": "Pangalan",
+        "phone": "Telepono",
+        "currency": "Pera",
+        "timeZone": "Time zone",
+        "primaryColorHex": "Kulay ng brand",
+        "isActive": "Aktibo",
+        "offerTimeoutSeconds": "Timeout ng alok (s)",
+        "autoDispatchEnabled": "Awtomatikong pag-dispatch",
+        "autoDispatchAfterSeconds": "Awtomatikong pag-dispatch pagkatapos ng (s)",
+        "maxOfferRadiusKm": "Pinakamataas na radius ng alok (km)",
+        "smsSenderName": "Pangalan ng nagpadala ng SMS",
+        "smsMonthlyCapCzk": "Buwanang limitasyon ng SMS (CZK)",
+        "smsUnitCostCzk": "Halaga bawat SMS (CZK)",
+        "welcomeText": "Teksto ng pagtanggap",
+        "mapyBrowserKey": "Browser key ng Mapy",
+        "mapyServerKey": "Server key ng Mapy",
+        "mapCenterLat": "Latitude ng gitna ng mapa",
+        "mapCenterLng": "Longitude ng gitna ng mapa",
+        "mapZoom": "Zoom ng mapa",
+        "geoMonthlyCreditBudget": "Buwanang credit budget ng geolocation"
+      },
+      "hints": {
+        "primaryColorHex": "Format na #RRGGBB, hal. #1E88E5.",
+        "mapyServerKeyConfigured": "Nakatakda ang server key. Iwanang blangko ang field para panatilihin ang kasalukuyang key.",
+        "mapyServerKeyNotSet": "Hindi nakatakda ang server key.",
+        "mapyServerKeyKeep": "Para sa seguridad, hindi kailanman ipinapakita ang halaga. Ang blangkong field ay nagpapanatili ng kasalukuyang key.",
+        "mapyBrowserKeyKeep": "Ang blangkong field ay nagpapanatili ng kasalukuyang key."
+      },
+      "validation": {
+        "nameRequired": "Kailangan ang pangalan.",
+        "phoneRequired": "Kailangan ang telepono.",
+        "timeZoneRequired": "Kailangan ang time zone.",
+        "currencyInvalid": "Maglagay ng tatlong-letrang code ng pera (hal. CZK).",
+        "colorInvalid": "Maglagay ng wastong kulay sa format na #RRGGBB.",
+        "offerTimeoutRange": "Ang timeout ng alok ay dapat nasa pagitan ng 10 at 600 segundo.",
+        "autoDispatchAfterInvalid": "Maglagay ng hindi negatibong bilang ng segundo.",
+        "maxOfferRadiusRange": "Ang radius ng alok ay dapat nasa pagitan ng 1 at 100 km.",
+        "smsCapInvalid": "Ang buwanang limitasyon ng SMS ay dapat hindi negatibo.",
+        "smsUnitCostInvalid": "Ang halaga bawat SMS ay dapat hindi negatibo.",
+        "smsSenderNameTooLong": "Ang pangalan ng nagpadala ay hindi hihigit sa 100 karakter.",
+        "welcomeTooLong": "Ang teksto ng pagtanggap ay hindi hihigit sa 2000 karakter.",
+        "mapCenterLatRange": "Ang latitude ay dapat nasa pagitan ng -90 at 90.",
+        "mapCenterLngRange": "Ang longitude ay dapat nasa pagitan ng -180 at 180.",
+        "mapZoomRange": "Ang zoom ay dapat nasa pagitan ng 1 at 20.",
+        "geoBudgetInvalid": "Ang credit budget ay dapat hindi negatibo.",
+        "mapyKeyTooLong": "Ang key ay hindi hihigit sa 512 karakter."
       }
     }
   },

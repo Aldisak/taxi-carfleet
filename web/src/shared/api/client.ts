@@ -2500,6 +2500,110 @@ export function postDeactivateFleet(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// SuperAdmin per-tenant settings editor (UC-012 — SuperAdminOnly)
+//
+// camelCase mirror of the backend GetTenantSettingsResponse / UpdateTenantSettingsRequest.
+// SECURITY: the Mapy SERVER key value is never returned to the browser — the GET DTO
+// carries only `mapyServerKeyConfigured: boolean`. The PUT request key semantics are
+// keep/clear/set (null = keep, "" = clear, non-empty = set); the web UI only ever sends
+// null (keep) or a non-empty value (set) for the server key — never "" — so a blank
+// write-only server-key field preserves the stored key. See adminTenantSettingsForm.ts.
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/v1/admin/fleets/{id}/settings response — all editable Fleet + FleetSettings
+ * fields. `mapyBrowserKey` is public (null if unset); the server-key value is STRUCTURALLY
+ * ABSENT — only `mapyServerKeyConfigured` is exposed. Money fields are integer CZK.
+ */
+export interface AdminTenantSettingsDto {
+  name: string
+  phone: string
+  /** ISO 4217 currency code. */
+  currency: string
+  /** IANA time zone identifier. */
+  timeZone: string
+  /** #RRGGBB brand color, or null when unset. */
+  primaryColorHex: string | null
+  isActive: boolean
+  /** 10..600. */
+  offerTimeoutSeconds: number
+  autoDispatchEnabled: boolean
+  /** >= 0. */
+  autoDispatchAfterSeconds: number
+  /** 1..100. */
+  maxOfferRadiusKm: number
+  /** SMS sender name, or null when unset. */
+  smsSenderName: string | null
+  /** Welcome text, or null when unset. */
+  welcomeText: string | null
+  /** >= 0 (CZK). */
+  smsMonthlyCapCzk: number
+  /** >= 0 (CZK). */
+  smsUnitCostCzk: number
+  /** Public Mapy browser key, or null when unset/undecryptable. */
+  mapyBrowserKey: string | null
+  /** True when a Mapy server key is stored. The value itself is never returned. */
+  mapyServerKeyConfigured: boolean
+  /** -90..90. */
+  mapCenterLat: number
+  /** -180..180. */
+  mapCenterLng: number
+  /** 1..20. */
+  mapZoom: number
+  /** >= 0. */
+  geoMonthlyCreditBudget: number
+}
+
+/**
+ * Request body for PUT /api/v1/admin/fleets/{id}/settings.
+ * Mapy key semantics: null = keep the stored key, "" = clear, non-empty = set (encrypted
+ * server-side). The web form only ever sends null (keep) or a value (set) for either key.
+ */
+export interface UpdateAdminTenantSettingsRequest {
+  name: string
+  phone: string
+  currency: string
+  timeZone: string
+  /** #RRGGBB, or null to clear. */
+  primaryColorHex: string | null
+  isActive: boolean
+  offerTimeoutSeconds: number
+  autoDispatchEnabled: boolean
+  autoDispatchAfterSeconds: number
+  maxOfferRadiusKm: number
+  /** Sender name, or null to clear. */
+  smsSenderName: string | null
+  /** Welcome text, or null to clear. */
+  welcomeText: string | null
+  smsMonthlyCapCzk: number
+  smsUnitCostCzk: number
+  /** Server key: null = keep, "" = clear, non-empty = set. The UI never sends "". */
+  mapyServerKey: string | null
+  /** Browser key: null = keep, "" = clear, non-empty = set. The UI never sends "". */
+  mapyBrowserKey: string | null
+  mapCenterLat: number
+  mapCenterLng: number
+  mapZoom: number
+  geoMonthlyCreditBudget: number
+}
+
+/** GET /api/v1/admin/fleets/{id}/settings — a tenant's full settings (SuperAdmin). */
+export function getAdminTenantSettings(fleetId: string): Promise<AdminTenantSettingsDto> {
+  return apiRequest<AdminTenantSettingsDto>(`/admin/fleets/${fleetId}/settings`)
+}
+
+/** PUT /api/v1/admin/fleets/{id}/settings — persist a tenant's settings (SuperAdmin). Returns 204. */
+export function putAdminTenantSettings(
+  fleetId: string,
+  req: UpdateAdminTenantSettingsRequest,
+): Promise<void> {
+  return apiRequest<void>(`/admin/fleets/${fleetId}/settings`, {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  })
+}
+
+// ---------------------------------------------------------------------------
 // SuperAdmin platform analytics endpoint (UC-009 WI-10 — SuperAdminOnly, cross-tenant)
 //
 // GET /api/v1/admin/analytics. Bare envelope { fleets, totals } (NOT an `items`

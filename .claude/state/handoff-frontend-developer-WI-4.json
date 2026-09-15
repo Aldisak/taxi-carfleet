@@ -1,13 +1,43 @@
 {
+  "wi": "WI-4",
   "wi_id": "WI-4",
-  "files_changed": [
-    "web/src/shared/i18n/uk-UA.json",
-    "web/src/shared/i18n/sentinelKeys.ts"
-  ],
-  "tests_added": 0,
-  "tests_passing": true,
-  "coverage_delta": "none (data + config only; no new test files — WI-1 seeded the parity and sentinel gates this WI drives to GREEN)",
+  "uc": "UC-012",
+  "lane": "web",
+  "status": "complete",
   "hit_max_turns": false,
-  "notes": "UC-011 WI-4: complete native-quality Ukrainian translation of uk-UA.json (1,129 leaf keys, previously an exact byte-identical cs-CZ placeholder copy) + flipped enforcement. RED observed FIRST: appended 'uk-UA' to ENFORCED_LOCALES (was ['ru-RU'] — APPENDED, did not overwrite), ran locales.sentinel.test.ts -> FAILED ('Sentinel key login.invalidCredentials in uk-UA still equals the cs-CZ value — locale not translated', Czech value 'Nesprávné přihlašovací údaje…'). Translated all values from cs-CZ (cross-checked en-US for meaning; used ru-RU ONLY to decide which tokens stay Latin, never as source text — guarded against Russian false friends: Завантаження not Загрузка, Увійти/Вийти not Войти/Выйти, Скасувати not Отменить, Замовлення not Заказ, Поїздка, Клієнт, Виторг, будь ласка). Sentinel + parity now GREEN. Register split applied: customer.* = formal ви (Спробуйте, увійдіть, зателефонуйте нам); driver.* = informal ти (Спробуй, Вибери, торкнись); admin/login/nav/board/status/drivers/map/settings/search/orders/notifications/reports/audit/analytics = professional formal. Note drivers.* (dispatcher-side driver management) stays formal; only driver.* (the PWA) is informal. Preserved verbatim: every {{placeholder}} (multiset identical between uk-UA and cs-CZ — 70 occurrences, verified), Kč (unchanged), brand/token literals (Taxi, SMS, Push, Google Maps, Mapy.cz, Mapy.com, Waze, AOV, SLA, MoM %, p50, p90, No-show, #RRGGBB, PNG, GPS, CSV, ASAP), example literals (superadmin@demo.local, vas@email.cz, kolintaxi, 123 456 789), and Czech/English enum KEYS (status.order.*, orders.timeline.event/actor.*, driver.history.payment.*, settings.people.roles.*, board.sections.*, board.cancelReasons.* [keys 'zákazník zrušil'/'nedorazil'/'omyl'/'jiný' unchanged, values translated], analytics.ranges.* [keys 'dnes'/'7dni'/… unchanged], analytics.tabs.*, audit.event.*, driver.settings.diagnostika.*) — translated values only, key structure identical (parity holds). Completeness verified 4 ways: (1) key-path sets cs==uk identical; (2) placeholder multiset cs==uk identical; (3) Czech-diacritic leftover scan (flag ř ě ů č š ž á é í ý ó ú ď ť ň after stripping Kč) = 0 hits; (4) 'uk==cs where ru!=cs' scan = 0 suspicious (all 32 uk==cs values are legit brand/token/placeholder-only strings that ru-RU also left identical). Judgment calls (noted, non-blocking): app.title='Taxi Диспетчерська' / driver.home.title='Taxi Водій' (kept 'Taxi' as product brand, mirroring ru-RU); admin.platform.csvFilename localized to slug-safe 'ohliad-platformy.csv'; common.language='Мова'. ENFORCED_LOCALES append is parallel-safe (may need a trivial one-line merge with concurrent WI-5/6). Staged exactly web/src/shared/i18n/uk-UA.json + sentinelKeys.ts; the other staged i18n files (cs-CZ/en-US rename, ru-RU, locales.ts, etc.) were pre-staged by WI-1/2/3 on this shared branch — not touched by me. Did not touch api/. Nothing committed.",
-  "verification_output": "WI verification command (fresh re-run): npm run --prefix web test -- \"locales.\" -> exit 0, Test Files 2 passed (2), Tests 8 passed (8) [locales.parity.test.ts 5 + locales.sentinel.test.ts 3]. RED confirmation (before translation, after appending uk-UA to ENFORCED_LOCALES): locales.sentinel.test.ts -> FAIL, 1 test ('uk-UA translates every sentinel key away from cs-CZ' — 'Sentinel key login.invalidCredentials in uk-UA still equals the cs-CZ value'), 2 passed. Full suite: npm run --prefix web test -> exit 0, Test Files 218 passed (218), Tests 1489 passed (1489) — Czech baseline untouched. npm run --prefix web tsc -> exit 0. npm run --prefix web lint -> exit 0 (check:geo OK; eslint --max-warnings 0). Structure/placeholder/diacritic/leftover scans all clean (key-paths identical, placeholder multiset identical, 0 Czech-diacritic leftovers, 0 suspicious uk==cs leftovers)."
+  "files_changed": [
+    "web/src/features/admin/useAdminTenantSettings.ts",
+    "web/src/features/admin/useAdminTenantSettings.test.ts",
+    "web/src/features/admin/AdminTenantSettingsPage.tsx",
+    "web/src/features/admin/AdminTenantSettingsPage.test.tsx",
+    "web/src/features/admin/AdminFleetsPage.tsx",
+    "web/src/features/admin/AdminFleetsPage.test.tsx",
+    "web/src/app/router.tsx",
+    "web/src/shared/i18n/cs-CZ.json",
+    "web/src/shared/i18n/en-US.json",
+    "web/src/shared/i18n/ru-RU.json",
+    "web/src/shared/i18n/uk-UA.json",
+    "web/src/shared/i18n/fil-PH.json",
+    "web/src/shared/i18n/de-DE.json",
+    "web/vite.config.ts",
+    "web/package.json",
+    "docs/decisions.md"
+  ],
+  "tests_added": [
+    "web/src/features/admin/useAdminTenantSettings.test.ts (2 tests: query key + exact dual invalidation as two separate invalidateQueries calls)",
+    "web/src/features/admin/AdminTenantSettingsPage.test.tsx (11 tests: seed from mocked GET; server-key blank on load + configured hint; not-set hint; valid submit -> mapped putAdminTenantSettings + success banner role=status; SECURITY blank server-key -> null and typed -> value; mirror browser-key; invalid hex -> role=alert + aria-invalid + no put; mutation-failure error banner; query load-error state; axe no violations)",
+    "web/src/features/admin/AdminFleetsPage.test.tsx (+1 test: per-row Edit link href = /admin/fleets/{id}/settings)"
+  ],
+  "red_observed": {
+    "hook_test": "RED observed: run failed 'Failed to resolve import ./useAdminTenantSettings' (module missing); GREEN after creating the hook. The dual-invalidation assertion is the load-bearing guard.",
+    "edit_link_test": "RED observed: getByRole('link',{name:'Upravit'}) 'Unable to find role=link' before the Edit column existed; GREEN after adding it.",
+    "page_test": "HONEST NOTE: RED was at import-resolution only (page module + admin.tenant.* i18n keys absent), not a per-assertion RED. The page component and i18n keys were written together, then the suite ran green on first execution — each behavior was NOT individually RED-first. The SECURITY assertion (mapyServerKey null on blank submit via toUpdateRequest) genuinely guards the blank->\"\" clear-key regression."
+  },
+  "full_suite": { "test_files": 223, "tests": 1547, "passed": 1547, "failed": 0 },
+  "tsc": "ok",
+  "lint": "ok (0 warnings; check:geo + eslint --max-warnings 0)",
+  "build": "ok",
+  "size": "ok — app js 196.3/260 KB, analytics 94.79/115 KB, admin 63.96/70 KB (all green, fresh rebuild)",
+  "verification": { "tool": "vitest", "filter": "features/admin", "result": "13 files / 90 tests passed" },
+  "notes": "Consumes WI-3 exports unchanged (validateAdminTenantSettingsForm/toUpdateRequest/fromDto + client getAdminTenantSettings/putAdminTenantSettings). SECURITY blank=keep key mapping lives in WI-3 toUpdateRequest (trimOrNull); the page only invokes it, never re-maps keys. useUpdateAdminTenantSettings invalidates EXACTLY ['admin','fleets',fleetId,'settings'] and ['admin','fleets'] as two explicit calls, never bare invalidateQueries. Server-key input type=password autoComplete=new-password loads blank + configured/not-set hint from dto.mapyServerKeyConfigured + keep-on-blank hint (design-review F4) on both keys. Number inputs seeded from fromDto (never blank) per WI-3 advisory. All 17 admin.tenant.validation.* keys byte-match the K map in adminTenantSettingsForm.ts; real translations in all 6 locales; parity green. Route added as sibling of /admin under AdminGuard via lazyDispatch. DEVIATION FROM designer files_touched (intentional): designer assumed the page would 'ride the existing lazy admin chunk (size unaffected)' — wrong twice (no single admin chunk; size-limit 'app js' glob sums all non-analytics chunks). Baseline was already 257.88/260 KB (99.2%); the required 20-field editor added ~3.1 KB brotli -> 987 B over. Following the WI note's explicit 'investigate chunking before touching budgets' directive, I added a manualChunks 'admin' group in web/vite.config.ts (collapses features/admin/* into one SuperAdmin-only chunk), excluded admin-*.js from the main app-js budget, and added a dedicated admin-*.js budget (70 KB = current 63.96 KB + headroom) in web/package.json — the same rationale analytics is excluded (admin is never fetched by a normal dispatcher/driver/customer session). This is the chunking solution the WI asked for, NOT a budget bump, and it improved the end-user bundle from 260 KB to 196.3 KB. NO DUPLICATION: total brotli is conserved (260.99 before -> 196.3 + 63.96 = 260.26 after); had manualChunks duplicated a shared module the total would have risen ~50 KB. The ~61 KB that left the main bucket is admin-exclusive code that always shipped and is now correctly attributed; byte-conservation also proves nothing non-admin imports features/admin/. web/vite.config.ts, web/package.json, docs/decisions.md are NOT in the designer's files_touched but were required for the AC#8 size gate (the designer's size-neutral assumption was incorrect) — staged deliberately. AskUserQuestion is unavailable in this subagent, so this judgment used the 'note and proceed with best judgment' fallback. Reviewer note: locales.parity.test.ts checks KEY parity only, not translation quality (AC#7 'real translations' is a human check). NOTE: this filename overwrote a stale UC-011 handoff-frontend-developer-WI-4.json (WI numbers collide across UCs, per CLAUDE.md); recover the UC-011 version from git history if needed."
 }

@@ -16,7 +16,9 @@ internal sealed class MapyKeyResolver(IFleetKeyProtector keyProtector, IConfigur
     {
         if (fleetSettings?.MapyServerKey is { } ciphertext && !string.IsNullOrWhiteSpace(ciphertext))
         {
-            var plain = keyProtector.Unprotect(ciphertext);
+            // TryUnprotect is used so a raw/legacy stored value falls back gracefully to config
+            // instead of throwing CryptographicException (AC#4, F5 design-review finding).
+            var plain = keyProtector.TryUnprotect(ciphertext);
             if (!string.IsNullOrWhiteSpace(plain))
                 return plain;
         }

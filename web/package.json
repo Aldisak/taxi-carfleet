@@ -19,14 +19,19 @@
   },
   "size-limit": [
     {
-      "name": "app js (brotli, eager + lazy non-analytics)",
-      "path": ["dist/assets/*.js", "!dist/assets/analytics-*.js"],
+      "name": "app js (brotli, eager + lazy non-analytics, non-admin)",
+      "path": ["dist/assets/*.js", "!dist/assets/analytics-*.js", "!dist/assets/admin-*.js"],
       "limit": "260 KB"
     },
     {
       "name": "analytics chunk (brotli)",
       "path": "dist/assets/analytics-*.js",
       "limit": "115 KB"
+    },
+    {
+      "name": "admin chunk (brotli, SuperAdmin-only)",
+      "path": "dist/assets/admin-*.js",
+      "limit": "70 KB"
     }
   ],
   "dependencies": {

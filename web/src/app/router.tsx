@@ -31,6 +31,9 @@ const AnalyticsPage = lazy(() =>
 const AdminFleetsPage = lazy(() =>
   import('../features/admin/AdminFleetsPage').then(m => ({ default: m.AdminFleetsPage })),
 )
+const AdminTenantSettingsPage = lazy(() =>
+  import('../features/admin/AdminTenantSettingsPage').then(m => ({ default: m.AdminTenantSettingsPage })),
+)
 const AdminGuard = lazy(() =>
   import('../features/admin/AdminGuard').then(m => ({ default: m.AdminGuard })),
 )
@@ -112,6 +115,10 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: lazyDispatch(<AdminGuard>{lazyDispatch(<AdminFleetsPage />)}</AdminGuard>),
+  },
+  {
+    path: '/admin/fleets/:fleetId/settings',
+    element: lazyDispatch(<AdminGuard>{lazyDispatch(<AdminTenantSettingsPage />)}</AdminGuard>),
   },
   {
     path: '/admin/platform',

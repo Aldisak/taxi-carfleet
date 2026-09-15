@@ -237,6 +237,12 @@ public sealed class MapyClientHandlerTests
 /// <summary>A no-op <see cref="IFleetKeyProtector"/> for tests that do not need real data protection.</summary>
 file sealed class NullFleetKeyProtector : IFleetKeyProtector
 {
+    /// <inheritdoc />
     public string Protect(string plaintext) => plaintext;
+
+    /// <inheritdoc />
     public string? Unprotect(string? ciphertext) => ciphertext;
+
+    /// <inheritdoc />
+    public string? TryUnprotect(string? ciphertext) => ciphertext;
 }

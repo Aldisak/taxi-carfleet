@@ -29,4 +29,20 @@ internal sealed class FleetKeyProtector : IFleetKeyProtector
 
         return _protector.Unprotect(ciphertext);
     }
+
+    /// <inheritdoc />
+    public string? TryUnprotect(string? ciphertext)
+    {
+        if (string.IsNullOrEmpty(ciphertext))
+            return null;
+
+        try
+        {
+            return _protector.Unprotect(ciphertext);
+        }
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            return null;
+        }
+    }
 }

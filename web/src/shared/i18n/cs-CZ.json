@@ -36,13 +36,15 @@
       "loadFailed": "Seznam flotil se nepodařilo načíst.",
       "active": "Aktivní",
       "inactive": "Neaktivní",
+      "edit": "Upravit",
       "passwordWarning": "Jednorázové heslo správce pro {{email}}. Zobrazí se pouze jednou – zkopírujte ho a bezpečně předejte.",
       "fields": {
         "slug": "Identifikátor (slug)",
         "name": "Název",
         "phone": "Telefon",
         "adminEmail": "E-mail správce",
-        "status": "Stav"
+        "status": "Stav",
+        "actions": "Akce"
       },
       "validation": {
         "slugRequired": "Identifikátor je povinný.",
@@ -92,6 +94,71 @@
         "growing": "Rostoucí flotily",
         "declining": "Klesající flotily",
         "inactive": "Neaktivní flotily"
+      }
+    },
+    "tenant": {
+      "title": "Nastavení flotily",
+      "loading": "Načítám nastavení…",
+      "loadFailed": "Nastavení se nepodařilo načíst.",
+      "save": "Uložit",
+      "saving": "Ukládám…",
+      "saved": "Nastavení uloženo.",
+      "saveFailed": "Nastavení se nepodařilo uložit. Zkuste to znovu.",
+      "back": "Zpět na správu flotil",
+      "sections": {
+        "fleet": "Flotila",
+        "dispatch": "Dispečink",
+        "sms": "SMS",
+        "map": "Mapa a Mapy.com",
+        "geo": "Geolokace"
+      },
+      "fields": {
+        "name": "Název",
+        "phone": "Telefon",
+        "currency": "Měna",
+        "timeZone": "Časové pásmo",
+        "primaryColorHex": "Barevný kód",
+        "isActive": "Aktivní",
+        "offerTimeoutSeconds": "Časový limit nabídky (s)",
+        "autoDispatchEnabled": "Automatické přidělování",
+        "autoDispatchAfterSeconds": "Automatické přidělování po (s)",
+        "maxOfferRadiusKm": "Maximální okruh nabídky (km)",
+        "smsSenderName": "Název odesílatele SMS",
+        "smsMonthlyCapCzk": "Měsíční limit SMS (Kč)",
+        "smsUnitCostCzk": "Cena za SMS (Kč)",
+        "welcomeText": "Uvítací text",
+        "mapyBrowserKey": "Klíč Mapy pro prohlížeč",
+        "mapyServerKey": "Serverový klíč Mapy",
+        "mapCenterLat": "Zeměpisná šířka středu mapy",
+        "mapCenterLng": "Zeměpisná délka středu mapy",
+        "mapZoom": "Přiblížení mapy",
+        "geoMonthlyCreditBudget": "Měsíční kreditní rozpočet geolokace"
+      },
+      "hints": {
+        "primaryColorHex": "Formát #RRGGBB, např. #1E88E5.",
+        "mapyServerKeyConfigured": "Serverový klíč je nastaven. Pole nechte prázdné pro zachování stávajícího klíče.",
+        "mapyServerKeyNotSet": "Serverový klíč není nastaven.",
+        "mapyServerKeyKeep": "Z bezpečnostních důvodů se hodnota nikdy nezobrazuje. Prázdné pole zachová stávající klíč.",
+        "mapyBrowserKeyKeep": "Prázdné pole zachová stávající klíč."
+      },
+      "validation": {
+        "nameRequired": "Název je povinný.",
+        "phoneRequired": "Telefon je povinný.",
+        "timeZoneRequired": "Časové pásmo je povinné.",
+        "currencyInvalid": "Zadejte třípísmenný kód měny (např. CZK).",
+        "colorInvalid": "Zadejte platný barevný kód ve formátu #RRGGBB.",
+        "offerTimeoutRange": "Časový limit nabídky musí být mezi 10 a 600 sekundami.",
+        "autoDispatchAfterInvalid": "Zadejte nezáporný počet sekund.",
+        "maxOfferRadiusRange": "Okruh nabídky musí být mezi 1 a 100 km.",
+        "smsCapInvalid": "Měsíční limit SMS musí být nezáporný.",
+        "smsUnitCostInvalid": "Cena za SMS musí být nezáporná.",
+        "smsSenderNameTooLong": "Název odesílatele může mít nejvýše 100 znaků.",
+        "welcomeTooLong": "Uvítací text může mít nejvýše 2000 znaků.",
+        "mapCenterLatRange": "Zeměpisná šířka musí být mezi -90 a 90.",
+        "mapCenterLngRange": "Zeměpisná délka musí být mezi -180 a 180.",
+        "mapZoomRange": "Přiblížení musí být mezi 1 a 20.",
+        "geoBudgetInvalid": "Kreditní rozpočet musí být nezáporný.",
+        "mapyKeyTooLong": "Klíč může mít nejvýše 512 znaků."
       }
     }
   },

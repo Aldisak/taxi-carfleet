@@ -14,4 +14,11 @@ internal interface IFleetKeyProtector
     /// <param name="ciphertext">The base64url-encoded ciphertext to unprotect, or <see langword="null"/>.</param>
     /// <returns>The decrypted plaintext, or <see langword="null"/> if <paramref name="ciphertext"/> was null or empty.</returns>
     string? Unprotect(string? ciphertext);
+
+    /// <summary>Attempts to decrypt <paramref name="ciphertext"/> and returns the plaintext on success,
+    /// or <see langword="null"/> on null/empty input or if decryption fails (e.g. a raw/legacy value
+    /// that was never encrypted). Does not throw <see cref="System.Security.Cryptography.CryptographicException"/>.</summary>
+    /// <param name="ciphertext">The base64url-encoded ciphertext to unprotect, or <see langword="null"/>.</param>
+    /// <returns>The decrypted plaintext, or <see langword="null"/> if the input is null/empty or undecryptable.</returns>
+    string? TryUnprotect(string? ciphertext);
 }

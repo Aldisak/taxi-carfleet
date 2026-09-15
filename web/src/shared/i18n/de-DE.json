@@ -36,13 +36,15 @@
       "loadFailed": "Die Flottenliste konnte nicht geladen werden.",
       "active": "Aktiv",
       "inactive": "Inaktiv",
+      "edit": "Bearbeiten",
       "passwordWarning": "Einmaliges Administrator-Passwort für {{email}}. Es wird nur einmal angezeigt – kopieren Sie es und geben Sie es sicher weiter.",
       "fields": {
         "slug": "Kennung (Slug)",
         "name": "Name",
         "phone": "Telefon",
         "adminEmail": "E-Mail des Administrators",
-        "status": "Status"
+        "status": "Status",
+        "actions": "Aktionen"
       },
       "validation": {
         "slugRequired": "Die Kennung ist erforderlich.",
@@ -92,6 +94,71 @@
         "growing": "Wachsende Flotten",
         "declining": "Rückläufige Flotten",
         "inactive": "Inaktive Flotten"
+      }
+    },
+    "tenant": {
+      "title": "Flotteneinstellungen",
+      "loading": "Einstellungen werden geladen…",
+      "loadFailed": "Die Einstellungen konnten nicht geladen werden.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Einstellungen gespeichert.",
+      "saveFailed": "Die Einstellungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
+      "back": "Zurück zur Flottenverwaltung",
+      "sections": {
+        "fleet": "Flotte",
+        "dispatch": "Disposition",
+        "sms": "SMS",
+        "map": "Karte & Mapy.com",
+        "geo": "Geolokalisierung"
+      },
+      "fields": {
+        "name": "Name",
+        "phone": "Telefon",
+        "currency": "Währung",
+        "timeZone": "Zeitzone",
+        "primaryColorHex": "Markenfarbe",
+        "isActive": "Aktiv",
+        "offerTimeoutSeconds": "Angebots-Timeout (s)",
+        "autoDispatchEnabled": "Automatische Zuweisung",
+        "autoDispatchAfterSeconds": "Automatische Zuweisung nach (s)",
+        "maxOfferRadiusKm": "Maximaler Angebotsradius (km)",
+        "smsSenderName": "SMS-Absendername",
+        "smsMonthlyCapCzk": "Monatliches SMS-Limit (CZK)",
+        "smsUnitCostCzk": "Kosten pro SMS (CZK)",
+        "welcomeText": "Willkommenstext",
+        "mapyBrowserKey": "Mapy-Browser-Schlüssel",
+        "mapyServerKey": "Mapy-Server-Schlüssel",
+        "mapCenterLat": "Breitengrad des Kartenmittelpunkts",
+        "mapCenterLng": "Längengrad des Kartenmittelpunkts",
+        "mapZoom": "Kartenzoom",
+        "geoMonthlyCreditBudget": "Monatliches Geolokalisierungs-Guthabenbudget"
+      },
+      "hints": {
+        "primaryColorHex": "Format #RRGGBB, z. B. #1E88E5.",
+        "mapyServerKeyConfigured": "Der Server-Schlüssel ist gesetzt. Lassen Sie das Feld leer, um den aktuellen Schlüssel beizubehalten.",
+        "mapyServerKeyNotSet": "Der Server-Schlüssel ist nicht gesetzt.",
+        "mapyServerKeyKeep": "Aus Sicherheitsgründen wird der Wert nie angezeigt. Ein leeres Feld behält den aktuellen Schlüssel bei.",
+        "mapyBrowserKeyKeep": "Ein leeres Feld behält den aktuellen Schlüssel bei."
+      },
+      "validation": {
+        "nameRequired": "Der Name ist erforderlich.",
+        "phoneRequired": "Das Telefon ist erforderlich.",
+        "timeZoneRequired": "Die Zeitzone ist erforderlich.",
+        "currencyInvalid": "Geben Sie einen dreibuchstabigen Währungscode ein (z. B. CZK).",
+        "colorInvalid": "Geben Sie eine gültige Markenfarbe im Format #RRGGBB ein.",
+        "offerTimeoutRange": "Das Angebots-Timeout muss zwischen 10 und 600 Sekunden liegen.",
+        "autoDispatchAfterInvalid": "Geben Sie eine nicht negative Anzahl von Sekunden ein.",
+        "maxOfferRadiusRange": "Der Angebotsradius muss zwischen 1 und 100 km liegen.",
+        "smsCapInvalid": "Das monatliche SMS-Limit muss nicht negativ sein.",
+        "smsUnitCostInvalid": "Die Kosten pro SMS müssen nicht negativ sein.",
+        "smsSenderNameTooLong": "Der Absendername darf höchstens 100 Zeichen lang sein.",
+        "welcomeTooLong": "Der Willkommenstext darf höchstens 2000 Zeichen lang sein.",
+        "mapCenterLatRange": "Der Breitengrad muss zwischen -90 und 90 liegen.",
+        "mapCenterLngRange": "Der Längengrad muss zwischen -180 und 180 liegen.",
+        "mapZoomRange": "Der Zoom muss zwischen 1 und 20 liegen.",
+        "geoBudgetInvalid": "Das Guthabenbudget muss nicht negativ sein.",
+        "mapyKeyTooLong": "Der Schlüssel darf höchstens 512 Zeichen lang sein."
       }
     }
   },

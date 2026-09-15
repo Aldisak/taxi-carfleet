@@ -204,6 +204,39 @@ public static class ErrorCodes
 
         /// <summary>The push-subscription auth secret is required.</summary>
         public const string PushAuthRequired = "Validation.PushAuthRequired";
+
+        /// <summary>The time zone is required.</summary>
+        public const string TimeZoneRequired = "Validation.TimeZoneRequired";
+
+        /// <summary>The currency must be a 3-letter ISO 4217 code.</summary>
+        public const string CurrencyInvalid = "Validation.CurrencyInvalid";
+
+        /// <summary>The auto-dispatch after seconds must be zero or greater.</summary>
+        public const string AutoDispatchAfterSecondsNonNegative = "Validation.AutoDispatchAfterSecondsNonNegative";
+
+        /// <summary>The max offer radius must be between 1 and 100 km.</summary>
+        public const string MaxOfferRadiusKmRange = "Validation.MaxOfferRadiusKmRange";
+
+        /// <summary>The SMS unit cost must be zero or greater.</summary>
+        public const string SmsUnitCostNonNegative = "Validation.SmsUnitCostNonNegative";
+
+        /// <summary>The SMS sender name must not exceed 100 characters.</summary>
+        public const string SmsSenderNameTooLong = "Validation.SmsSenderNameTooLong";
+
+        /// <summary>The map center latitude must be between -90 and 90.</summary>
+        public const string MapCenterLatRange = "Validation.MapCenterLatRange";
+
+        /// <summary>The map center longitude must be between -180 and 180.</summary>
+        public const string MapCenterLngRange = "Validation.MapCenterLngRange";
+
+        /// <summary>The map zoom must be between 1 and 20.</summary>
+        public const string MapZoomRange = "Validation.MapZoomRange";
+
+        /// <summary>The geo monthly credit budget must be zero or greater.</summary>
+        public const string GeoMonthlyCreditBudgetNonNegative = "Validation.GeoMonthlyCreditBudgetNonNegative";
+
+        /// <summary>The Mapy key must not exceed 512 characters.</summary>
+        public const string MapyKeyTooLong = "Validation.MapyKeyTooLong";
     }
 
     /// <summary>Auth-domain error codes (not validation — used for 429 rate-limit responses).</summary>

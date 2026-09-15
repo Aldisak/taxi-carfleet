@@ -68,7 +68,9 @@ internal sealed class GeoConfigEndpoint(
             .FirstOrDefaultAsync(ct);
 
         // Resolve browser key: fleet's decrypted key, or environment fallback.
-        var browserKey = keyProtector.Unprotect(settings?.MapyBrowserKey)
+        // TryUnprotect is used so a raw/legacy column value falls back gracefully instead of
+        // throwing CryptographicException → 500 (AC#4).
+        var browserKey = keyProtector.TryUnprotect(settings?.MapyBrowserKey)
             ?? configuration["Mapy:BrowserKey"]
             ?? string.Empty;
 

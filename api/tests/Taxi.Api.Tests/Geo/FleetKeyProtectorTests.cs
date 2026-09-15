@@ -100,6 +100,85 @@ public sealed class FleetKeyProtectorTests
             .WithMessage("*DataProtection:KeysDirectory*");
     }
 
+    // ── TryUnprotect tests ────────────────────────────────────────────────────────
+
+    /// <summary>TryUnprotect round-trips a value that was previously protected.</summary>
+    [Fact]
+    public void TryUnprotect_ValidCiphertext_ReturnsPlaintext()
+    {
+        // Arrange
+        var dir = Path.Combine(Path.GetTempPath(), "taxi-dp-try-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using var services = BuildServices(dir);
+            var protector = services.GetRequiredService<IFleetKeyProtector>();
+            const string plaintext = "try-unprotect-round-trip-key";
+
+            // Act
+            var ciphertext = protector.Protect(plaintext);
+            var result = protector.TryUnprotect(ciphertext);
+
+            // Assert
+            result.Should().Be(plaintext, "TryUnprotect must return the original plaintext for a valid ciphertext");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>TryUnprotect returns null (not throws) for a raw, non-ciphertext value.</summary>
+    [Fact]
+    public void TryUnprotect_RawNonCiphertextValue_ReturnsNull()
+    {
+        // Arrange
+        var dir = Path.Combine(Path.GetTempPath(), "taxi-dp-raw-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using var services = BuildServices(dir);
+            var protector = services.GetRequiredService<IFleetKeyProtector>();
+            const string rawKey = "Z8Bbu1ZRQQbe6SwQceTtx-7B9qqJptwO32s3Xaz6nxY";
+
+            // Act
+            var result = protector.TryUnprotect(rawKey);
+
+            // Assert
+            result.Should().BeNull("a raw non-ciphertext value must yield null, not throw CryptographicException");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>TryUnprotect returns null for null or empty input without throwing.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void TryUnprotect_NullOrEmpty_ReturnsNull(string? input)
+    {
+        // Arrange
+        var dir = Path.Combine(Path.GetTempPath(), "taxi-dp-nil-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            using var services = BuildServices(dir);
+            var protector = services.GetRequiredService<IFleetKeyProtector>();
+
+            // Act
+            var result = protector.TryUnprotect(input);
+
+            // Assert
+            result.Should().BeNull("null/empty input must return null");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────────
 
     private static ServiceProvider BuildServices(string keysDir)

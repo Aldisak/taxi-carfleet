@@ -1,0 +1,32 @@
+{
+  "wi_id": "WI-1",
+  "wi": "WI-1",
+  "status": "done",
+  "hit_max_turns": false,
+  "files_changed": [
+    "api/src/Taxi.Api/Common/Security/IFleetKeyProtector.cs",
+    "api/src/Taxi.Api/Common/Security/FleetKeyProtector.cs",
+    "api/src/Taxi.Api/Features/Geo/Config/GeoConfigEndpoint.cs",
+    "api/src/Taxi.Api/Infrastructure/Geo/MapyKeyResolver.cs",
+    "api/tests/Taxi.Api.Tests/Geo/FleetKeyProtectorTests.cs",
+    "api/tests/Taxi.Api.Tests/Geo/GeoConfigTests.cs",
+    "api/tests/Taxi.Api.Tests/Geo/MapyClientHandlerTests.cs",
+    "api/tests/Taxi.Api.Tests/Geo/MapyKeyResolverTests.cs"
+  ],
+  "tests_added": [
+    "FleetKeyProtectorTests.TryUnprotect_ValidCiphertext_ReturnsPlaintext",
+    "FleetKeyProtectorTests.TryUnprotect_RawNonCiphertextValue_ReturnsNull",
+    "FleetKeyProtectorTests.TryUnprotect_NullOrEmpty_ReturnsNull (Theory: null, \"\")",
+    "GeoConfigTests.HandleAsync_FleetHasRawBrowserKey_ReturnsFallbackNot500",
+    "MapyKeyResolverTests.Resolve_ValidEncryptedServerKey_ReturnsDecryptedValue",
+    "MapyKeyResolverTests.Resolve_NullServerKey_FallsBackToConfig",
+    "MapyKeyResolverTests.Resolve_RawNonCiphertextServerKey_FallsBackToConfig",
+    "MapyKeyResolverTests.Resolve_NullFleetSettings_FallsBackToConfig"
+  ],
+  "tests_passing": 651,
+  "coverage_delta": null,
+  "red_observed": true,
+  "full_suite": "pass — 651 passed, 4 skipped (performance tests), 0 failed",
+  "build_warnaserror": "clean — 0 warnings, 0 errors",
+  "notes": "RED observations: (A) CS1061 compile errors on FleetKeyProtectorTests lines 120/145/171 before TryUnprotect was added to IFleetKeyProtector. (B) HttpStatusCode.InternalServerError (500) on HandleAsync_FleetHasRawBrowserKey_ReturnsFallbackNot500 before GeoConfigEndpoint was changed to use TryUnprotect. (C) CryptographicException thrown by FleetKeyProtector.Unprotect inside MapyKeyResolver.Resolve for Resolve_RawNonCiphertextServerKey_FallsBackToConfig before MapyKeyResolver was fixed. All three RED→GREEN cycles completed. NullFleetKeyProtector in MapyClientHandlerTests.cs updated to implement the new TryUnprotect method. F5 design-review finding preserved: MapyKeyResolver.Resolve keeps both guards (!IsNullOrWhiteSpace on ciphertext before calling TryUnprotect, and !IsNullOrWhiteSpace on the decrypted plain value) so a decrypted-to-empty value still falls through to configuration[\"Mapy__ServerKey\"]. Verification filter Taxi.Api.Tests.Geo: 119/119 passed."
+}

@@ -103,6 +103,57 @@ public sealed class GeoConfigTests(PostgresFixture fixture)
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    /// <summary>Regression (AC#4): a fleet with a raw (non-ciphertext) browser key in the DB
+    /// must not 500. GET /geo/config must return 200, falling back to the configured browser key
+    /// (or empty string if not configured) instead of throwing CryptographicException.</summary>
+    [Fact]
+    public async Task HandleAsync_FleetHasRawBrowserKey_ReturnsFallbackNot500()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+
+        var fleetId = Guid.CreateVersion7();
+        var slug = $"raw-key-{Guid.NewGuid():N}"[..20];
+
+        // Seed a raw (non-ciphertext) value directly — bypasses IFleetKeyProtector.
+        db.Fleets.Add(new Fleet
+        {
+            Id = fleetId,
+            Name = "Raw Key Test Fleet",
+            Slug = slug,
+            Phone = "+420000000099",
+            IsActive = true
+        });
+
+        db.FleetSettings.Add(new FleetSettings
+        {
+            FleetId = fleetId,
+            MapyBrowserKey = "raw-non-ciphertext-browser-key",
+            MapCenterLat = 50.08,
+            MapCenterLng = 14.42,
+            MapZoom = 12
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        var client = fixture.Factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Fleet-Slug", slug);
+
+        var resp = await client.GetAsync("/api/v1/geo/config", ct);
+
+        // Must NOT 500 — raw non-ciphertext value falls back gracefully.
+        resp.StatusCode.Should().Be(HttpStatusCode.OK,
+            "a raw/undecryptable browser key must not throw CryptographicException → 500");
+
+        var body = await resp.Content.ReadFromJsonAsync<GeoConfigTestResponse>(cancellationToken: ct);
+        body.Should().NotBeNull();
+        // Browser key must be the fallback (config "Mapy:BrowserKey" or empty string), NOT the raw value.
+        body!.BrowserKey.Should().NotBe("raw-non-ciphertext-browser-key",
+            "the raw value should not be returned; TryUnprotect yields null for non-ciphertext → fallback");
+    }
+
     /// <summary>GET /geo/config sets Cache-Control: public, max-age=604800.</summary>
     [Fact]
     public async Task HandleAsync_GeoConfig_SetsCacheControlHeader()

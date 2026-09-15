@@ -36,13 +36,15 @@
       "loadFailed": "Could not load the fleet list.",
       "active": "Active",
       "inactive": "Inactive",
+      "edit": "Edit",
       "passwordWarning": "One-time admin password for {{email}}. Shown only once — copy it and hand it over securely.",
       "fields": {
         "slug": "Identifier (slug)",
         "name": "Name",
         "phone": "Phone",
         "adminEmail": "Admin email",
-        "status": "Status"
+        "status": "Status",
+        "actions": "Actions"
       },
       "validation": {
         "slugRequired": "The identifier is required.",
@@ -92,6 +94,71 @@
         "growing": "Growing fleets",
         "declining": "Declining fleets",
         "inactive": "Inactive fleets"
+      }
+    },
+    "tenant": {
+      "title": "Fleet settings",
+      "loading": "Loading settings…",
+      "loadFailed": "Could not load the settings.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Settings saved.",
+      "saveFailed": "Could not save the settings. Please try again.",
+      "back": "Back to fleet administration",
+      "sections": {
+        "fleet": "Fleet",
+        "dispatch": "Dispatch",
+        "sms": "SMS",
+        "map": "Map & Mapy.com",
+        "geo": "Geolocation"
+      },
+      "fields": {
+        "name": "Name",
+        "phone": "Phone",
+        "currency": "Currency",
+        "timeZone": "Time zone",
+        "primaryColorHex": "Brand color",
+        "isActive": "Active",
+        "offerTimeoutSeconds": "Offer timeout (s)",
+        "autoDispatchEnabled": "Automatic dispatch",
+        "autoDispatchAfterSeconds": "Automatic dispatch after (s)",
+        "maxOfferRadiusKm": "Maximum offer radius (km)",
+        "smsSenderName": "SMS sender name",
+        "smsMonthlyCapCzk": "Monthly SMS cap (CZK)",
+        "smsUnitCostCzk": "Cost per SMS (CZK)",
+        "welcomeText": "Welcome text",
+        "mapyBrowserKey": "Mapy browser key",
+        "mapyServerKey": "Mapy server key",
+        "mapCenterLat": "Map center latitude",
+        "mapCenterLng": "Map center longitude",
+        "mapZoom": "Map zoom",
+        "geoMonthlyCreditBudget": "Monthly geolocation credit budget"
+      },
+      "hints": {
+        "primaryColorHex": "Format #RRGGBB, e.g. #1E88E5.",
+        "mapyServerKeyConfigured": "The server key is set. Leave the field blank to keep the current key.",
+        "mapyServerKeyNotSet": "The server key is not set.",
+        "mapyServerKeyKeep": "For security, the value is never shown. A blank field keeps the current key.",
+        "mapyBrowserKeyKeep": "A blank field keeps the current key."
+      },
+      "validation": {
+        "nameRequired": "The name is required.",
+        "phoneRequired": "The phone is required.",
+        "timeZoneRequired": "The time zone is required.",
+        "currencyInvalid": "Enter a three-letter currency code (e.g. CZK).",
+        "colorInvalid": "Enter a valid brand color in #RRGGBB format.",
+        "offerTimeoutRange": "The offer timeout must be between 10 and 600 seconds.",
+        "autoDispatchAfterInvalid": "Enter a non-negative number of seconds.",
+        "maxOfferRadiusRange": "The offer radius must be between 1 and 100 km.",
+        "smsCapInvalid": "The monthly SMS cap must be non-negative.",
+        "smsUnitCostInvalid": "The cost per SMS must be non-negative.",
+        "smsSenderNameTooLong": "The sender name may be at most 100 characters.",
+        "welcomeTooLong": "The welcome text may be at most 2000 characters.",
+        "mapCenterLatRange": "The latitude must be between -90 and 90.",
+        "mapCenterLngRange": "The longitude must be between -180 and 180.",
+        "mapZoomRange": "The zoom must be between 1 and 20.",
+        "geoBudgetInvalid": "The credit budget must be non-negative.",
+        "mapyKeyTooLong": "The key may be at most 512 characters."
       }
     }
   },

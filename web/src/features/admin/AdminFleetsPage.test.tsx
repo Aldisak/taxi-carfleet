@@ -105,6 +105,16 @@ describe('AdminFleetsPage (UC-007 B3)', () => {
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
   })
 
+  it('renders an Edit link per fleet row pointing at the settings route', async () => {
+    render(createElement(AdminFleetsPage), { wrapper: makeWrapper() })
+    await screen.findByText('Taxi Demo')
+    const editLink = screen.getByRole('link', { name: 'Upravit' })
+    expect(editLink).toHaveAttribute(
+      'href',
+      '/admin/fleets/11111111-1111-1111-1111-111111111111/settings',
+    )
+  })
+
   it('has no axe violations', async () => {
     const { container } = render(createElement(AdminFleetsPage), { wrapper: makeWrapper() })
     await screen.findByText('Taxi Demo')

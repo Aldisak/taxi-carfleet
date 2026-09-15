@@ -1,18 +1,48 @@
 {
-  "$schema": ".claude/schemas/design-review.v1.json",
-  "kind": "design",
-  "uc": "UC-011",
-  "target": "docs/specs/in-progress/011_UC_011_multilingual-work-items.md",
+  "uc": "UC-012",
   "round": 1,
+  "blocks_merge": false,
   "findings": [
-    {"severity": "HIGH", "rule": "rules/web-react-style.md#dates-and-money", "citation": "WI-8 extensibility.test.ts", "detail": "WI-8's AC#8 scan greps non-test production source for the six locale-code literals (incl 'cs-CZ') with a 3-file whitelist. But spec section 'Non-goal' MANDATES 'cs-CZ' in ~30 non-test production files (money.ts Intl.NumberFormat('cs-CZ'), TrackingPage, HistoryRow, PlatformScreen, AuditPage, DriverDrilldown, smsCostDisplay, GeoUsagePanel, StatusHeadline, csvExport, OrderDrawer, SearchPage, ~15 more). The gate as specified can never go green — AC#8 unsatisfiable. Fix: only flag the FIVE non-default codes {en-US,ru-RU,uk-UA,fil-PH,de-DE} in the production scan (cs-CZ formatting literals are spec-mandated), and/or route formatting through a named constant module and whitelist it; keep the registry-iteration checks for selector/detection/parity."},
-    {"severity": "HIGH", "rule": "rules/web-testing.md#red-green-refactor", "citation": "WI-3..6", "detail": "WI-1 seeds ru-RU/uk-UA/fil-PH/de-DE as key-complete Czech copies, so parity is GREEN before and after WI-3..6 — no observable RED, WIs not atomically verifiable, pipeline could complete with Czech placeholders shipping. Fix: each language WI asserts a curated SENTINEL set of non-brand full-sentence keys (2-3 dispatcher + 2-3 customer) differs from cs-CZ for that locale — RED against the seed, GREEN after real translation."},
-    {"severity": "LOW", "rule": "rules/web-testing.md#i18n-parity", "citation": "WI-1 common.language ownership", "detail": "Verified safe: common.language does not yet exist; WI-1 adds it to cs-CZ first and propagates to all six seeds before WI-3..7 run. No action."},
-    {"severity": "INFO", "rule": "rules/web-testing.md#red-green-refactor", "citation": "WI-1 rename ripple", "detail": "Verified exhaustive: only extra importers are locales.parity.test.ts, auditEventLabel.test.ts, eventTimeline.test.ts, PlatformScreen.test.tsx changeLanguage('cs') — all in WI-1 files_touched. No language==='cs' runtime branches; no test asserts i18n.language==='cs'."},
-    {"severity": "INFO", "rule": "rules/web-testing.md#i18n-parity", "citation": "WI-2 Playwright pin atomicity", "detail": "Verified: detection wiring (main.tsx) + playwright.config.ts locale pin are in the same atomic WI-2; no ordering exists where detection lands unpinned."},
-    {"severity": "INFO", "rule": "rules/web-architecture.md#route-groups", "citation": "WI-7 three placements", "detail": "Verified no cross-feature imports (shared component rollout); aria-label t('common.language'), theme.touchTargets.min=48px confirmed, axe test present."}
+    {
+      "id": "F1",
+      "severity": "MEDIUM",
+      "wi": "WI-2",
+      "title": "Request DTO called a 'plain class' risks the non-record DTO rule flag",
+      "detail": "WI-2 and the handoff describe UpdateTenantSettingsRequest as a 'plain class ... no required' mirroring the existing UpdateFleetSettingsRequest, which is confirmed a `public sealed class` with mutable `{ get; set; }` auto-props (api/src/Taxi.Api/Features/Fleet/UpdateFleetSettings/UpdateFleetSettingsRequest.cs). rules/csharp-style.md#records-for-dtos wants request/response DTOs as records. The STJ 500-trap (CLAUDE.md WI-11) forbids `required`, but the rule-compliant STJ-safe shape is a property-based record with `{ get; init; }` defaults, not a class. The instruction 'plain class ... { get; init; }' is internally inconsistent and mirrors a pre-existing non-conforming pattern.",
+      "suggested_fix": "Specify UpdateTenantSettingsRequest as a property-based record: `public record UpdateTenantSettingsRequest { public string Name { get; init; } = \"\"; ... public string? MapyServerKey { get; init; } ... }` — no `required`, defaults for value types. This satisfies both records-for-dtos and the STJ trap. (Existing UpdateFleetSettingsRequest is an observed pre-existing class, not introduced here.)"
+    },
+    {
+      "id": "F2",
+      "severity": "LOW",
+      "wi": "WI-2",
+      "title": "mapyServerKeyConfigured derivation must not use a JsonDocument-style projection pitfall; confirm AsNoTracking read computes the bool without leaking the value",
+      "detail": "The GET loads Fleet+FleetSettings with IgnoreQueryFilters()+AsNoTracking() and must expose only `mapyServerKeyConfigured = MapyServerKey != null`. The design is sound (server-key field is structurally absent from GetTenantSettingsResponse), but the WI should make explicit that the ciphertext column is read server-side only to compute the bool and is never placed in the response DTO or logged. mapyBrowserKey is decrypted via TryUnprotect (WI-1) — correct.",
+      "suggested_fix": "In WI-2 deliverables, state that the GET computes `MapyServerKeyConfigured = settings?.MapyServerKey is not null` in-memory and that no code path serializes MapyServerKey. Add an assertion in Get_Response_HasConfiguredFlagButNoServerKeyValue that the raw JSON body does not contain the stored ciphertext substring."
+    },
+    {
+      "id": "F3",
+      "severity": "LOW",
+      "wi": "WI-2",
+      "title": "Tracked cross-tenant FleetSettings load must filter by id, and the upsert must set FleetId = route id (not currentTenant)",
+      "detail": "The existing UpdateFleetSettingsEndpoint upsert does `FleetSettings.FirstOrDefaultAsync(ct)` relying on the tenant query filter. In the SuperAdmin path CurrentTenant.FleetId is NULL at load time, so the design must load `FleetSettings.IgnoreQueryFilters().FirstOrDefaultAsync(fs => fs.FleetId == id, ct)` (predicate by route id) and, on upsert, `new FleetSettings { FleetId = id }`. Spec §1.2 says 'load ... by id' and handoff AC says stamp currentTenant.FleetId=id before SaveChanges — correct — but the WI should pin the by-id predicate on both the load and the upsert to avoid the FirstOrDefaultAsync()-with-no-predicate hole (would grab an arbitrary fleet's row once filters are ignored).",
+      "suggested_fix": "WI-2: explicitly require `.IgnoreQueryFilters().FirstOrDefaultAsync(fs => fs.FleetId == req.Id, ct)` for the tracked FleetSettings load and `new FleetSettings { FleetId = req.Id }` for the upsert. Add a test asserting a second seeded fleet's FleetSettings is untouched by the PUT (tenant-isolation of the write)."
+    },
+    {
+      "id": "F4",
+      "severity": "LOW",
+      "wi": "WI-3",
+      "title": "Clearing a visible browser-key field silently keeps the old value (blank=keep for both keys)",
+      "detail": "toUpdateRequest maps blank->null (keep) for BOTH keys. The browser key is seeded visible from dto.mapyBrowserKey; if an operator deletes it intending to clear, blank->null keeps the old value with no clear affordance. This is a documented deliberate choice (\"\"=clear is API-only), so acceptable, but mildly surprising UX for the public browser key.",
+      "suggested_fix": "Optional: give the browser key an explicit clear affordance, or document the keep-on-blank behavior in the field hint (i18n) so the operator understands blank means keep. No change required for correctness."
+    },
+    {
+      "id": "F5",
+      "severity": "LOW",
+      "wi": "WI-1",
+      "title": "MapyKeyResolver.Resolve swap to TryUnprotect must preserve the fallback-on-empty branch",
+      "detail": "MapyKeyResolver.Resolve currently does `Unprotect(ciphertext)` then falls back to config when the plaintext is null/whitespace. Swapping to TryUnprotect is correct (raw/legacy values now return null instead of throwing), but the WI should confirm the existing `!string.IsNullOrWhiteSpace(plain)` guard is retained so a decrypted-to-empty value still falls through to Mapy__ServerKey. GeoConfigEndpoint's browser-key line already uses `?? config ?? string.Empty` — consistent.",
+      "suggested_fix": "WI-1: state that Resolve keeps `if (TryUnprotect(...) is { } plain && !string.IsNullOrWhiteSpace(plain)) return plain; return configuration[\"Mapy__ServerKey\"];`. Add a resolver test: raw server-key value -> falls back to config, no throw."
+    }
   ],
-  "summary": {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 0, "LOW": 1, "INFO": 3},
-  "blocks_merge": true,
-  "notes": "Reviewer had no Write tool; persisted by conductor. Verified-passing: DAG acyclic, AC->WI covers all 8, lane citations complete, rename ripple exhaustive, host files + touch-target token exist."
+  "persisted_by": "conductor on behalf of design-reviewer agent a7305e19423ec2455 (agent type has no Write tool); content verbatim from the agent's final message, 2026-09-15"
 }
