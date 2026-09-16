@@ -1,36 +1,42 @@
 {
   "version": 1,
-  "uc_id": "UC-013",
-  "title": "Development-only customer OTP code log",
-  "stack": "api",
-  "complexity_tag": "routine",
+  "uc_id": "UC-014",
+  "title": "Customer map-first shell & shared primitives (Uber/Bolt redesign 1/3)",
+  "stack": "mixed",
+  "complexity_tag": "moderate",
   "phase": "done",
-  "spec_path": "docs/specs/done/013_UC_013_dev-otp-log.md",
-  "assignment_path": "docs/specs/done/013_UC_013_dev-otp-log.md",
-  "spec_final": "docs/specs/done/013_UC_013_dev-otp-log.md",
-  "work_items_doc": "docs/specs/done/013_UC_013_dev-otp-log-work-items.md",
+  "spec_final": "docs/specs/done/014_UC_014_customer-map-shell.md",
   "gates_final": [
-    "A+B combined (routine deferred-A): user approved spec + single WI",
-    "C: 2 rounds at user request (round-1 1 MEDIUM+2 LOW -> designer amend -> round-2 PASS 0 findings); user kept design review (declined fast-path)",
-    "D: WI-1 RED-observed TDD, impl-review blocks_merge=false (1 LOW cosmetic)",
-    "E: backend build -warnaserror clean + 692 pass/0 fail/4 skip (Phase 5 fixed a pre-existing UC-005 order-dependent flake test-side; production code untouched). No web gate (backend-only)."
+    "A/B/C/D per gates_passed; E (autonomous 2026-09-16): backend build -warnaserror clean + 708/0/4; web lint 0 (incl check:geo) + tsc clean + 1587 unit + build + size 3/3 (app 196.64/260, analytics 94.79/115, admin 63.97/70) + e2e 16/16.",
+    "ship: no git remote -> commit on uc-014-customer-map-shell + ff-merge to main; commit EXCLUDES README.md + launchSettings.json (user's) + docs/specs/todo/015-019 (queued, kept untracked); INCLUDES CLAUDE.md (WI-2 trap notes) + docs/api.md (WI-1 regen)."
   ],
-  "ship_note": "No git remote -> local commit on uc-013-dev-otp-log + ff-merge to main (UC-009..012 precedent). Commit EXCLUDES pre-existing non-UC-013 files: README.md (untracked) and api/src/Taxi.Api/Properties/launchSettings.json (modified) - both the user's, left uncommitted. Includes the NotificationDispatchJobTests.cs flake fix (test robustness, surfaced by this gate).",
-  "topo_order": "WI-1 only (api, S)",
-  "branch": "uc-013-dev-otp-log (off main @ 3555a7a)",
+  "work_items_doc": "docs/specs/in-progress/014_UC_014_customer-map-shell-work-items.md",
+  "topo_order": "WI-1 (api,M, independent), WI-2 (web,M shell) -> WI-3 (web,M sheet+loader, dep WI-2 zIndex) -> WI-4 (web,M reverse-geocode+centerpin, dep WI-3 i18n-serialization). Run 1->2->3->4.",
+  "gate_c": "round-1 blocks_merge=false (3 MEDIUM: F1 geocode/reverse Guid.Empty short-circuit mandatory + RED-able test via positive fake result; F2 WI-3 depends_on WI-2 for theme.zIndex; F3 six-i18n-JSON collision -> sequential web chain; 3 LOW: F4 guard-position/anon-hash test required, F5 shared/ui ok, F6 shell sibling-never-nested). Designer round-2 amendments conductor-verified in handoff (RED-able tests present, depends_on chain, key-group ownership).",
+  "spec_path": "docs/specs/done/014_UC_014_customer-map-shell.md",
+  "assignment_path": "docs/specs/done/014_UC_014_customer-map-shell.md",
+  "branch": "uc-014-customer-map-shell (off main @ 352969d)",
   "gates_passed": [
-    "A+B combined (2026-09-15, routine deferred-A path): user approved spec + single WI via one AskUserQuestion; spec moved todo/ -> in-progress/",
-    "fast-path declined: user kept design review (default)",
-    "C (2026-09-15, 2 rounds at user request): round-1 blocks_merge=false with 1 MEDIUM (DI-selection untested) + 2 LOW (dev-branch phone PII, stale XML summary); user chose formal designer amend + re-review; round-2 PASS zero findings (amendments verified incl. IHostEnvironment-stub DI trap). User approved implementation."
+    "A (autonomous authority): user-authored assignment (scope confirmed interactively 2026-09-16: replace-entirely, auto-quote routes, center-pin+reverse-geocode pickup, 3-part split) + directive 2026-09-16 '/conductor continue autonomously on all UCs in /todo until done, keep UC numeric order' — spec approved as-is"
   ],
-  "gate_a_deferred": "complexity_tag=routine (user-chosen 2026-09-15) -> Gate A deferred per SKILL.md; spec+work-items presented together after designer returns. Spec was authored interactively with the user this session (root cause traced: OTP masked in logs by design + hashed in DB; user chose the Development-only code-log option).",
-  "key_constraints": "Backend-only. OTP may appear in logs ONLY when IHostEnvironment.IsDevelopment() (hard guard in the sender) AND Sms:DevLogCode=true (DI flag gate in AuthFeatureConfiguration). RequestCodeEndpoint unchanged. The Notifications-namespace SMS senders (GoSms/SmsBrana/operational ConsoleSmsSender) are OUT of scope — only the Auth-path Infrastructure/Sms sender family. Non-dev environments stay masked even with the flag on (unit-tested). User-local dotnet SDK required (bare dotnet = SDK 9 NETSDK1045).",
+  "autonomous_mode": true,
+  "autonomous_mode_authority": "user directive 2026-09-16 ('continue autonomously on all UCs in /todo until you are done; parallel allowed for independent tasks; KEEP UC NUMERIC ORDER — next 014, then 015, 016, ...'): gates A-E pre-approved for ALL queued UCs; ship = local commit + ff-merge to main (UC-009..013 precedent, no git remote). Sequential per user order directive; within-UC WIs run sequentially (shared working tree precedent).",
+  "multi_uc_queue": [
+    "UC-014 customer-map-shell (web + small api) - IN PROGRESS",
+    "UC-015 customer-order-flow (web, dep UC-014) - queued",
+    "UC-016 customer-live-tracking (web, dep UC-015) - queued",
+    "UC-017 auto-dispatch (api) - queued",
+    "UC-018 location-relevant-suggest (api+web) - queued",
+    "UC-019 driver-map-first (web, dep UC-014) - queued"
+  ],
+  "complexity_rationale": "New full-bleed map surface + BottomSheet primitive + camera controller + center-pin/reverse-geocode + one backend auth relaxation (anonymous-by-slug geo proxy + non-JWT rate-limit key). Every building block exists (MapyMap gestures, MapCenterController precedent, GeoRateLimiter, TenantResolutionMiddleware slug resolution) but composition is new. Moderate (not novel — no kit specialists, which are a scaffold gap anyway).",
+  "key_constraints": "Leaflet stays OUT of eager chunks (lazy map component only; verify in dist). MapyMap mounts only after useGeoConfig resolves (mount-time center/zoom). Mapy attribution/logo must stay reachable above overlays. ensureFleetSlug in useState initializer BEFORE any public query. Anonymous geo: AllowAnonymous + X-Fleet-Slug tenant resolution (middleware already resolves slug->FleetId); rate-limit anonymous by IP-or-slug key, authed stays per-sub 5 req/s; GeoRateLimiter is a SINGLETON (tests exhausting buckets need own TaxiApiFactory). Update suggest/geocode/reverse access tests that assert 401/403 anonymous. Drop hasToken gate in useSuggest. i18n new keys in ALL SIX locales (parity). Axe + 48px + focus/Escape on BottomSheet. Money cs-CZ, dates Europe/Prague. User-local dotnet SDK; Docker for api tests. OpenAPI allowlist unaffected (no route/verb changes) but docs/api.md may regenerate if summaries change — stage if so.",
   "in_progress_wis": [],
   "completed_wis": [
-    "WI-1 DevConsoleSmsSender (dev->full body log, non-dev->masked marker identical to ConsoleSmsSender, phone masked last-4 in BOTH branches, IHostEnvironment.IsDevelopment() production guard) + Sms:DevLogCode flag gate in AuthFeatureConfiguration (XML summary rewritten per AC#6) + appsettings.Development.json flag + docs/API-KEYS.md §2 note; 5 tests (2 behavior incl. Production-masks pin + 3 DI-selection with IHostEnvironment stub) via hand-rolled ILogger spy; RED observed (CS0246); build -warnaserror clean; impl-review round-1 blocks_merge=false (1 LOW: LoggerSpy field naming). During Phase 5 surfaced a PRE-EXISTING order-dependent flake (NotificationDispatchJobTests.NotificationDispatchJob_DuplicateOutbox_InvokesSenderOnce, from UC-005) where the shared-DB job tick dispatched leaked outbox rows through the test's recording sender -> fixed test-side (unique per-run phone + pre-seed cleanup of leaked Queued rows + phone-scoped Sent assertion); production code untouched."
+    "WI-1 anonymous-by-slug geo proxy: AllowAnonymous on suggest/geocode/reverse (route untouched); GeoRateLimiter.TryAcquire(string) + DeriveAnonBucketId (SHA-256, forced version-5 nibble -> structurally collision-free vs UUIDv7); F1 endpoint short-circuit on geocode/reverse (FleetId null -> Found=false pre-GeoService, RED-verified by temporary removal); guard stays first (400-before-429); 14 new tests (8 integration + 6 hash unit), 3 access-test files inverted, docs/api.md regenerated; geo 135/135, full 708/0/4, -warnaserror clean; impl-review blocks_merge=false (1 LOW: BuildAnonKey duplicated across 3 endpoints — candidate Common/Geo promotion, non-blocking)",
+    "WI-2 CustomerMapShell (opt-in sibling of CustomerLayout, doc-pinned; one-shot initializers with exactly-once tests) + lazy CustomerMapBackground (sole new MapyMap importer — leaflet stays lazy) + theme.zIndex scale (0<100<1000<2000 + d.ts augmentation) + safe-area overlay slots w/ pointer-events pass-through + pure mapCamera.ts + headless CameraController (MapCenterController pattern) + customer.shell.* keys x6 locales + 2 CLAUDE.md trap notes; no router change (existing pages untouched); 45 tests; suite 1561 pass, tsc/lint/build/size clean; impl-review blocks_merge=false (4 LOW incl. expected whole-UC staging note; reviewer re-ran 50 scoped + parity + tsc)"
   ],
-  "phase5_gate": "backend build -warnaserror clean (Release; Debug apphost was locked by a running Taxi.Api dev server -> built Release); dotnet test 692 passed / 0 failed / 4 skipped. No web block (backend-only UC, 0 web files). dotnet format: informational, not run to completion (non-blocking per Phase 5).",
-  "predecessors": "UC-001..012 all on main @ 3555a7a",
-  "pre_existing_worktree_note": "Uncommitted at pipeline start (NOT part of UC-013, do not revert/commit): README.md (untracked, user's), api/src/Taxi.Api/Properties/launchSettings.json (modified, user's)",
-  "updated_at": "2026-09-15"
+  "predecessors": "UC-001..013 + fix/mapy-fleet-key all on main @ 352969d",
+  "pre_existing_worktree_note": "Uncommitted at run start (NOT part of any UC, never revert/commit): README.md (untracked, user's), api/src/Taxi.Api/Properties/launchSettings.json (modified, user's). docs/specs/todo/*.md = remaining queued specs (015-019), committed per-UC as each pipeline starts.",
+  "updated_at": "2026-09-16"
 }

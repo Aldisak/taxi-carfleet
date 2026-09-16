@@ -53,17 +53,18 @@ public sealed class SuggestAccessTests(PostgresFixture fixture)
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    /// <summary>A Driver caller receives 403 from geo/suggest (drivers excluded from CustomerOrStaff).</summary>
+    /// <summary>A Driver caller now receives 200 from geo/suggest (AllowAnonymous — any caller is allowed).</summary>
     [Fact]
-    public async Task Suggest_Driver_Returns403()
+    public async Task Suggest_Driver_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
+        SetupFakeSuggest();
 
         var client = fixture.Factory.CreateClient();
         client.AsDriver(Guid.CreateVersion7(), Guid.CreateVersion7());
 
         var resp = await client.GetAsync(SuggestUrl, ct);
-        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     /// <summary>A Customer caller receives 403 from POST geo/route (route is NOT widened to customers).</summary>

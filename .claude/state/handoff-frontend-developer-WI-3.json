@@ -1,19 +1,37 @@
 {
   "wi": "WI-3",
+  "uc": "UC-014",
   "status": "done",
   "hit_max_turns": false,
   "files_changed": [
-    "web/src/shared/api/client.ts",
-    "web/src/features/admin/adminTenantSettingsForm.ts",
-    "web/src/features/admin/adminTenantSettingsForm.test.ts",
-    ".claude/state/handoff-frontend-developer-WI-3.json"
+    "web/src/shared/ui/BottomSheet.tsx",
+    "web/src/shared/ui/BottomSheet.test.tsx",
+    "web/src/shared/ui/SearchingLoader.tsx",
+    "web/src/shared/ui/SearchingLoader.test.tsx",
+    "web/src/shared/i18n/cs-CZ.json",
+    "web/src/shared/i18n/en-US.json",
+    "web/src/shared/i18n/ru-RU.json",
+    "web/src/shared/i18n/uk-UA.json",
+    "web/src/shared/i18n/fil-PH.json",
+    "web/src/shared/i18n/de-DE.json"
   ],
   "tests_added": [
-    "web/src/features/admin/adminTenantSettingsForm.test.ts (30 tests)"
+    "BottomSheet_open_movesFocusIntoSheet",
+    "BottomSheet_escape_collapsesOrCloses_restoresFocusToTrigger",
+    "BottomSheet_escape_firesOnClose",
+    "BottomSheet_hasDialogRoleAndAriaLabel",
+    "BottomSheet_scrollableContent_rendersChildren",
+    "BottomSheet_doesNotRenderWhenClosed",
+    "BottomSheet_hasNoAxeViolations",
+    "SearchingLoader_hasStatusRoleAndDefaultLabel",
+    "SearchingLoader_rendersCustomLabelKey",
+    "SearchingLoader_hasNoAxeViolations"
   ],
-  "red_observed": "true — first scoped run (npx vitest run adminTenantSettingsForm) failed to load the module (Failed to load url ./adminTenantSettingsForm; 0 tests collected) because adminTenantSettingsForm.ts and the client DTOs did not exist yet",
-  "full_suite": { "test_files": 221, "tests": 1533, "passed": 1533, "failed": 0 },
-  "tsc": "clean",
-  "lint": "0 warnings",
-  "notes": "UC-012 WI-3 (web lane, pure-logic only — no component). client.ts gained AdminTenantSettingsDto (GET shape; mapyBrowserKey string|null, mapyServerKeyConfigured boolean, NO server-key value field), UpdateAdminTenantSettingsRequest (PUT; mapyServerKey/mapyBrowserKey string|null), getAdminTenantSettings(fleetId), putAdminTenantSettings(fleetId, req) — mirrors getAdminFleets/postCreateFleet exactly (apiRequest). New pure module adminTenantSettingsForm.ts: AdminTenantSettingsFormValues (number fields as strings, both keys as strings, mapyServerKeyConfigured carried for WI-4's hint), validateAdminTenantSettingsForm -> admin.tenant.validation.* i18n-key map, toUpdateRequest, fromDto. SECURITY (RED tests written FIRST, asserted toBeNull + not.toBe('')): toUpdateRequest maps blank AND whitespace-only input for BOTH mapyServerKey and mapyBrowserKey -> null (KEEP the stored key), never '' (which would CLEAR server-side). fromDto ALWAYS seeds mapyServerKey blank (DTO never carries it), passes mapyServerKeyConfigured through, seeds mapyBrowserKey from dto.mapyBrowserKey ?? ''. KEY TRAP AVOIDED (advisor catch): mapCenterLat/Lng validated with Number.isFinite (floats, defaults 50.08/14.42) NOT Number.isInteger — mirroring fleetSettingsForm's isInteger check per-field would have rejected the entity defaults. Integer+range fields (offerTimeout 10..600, autoDispatchAfter >=0, maxOfferRadius 1..100, smsCap >=0, smsUnitCost >=0, mapZoom 1..20, geoBudget >=0) use Number.isInteger + bounds; currency validated as exactly 3 ASCII letters (^[A-Za-z]{3}$). Design-review F4 folded in (keep-on-blank deliberate for both keys; WI-4 page documents via field hint). No locale JSON entries added — WI-4 owns those per instructions. No any; explicit return types on all exports; no fetch/axios outside client.ts; tests colocated. Handoff filename keyed on WI-<n> collided with a stale UC-011 ru-RU handoff (documented CLAUDE.md fact) — overwritten with this UC-012 WI-3 record; recover UC-011 detail from git history if needed. Did NOT touch pre-existing uncommitted tree (README.md, launchSettings.json, docs/*, api/*). Nothing committed."
+  "red_observed": true,
+  "full_suite": "228 files / 1571 tests passed (includes locales.parity.test.ts)",
+  "tsc": "pass",
+  "lint": "pass (0 warnings, check:geo + eslint --max-warnings 0)",
+  "build": "pass (vite build + PWA injectManifest)",
+  "size": "pass — app js 196.8 kB / 260 kB; analytics 94.79/115; admin 63.97/70. shared/ui is eager but footprint stayed well within budget.",
+  "notes": "BottomSheet is a NON-MODAL sheet (advisor-confirmed): no focus trap by design, so the Mapy attribution logo (theme.zIndex.attribution) above the sheet (theme.zIndex.overlay) stays keyboard-reachable per WI-2 AC. Focus capture/restore driven off the open false<->true transition via a wasOpen ref + useEffect (captures document.activeElement as trigger on open, restores on close); tests use a stateful Harness so onClose actually flips open (static open+vi.fn() would not exercise restore). Sheet container gets tabIndex={-1} and receives focus on open (children may have nothing focusable). Escape handler stopPropagation + onClose. SearchingLoader spin uses styled keyframes with a @media (prefers-reduced-motion: reduce) { animation: none } block — no matchMedia mock needed in jsdom; label rendered as visible text inside role=status (mirrors MapyMap LoadingState). i18n: added ONLY customer.sheet.label + customer.loader.searching to all six locales (genuine per-locale translations, no Czech placeholders); did NOT touch WI-2's customer.shell.* or WI-4's GPS keys. The six JSONs were already staged by WI-2 — re-staged to capture the add-only 6-line insertion each (verified via git diff: exactly the sheet/loader block, existing content untouched). No useMemo/useCallback added (web-performance memoization policy). Theme tokens only; COLLAPSED/EXPANDED heights in dvh keep the map+logo visible behind the sheet. Reduced-motion is IMPLEMENTED (SearchingLoader Spinner @media (prefers-reduced-motion: reduce) { animation: none }) but has NO dedicated test by design: jsdom does not evaluate media queries against computed style, so any such test would assert nothing real or brittly scrape injected <style> text — and the authoritative designer test_cases require only role=status + label + axe for the loader (which are covered). This is not an oversight. This UC-014 WI-3 handoff overwrote a stale same-named WI-3 handoff from a prior UC (WI numbers repeat across UCs — CLAUDE.md filename-collision note)."
 }

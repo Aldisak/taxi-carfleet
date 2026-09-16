@@ -59,9 +59,17 @@ describe('useSuggest', () => {
     expect(result.current.items[0].label).toBe('Hlavní 1, Praha')
   })
 
-  it('does not query when logged out (suggest is CustomerOnly)', () => {
+  it('queries when logged out for a >= 3-char query (suggest is anonymous-by-slug, WI-1)', () => {
+    mockSuggest.mockResolvedValue({ items: [] })
     localStorage.removeItem('auth.accessToken')
     renderHook(() => useSuggest('Hlavní'), { wrapper })
+    act(() => { vi.advanceTimersByTime(500) })
+    expect(mockSuggest).toHaveBeenCalledWith('Hlavní')
+  })
+
+  it('still does not query for fewer than 3 characters when logged out (regression)', () => {
+    localStorage.removeItem('auth.accessToken')
+    renderHook(() => useSuggest('ab'), { wrapper })
     act(() => { vi.advanceTimersByTime(500) })
     expect(mockSuggest).not.toHaveBeenCalled()
   })

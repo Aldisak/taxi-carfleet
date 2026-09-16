@@ -882,6 +882,21 @@
   },
   "customer": {
     "appName": "Taxi",
+    "shell": {
+      "mapLabel": "Map of the area",
+      "chromeLabel": "App controls",
+      "topSlotLabel": "Search",
+      "bottomSlotLabel": "Order details",
+      "locating": "Finding your location...",
+      "gpsDenied": "Location access was denied. Pick your pickup point on the map.",
+      "gpsUnavailable": "Location is unavailable. Pick your pickup point on the map."
+    },
+    "sheet": {
+      "label": "Details panel"
+    },
+    "loader": {
+      "searching": "Finding a driver..."
+    },
     "footer": {
       "gdpr": "Privacy policy"
     },

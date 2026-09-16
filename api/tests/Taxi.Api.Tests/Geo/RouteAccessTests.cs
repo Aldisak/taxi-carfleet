@@ -65,27 +65,35 @@ public sealed class RouteAccessTests(PostgresFixture fixture)
         resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    // ── Suggest endpoint (CustomerOrStaff after A-geo-suggest; drivers excluded) ──
+    // ── Suggest endpoint (AllowAnonymous after UC-014 WI-1; all callers allowed) ──
 
-    /// <summary>A Driver caller receives 403 from geo/suggest (CustomerOrStaff excludes drivers).</summary>
+    /// <summary>A Driver caller now receives 200 from geo/suggest (AllowAnonymous — any caller is allowed).</summary>
     [Fact]
-    public async Task Suggest_Driver_Returns403()
+    public async Task Suggest_Driver_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
+        SetupFakeSuggest();
 
         var client = fixture.Factory.CreateClient();
         client.AsDriver(Guid.CreateVersion7(), Guid.CreateVersion7());
 
         var resp = await client.GetAsync(SuggestUrl, ct);
-        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private void SetupFakeRoute()
     {
         var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
         fake.Reset();
         fake.RouteResult = new MapyRouteResultData(1000, 120, []);
+    }
+
+    private void SetupFakeSuggest()
+    {
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
+        fake.Reset();
+        fake.SuggestResult = [new MapySuggestResult("Prague", null, null, 50.08, 14.43)];
     }
 }

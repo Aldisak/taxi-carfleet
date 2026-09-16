@@ -361,6 +361,38 @@ export function getGeoSuggest(q: string): Promise<GeoSuggestResponse> {
 }
 
 /**
+ * Response for GET /geo/reverse (ReverseResponse). camelCase mirror of the backend record
+ * `ReverseResponse(bool Found, string? Label, string? Street, string? Municipality)`. On upstream
+ * failure or an unresolvable fleet the backend returns { found: false } with null fields — that is
+ * the "no address" case, never an error, so callers just render no label.
+ */
+export interface GeoReverseResponse {
+  found: boolean
+  label: string | null
+  street: string | null
+  municipality: string | null
+}
+
+/** Rounds a coordinate to 4 decimals — matches the backend Math.Round(..,4) and stabilizes the
+ *  reverse query key against sub-metre map jitter. */
+function roundCoord(value: number): number {
+  return Math.round(value * 1e4) / 1e4
+}
+
+/**
+ * GET /geo/reverse — reverse geocode a coordinate to a human-readable address (UC-014 WI-4).
+ * Anonymous-by-slug (the fleet is resolved from the X-Fleet-Slug header attached by apiRequest);
+ * WI-1 relaxed this endpoint to AllowAnonymous so it works logged-out. Coordinates are rounded to
+ * 4 decimals before the call to match the backend rounding and keep the TanStack key stable.
+ * URLSearchParams stringifies numbers as dot-decimal (JS has no cs-CZ comma trap), so the query is
+ * always invariant-formatted — mirrors getGeoSuggest.
+ */
+export function getGeoReverse(lat: number, lng: number): Promise<GeoReverseResponse> {
+  const params = new URLSearchParams({ lat: String(roundCoord(lat)), lng: String(roundCoord(lng)) })
+  return apiRequest<GeoReverseResponse>(`/geo/reverse?${params}`)
+}
+
+/**
  * POST /geo/route — route distance/duration/estimate + geometry. Migrated from the old
  * GET+query-string to a nested JSON body { from:{lat,lng}, to:{lat,lng} } (UC-010 WI-09); the
  * body coords are numbers, sidestepping the cs-CZ double query-binding locale trap (CLAUDE.md).

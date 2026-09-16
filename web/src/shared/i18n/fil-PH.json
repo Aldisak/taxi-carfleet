@@ -882,6 +882,21 @@
   },
   "customer": {
     "appName": "Taxi",
+    "shell": {
+      "mapLabel": "Mapa ng paligid",
+      "chromeLabel": "Mga kontrol ng app",
+      "topSlotLabel": "Paghahanap",
+      "bottomSlotLabel": "Mga detalye ng order",
+      "locating": "Hinahanap ang iyong lokasyon...",
+      "gpsDenied": "Tinanggihan ang access sa lokasyon. Piliin ang lugar ng pagsundo sa mapa.",
+      "gpsUnavailable": "Hindi available ang lokasyon. Piliin ang lugar ng pagsundo sa mapa."
+    },
+    "sheet": {
+      "label": "Panel ng mga detalye"
+    },
+    "loader": {
+      "searching": "Naghahanap ng driver..."
+    },
     "footer": {
       "gdpr": "Proteksyon ng personal na datos"
     },

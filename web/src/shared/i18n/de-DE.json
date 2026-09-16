@@ -882,6 +882,21 @@
   },
   "customer": {
     "appName": "Taxi",
+    "shell": {
+      "mapLabel": "Karte der Umgebung",
+      "chromeLabel": "App-Steuerung",
+      "topSlotLabel": "Suche",
+      "bottomSlotLabel": "Bestelldetails",
+      "locating": "Ihr Standort wird ermittelt...",
+      "gpsDenied": "Standortzugriff wurde verweigert. Wählen Sie den Abholort auf der Karte.",
+      "gpsUnavailable": "Standort nicht verfügbar. Wählen Sie den Abholort auf der Karte."
+    },
+    "sheet": {
+      "label": "Detailbereich"
+    },
+    "loader": {
+      "searching": "Fahrer wird gesucht..."
+    },
     "footer": {
       "gdpr": "Datenschutz"
     },

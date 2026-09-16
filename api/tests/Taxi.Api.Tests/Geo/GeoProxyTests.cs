@@ -64,19 +64,22 @@ public sealed class GeoProxyTests(PostgresFixture fixture)
         body!.Items.Should().BeEmpty();
     }
 
-    /// <summary>A driver caller receives 403 Forbidden. After A-geo-suggest, suggest is
-    /// CustomerOrStaff (Customer + Dispatcher + FleetAdmin); drivers remain excluded.</summary>
+    /// <summary>A driver caller now receives 200 from suggest (AllowAnonymous after UC-014 WI-1 — any caller is allowed).</summary>
     [Fact]
-    public async Task Suggest_NonDispatcher_Returns403()
+    public async Task Suggest_NonDispatcher_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
+
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
+        fake.Reset();
+        fake.SuggestResult = [new MapySuggestResult("Prague", null, null, 50.08, 14.43)];
 
         var client = fixture.Factory.CreateClient();
         client.AsDriver(Guid.CreateVersion7(), Guid.CreateVersion7());
 
         var resp = await client.GetAsync("/api/v1/geo/suggest?q=Prague", ct);
 
-        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     // ── Route tests ───────────────────────────────────────────────────────────

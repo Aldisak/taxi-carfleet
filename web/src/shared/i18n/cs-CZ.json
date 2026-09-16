@@ -882,6 +882,21 @@
   },
   "customer": {
     "appName": "Taxi",
+    "shell": {
+      "mapLabel": "Mapa okolí",
+      "chromeLabel": "Ovládání aplikace",
+      "topSlotLabel": "Vyhledávání",
+      "bottomSlotLabel": "Detaily objednávky",
+      "locating": "Zjišťuji vaši polohu...",
+      "gpsDenied": "Přístup k poloze byl odepřen. Vyberte místo vyzvednutí na mapě.",
+      "gpsUnavailable": "Poloha není dostupná. Vyberte místo vyzvednutí na mapě."
+    },
+    "sheet": {
+      "label": "Panel s detaily"
+    },
+    "loader": {
+      "searching": "Hledám řidiče..."
+    },
     "footer": {
       "gdpr": "Ochrana osobních údajů"
     },

@@ -1,42 +1,56 @@
 {
-  "uc": "UC-013",
-  "round": 2,
+  "uc": "UC-014",
+  "round": 1,
   "blocks_merge": false,
-  "round2_verdict": "PASS — all three round-1 findings resolved (F1: 3 DI-selection tests incl. IHostEnvironment stub trap documented, AC#5; F2: phone masked last-4 in BOTH branches, only {Body} raw, dev test asserts code present + full phone absent, AC#4; F3: XML summary rewrite is AC#6/Deliverable 2). No regressions vs verified_not_findings; WI remains single S. Zero findings. Persisted by conductor for agent a523419b18eeaa45f (no Write tool).",
-  "round1_blocks_merge": false,
   "findings": [
     {
       "id": "F1",
       "severity": "MEDIUM",
       "wi": "WI-1",
-      "title": "Factory sender-selection in AuthFeatureConfiguration has no automated test",
-      "detail": "Both planned unit tests construct DevConsoleSmsSender directly with env stubs; neither exercises the AuthFeatureConfiguration factory (Sms:DevLogCode=true -> DevConsoleSmsSender, false -> ConsoleSmsSender). AC#1 (dev selects the code-logging sender) and AC#3 (masked ConsoleSmsSender is the default when the flag is unset) are therefore only manually verified. The customer-auth regression tests override ISmsSender in ConfigureTestServices, so they bypass the factory entirely. The security-critical branch (runtime env guard) IS pinned by the Production-masks test, and the selection is a 3-line config read mirroring the untested Seed:Enabled precedent — hence MEDIUM, not a blocker.",
-      "suggested_fix": "Optionally add a focused DI test: build a ServiceCollection, run AuthFeatureConfiguration.AddFeatureDependencies with Sms:DevLogCode=true then false, resolve ISmsSender, and assert the concrete type (DevConsoleSmsSender vs ConsoleSmsSender). Accept as-is if matching the Seed:Enabled precedent, but note the coverage gap in the WI handoff."
+      "title": "geocode/reverse Guid.Empty short-circuit is load-bearing AND untestable with the current singleton FakeGeoService — the real production 500 can ship green",
+      "detail": "Only SuggestAsync has the Guid.Empty bypass (GeoService.cs:28-33). GeocodeAsync/ReverseAsync call geoCache.GetOrAddAsync(Guid.Empty,...) unconditionally; on cache miss + upstream Success, GeoCache.UpsertL2Async Adds a GeoCacheEntry{FleetId=Guid.Empty} + usageRecorder.RecordAsync(Guid.Empty) — both FK-constrained to fleets -> InvalidOperationException -> 500 via DontCatchExceptions(). AC#5 'never 500' therefore REQUIRES the endpoint-level short-circuit for geocode/reverse. Test-fidelity gap: FakeGeoService is a singleton whose ReverseAsync/GeocodeAsync IGNORE fleetId (FakeGeoService.cs:91-119), so the DegradesFoundFalse test passes with or without the short-circuit; defaults already yield found:false so the test cannot RED.",
+      "suggested_fix": "Make the test RED-able: set FakeGeoService.ReverseResult/GeocodeResult to a POSITIVE (Found=true) result and assert the endpoint STILL returns found:false with no resolvable fleet — fails unless the endpoint short-circuits on Guid.Empty before calling GeoService. State plainly that geocode/reverse have NO SuggestAsync-style bypass. Optionally one non-fake integration test pinning the real FK path."
     },
     {
       "id": "F2",
-      "severity": "LOW",
-      "wi": "WI-1",
-      "title": "Dev branch logs the raw unmasked phone number (PII), beyond the documented exception",
-      "detail": "The planned dev template `logger.LogInformation(\"Dev SMS {Phone} {Body}\", phone, message)` passes the full E.164 phone unmasked. The spec's documented exception to rules/logging.md authorizes logging the OTP code/body only — it does not mention the phone number. The masked branch (and existing ConsoleSmsSender) log only last-4. This is an additional, unstated PII deviation. Dev-only, so LOW.",
-      "suggested_fix": "Either mask the phone in the dev branch too (reuse the last-4 helper, keeping only {Body} raw), or explicitly widen the bold class comment / spec exception to state the dev branch also logs the full phone and why that is acceptable in Development."
+      "severity": "MEDIUM",
+      "wi": "WI-3",
+      "title": "WI-3 AC depends on theme.zIndex which only WI-2 creates, but WI-3 has no depends_on — 'all four independently verifiable/concurrent' is false",
+      "detail": "theme.ts/theme.d.ts have touchTargets but NO zIndex today. WI-2 adds theme.zIndex; WI-3's BottomSheet AC requires it but does not touch theme.ts and declares no depends_on — WI-3's own 'tsc green' AC cannot pass before WI-2.",
+      "suggested_fix": "Add depends_on:[WI-2] to WI-3 (or one owner for the zIndex token); correct the concurrency claim in the work-items doc."
     },
     {
       "id": "F3",
+      "severity": "MEDIUM",
+      "wi": "WI-2",
+      "title": "WI-2/3/4 all edit the same six i18n locale JSONs — concurrent execution collides; only sequential is safe",
+      "detail": "files_touched for WI-2, WI-3, WI-4 each list all six locale files. Parity coverage is present, but three parallel WIs writing the same six JSONs conflict. The 'concurrent-safe' claim is false w.r.t. these files.",
+      "suggested_fix": "Sequence the web WIs; note in the work-items doc that the shared i18n files force sequential execution; each WI keeps its own key group."
+    },
+    {
+      "id": "F4",
       "severity": "LOW",
       "wi": "WI-1",
-      "title": "AuthFeatureConfiguration XML summary becomes stale after the factory change",
-      "detail": "The existing AddFeatureDependencies summary states ConsoleSmsSender 'is registered unconditionally — no production SMS gateway exists in v1.' After replacing the unconditional AddSingleton with the gated factory, this is false/misleading. It also mislabels the lifetime as 'scoped' while registration is singleton. Won't trip -warnaserror. rules/csharp-style.md#xml-documentation.",
-      "suggested_fix": "Update the XML summary to describe the Sms:DevLogCode gate (DevConsoleSmsSender when true, else ConsoleSmsSender), correct 'scoped' to 'singleton', and drop the 'registered unconditionally' claim."
+      "title": "Keep the rate-limit guard position identical when re-keying (400-before-429 ordering)",
+      "detail": "FE validation 400 (min 3 chars) runs before HandleAsync and is unaffected; the guard must stay first in HandleAsync with only the key source changed (sub -> else anon hash of ip|slug|'anon').",
+      "suggested_fix": "Re-key the guard in place; promote the anon-hash stability unit test (fixed IP -> stable Guid, differs from UUIDv7 space) from optional to required."
+    },
+    {
+      "id": "F5",
+      "severity": "LOW",
+      "wi": "WI-3",
+      "title": "shared/ui placement is fine (shared list is non-exhaustive: shared/test, shared/perf already exist)",
+      "detail": "BottomSheet+SearchingLoader consumed by 2+ features (UC-015/016/019) — promotion rule satisfied.",
+      "suggested_fix": "No action."
+    },
+    {
+      "id": "F6",
+      "severity": "LOW",
+      "wi": "WI-2",
+      "title": "CustomerMapShell must remain a SIBLING of CustomerLayout (never nested) to avoid double ensureFleetSlug/silent-refresh",
+      "detail": "The shell re-implements the one-shot initializers; nesting under CustomerLayout in UC-015 would double-run them. No live risk in this UC (no router entry added).",
+      "suggested_fix": "Pin sibling-not-nested in WI-2 notes + shell doc comment; extend the enablesSilentRefresh once-assert to guard double-invoke."
     }
   ],
-  "verified_not_findings": [
-    "Namespace collision: send-sms CLI, CliCommands, NotificationDispatchJob all resolve the Notifications-namespace ISmsSender; only RequestCodeEndpoint consumes the Sms-namespace one UC-013 modifies.",
-    "Double gate sound: DI flag selects sender, runtime env.IsDevelopment() inside the sender is the real guard; Production-masks test is the correct AC#2 pin.",
-    "No captive dependency (ILogger + IHostEnvironment both singleton-safe).",
-    "CustomerAuthTests override ISmsSender via ConfigureTestServices -> existing tests unaffected by the factory.",
-    "appsettings.Development.json has no Sms section today (safe add); base has Sms:ApiKey only -> GetValue defaults false.",
-    "Test file location: api/tests/Taxi.Api.Tests/Infra/ (not Infrastructure/)."
-  ],
-  "persisted_by": "conductor on behalf of design-reviewer agent a0cc6475785022ea4 (no Write tool); content verbatim, 2026-09-15"
+  "persisted_by": "conductor on behalf of design-reviewer agent ae73ff218b3233a48 (no Write tool); content verbatim, 2026-09-16"
 }

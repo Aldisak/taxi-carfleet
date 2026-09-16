@@ -1,43 +1,35 @@
 {
   "wi": "WI-4",
-  "wi_id": "WI-4",
-  "uc": "UC-012",
-  "lane": "web",
+  "uc": "UC-014",
   "status": "complete",
   "hit_max_turns": false,
   "files_changed": [
-    "web/src/features/admin/useAdminTenantSettings.ts",
-    "web/src/features/admin/useAdminTenantSettings.test.ts",
-    "web/src/features/admin/AdminTenantSettingsPage.tsx",
-    "web/src/features/admin/AdminTenantSettingsPage.test.tsx",
-    "web/src/features/admin/AdminFleetsPage.tsx",
-    "web/src/features/admin/AdminFleetsPage.test.tsx",
-    "web/src/app/router.tsx",
+    "web/src/shared/api/client.ts",
+    "web/src/shared/api/getGeoReverse.test.ts",
+    "web/src/features/customer/shell/useReverseGeocode.ts",
+    "web/src/features/customer/shell/useReverseGeocode.test.ts",
+    "web/src/features/customer/shell/centerPin.ts",
+    "web/src/features/customer/shell/centerPin.test.ts",
+    "web/src/features/customer/order/useSuggest.ts",
+    "web/src/features/customer/order/useSuggest.test.ts",
     "web/src/shared/i18n/cs-CZ.json",
     "web/src/shared/i18n/en-US.json",
     "web/src/shared/i18n/ru-RU.json",
     "web/src/shared/i18n/uk-UA.json",
     "web/src/shared/i18n/fil-PH.json",
-    "web/src/shared/i18n/de-DE.json",
-    "web/vite.config.ts",
-    "web/package.json",
-    "docs/decisions.md"
+    "web/src/shared/i18n/de-DE.json"
   ],
   "tests_added": [
-    "web/src/features/admin/useAdminTenantSettings.test.ts (2 tests: query key + exact dual invalidation as two separate invalidateQueries calls)",
-    "web/src/features/admin/AdminTenantSettingsPage.test.tsx (11 tests: seed from mocked GET; server-key blank on load + configured hint; not-set hint; valid submit -> mapped putAdminTenantSettings + success banner role=status; SECURITY blank server-key -> null and typed -> value; mirror browser-key; invalid hex -> role=alert + aria-invalid + no put; mutation-failure error banner; query load-error state; axe no violations)",
-    "web/src/features/admin/AdminFleetsPage.test.tsx (+1 test: per-row Edit link href = /admin/fleets/{id}/settings)"
+    "web/src/shared/api/getGeoReverse.test.ts (4: GET /geo/reverse?lat=..&lng=.. URL shape, 4-decimal rounding, dot-decimal invariant formatting, response mapping to {found,label,street,municipality})",
+    "web/src/features/customer/shell/useReverseGeocode.test.ts (3: debounce+round+one-call with ['geo','reverse',lat,lng] key, disabled-without-coords, no cache thrash on sub-4th-decimal jitter)",
+    "web/src/features/customer/shell/centerPin.test.ts (8: resolveCenterSource permission branches granted/denied/unavailable/prompt/granted-no-fix; createMoveendDebouncer settle/re-emit/cancel)",
+    "web/src/features/customer/order/useSuggest.test.ts (INVERTED 'queries logged-out at >=3 chars' + added '<3 chars logged-out still no query' regression)"
   ],
-  "red_observed": {
-    "hook_test": "RED observed: run failed 'Failed to resolve import ./useAdminTenantSettings' (module missing); GREEN after creating the hook. The dual-invalidation assertion is the load-bearing guard.",
-    "edit_link_test": "RED observed: getByRole('link',{name:'Upravit'}) 'Unable to find role=link' before the Edit column existed; GREEN after adding it.",
-    "page_test": "HONEST NOTE: RED was at import-resolution only (page module + admin.tenant.* i18n keys absent), not a per-assertion RED. The page component and i18n keys were written together, then the suite ran green on first execution — each behavior was NOT individually RED-first. The SECURITY assertion (mapyServerKey null on blank submit via toUpdateRequest) genuinely guards the blank->\"\" clear-key regression."
-  },
-  "full_suite": { "test_files": 223, "tests": 1547, "passed": 1547, "failed": 0 },
-  "tsc": "ok",
-  "lint": "ok (0 warnings; check:geo + eslint --max-warnings 0)",
-  "build": "ok",
-  "size": "ok — app js 196.3/260 KB, analytics 94.79/115 KB, admin 63.96/70 KB (all green, fresh rebuild)",
-  "verification": { "tool": "vitest", "filter": "features/admin", "result": "13 files / 90 tests passed" },
-  "notes": "Consumes WI-3 exports unchanged (validateAdminTenantSettingsForm/toUpdateRequest/fromDto + client getAdminTenantSettings/putAdminTenantSettings). SECURITY blank=keep key mapping lives in WI-3 toUpdateRequest (trimOrNull); the page only invokes it, never re-maps keys. useUpdateAdminTenantSettings invalidates EXACTLY ['admin','fleets',fleetId,'settings'] and ['admin','fleets'] as two explicit calls, never bare invalidateQueries. Server-key input type=password autoComplete=new-password loads blank + configured/not-set hint from dto.mapyServerKeyConfigured + keep-on-blank hint (design-review F4) on both keys. Number inputs seeded from fromDto (never blank) per WI-3 advisory. All 17 admin.tenant.validation.* keys byte-match the K map in adminTenantSettingsForm.ts; real translations in all 6 locales; parity green. Route added as sibling of /admin under AdminGuard via lazyDispatch. DEVIATION FROM designer files_touched (intentional): designer assumed the page would 'ride the existing lazy admin chunk (size unaffected)' — wrong twice (no single admin chunk; size-limit 'app js' glob sums all non-analytics chunks). Baseline was already 257.88/260 KB (99.2%); the required 20-field editor added ~3.1 KB brotli -> 987 B over. Following the WI note's explicit 'investigate chunking before touching budgets' directive, I added a manualChunks 'admin' group in web/vite.config.ts (collapses features/admin/* into one SuperAdmin-only chunk), excluded admin-*.js from the main app-js budget, and added a dedicated admin-*.js budget (70 KB = current 63.96 KB + headroom) in web/package.json — the same rationale analytics is excluded (admin is never fetched by a normal dispatcher/driver/customer session). This is the chunking solution the WI asked for, NOT a budget bump, and it improved the end-user bundle from 260 KB to 196.3 KB. NO DUPLICATION: total brotli is conserved (260.99 before -> 196.3 + 63.96 = 260.26 after); had manualChunks duplicated a shared module the total would have risen ~50 KB. The ~61 KB that left the main bucket is admin-exclusive code that always shipped and is now correctly attributed; byte-conservation also proves nothing non-admin imports features/admin/. web/vite.config.ts, web/package.json, docs/decisions.md are NOT in the designer's files_touched but were required for the AC#8 size gate (the designer's size-neutral assumption was incorrect) — staged deliberately. AskUserQuestion is unavailable in this subagent, so this judgment used the 'note and proceed with best judgment' fallback. Reviewer note: locales.parity.test.ts checks KEY parity only, not translation quality (AC#7 'real translations' is a human check). NOTE: this filename overwrote a stale UC-011 handoff-frontend-developer-WI-4.json (WI numbers collide across UCs, per CLAUDE.md); recover the UC-011 version from git history if needed."
+  "red_observed": true,
+  "full_suite": "231 test files, 1587 tests, all passing",
+  "tsc": "pass (tsc --noEmit clean, strict, no any)",
+  "lint": "pass (check:geo OK + eslint --max-warnings 0 clean, jsx-a11y clean)",
+  "build": "pass (vite build + PWA injectManifest)",
+  "size": "pass (app js 196.64/260 kB, analytics 94.79/115 kB, admin 63.97/70 kB brotli — WI-4 adds only pure/hook/client with no leaflet import, eager bundle unaffected)",
+  "notes": "TDD RED->GREEN per cycle, each RED observed on the single file: centerPin (pure) -> getGeoReverse (client) -> useReverseGeocode (hook) -> useSuggest drop-hasToken (inverted test RED) -> i18n+parity. getGeoReverse mirrors getGeoSuggest (URLSearchParams + apiRequest); coords rounded to 4 decimals via Math.round(x*1e4)/1e4 in BOTH the client fn and the hook query key so the wire value equals the key (backend Math.Round(..,4)). No JS locale trap for the query string: String(number)/URLSearchParams is always dot-decimal (unlike C#), asserted by the -33.8/151.2 test. centerPin.ts is strictly pure: resolveCenterSource(permission,gps,config) decision + createMoveendDebouncer(delay,emit) setTimeout debouncer factory; it NEVER calls navigator.geolocation/permissions or Leaflet (those land in the WI-2 lazy map / UC-015 consumers per the WI notes). No component added -> no axe test (task's hooks/pure-only clause). getGeoReverse test spies on global fetch rather than vi.mock apiRequest, because an intra-module apiRequest call binds to the real function not the mocked export (documented gotcha). useSuggest gate dropped: removed the authStorage import + hasToken; enabled is now just >=3 chars + 300ms debounce. UseSuggestResult API unchanged and AddressAutocomplete does not itself gate on a token (grep-confirmed), so no consumer edit. WI-4 owns only customer.shell.{locating,gpsDenied,gpsUnavailable}, added to all six locales as real translations (de-DE umlauts are fine, not Czech-leftover markers); parity green. RUNTIME dependency on WI-1 (anonymous geo succeeds only once auth relaxed) is documented, NOT a build/test dep — tests mock the client. Overwrote a stale UC-012 WI-4 handoff at this path (WI numbers collide across UCs per CLAUDE.md; recover UC-012 detail from git history if needed). Staged only WI-4 files + this handoff; the six i18n JSONs re-staged over WI-2/3."
 }

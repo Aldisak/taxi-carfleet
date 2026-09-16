@@ -82,5 +82,22 @@ declare module 'styled-components' {
       /** Primary action buttons in the driver app (64px for large tap area). */
       primary: string
     }
+    /**
+     * Stacking-context scale for the full-bleed customer map shell (UC-014 WI-2).
+     * map < overlay < attribution < modal. The Mapy attribution logo renders at
+     * z-index 1000 inside the map's own stacking context (MapyMap), so overlay
+     * slots sit below it (100) and the bottom slot avoids the bottom-left corner
+     * to keep the logo reachable. WI-3's BottomSheet consumes `modal`.
+     */
+    zIndex: {
+      /** The full-bleed background map layer. */
+      map: number
+      /** Absolutely-positioned overlay slots (top search, bottom sheet host). */
+      overlay: number
+      /** The mandatory Mapy attribution/logo — must stay above overlay slots. */
+      attribution: number
+      /** Modal surfaces (BottomSheet expanded, dialogs) above everything. */
+      modal: number
+    }
   }
 }

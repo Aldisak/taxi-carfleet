@@ -77,4 +77,10 @@ export const theme: DefaultTheme = {
     min: '48px',
     primary: '64px',
   },
+  zIndex: {
+    map: 0,
+    overlay: 100,
+    attribution: 1000,
+    modal: 2000,
+  },
 }

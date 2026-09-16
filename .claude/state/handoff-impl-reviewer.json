@@ -1,15 +1,12 @@
 {
-  "uc": "UC-013",
-  "wi": "WI-1",
+  "uc": "UC-014",
+  "wi": "WI-4",
   "round": 1,
   "blocks_merge": false,
-  "findings": [
-    {
-      "id": "F-LOW-1",
-      "severity": "LOW",
-      "title": "LoggerSpy.Entry field named MessageTemplate actually stores the rendered string",
-      "detail": "In DevConsoleSmsSenderTests.cs the spy stores formatter(state, exception) — the fully rendered message ('Dev SMS ****3456 Your Taxi verification code: 123456') — into a field named MessageTemplate. It is not the template. This is not a correctness issue: asserting Contain(code)/NotContain(code) against the RENDERED string is precisely what makes the production-masks test a genuine regression pin (asserting against the literal template '...{Body}' would pass unconditionally and be a fake pin). The naming is merely misleading.",
-      "suggested_fix": "Rename the Entry field to Rendered (or assert on the State KVP for the {Body} value). Non-blocking cosmetic."
-    }
-  ]
+  "verification": {
+    "command": "npx vitest run src/features/customer/shell src/features/customer/order/useSuggest.test.ts src/shared/api/getGeoReverse.test.ts src/shared/i18n/locales.parity.test.ts",
+    "result": "15 files, 70 tests, all pass (centerPin 8, getGeoReverse 4, useReverseGeocode 3, useSuggest 5, parity 5)",
+    "exit_code": 0
+  },
+  "findings": []
 }

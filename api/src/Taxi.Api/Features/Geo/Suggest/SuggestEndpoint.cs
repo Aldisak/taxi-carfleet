@@ -2,7 +2,6 @@ using System.Globalization;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Taxi.Api.Authorization;
 using Taxi.Api.Common.Features;
 using Taxi.Api.Common.Geo;
 using Taxi.Api.Common.Tenancy;
@@ -11,7 +10,9 @@ using Taxi.Api.Infrastructure.Geo;
 namespace Taxi.Api.Features.Geo.Suggest;
 
 /// <summary>Address autocomplete proxy — delegates to Mapy.com via IGeoService.
-/// On any upstream failure returns 200 with an empty list so the order form is never blocked.</summary>
+/// On any upstream failure returns 200 with an empty list so the order form is never blocked.
+/// This endpoint is anonymous (AllowAnonymous): fleet is resolved from the X-Fleet-Slug header
+/// or JWT fleet_id claim. Rate-limited by a non-JWT key when unauthenticated (5 req/s).</summary>
 internal sealed class SuggestEndpoint(IGeoService geoService, ICurrentTenant currentTenant, GeoRateLimiter rateLimiter, ILogger<SuggestEndpoint> logger)
     : Endpoint<SuggestRequest, SuggestResponse>
 {
@@ -25,25 +26,32 @@ internal sealed class SuggestEndpoint(IGeoService geoService, ICurrentTenant cur
             .WithName(nameof(SuggestEndpoint))
             .WithTag(_featureConfiguration));
         DontCatchExceptions();
-        Policies(nameof(AuthorizationPolicies.CustomerOrStaff));
+        AllowAnonymous();
 
         Summary(s =>
         {
             s.Summary = "Address autocomplete";
-            s.Description = "Proxies query to Mapy.com address suggest. On upstream failure returns 200 with an empty list.";
+            s.Description = "Proxies query to Mapy.com address suggest. Anonymous-by-slug: fleet resolved from X-Fleet-Slug header or JWT fleet_id. Rate-limited by non-JWT key when unauthenticated. On upstream failure returns 200 with an empty list.";
             s.Responses[StatusCodes.Status200OK] = "List of address suggestions (may be empty).";
             s.Responses[StatusCodes.Status400BadRequest] = "Query too short (fewer than 3 characters).";
-            s.Responses[StatusCodes.Status401Unauthorized] = "Not authenticated.";
-            s.Responses[StatusCodes.Status403Forbidden] = "Not a customer, dispatcher, or fleet admin.";
-            s.Responses[StatusCodes.Status429TooManyRequests] = "Per-user rate limit exceeded (5 req/s).";
+            s.Responses[StatusCodes.Status429TooManyRequests] = "Rate limit exceeded (5 req/s per user/IP).";
         });
     }
 
     /// <inheritdoc />
     public override async Task HandleAsync(SuggestRequest req, CancellationToken ct)
     {
+        // Rate-limit guard — always the first statement.
+        // Authenticated: key on the JWT sub Guid (5 req/s per user, unchanged).
+        // Anonymous: key on a stable hash of ip|slug so no anonymous caller is unlimited.
+        // NOTE: Behind a reverse proxy, RemoteIpAddress is the proxy IP until ForwardedHeaders is configured.
+        // This degrades to a per-proxy bucket — still bounded, never unlimited.
         var subClaim = User.FindFirst("sub")?.Value;
-        if (!Guid.TryParse(subClaim, out var userId) || !rateLimiter.TryAcquire(userId))
+        var allowed = Guid.TryParse(subClaim, out var userId)
+            ? rateLimiter.TryAcquire(userId)
+            : rateLimiter.TryAcquire(BuildAnonKey());
+
+        if (!allowed)
         {
             AddError(Common.ErrorCodes.Geo.RateLimited);
             await Send.ErrorsAsync(429, ct);
@@ -85,5 +93,15 @@ internal sealed class SuggestEndpoint(IGeoService geoService, ICurrentTenant cur
             .ToList();
 
         await Send.OkAsync(new SuggestResponse(items), ct);
+    }
+
+    /// <summary>Builds the anonymous rate-limit key from the connection IP and resolved fleet slug.
+    /// Format: <c>{ip}|{slug}</c> or fallback literals when not available.
+    /// The key is passed to <see cref="GeoRateLimiter.DeriveAnonBucketId"/> for stable Guid derivation.</summary>
+    private string BuildAnonKey()
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "noip";
+        var slug = currentTenant.Slug ?? "anon";
+        return $"{ip}|{slug}";
     }
 }
