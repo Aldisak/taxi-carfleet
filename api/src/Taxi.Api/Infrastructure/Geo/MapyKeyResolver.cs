@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Taxi.Api.Common.Security;
 using Taxi.Api.Infrastructure.Entities;
 

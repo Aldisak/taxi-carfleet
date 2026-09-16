@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Taxi.Api.Common.Geo;
+using Taxi.Api.Common.Security;
 using Taxi.Api.Infrastructure;
 using Taxi.Api.Infrastructure.Entities;
 using Taxi.Api.Infrastructure.Geo;
@@ -55,7 +56,9 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
     private GeoService BuildGeoService(IServiceScope scope, IMapyClient mapyClient)
     {
         var cache = scope.ServiceProvider.GetRequiredService<GeoCache>();
-        return new GeoService(mapyClient, cache);
+        var db = scope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+        var keyResolver = scope.ServiceProvider.GetRequiredService<MapyKeyResolver>();
+        return new GeoService(mapyClient, cache, db, keyResolver);
     }
 
     // ── Route_CacheHit_NoClientCallNoCredit ──────────────────────────────────
@@ -220,9 +223,53 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         usage.Should().BeNull("fleetless suggest must not write geo_usage");
     }
 
+    // ── Suggest_FleetHasServerKey_ResolvesAndPassesKeyToClient ────────────────
+
+    /// <summary>Regression: the fleet's encrypted MapyServerKey must be loaded from FleetSettings,
+    /// decrypted, and passed to IMapyClient. Before the fix, MapyClient called keyResolver.Resolve(null)
+    /// so a per-fleet DB key was ignored and Mapy returned 401.</summary>
+    [Fact]
+    public async Task Suggest_FleetHasServerKey_ResolvesAndPassesKeyToClient()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var fleetId = Guid.CreateVersion7();
+        await SeedFleetAsync(fleetId, $"gsvc-key-{fleetId:N}", ct);
+
+        // Seed a FleetSettings row with an ENCRYPTED server key (protected via the real protector
+        // the resolver will use to decrypt it).
+        const string plaintextKey = "fleet-server-key-abc123";
+        using (var seedScope = fixture.Factory.Services.CreateScope())
+        {
+            var db = seedScope.ServiceProvider.GetRequiredService<TaxiDbContext>();
+            var protector = seedScope.ServiceProvider.GetRequiredService<IFleetKeyProtector>();
+            db.FleetSettings.Add(new FleetSettings
+            {
+                FleetId = fleetId,
+                MapyServerKey = protector.Protect(plaintextKey)
+            });
+            await db.SaveChangesAsync(ct);
+        }
+
+        var fakeClient = new FakeMapyClient
+        {
+            SuggestReturn = new GeoResult<IReadOnlyList<MapySuggestResult>>.Success(
+                new List<MapySuggestResult> { new("Praha", null, null, 50.08, 14.43) })
+        };
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var geoService = BuildGeoService(scope, fakeClient);
+
+        // Cache miss → the factory resolves the fleet key and passes it to the client.
+        var result = await geoService.SuggestAsync(fleetId, $"Praha-{fleetId:N}", near: null, ct);
+
+        fakeClient.LastServerKey.Should().Be(plaintextKey,
+            "GeoService must decrypt the fleet's MapyServerKey and pass it to IMapyClient");
+        result.Result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Success>();
+    }
+
     // ── Nested test doubles ───────────────────────────────────────────────────
 
-    /// <summary>Controllable IMapyClient that returns pre-set results.</summary>
+    /// <summary>Controllable IMapyClient that returns pre-set results and records the last server key it received.</summary>
     private sealed class FakeMapyClient : IMapyClient
     {
         public GeoResult<IReadOnlyList<MapySuggestResult>> SuggestReturn { get; set; } =
@@ -237,17 +284,32 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         public GeoResult<MapyRouteResultData> RouteResult { get; set; } =
             new GeoResult<MapyRouteResultData>.Unavailable(GeoUnavailableReason.Timeout);
 
-        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, CancellationToken ct) =>
-            Task.FromResult(SuggestReturn);
+        /// <summary>The server key passed to the most recent client call — lets tests assert key resolution.</summary>
+        public string? LastServerKey { get; private set; }
 
-        public Task<GeoResult<MapyGeocodeResult>> GeocodeAsync(string query, CancellationToken ct) =>
-            Task.FromResult(GeocodeReturn);
+        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, string? serverKey, CancellationToken ct)
+        {
+            LastServerKey = serverKey;
+            return Task.FromResult(SuggestReturn);
+        }
 
-        public Task<GeoResult<MapyRgeocodeResult>> ReverseGeocodeAsync(double lat, double lng, CancellationToken ct) =>
-            Task.FromResult(ReverseReturn);
+        public Task<GeoResult<MapyGeocodeResult>> GeocodeAsync(string query, string? serverKey, CancellationToken ct)
+        {
+            LastServerKey = serverKey;
+            return Task.FromResult(GeocodeReturn);
+        }
 
-        public Task<GeoResult<MapyRouteResultData>> RouteAsync(double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct) =>
-            Task.FromResult(RouteResult);
+        public Task<GeoResult<MapyRgeocodeResult>> ReverseGeocodeAsync(double lat, double lng, string? serverKey, CancellationToken ct)
+        {
+            LastServerKey = serverKey;
+            return Task.FromResult(ReverseReturn);
+        }
+
+        public Task<GeoResult<MapyRouteResultData>> RouteAsync(double fromLat, double fromLng, double toLat, double toLng, string? serverKey, CancellationToken ct)
+        {
+            LastServerKey = serverKey;
+            return Task.FromResult(RouteResult);
+        }
     }
 
     /// <summary>IMapyClient that counts calls but never returns useful data.</summary>
@@ -259,28 +321,28 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         public int RouteCalls { get; private set; }
         public int QuickPlaceCalls { get; private set; }
 
-        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, CancellationToken ct)
+        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, string? serverKey, CancellationToken ct)
         {
             SuggestCalls++;
             return Task.FromResult<GeoResult<IReadOnlyList<MapySuggestResult>>>(
                 new GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable(GeoUnavailableReason.Timeout));
         }
 
-        public Task<GeoResult<MapyGeocodeResult>> GeocodeAsync(string query, CancellationToken ct)
+        public Task<GeoResult<MapyGeocodeResult>> GeocodeAsync(string query, string? serverKey, CancellationToken ct)
         {
             GeocodeCalls++;
             return Task.FromResult<GeoResult<MapyGeocodeResult>>(
                 new GeoResult<MapyGeocodeResult>.Unavailable(GeoUnavailableReason.Timeout));
         }
 
-        public Task<GeoResult<MapyRgeocodeResult>> ReverseGeocodeAsync(double lat, double lng, CancellationToken ct)
+        public Task<GeoResult<MapyRgeocodeResult>> ReverseGeocodeAsync(double lat, double lng, string? serverKey, CancellationToken ct)
         {
             ReverseCalls++;
             return Task.FromResult<GeoResult<MapyRgeocodeResult>>(
                 new GeoResult<MapyRgeocodeResult>.Unavailable(GeoUnavailableReason.Timeout));
         }
 
-        public Task<GeoResult<MapyRouteResultData>> RouteAsync(double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct)
+        public Task<GeoResult<MapyRouteResultData>> RouteAsync(double fromLat, double fromLng, double toLat, double toLng, string? serverKey, CancellationToken ct)
         {
             RouteCalls++;
             return Task.FromResult<GeoResult<MapyRouteResultData>>(

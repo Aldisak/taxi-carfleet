@@ -1,10 +1,7 @@
 using System.Net;
 using System.Text;
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using Taxi.Api.Common.Security;
 using Taxi.Api.Infrastructure.Geo;
 using Taxi.Api.Tests.Infrastructure;
 
@@ -44,22 +41,14 @@ public sealed class MapyClientHandlerTests
         }
         """;
 
-    /// <summary>Builds an <see cref="IMapyClient"/> wired with the given <see cref="HttpMessageHandler"/>
-    /// and optional Mapy__ServerKey config value.</summary>
-    private static IMapyClient BuildClient(HttpMessageHandler handler, string? serverKey = "test-server-key")
+    /// <summary>Server key passed to client calls in these tests. MapyClient is fleet-agnostic — the key
+    /// is resolved by GeoService and passed per-call, so these tests supply it directly.</summary>
+    private const string TestKey = "test-server-key";
+
+    /// <summary>Builds an <see cref="IMapyClient"/> wired with the given <see cref="HttpMessageHandler"/>.</summary>
+    private static IMapyClient BuildClient(HttpMessageHandler handler)
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(serverKey is not null
-                ? new Dictionary<string, string?> { ["Mapy__ServerKey"] = serverKey }
-                : new Dictionary<string, string?>())
-            .Build();
-
         var services = new ServiceCollection();
-
-        // Register the NullFleetKeyProtector so MapyKeyResolver resolves the env key
-        services.AddSingleton<IFleetKeyProtector, NullFleetKeyProtector>();
-        services.AddSingleton<IConfiguration>(config);
-        services.AddSingleton<MapyKeyResolver>();
 
         // Register MapyClient as a typed HttpClient using the stub handler.
         // Base address must be set so relative URL calls in MapyClient resolve correctly.
@@ -87,7 +76,7 @@ public sealed class MapyClientHandlerTests
         var handler = new StubMapyHttpHandler(HttpStatusCode.OK, SampleSuggestJson);
         var client = BuildClient(handler);
 
-        var result = await client.SuggestAsync("nádraží", ct);
+        var result = await client.SuggestAsync("nádraží", TestKey, ct);
 
         result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Success>();
         var success = (GeoResult<IReadOnlyList<MapySuggestResult>>.Success)result;
@@ -115,7 +104,7 @@ public sealed class MapyClientHandlerTests
         int callsAtOpen = 0;
         for (int i = 0; i < 20; i++)
         {
-            var r = await client.SuggestAsync("test", ct);
+            var r = await client.SuggestAsync("test", TestKey, ct);
             if (r is GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable u
                 && u.Reason == GeoUnavailableReason.CircuitOpen)
             {
@@ -128,7 +117,7 @@ public sealed class MapyClientHandlerTests
 
         // Now that the breaker is open, subsequent calls must NOT hit the handler
         var beforeCount = handler.CallCount;
-        var result = await client.SuggestAsync("after-open", ct);
+        var result = await client.SuggestAsync("after-open", TestKey, ct);
         result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable>(
             "breaker is open — upstream must not be called");
         handler.CallCount.Should().Be(beforeCount, "no new handler calls after breaker opened");
@@ -149,12 +138,12 @@ public sealed class MapyClientHandlerTests
         var handler = StubMapyHttpHandler.AlwaysServiceUnavailable();
         var client = BuildClient(handler);
 
-        Func<Task> act = async () => await client.RouteAsync(50.08, 14.43, 50.09, 14.44, ct);
+        Func<Task> act = async () => await client.RouteAsync(50.08, 14.43, 50.09, 14.44, TestKey, ct);
 
         // Must not throw — Unavailable result is returned
         await act.Should().NotThrowAsync();
 
-        var result = await client.RouteAsync(50.08, 14.43, 50.09, 14.44, ct);
+        var result = await client.RouteAsync(50.08, 14.43, 50.09, 14.44, TestKey, ct);
         result.Should().BeOfType<GeoResult<MapyRouteResultData>.Unavailable>()
             .Which.Reason.Should().BeOneOf(
                 GeoUnavailableReason.ServerError,
@@ -172,7 +161,7 @@ public sealed class MapyClientHandlerTests
         var handler = new StubMapyHttpHandler(HttpStatusCode.OK, SampleRouteJson);
         var client = BuildClient(handler);
 
-        var result = await client.RouteAsync(50.0831, 14.435, 50.09, 14.45, ct);
+        var result = await client.RouteAsync(50.0831, 14.435, 50.09, 14.45, TestKey, ct);
 
         result.Should().BeOfType<GeoResult<MapyRouteResultData>.Success>();
         var success = (GeoResult<MapyRouteResultData>.Success)result;
@@ -198,7 +187,7 @@ public sealed class MapyClientHandlerTests
         var handler = new StubMapyHttpHandler(HttpStatusCode.OK, json);
         var client = BuildClient(handler);
 
-        var result = await client.RouteAsync(50.0, 14.0, 50.5, 14.5, ct);
+        var result = await client.RouteAsync(50.0, 14.0, 50.5, 14.5, TestKey, ct);
 
         result.Should().BeOfType<GeoResult<MapyRouteResultData>.Success>();
         var success = (GeoResult<MapyRouteResultData>.Success)result;
@@ -226,23 +215,28 @@ public sealed class MapyClientHandlerTests
         });
         var client = BuildClient(handler);
 
-        await client.SuggestAsync("Praha", ct);
+        await client.SuggestAsync("Praha", TestKey, ct);
 
         capturedUrl.Should().Contain("lang=cs");
         capturedUrl.Should().Contain("type=");
         capturedUrl.Should().Contain("regional.address");
     }
-}
 
-/// <summary>A no-op <see cref="IFleetKeyProtector"/> for tests that do not need real data protection.</summary>
-file sealed class NullFleetKeyProtector : IFleetKeyProtector
-{
-    /// <inheritdoc />
-    public string Protect(string plaintext) => plaintext;
+    // ── Test 7: missing server key short-circuits to Unavailable, no upstream call ──
 
-    /// <inheritdoc />
-    public string? Unprotect(string? ciphertext) => ciphertext;
+    /// <summary>A null/empty server key must NOT hit the upstream (which would 401): the client
+    /// short-circuits to Unavailable and never calls the handler.</summary>
+    [Fact]
+    public async Task SuggestAsync_MissingServerKey_ReturnsUnavailableWithoutCallingUpstream()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var handler = new StubMapyHttpHandler(HttpStatusCode.OK, SampleSuggestJson);
+        var client = BuildClient(handler);
 
-    /// <inheritdoc />
-    public string? TryUnprotect(string? ciphertext) => ciphertext;
+        var result = await client.SuggestAsync("Praha", serverKey: null, ct);
+
+        result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable>(
+            "a missing key must degrade cleanly, not fire a keyless upstream request");
+        handler.CallCount.Should().Be(0, "no upstream call may be made without a key");
+    }
 }

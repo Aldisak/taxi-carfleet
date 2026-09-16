@@ -12,7 +12,7 @@ namespace Taxi.Api.Infrastructure.Sms;
 /// The hashed code is stored in the DB and the raw code is never recoverable from it, so we intentionally
 /// log the raw message body in Development to enable local testing.</para>
 ///
-/// <para>PRODUCTION GUARD: the runtime <see cref="IHostEnvironment.IsDevelopment()"/> check is the sole
+/// <para>PRODUCTION GUARD: the runtime <c>IHostEnvironment.IsDevelopment()</c> check is the sole
 /// guarantee against a production leak — even if <c>Sms:DevLogCode=true</c> were somehow set in a
 /// non-Development environment, this sender logs only the masked phone marker (never the body).</para>
 /// </summary>

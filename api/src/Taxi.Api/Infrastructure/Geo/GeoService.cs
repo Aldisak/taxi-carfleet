@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Taxi.Api.Common.Geo;
 using Taxi.Api.Infrastructure.Entities;
 
@@ -10,8 +11,10 @@ namespace Taxi.Api.Infrastructure.Geo;
 ///   <item>RouteAsync Unavailable → return degraded haversine×1.3 estimate flagged with IsEstimate=true.</item>
 ///   <item>QuickPlace → cache-only lookup, never calls client, never records usage.</item>
 /// </list>
-/// CRITICAL: GeoCache.GetOrAddAsync is the single usage-accounting site. Do NOT inject or call GeoUsageRecorder here.</summary>
-internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IGeoService
+/// CRITICAL: GeoCache.GetOrAddAsync is the single usage-accounting site. Do NOT inject or call GeoUsageRecorder here.
+/// The Mapy server key is resolved HERE (this layer has the fleet id + DbContext) and passed into IMapyClient —
+/// the client itself is fleet-agnostic. Resolution happens inside the cache-miss factory so a cache hit costs no DB read.</summary>
+internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache, TaxiDbContext dbContext, MapyKeyResolver keyResolver) : IGeoService
 {
     /// <inheritdoc />
     public async Task<GeoCacheResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(
@@ -24,7 +27,8 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IG
         // entirely and call the client directly — no cache write, no usage recording.
         if (fleetId == Guid.Empty)
         {
-            var directResult = await mapyClient.SuggestAsync(q, ct);
+            var serverKey = await ResolveServerKeyAsync(Guid.Empty, ct);
+            var directResult = await mapyClient.SuggestAsync(q, serverKey, ct);
             return new GeoCacheResult<IReadOnlyList<MapySuggestResult>>(directResult, WasHit: false);
         }
 
@@ -33,7 +37,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IG
             fleetId,
             GeoCacheKind.Suggest,
             key,
-            async c => await mapyClient.SuggestAsync(q, c),
+            async c => await mapyClient.SuggestAsync(q, await ResolveServerKeyAsync(fleetId, c), c),
             ct);
     }
 
@@ -46,7 +50,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IG
             fleetId,
             GeoCacheKind.Geocode,
             key,
-            async c => await mapyClient.GeocodeAsync(q, c),
+            async c => await mapyClient.GeocodeAsync(q, await ResolveServerKeyAsync(fleetId, c), c),
             ct);
     }
 
@@ -59,7 +63,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IG
             fleetId,
             GeoCacheKind.Reverse,
             key,
-            async c => await mapyClient.ReverseGeocodeAsync(lat, lng, c),
+            async c => await mapyClient.ReverseGeocodeAsync(lat, lng, await ResolveServerKeyAsync(fleetId, c), c),
             ct);
     }
 
@@ -72,7 +76,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IG
             fleetId,
             GeoCacheKind.Route,
             key,
-            async c => await mapyClient.RouteAsync(fromLat, fromLng, toLat, toLng, c),
+            async c => await mapyClient.RouteAsync(fromLat, fromLng, toLat, toLng, await ResolveServerKeyAsync(fleetId, c), c),
             ct);
 
         if (cacheResult.Result is GeoResult<MapyRouteResultData>.Unavailable)
@@ -105,5 +109,22 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache) : IG
             _ => Task.FromResult<GeoResult<IReadOnlyList<MapySuggestResult>>>(
                 new GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable(GeoUnavailableReason.Timeout)),
             ct);
+    }
+
+    /// <summary>Resolves the Mapy.com server key for a fleet: loads its <see cref="FleetSettings"/> row
+    /// (bypassing the tenant query filter — the caller supplies the exact fleet id) and delegates decryption +
+    /// env fallback to <see cref="MapyKeyResolver"/>. A fleetless caller (<see cref="Guid.Empty"/>) has no
+    /// settings row, so only the environment fallback applies. The key is never logged.</summary>
+    private async Task<string?> ResolveServerKeyAsync(Guid fleetId, CancellationToken ct)
+    {
+        if (fleetId == Guid.Empty)
+            return keyResolver.Resolve(null);
+
+        var settings = await dbContext.FleetSettings
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(fs => fs.FleetId == fleetId, ct);
+
+        return keyResolver.Resolve(settings);
     }
 }

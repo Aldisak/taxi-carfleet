@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Net.Http.Json;
-using Microsoft.Extensions.Logging;
 using Polly.CircuitBreaker;
 
 namespace Taxi.Api.Infrastructure.Geo;
@@ -8,10 +6,11 @@ namespace Taxi.Api.Infrastructure.Geo;
 /// <summary>Typed HTTP client for the Mapy.com REST API.
 /// All methods map infrastructure failures (timeout, retry-exhausted 5xx, circuit-open) to
 /// <see cref="GeoResult{T}.Unavailable"/> internally — never throw for degradation, never return null.
-/// The server key is resolved per-call via <see cref="MapyKeyResolver"/> and is NEVER logged.</summary>
+/// The server key is resolved by <see cref="GeoService"/> (which has the fleet + DB context) and passed
+/// in per-call; it is NEVER logged. A missing key short-circuits to Unavailable with a clear warning
+/// instead of a confusing upstream 401.</summary>
 internal sealed class MapyClient(
     HttpClient httpClient,
-    MapyKeyResolver keyResolver,
     ILogger<MapyClient> logger) : IMapyClient
 {
     private const int MaxGeometryPoints = 200;
@@ -21,10 +20,12 @@ internal sealed class MapyClient(
 
     /// <inheritdoc />
     public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(
-        string query, CancellationToken ct)
+        string query, string? serverKey, CancellationToken ct)
     {
-        var key = keyResolver.Resolve(null);
-        var url = $"v1/suggest?apikey={key}&lang=cs&type={SuggestTypes}&limit=5&query={Uri.EscapeDataString(query)}";
+        if (MissingKey<IReadOnlyList<MapySuggestResult>>(serverKey, "suggest", out var unavailable))
+            return Task.FromResult(unavailable);
+
+        var url = $"v1/suggest?apikey={serverKey}&lang=cs&type={SuggestTypes}&limit=5&query={Uri.EscapeDataString(query)}";
         return ExecuteAsync<MapySuggestResponse, IReadOnlyList<MapySuggestResult>>(
             url,
             static response => ParseSuggestItems(response),
@@ -33,10 +34,12 @@ internal sealed class MapyClient(
     }
 
     /// <inheritdoc />
-    public Task<GeoResult<MapyGeocodeResult>> GeocodeAsync(string query, CancellationToken ct)
+    public Task<GeoResult<MapyGeocodeResult>> GeocodeAsync(string query, string? serverKey, CancellationToken ct)
     {
-        var key = keyResolver.Resolve(null);
-        var url = $"v1/geocode?apikey={key}&lang=cs&query={Uri.EscapeDataString(query)}";
+        if (MissingKey<MapyGeocodeResult>(serverKey, "geocode", out var unavailable))
+            return Task.FromResult(unavailable);
+
+        var url = $"v1/geocode?apikey={serverKey}&lang=cs&query={Uri.EscapeDataString(query)}";
         return ExecuteAsync<MapyGeocodeResponse, MapyGeocodeResult>(
             url,
             static response =>
@@ -51,11 +54,13 @@ internal sealed class MapyClient(
 
     /// <inheritdoc />
     public Task<GeoResult<MapyRgeocodeResult>> ReverseGeocodeAsync(
-        double lat, double lng, CancellationToken ct)
+        double lat, double lng, string? serverKey, CancellationToken ct)
     {
-        var key = keyResolver.Resolve(null);
+        if (MissingKey<MapyRgeocodeResult>(serverKey, "rgeocode", out var unavailable))
+            return Task.FromResult(unavailable);
+
         var ic = CultureInfo.InvariantCulture;
-        var url = $"v1/rgeocode?apikey={key}&lang=cs&lat={lat.ToString(ic)}&lon={lng.ToString(ic)}";
+        var url = $"v1/rgeocode?apikey={serverKey}&lang=cs&lat={lat.ToString(ic)}&lon={lng.ToString(ic)}";
         return ExecuteAsync<MapyRgeocodeResponse, MapyRgeocodeResult>(
             url,
             static response =>
@@ -74,11 +79,13 @@ internal sealed class MapyClient(
 
     /// <inheritdoc />
     public Task<GeoResult<MapyRouteResultData>> RouteAsync(
-        double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct)
+        double fromLat, double fromLng, double toLat, double toLng, string? serverKey, CancellationToken ct)
     {
-        var key = keyResolver.Resolve(null);
+        if (MissingKey<MapyRouteResultData>(serverKey, "route", out var unavailable))
+            return Task.FromResult(unavailable);
+
         var ic = CultureInfo.InvariantCulture;
-        var url = $"v1/routing/route?apikey={key}&lang=cs&routeType=car_fast" +
+        var url = $"v1/routing/route?apikey={serverKey}&lang=cs&routeType=car_fast" +
                   $"&start={fromLng.ToString(ic)},{fromLat.ToString(ic)}" +
                   $"&end={toLng.ToString(ic)},{toLat.ToString(ic)}";
         return ExecuteAsync<MapyRouteResponse, MapyRouteResultData>(
@@ -97,6 +104,21 @@ internal sealed class MapyClient(
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    /// <summary>Guards against a missing/empty server key: logs a warning (never the key value) and
+    /// yields an Unavailable result so callers degrade cleanly instead of firing a keyless upstream 401.</summary>
+    private bool MissingKey<TResult>(string? serverKey, string operation, out GeoResult<TResult> unavailable)
+    {
+        if (string.IsNullOrEmpty(serverKey))
+        {
+            logger.LogWarning("Mapy server key not configured {Operation}", operation);
+            unavailable = new GeoResult<TResult>.Unavailable(GeoUnavailableReason.ServerError);
+            return true;
+        }
+
+        unavailable = default!;
+        return false;
+    }
 
     /// <summary>Executes an HTTP GET against the Mapy API, handles resilience exceptions,
     /// and maps the result to a <see cref="GeoResult{T}"/>.</summary>
