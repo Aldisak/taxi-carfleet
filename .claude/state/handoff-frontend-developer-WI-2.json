@@ -1,47 +1,41 @@
 {
   "wi": "WI-2",
   "wi_id": "WI-2",
-  "uc": "UC-016",
+  "uc": "UC-018",
   "status": "complete",
-  "round": 2,
-  "round2_review_fixes": {
-    "review_source": ".claude/state/handoff-impl-reviewer-WI-2.json (round 1)",
-    "both_findings_resolved": true,
-    "findings": [
-      {
-        "severity": "HIGH",
-        "rule": "rules/web-react-style.md#styled-components",
-        "detail": "ReorderLink hardcoded `color: #ffffff` (the only raw color in the file). Replaced with `${({ theme }) => theme.colors.textOnPrimary}` — the purpose-built on-primary text token (theme.ts:35 = '#ffffff'), correctly paired with its `background: theme.colors.primary`. No hex literals remain in the file.",
-        "resolved": true
-      },
-      {
-        "severity": "LOW",
-        "rule": "rules/web-react-style.md#component-conventions",
-        "detail": "Removed the dead `expanded`/`setExpanded` local state (never set true — no expand control exists) and the unreachable collapse-first branch in handleClose. handleClose now just `setOpen(false)`. BottomSheet's `expanded` prop is non-optional in BottomSheetProps, so the JSX still passes `expanded={false}` (contract unchanged, public TrackingSheetProps unchanged, WI-4 import unaffected). No test asserted the dead branch — the Escape test verifies close, still correct; TrackingSheet.test.tsx unchanged, all 20 tests stay green.",
-        "resolved": true
-      }
-    ],
-    "verification": { "vitest_filter": "TrackingSheet", "vitest": "1 file, 20 tests passing, exit 0", "tsc": "pass (npm run --prefix web tsc, no errors — the round-1 CustomerMapShell.test.tsx blocker was resolved when WI-3 landed)", "lint": "pass (npm run --prefix web lint: check:geo + eslint --max-warnings 0, exit 0)" },
-    "scope": "ONLY web/src/features/customer/tracking/TrackingSheet.tsx edited and re-staged. No other file touched."
-  },
   "files_changed": [
-    "web/src/features/customer/tracking/TrackingSheet.tsx",
-    "web/src/features/customer/tracking/TrackingSheet.test.tsx"
+    "web/src/shared/api/client.ts",
+    "web/src/shared/api/client.test.ts",
+    "web/src/features/customer/order/suggestLocation.ts",
+    "web/src/features/customer/order/suggestLocation.test.ts",
+    "web/src/features/customer/order/useSuggest.ts",
+    "web/src/features/customer/order/useSuggest.test.ts",
+    "web/src/features/customer/order/DestinationSearch.tsx",
+    "web/src/features/customer/order/DestinationSearch.test.tsx",
+    "web/src/features/customer/order/MapOrderPage.tsx",
+    "web/src/features/customer/order/MapOrderPage.test.tsx"
   ],
   "tests_added": [
-    "TrackingSheet.test.tsx: 20 tests — role=dialog aria-label 'Stav jízdy'; searching phase exact heading 'Hledáme řidiče…' + SearchingLoader role=status 'Hledám řidiče...' + Cancel; Assigned status collapses to the same searching heading; assigned phase /Řidič.*je na cestě/ no-ETA variant + driver/vehicle + Cancel, plus the ETA variant heading with no duplicate ETA line; arrived heading 'Řidič je na místě' + vehicle; inProgress heading 'Jedete' + destination; completed /^Hotovo – 1\\s200 Kč$/ (single Kč, cs-CZ grouped, no double-Kč) + ratingSlot injected vs default ratingSeam; cancelled heading 'Objednávka byla zrušena' + re-order link to /customer; Cancel visibility (hidden with no orderId / in non-cancellable phase); CancelDialog open+confirm with post-Accepted hint, stale-close avoidance on failure, dismiss; Escape closes the sheet; aria-live=polite headline; axe clean searching + assigned."
+    "suggestLocation.test.ts: 7 tests (precedence map>GPS>config>null; 2-decimal coarse rounding; tiny nudge rounds equal -> stable key; >~1.1km move rounds different).",
+    "client.test.ts: 2 tests (getGeoSuggest appends near=lat,lng lat-first dot-decimal when a location is supplied; omits near= when not).",
+    "useSuggest.test.ts: 2 new tests (threads near into the call; re-queries on a changed coarse near, no extra call on an equal-rounded near) + updated 2 existing assertions to the (query, near) signature -> toHaveBeenCalledWith('Hlavni', undefined).",
+    "DestinationSearch.test.tsx: 1 new test (near prop threads into the suggest call) + renderSearch helper gained a near arg; existing combobox/keyboard/empty/axe tests unchanged and green.",
+    "MapOrderPage.test.tsx: 3 new tests (config-center fallback before any map center; map center preferred over config; near null while config still loading) + mocked useGeoConfig and a DestinationSearch stub that captures the near prop."
   ],
   "tests_passing": true,
   "coverage_delta": "n/a (scoped run reports pass/fail only)",
   "red_observed": true,
   "red_details": [
-    "Initial RED: import of the non-existent ./TrackingSheet module failed the vite transform (0 tests collected).",
-    "After minimal green, 18/19 passed; the completed-price test RED'd because the exact-string matcher used a plain space where cs-CZ NumberFormat emits a U+00A0 non-breaking group separator — switched the assertion to /^Hotovo – 1\\s200 Kč$/ (still asserts a single ' Kč', guarding the double-Kč regression the advisor flagged). Green after."
+    "suggestLocation: RED - import of the non-existent module failed transform (0 tests collected). GREEN after creating the module. One intermediate RED: my first tiny-nudge fixture straddled the rounding boundary (50.0851->50.09 vs 50.0849->50.08); fixed the test data (both same side).",
+    "client.ts getGeoSuggest: RED - 'appends near' test failed (URL was /geo/suggest?q=Kourimska with no near=). GREEN after adding the near param.",
+    "useSuggest: RED - 4 failed (signature change made getGeoSuggest called with (q, near); the two existing toHaveBeenCalledWith('Hlavni') assertions failed on arg-count, plus the two new near tests). GREEN after threading near into queryFn + query key.",
+    "DestinationSearch: RED - 1 failed (near prop ignored -> suggest called with undefined). GREEN after adding the near prop and passing it to useSuggest.",
+    "MapOrderPage: RED - 3 failed (near not wired -> stub captured undefined). GREEN after computing pickSuggestLocation from pendingCenter + useGeoConfig and passing near to DestinationSearch."
   ],
-  "verification": { "tool": "vitest", "filter": "TrackingSheet", "exit_code": 0, "result": "1 file, 20 tests passing" },
-  "verification_output": "Test Files 1 passed (1); Tests 20 passed (20); EXIT: 0",
-  "tsc": "pass for WI-2 files — TrackingSheet.tsx + TrackingSheet.test.tsx compile clean. Project-wide `npm run tsc` is currently blocked by a SINGLE error in web/src/features/customer/shell/CustomerMapShell.test.tsx (TS2353 carMarker not in CustomerMapShellProps) — an unstaged, pre-existing WI-3 working-tree file that is OUT OF SCOPE for WI-2 and was not introduced here. tsc surfaced no error in either TrackingSheet file.",
-  "lint": "pass — `npm run --prefix web lint` (check:geo + eslint --max-warnings 0) exits 0 across the whole project.",
+  "verification": { "tool": "vitest", "filter": "customer/order", "exit_code": 0, "result": "15 files, 114 tests passing" },
+  "verification_output": "Test Files 15 passed (15); Tests 114 passed (114); EXIT=0",
+  "tsc": "pass (tsc --noEmit clean, 0 errors)",
+  "lint": "pass (check:geo OK + eslint --max-warnings 0, 0 warnings)",
   "hit_max_turns": false,
-  "notes": "TrackingSheet is a CONTROLLED PRESENTATIONAL surface (no api-client import, no data fetching). Props: { vm: TrackVm, descriptor: HeadlineDescriptor, orderId: string|null, cancel: UseCancelOrderResult, ratingSlot?: ReactNode }. Local UI state only: open (Escape → close) and showCancelDialog. (Round 2: the dead `expanded` state + collapse-first handleClose branch were removed per impl-review; the sheet is always collapsed, so BottomSheet is passed `expanded={false}`.)\n\nContent switches on descriptor.PHASE (not the flags), per advisor: assigned/arrived render vehicle, inProgress/completed render dropoff. The assigned headline (assignedEta/assignedNoEta) ALREADY contains driver name + ETA, so NO separate ETA line is rendered (would duplicate) — the vehicle line is the only extra. Flags gate only what they own: (showCancel && orderId) → Cancel button; showAcceptedHint → CancelDialog hint; showRating → rating slot.\n\nPRICE TRAP (advisor F1): the completed template 'customer.tracking.headline.completed' = 'Hotovo – {{price}} Kč' already contains ' Kč'. Fed a cs-CZ grouped NUMBER (Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(price)), NOT formatCzk (which would append a 2nd ' Kč' → 'Hotovo – 1 200 Kč Kč'). Ports StatusHeadline's values transform verbatim. Since e2e only regexes /Hotovo/, the component test asserts the exact single-Kč string.\n\nEVERY phase renders the descriptor headline as an aria-live=polite <h2> so e2e getByRole('heading',{name}) resolves the load-bearing strings: 'Hledáme řidiče…' (U+2026), /Řidič.*je na cestě/, 'Objednávka byla zrušena', /Hotovo/ — asserted with the same strings the e2e uses (customer.spec.ts:126/134/212/280).\n\nReuse-as-is: BottomSheet (role=dialog, ariaLabelKey='customer.tracking.sheetLabel'→'Stav jízdy', Escape, focus-in-on-open), SearchingLoader (role=status, prefers-reduced-motion), CancelDialog (aria-labelledby → dialog name 'Zrušit objednávku?', distinct from the sheet's 'Stav jízdy' name — two dialogs coexist harmlessly when cancel is open). Cancel mutation is NOT duplicated — the injected useCancelOrder result is passed through; onConfirm branches on the returned boolean (not the captured errorKey) so the dialog stays open on failure.\n\nRe-order CTA is a react-router <Link to='/customer'> (real <a href>, ≥48px via theme.touchTargets.min); tests wrap in MemoryRouter (advisor F3).\n\nTrackVm is unchanged (WI-1 froze it) — it has dropoffAddress but no pickupAddress, so the completed 'ride summary' shows the dropoff only (advisor F4); no prop added.\n\n48px targets: Cancel button + re-order link both use theme.touchTargets.min — verified by construction (theme token, the a11y-rule-endorsed mechanism + manual Lighthouse). No getComputedStyle assertion written: jsdom does not resolve styled-components class-selector min-height, so such a test would be false-confidence (advisor).\n\ni18n: ALL keys already exist from WI-1 (headline.*, vehicleLabel, dropoffLabel, cancel, ratingSeam, reorder, sheetLabel, loader.searching) — no locale JSON touched (out of WI-2 scope). Scope: ONLY TrackingSheet.tsx + test staged; did not touch WI-1/3/4 files, locale JSONs, or the shell. StatusHeadline is left in place (its removal is WI-4). This handoff filename previously held a stale UC-015 WI-2 result (documented filename-collision trap); overwritten with UC-016 WI-2 — stage it so the conductor picks up the current result."
+  "notes": "COORD-ORDER CONTRACT (asymmetric, load-bearing): the FRONTEND sends near={lat},{lng} (LATITUDE FIRST) — matching SuggestEndpoint's leniently-parsed lat,lng contract (parts[0]=lat). WI-1's BACKEND then flips this to Mapy's preferNear={lng},{lat} (LONGITUDE FIRST) internally. Two distinct order contracts; getGeoSuggest formats `${near.lat},${near.lng}` deliberately, do NOT 'fix' it to lng-first. Dot-decimal via URLSearchParams (JS has no cs-CZ comma trap — mirrors getGeoReverse).\n\nGPS-NULL PLACEHOLDER (deliberate, do not flag): pickSuggestLocation's precedence is map-center -> GPS -> config-center, but MapOrderPage supplies gpsLocation:null because no geolocation hook exists in the customer shell yet. The helper accepts the tier so a future GPS wire is a one-line change (per the designer's documented decision + spec Assumptions).\n\nCOARSE ROUNDING: pickSuggestLocation rounds the chosen coord to 2 decimals (~1.1 km) INSIDE the helper, deliberately coarser than client.ts roundCoord's 4 decimals (~11 m), so tiny map nudges keep the same value and the TanStack key ['geo','suggest',debounced,near] stays stable (no re-query storm). near is NOT debounced (only the text is) — a coarse-near change re-queries immediately; TanStack hashes the key by value so a fresh-but-equal near object does not refetch, which is why NO useMemo/useCallback was added (rules/web-performance.md#memoization-policy, bit UC-015 WI-4).\n\nclient.ts near type is the INLINE structural { lat; lng } | null, NOT the features/ LatLng — client.ts lives in shared/ and must not import a feature-layer type (rules/web-architecture.md#api-client). LatLng (from features/customer/shell/mapCamera, sanctioned cross-sub-feature import) is used only in suggestLocation.ts, useSuggest.ts, DestinationSearch.tsx, MapOrderPage.tsx.\n\nMapOrderPage.test.tsx has NO QueryClientProvider (all query hooks are mocked). Because the page now calls useGeoConfig directly, the test MUST mock ../../../shared/map/useGeoConfig (done) — otherwise every test throws 'No QueryClient set'.\n\nNO i18n change: no new user-facing string; locale JSONs untouched. locales.parity.test.ts re-run green (5 tests). DestinationSearch ARIA combobox / keyboard / empty-state / vitest-axe all unchanged and green — no new interactive element.\n\nSTAGED with explicit file paths (never a directory). NOTHING committed.\n\nDEFERRED to conductor Phase 5 (not run here per instructions): full `npm run --prefix web test`, `npm run --prefix web build`, `npm run --prefix web size`. This WI adds no bundle dependency and no new route chunk, so no size-budget risk expected. depends_on WI-1 for the end-to-end ranking (backend must honour near); the frontend is fully tested with a mocked client and passes independently. This is the FINAL WI of UC-018.\n\nNOTE: this handoff filename previously held a stale UC-016 WI-2 result (documented WI-number-collision-across-UCs trap); overwritten with UC-018 WI-2."
 }

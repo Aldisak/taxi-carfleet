@@ -18,13 +18,16 @@ import type { SelectedPlace } from './orderFlowState'
 
 const mockSuggest = vi.mocked(getGeoSuggest)
 
-function renderSearch(onSelectDestination: (place: SelectedPlace) => void = vi.fn()) {
+function renderSearch(
+  onSelectDestination: (place: SelectedPlace) => void = vi.fn(),
+  near: { lat: number; lng: number } | null = null,
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const utils = render(
     <QueryClientProvider client={client}>
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
-          <DestinationSearch onSelectDestination={onSelectDestination} />
+          <DestinationSearch onSelectDestination={onSelectDestination} near={near} />
         </I18nextProvider>
       </ThemeProvider>
     </QueryClientProvider>,
@@ -135,6 +138,17 @@ describe('DestinationSearch', () => {
     await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
 
     expect(await screen.findByRole('status')).toBeInTheDocument()
+  })
+
+  it('threads the near prop into the suggest call (UC-018 WI-2)', async () => {
+    const user = userEvent.setup()
+    mockSuggest.mockResolvedValue({ items: [] })
+    const near = { lat: 50.09, lng: 14.43 }
+    renderSearch(vi.fn(), near)
+
+    await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
+
+    await vi.waitFor(() => expect(mockSuggest).toHaveBeenCalledWith('Nádr', near))
   })
 
   it('has no axe violations when collapsed', async () => {

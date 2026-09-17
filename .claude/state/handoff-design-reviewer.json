@@ -1,45 +1,29 @@
 {
-  "uc": "UC-017",
+  "uc": "UC-018",
   "round": 1,
   "blocks_merge": false,
   "findings": [
     {
       "id": "F-1",
-      "severity": "MEDIUM",
-      "wi": "WI-2",
-      "rule": "Assumption 6 (within-tick double-assignment guard) vs work-items AC lines 92, 112, 114",
-      "detail": "The pending-offer exclusion (exclude drivers who are DriverId of an Assigned order in the fleet) is the SOLE guard against assigning one Free driver to two competing New orders in a single tick. The work-items doc is self-contradictory: line 114 correctly calls it the 'sole guard' relying on A's commit being visible when B's scope re-queries drivers, but WI-2 step 5 (line 92) and AC line 112 soften it to 'Optionally exclude' / 'Consider excluding.' The trap is PLACEMENT: a developer could implement this exclusion in the SCAN phase (cross-tenant, computed once before any assign) rather than inside each per-order scope. A scan-phase exclusion is stale for order B (order A was not yet Assigned at scan time), so the within-tick guard silently fails and the same driver receives two simultaneous offers. ApplyAssign leaves the driver Free (verified), so nothing else prevents the double offer.",
-      "suggested_fix": "Make the pending-offer exclusion (1) MANDATORY not optional; (2) queried INSIDE each per-order fresh scope (so prior same-tick commits by earlier orders are visible in the tenant-filtered reads); (3) unioned into the SINGLE excludedDriverIds set passed to NearestDriverSelector.SelectNearest (WI-1's selector takes exactly one IReadOnlySet<Guid>). Unify: excludedDriverIds = declined/timeout driver ids UNION (driver ids of orders currently Status==Assigned in this fleet). Keep the RunTick_TwoNewOrdersOneEligibleDriver_AssignsExactlyOne test as the backstop."
-    },
-    {
-      "id": "F-2",
-      "severity": "LOW",
-      "wi": "WI-2",
-      "rule": "rules/ef-core.md#projections",
-      "detail": "The SCAN-phase projection is under-specified. AC line 108 lists (OrderId, FleetId, PickupLat, PickupLng) plus per-fleet settings, but the in-memory filters also need CreatedAt (for 'CreatedAt + AutoDispatchAfterSeconds <= now') and ScheduledAt (for '(ScheduledAt == null || ScheduledAt <= now)'). OfferTimeoutJob projects AssignedAt for exactly this in-memory-arithmetic reason.",
-      "suggested_fix": "Add CreatedAt and ScheduledAt to the scan projection tuple; filter/compare in memory (mirror OfferTimeoutJob) to avoid EF DateTimeOffset-arithmetic translation issues."
-    },
-    {
-      "id": "F-3",
       "severity": "LOW",
       "wi": "WI-1",
-      "rule": "rules/architecture.md#common-infrastructure",
-      "detail": "Common/ is permitted 'only when reused by 2+ features.' NearestDriverSelector (Common/Dispatch/) has a single consumer (AutoDispatchJob). Placement is defensible on pure-testable-decision-module grounds (DI-free/I-O-free like HaversineDistance, enabling fast unit tests before the job's Testcontainers tests). Observed and justified, not a blocker.",
-      "suggested_fix": "Keep Common/Dispatch/ placement but record it in WI-1 notes as a conscious single-consumer exception mirroring the HaversineDistance pure-helper precedent, so a future reviewer does not flag it."
+      "rule": "rules/naming.md#test-naming + WI-1 AC#1 (signature) vs existing call sites",
+      "detail": "WI-1 places the new near parameter BETWEEN query and serverKey: SuggestAsync(string query, (double Lat, double Lng)? near, string? serverKey, CancellationToken ct). Mid-signature insertion, so EVERY positional call site breaks at compile time. Confirmed sites all in files_touched: MapyClient.cs (impl), GeoService.cs:31 + closure at :40, MapyClientHandlerTests.cs (5 calls), FakeMapyClient/CountingMapyClient nested in GeoServiceTests.cs. Coverage-complete per grep — flagged LOW only to make explicit all 5 MapyClientHandlerTests calls must gain near: null.",
+      "suggested_fix": "No change needed; the WI enumerates every call site. Developer updates all 5 MapyClientHandlerTests.SuggestAsync calls with positional near (e.g. SuggestAsync(\"Praha\", near: null, TestKey, ct)). ALSO edit the IMapyClient.cs interface itself (it is in required_reads + AC#1 changes its signature, even though files_touched shows MapyClient.cs as the edit locus)."
     }
   ],
   "verified_not_findings": [
-    { "id": "V-1", "detail": "Exclusion-set completeness (highest-risk) CORRECT. Only Assigned->New transitions are ApplyDecline and ApplyTimeout; both write the driver id into the event payload. ApplyAssign's Assigned event carries NULL payload and ApplyReassign is Assigned->Assigned. Deriving the exclusion set from Declined+Timeout payloads is a complete record of every driver already tried — no infinite re-offer loop." },
-    { "id": "V-2", "detail": "OrderStateMachine.ApplyAssign accepts Actor.System (assign permitted for dispatcher OR system; AllowedFor grants Assign to System from New). Using OrderTransition.Assign + Actor.System is correct — mirrors OfferTimeoutJob's Timeout+Actor.System." },
-    { "id": "V-3", "detail": "Concurrency handling returns results not exceptions. OrderService.TransitionAsync catches DbUpdateConcurrencyException -> TransitionResult.Failure(StaleVersion); IllegalTransition is a normal failure result. Both are IsSuccess==false the job checks — no exception surfaces." },
-    { "id": "V-4", "detail": "ScheduledAt guard matches CreateOrderEndpoint: a future-ScheduledAt order is persisted Status=New immediately with no hold, so the (ScheduledAt==null||ScheduledAt<=now) guard is necessary to avoid auto-assigning a tomorrow ride now." },
-    { "id": "V-5", "detail": "Job-pattern fidelity to OfferTimeoutJob confirmed (BackgroundService, IServiceScopeFactory+TimeProvider+ILogger ctor, thin PeriodicTimer(5s) ExecuteAsync->RunTickAsync, IgnoreQueryFilters+AsNoTracking scan, per-order fresh scope + concrete CurrentTenant.FleetId + OrderService, (int?)-cast settings guard). Missing-settings-row -> SKIP is a correct opt-in delta." },
-    { "id": "V-6", "detail": "Eligibility inputs available and selector pure. Driver exposes Status/CurrentVehicleId/LastLat/LastLng/LastPositionAt; DriverStatus={Offline,Free,EnRoute,Busy} (Free sole eligible); HaversineDistance.Meters signature matches; StalePositionJob.StaleThreshold=5min. WI-1 SelectNearest DI-free/I-O-free." },
-    { "id": "V-7", "detail": "Tenant isolation designed in + tested (per-order scope sets CurrentTenant.FleetId; EF query filter enforces isolation; RunTick_TenantIsolation_FleetBOrderUnaffected present)." },
-    { "id": "V-8", "detail": "Logging conforms: Information on assign OrderId/DriverId/FleetId (no PII), Debug no-eligible-driver with Reason, LogWarning per-order exception, LogError on unhandled tick. Job never sets order.Status and never publishes (OrderService owns event/Version/commit/broadcast)." },
-    { "id": "V-9", "detail": "DI registration correct: AddHostedService<AutoDispatchJob>() in JobsServiceExtensions.AddJobs alongside other jobs; gated per-fleet by FleetSettings.AutoDispatchEnabled, no global kill-switch needed." },
-    { "id": "V-10", "detail": "Topology acyclic (WI-1 depends_on [], WI-2 depends_on [WI-1]); unit tests precede Testcontainers tests; all 8 spec test cases + 6 ACs map to WI test_cases; no new DTO/DbSet/AutoMapper — no architecture-ban violations." }
+    { "id": "V-1", "detail": "COORDINATE-ORDER CORRECTNESS (highest risk) CORRECT + consistent at every hop. Frontend getGeoSuggest emits near={lat},{lng}. SuggestEndpoint.cs:71-74 parses parts[0]=lat, parts[1]=lng into (Lat,Lng). GeoService forwards the tuple unchanged on both paths. MapyClient flips ONCE to preferNear={lng},{lat}, mirroring existing RouteAsync start={fromLng},{fromLat} (MapyClient.cs:88-90). Pinned by value assertions: frontend near=50.09,14.43 (lat-first); backend preferNear=14.43,50.08 (lng-first). A silent swap moves bias to open sea and is caught." },
+    { "id": "V-2", "detail": "Mapy preferNear treated as BEST-EFFORT: preferNear + preferNearPrecision=5000 flagged provisional/verify-vs-live-docs (MapyConstants/UC-010 WI-09 precedent); real gate is URL present/absent + coord-order + dot-decimal test, not the exact param name. InvariantCulture mandated + pinned by the never-comma assertion." },
+    { "id": "V-3", "detail": "GeoService forwards near on BOTH paths (line 31 Guid.Empty bypass + line 40 cache-miss factory closure); pinned per-path via FakeMapyClient.LastSuggestNear. Cache key unchanged (already includes near)." },
+    { "id": "V-4", "detail": "Signature-change completeness verified by grep. MapyClient the only production implementer. FakeMapyClient gains LastSuggestNear; CountingMapyClient signature-only (both nested in GeoServiceTests.cs). FakeGeoService correctly NOT touched (implements IGeoService whose SuggestAsync already carries near). Developer MUST also edit IMapyClient.cs interface." },
+    { "id": "V-5", "detail": "Frontend location-selection sound: pickSuggestLocation pure (mapCenter -> GPS -> configCenter -> null) with 2-decimal (~1.1km) coarse rounding INSIDE the helper (coarser than client.ts roundCoord 4-decimal). useSuggest keys on ['geo','suggest',debounced,near] so coarse-near change re-queries, equal does not. GPS tier supplied null by MapOrderPage = documented deliberate placeholder, not a gap." },
+    { "id": "V-6", "detail": "Referenced frontend surfaces exist: LatLng {lat,lng} in shell/mapCamera.ts; GeoConfigResponse mapCenterLat/mapCenterLng; MapOrderPage owns pendingCenter + useGeoConfig. No memoization added." },
+    { "id": "V-7", "detail": "AC#1 (Prague above Kolin) not an untested gap: re-ranking is Mapy-side, no e2e by design (ranking not flow/DOM change). Maps to backend preferNear URL test + frontend near-send + useSuggest re-query tests. Complete at every testable layer." },
+    { "id": "V-8", "detail": "Cross-feature import cleared: suggestLocation.ts imports LatLng from shell/mapCamera (declared 'Exported for UC-015/016/019'; MapOrderPage already imports it). customer/ is the feature boundary, shell/ the shared shell. Consistent with precedent." },
+    { "id": "V-9", "detail": "No route/verb/policy/result-shape change; rate limiter, key-missing short-circuit, GeoResult.Unavailable degradation untouched; lenient near-parse unchanged; per-location caching kept. No new i18n string." },
+    { "id": "V-10", "detail": "Topology acyclic (WI-1 -> WI-2); lanes correct (WI-1 api, WI-2 web); test-ordering follows the ladder; AC#5 both-lane gates present, no e2e (justified); no architecture-ban violations." }
   ],
-  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 2 },
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
   "persisted_by": "conductor on behalf of design-reviewer agent (no Write tool); returned as text, persisted verbatim"
 }

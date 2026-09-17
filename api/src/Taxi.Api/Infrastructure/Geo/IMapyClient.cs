@@ -8,10 +8,15 @@ public interface IMapyClient
 {
     /// <summary>Calls <c>GET /v1/suggest</c> with address/POI type filter and Czech language.</summary>
     /// <param name="query">User-entered search text.</param>
+    /// <param name="near">Optional location hint (Lat, Lng) used to bias results toward a geographic area.
+    /// When non-null, appends Mapy's <c>preferNear={lng},{lat}</c> (longitude-first) and
+    /// <c>preferNearPrecision=5000</c> parameters to the request URL. Null omits the bias entirely,
+    /// preserving today's unbiased behaviour.</param>
     /// <param name="serverKey">The resolved Mapy.com server API key for the calling fleet (from <see cref="MapyKeyResolver"/>). Null/empty → Unavailable, no upstream call.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Parsed suggest items, or Unavailable on infrastructure failure.</returns>
-    Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, string? serverKey, CancellationToken ct);
+    Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(
+        string query, (double Lat, double Lng)? near, string? serverKey, CancellationToken ct);
 
     /// <summary>Calls <c>GET /v1/geocode</c> to forward-geocode a text query.</summary>
     /// <param name="query">Address or place text to geocode.</param>

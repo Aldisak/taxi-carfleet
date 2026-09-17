@@ -6,6 +6,7 @@ import { suggestionMeta } from '../../../shared/geo/suggestionMeta'
 import { SearchingLoader } from '../../../shared/ui/SearchingLoader'
 import { useSuggest } from './useSuggest'
 import type { SelectedPlace } from './orderFlowState'
+import type { LatLng } from '../shell/mapCamera'
 
 const Wrapper = styled.div`
   display: flex;
@@ -77,6 +78,12 @@ const Empty = styled.p`
 export interface DestinationSearchProps {
   /** Called with the resolved destination when a suggestion is picked. Page owns the state. */
   onSelectDestination: (place: SelectedPlace) => void
+  /**
+   * Best-available location hint that biases suggest ranking toward where the user is looking
+   * (UC-018 WI-2). Decided by the page (pickSuggestLocation) — this component stays presentational
+   * and only forwards it to useSuggest. Null → no bias (today's behaviour).
+   */
+  near?: LatLng | null
 }
 
 /**
@@ -92,13 +99,13 @@ export interface DestinationSearchProps {
  * emitted ONLY while the list is open so no dangling references reach the DOM
  * (rules/web-accessibility.md#semantics, #keyboard-focus).
  */
-export function DestinationSearch({ onSelectDestination }: DestinationSearchProps) {
+export function DestinationSearch({ onSelectDestination, near }: DestinationSearchProps) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
 
-  const { items, isLoading, isEmpty } = useSuggest(query)
+  const { items, isLoading, isEmpty } = useSuggest(query, near)
 
   const listId = useId()
   const optionId = (index: number): string => `${listId}-opt-${index}`

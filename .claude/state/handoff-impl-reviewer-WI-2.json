@@ -1,55 +1,31 @@
 {
+  "$schema": ".claude/schemas/impl-review.v1.json",
   "kind": "impl",
-  "uc": "UC-017",
+  "uc": "UC-018",
   "wi": "WI-2",
   "round": 1,
+  "wi_id": "WI-2",
   "commit_range": "staged",
   "blocks_merge": false,
-  "findings": [
-    {
-      "severity": "LOW",
-      "rule": "rules/ef-core.md#projections",
-      "file": "api/src/Taxi.Api/Infrastructure/Jobs/AutoDispatchJob.cs",
-      "line": "89-103",
-      "detail": "AC line 109 explicitly says 'Prefer a SINGLE nullable-settings projection (one row read into a nullable-tuple / anonymous shape) over three correlated subqueries — the three fields live in the same FleetSettings row.' The implementation reads AutoDispatchEnabled, AfterSeconds, and MaxRadiusKm via THREE separate correlated subqueries against FleetSettings for the same fleet, not a single joined row read. Results are correct and the cost is negligible on the small New-order set, and 'Prefer' is a soft directive; but this is the one place the code diverges from a stated AC. The developer handoff justifies it as 'mirrors OfferTimeoutJob's (int?) guard', which is thin — OfferTimeoutJob reads only ONE field so it set no three-subquery precedent."
-    },
-    {
-      "severity": "LOW",
-      "rule": "rules/naming.md#test-naming",
-      "file": "api/tests/Taxi.Api.Tests/Jobs/AutoDispatchJobTests.cs",
-      "line": "283-342",
-      "detail": "Spec test_case 4 and the WI notes call for a pool-exhaustion assertion (all candidates excluded -> order stays New, proving no infinite re-offer). RunTick_TimedOutDriverExcluded_NextNearestAssigned asserts only that the next-nearest driver (driverB) is assigned; it does not add a second phase where driverB is also excluded/unavailable and asserts the order then stays New. The exhaustion path is covered only transitively by OutsideRadius and OfflineAndStaleDrivers (no-eligible -> stays New). The test is not mislabeled (its name does not claim exhaustion), so this is a coverage gap, not a false test."
-    }
-  ],
-  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2 },
+  "findings": [],
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
   "automated_checks": {
-    "build_warnaserror_exit": 0,
-    "build_warnings": 0,
-    "build_errors": 0,
-    "test_command": "dotnet test api --filter FullyQualifiedName~AutoDispatchJob",
-    "test_exit": 0,
-    "tests_passed": 13,
-    "tests_failed": 0,
-    "tests_skipped": 0,
-    "test_duration_ms": 10000,
-    "docker_required": true
-  },
-  "verified": {
-    "f1_within_tick_guard": "PASS (top risk) - pending-Assigned exclusion built INSIDE each per-order fresh scope (AutoDispatchJob.cs:188-197), unioned with THIS order's Declined/Timeout payload driver ids (166-197), and passed as the single excludedDriverIds to NearestDriverSelector.SelectNearest (213-219). Uses the tenant-scoped db (NO IgnoreQueryFilters) so fleet isolation is free and a prior same-tick commit is visible when the next order re-queries. NOT computed in the scan phase. RunTick_TwoNewOrdersOneEligibleDriver_AssignsExactlyOne (517-554) genuinely proves exactly one of two competing orders is assigned to the shared driver and the other stays New: order A commits Assigned (driver still Free), then order B's fresh scope re-reads Assigned drivers and excludes it.",
-    "state_machine_discipline": "PASS - assign via OrderService.TransitionAsync(orderId, OrderTransition.Assign, Actor.System, new AssignPayload(DriverId, CurrentVehicleId), ct) (231-236); job never sets order.Status and never publishes OrderChanged. StaleVersion/IllegalTransition returned as IsSuccess==false are logged at Debug with Reason=FailureKind, no exception surfaced (244-252). RunTick_ManualAssignWinsRace_JobNoOp covers the scan-level Status==New filter (already-Assigned order never picked); RunTick_TwoConcurrentTicks_ExactlyOneAssignedEvent covers the TransitionAsync StaleVersion else-branch (exactly one Assigned event under Task.WhenAll).",
-    "job_pattern_fidelity": "PASS - internal sealed AutoDispatchJob : BackgroundService; ctor (IServiceScopeFactory, TimeProvider, ILogger) matches OfferTimeoutJob; thin PeriodicTimer(5s, timeProvider) ExecuteAsync -> RunTickAsync with the same OperationCanceledException-excluded catch + LogError; scan in one scope IgnoreQueryFilters+AsNoTracking; per-order FRESH scope resolves concrete CurrentTenant, sets FleetId, resolves TaxiDbContext + OrderService; one scope per order; (bool?)/(int?)/(int?) FleetSettings projection guard so a missing row -> null -> SKIP (opt-in asymmetry vs OfferTimeoutJob's 45s default) is correct.",
-    "f2_projection_and_timing": "PASS - CreatedAt and ScheduledAt added to scan projection (81-104); age check (CreatedAt.AddSeconds(AfterSeconds) <= now) and future-scheduled guard (ScheduledAt == null || ScheduledAt <= now) done IN MEMORY (111-118), no EF DateTimeOffset arithmetic. RunTick_FutureScheduledAt_OrderUntouched and RunTick_NotYetElapsed_OrderUntouched pin both.",
-    "exclusion_completeness": "PASS - Declined+Timeout OrderEvents loaded via ToListAsync FIRST (160-164), payloads parsed IN MEMORY (167-184) per the jsonb LINQ-projection trap; declinedDriverId/timedOutDriverId collected into HashSet. Complete because only Assigned->New paths (Decline, Timeout) write a driver id. RunTick_TimedOutDriverExcluded_NextNearestAssigned proves a timed-out driver is not re-offered (exhaustion assertion only transitive - see finding 2).",
-    "eligibility": "PASS - DriverCandidate projected from tenant-scoped IsActive Drivers (200-210); Free-only/fresh/in-radius/non-excluded predicate lives in the WI-1 pure selector; RunTick_OfflineAndStaleDrivers_OrderStaysNew and RunTick_DriverOutsideRadius_OrderStaysNew confirm exclusions.",
-    "tenant_isolation": "PASS - per-order scope sets CurrentTenant.FleetId = order.FleetId; driver/order_events/Assigned-driver reads run under the query filter (no IgnoreQueryFilters). RunTick_TenantIsolation_FleetBOrderUnaffected asserts fleet A assigned to its own driver, fleet B untouched.",
-    "logging": "PASS - LogInformation on assign (OrderId/DriverId/FleetId, event-style, no PII); LogDebug NoEligibleDriver with stable Reason; LogDebug benign skip with FailureKind Reason; LogWarning per-order exception; LogError unhandled tick. No per-tick spam.",
-    "test_coverage": "PASS - all 8 spec test cases present plus future-scheduled, within-tick double-assign, and concurrent-tick (13 total). Every test asserts real DB effects (Status/DriverId/Assigned-event count). Seeded-OrderEvent FK trap (FleetId/FromStatus/ToStatus/ActorRole non-nullable) handled in TimedOutDriverExcluded and ManualAssignWinsRace; documented in CLAUDE.md note (accurate).",
-    "scope_style_naming": "PASS - only WI-2's 3 code files (AutoDispatchJob.cs, JobsServiceExtensions.cs, AutoDispatchJobTests.cs) plus the CLAUDE.md note staged for this WI. internal sealed, primary ctor for DI, TimeProvider (no DateTime.UtcNow), guard clauses, async/ct forwarded, XML docs on public/internal members, file-scoped namespace, Method_State_Expected test names."
-  },
-  "notes": [
-    "The staged NearestDriverSelector.cs / DriverCandidate.cs / NearestDriverSelectorTests.cs are WI-1 files (reviewed under handoff-impl-reviewer-WI-1.json); their single-consumer Common/ placement is design-review F-3, documented and justified - not re-flagged here as it is out of WI-2 scope.",
-    "No .claude/schemas/impl-review.v1.json exists in this scaffold (CLAUDE.md known-gaps), so no schema validation was run; this handoff mirrors the de-facto shape of the staged handoff-impl-reviewer-WI-1.json which the conductor consumes.",
-    "Both findings are LOW and non-blocking; blocks_merge=false (CRITICAL+HIGH == 0)."
-  ],
-  "persisted_by": "impl-reviewer agent"
+    "vitest": "PASS - fresh scoped re-run `npm run --prefix web test -- \"customer/order\" \"suggestLocation\"`: 15 files, 114/114 tests green, exit 0. The two `An update to DestinationSearch was not wrapped in act(...)` stderr lines are pre-existing benign noise (findBy/waitFor on a mocked-client suggest), not failures.",
+    "tsc": "PASS - fresh `npm run --prefix web tsc` (tsc --noEmit) clean, 0 errors.",
+    "lint": "PASS - fresh `npm run --prefix web lint` = check:geo OK (no legacy OSM/OSRM/Nominatim/Photon hosts) + eslint --max-warnings 0, 0 warnings.",
+    "scope": "EXACT: only the 10 WI-2 files_touched staged (client.ts/.test.ts, suggestLocation.ts/.test.ts, useSuggest.ts/.test.ts, DestinationSearch.tsx/.test.tsx, MapOrderPage.tsx/.test.tsx). The 5 api/ files staged are WI-1 (out of lane, not reviewed here).",
+    "coord_contract": "CONFIRMED lat-first. getGeoSuggest formats `near=${near.lat},${near.lng}` (lat FIRST) matching the endpoint's leniently-parsed parts[0]=lat contract; client.test.ts pins decodeURIComponent(url) contains 'near=50.09,14.43' and NOT '14,43' (dot-decimal via URLSearchParams, no cs-CZ comma). `near` omitted entirely when absent (test 'omits the near param' asserts url NOT contains 'near='). This is the intended asymmetric contract (backend WI-1 flips to Mapy lng-first internally) - correctly NOT flagged.",
+    "pure_helper": "CONFIRMED pickSuggestLocation is pure: imports ONLY `type { LatLng }` from ../shell/mapCamera (a plain interface); no React/I/O/DI. Precedence mapCenter -> gpsLocation -> configCenter -> null via `??` chain. 2-decimal (~1.1 km) coarse rounding INSIDE the helper (NEAR_DECIMALS=2), coarser than client.ts roundCoord's 4 decimals. Tests pin precedence (all 4 tiers), rounding granularity (tiny nudge 50.0812/50.0834 both -> 50.08 equal; >~1.1 km move 50.08->50.10 differs).",
+    "query_key": "CONFIRMED useSuggest key is ['geo','suggest', debounced, near ?? null] and queryFn passes `near` through to getGeoSuggest. `near` NOT debounced (only text is); TanStack value-hashes the key so a fresh-but-equal near object does not refetch. No premature useMemo/useCallback added (rules/web-performance.md#memoization-policy) - correct per the value-hash reasoning; tests pin re-query on changed coarse near and no extra call on equal-rounded near.",
+    "wiring": "CONFIRMED MapOrderPage computes suggestNear = pickSuggestLocation({ mapCenter: pendingCenter, gpsLocation: null, configCenter }) where configCenter maps useGeoConfig().data.{mapCenterLat,mapCenterLng} (field names verified against GeoConfigResponse in client.ts). GPS null is the documented deliberate placeholder (spec Assumptions, no geolocation hook yet) - correctly NOT flagged as a gap. DestinationSearch stays presentational: near? prop forwarded to useSuggest, no logic added.",
+    "shared_no_feature_import": "CONFIRMED client.ts (shared/) has ZERO imports from features/ (grep clean). near typed as inline structural `{ lat: number; lng: number } | null` - NOT the feature-layer LatLng - so no shared->feature architecture violation (rules/web-architecture.md#api-client). LatLng is used only in the feature-lane files (suggestLocation.ts, useSuggest.ts, DestinationSearch.tsx, MapOrderPage.tsx) importing from ../shell/mapCamera (sanctioned cross-sub-feature).",
+    "i18n": "CONFIRMED no i18n change: `git diff --staged -- web/src/shared/i18n/` empty. No new user-facing string (near is a numeric hint). Parity untouched. No route/verb/result-shape change (getGeoSuggest still GET /geo/suggest returning GeoSuggestResponse).",
+    "a11y": "CONFIRMED DestinationSearch adds only a data prop (near), no new interactive element; existing combobox ARIA/keyboard/empty-state + vitest-axe tests unchanged and green (9 tests incl. 'has no axe violations with the suggestion list open').",
+    "ts_strict": "CONFIRMED no `any` introduced; near typed explicitly (`{ lat: number; lng: number } | null` in client.ts, `LatLng | null` in feature files). No style bodies touched - no styled-components token concern."
+  }
 }

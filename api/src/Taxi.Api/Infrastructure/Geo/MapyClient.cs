@@ -20,12 +20,21 @@ internal sealed class MapyClient(
 
     /// <inheritdoc />
     public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(
-        string query, string? serverKey, CancellationToken ct)
+        string query, (double Lat, double Lng)? near, string? serverKey, CancellationToken ct)
     {
         if (MissingKey<IReadOnlyList<MapySuggestResult>>(serverKey, "suggest", out var unavailable))
             return Task.FromResult(unavailable);
 
         var url = $"v1/suggest?apikey={serverKey}&lang=cs&type={SuggestTypes}&limit=5&query={Uri.EscapeDataString(query)}";
+
+        if (near is { } n)
+        {
+            // Mapy preferNear uses {lng},{lat} order — LONGITUDE FIRST (mirrors RouteAsync start/end).
+            // CRITICAL: use InvariantCulture to avoid cs-CZ comma-decimal separator corrupting the URL.
+            var ic = CultureInfo.InvariantCulture;
+            url += $"&preferNear={n.Lng.ToString(ic)},{n.Lat.ToString(ic)}&preferNearPrecision=5000";
+        }
+
         return ExecuteAsync<MapySuggestResponse, IReadOnlyList<MapySuggestResult>>(
             url,
             static response => ParseSuggestItems(response),

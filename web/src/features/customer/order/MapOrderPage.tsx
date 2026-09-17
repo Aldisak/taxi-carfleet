@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { CustomerMapShell } from '../shell/CustomerMapShell'
 import { useReverseGeocode } from '../shell/useReverseGeocode'
 import type { LatLng } from '../shell/mapCamera'
+import { useGeoConfig } from '../../../shared/map/useGeoConfig'
 import { DestinationSearch } from './DestinationSearch'
 import { PriceSheet } from './PriceSheet'
 import { usePriceQuote } from './usePriceQuote'
+import { pickSuggestLocation } from './suggestLocation'
 import {
   clearDestination,
   initialOrderFlow,
@@ -50,6 +52,23 @@ export function MapOrderPage() {
 
   const reverse = useReverseGeocode(pendingCenter)
   const reverseLabel = reverse.data?.label ?? null
+
+  // The fleet's configured default map center — the weakest `near` fallback (config-center tier).
+  const geoConfig = useGeoConfig()
+  const configCenter: LatLng | null = geoConfig.data
+    ? { lat: geoConfig.data.mapCenterLat, lng: geoConfig.data.mapCenterLng }
+    : null
+
+  // Best-available location hint for address suggest ranking (UC-018 WI-2): map center → GPS →
+  // config center. GPS is a designed-in tier but supplied as null today (no geolocation hook in the
+  // customer shell yet — a future wire is a one-line change). pickSuggestLocation coarse-rounds the
+  // result to 2 decimals so the suggest query key stays stable across tiny map nudges — no useMemo
+  // needed (rules/web-performance.md#memoization-policy).
+  const suggestNear = pickSuggestLocation({
+    mapCenter: pendingCenter,
+    gpsLocation: null,
+    configCenter,
+  })
 
   // Center changes update the pickup only in the search phase (freeze pickup once a destination
   // is chosen — the fitBounds center is no longer the pickup).
@@ -100,7 +119,7 @@ export function MapOrderPage() {
     <CustomerMapShell
       cameraTarget={cameraTarget}
       onCenterChange={handleCenterChange}
-      topSlot={<DestinationSearch onSelectDestination={handleSelectDestination} />}
+      topSlot={<DestinationSearch onSelectDestination={handleSelectDestination} near={suggestNear} />}
       bottomSlot={
         showSheet ? (
           <PriceSheet

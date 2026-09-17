@@ -39,14 +39,27 @@ vi.mock('../shell/CustomerMapShell', () => ({
   },
 }))
 
-// ── DestinationSearch: a stub button that fires a fixed destination on click. ──
+// ── DestinationSearch: a stub button that fires a fixed destination on click. It also captures
+//    the threaded `near` prop so the page's best-location wiring is assertable. ──
 const DESTINATION: SelectedPlace = { label: 'Náměstí 5, Kolín', lat: 50.028, lng: 15.2 }
+let lastSearchNear: LatLng | null | undefined
 vi.mock('./DestinationSearch', () => ({
-  DestinationSearch: (props: { onSelectDestination: (p: SelectedPlace) => void }) => (
-    <button type="button" onClick={() => props.onSelectDestination(DESTINATION)}>
-      pick-destination
-    </button>
-  ),
+  DestinationSearch: (props: { onSelectDestination: (p: SelectedPlace) => void; near?: LatLng | null }) => {
+    lastSearchNear = props.near
+    return (
+      <button type="button" onClick={() => props.onSelectDestination(DESTINATION)}>
+        pick-destination
+      </button>
+    )
+  },
+}))
+
+// ── useGeoConfig: a controllable stub for the fleet default map center (config-center tier). ──
+const mockUseGeoConfig = vi.fn<() => { data: { mapCenterLat: number; mapCenterLng: number } | undefined }>(
+  () => ({ data: { mapCenterLat: 49.948, mapCenterLng: 15.268 } }),
+)
+vi.mock('../../../shared/map/useGeoConfig', () => ({
+  useGeoConfig: () => mockUseGeoConfig(),
 }))
 
 // ── PriceSheet: a stub that exposes pickup/destination/onOrdered/onCancel. ──
@@ -107,8 +120,10 @@ describe('MapOrderPage', () => {
     lastCameraTarget = undefined
     lastOnCenterChange = undefined
     lastSheetPickup = undefined
+    lastSearchNear = undefined
     mockUsePriceQuote.mockReturnValue({ view: null, isLoading: false, errorKey: null })
     mockReverse.mockReturnValue({ data: undefined })
+    mockUseGeoConfig.mockReturnValue({ data: { mapCenterLat: 49.948, mapCenterLng: 15.268 } })
   })
 
   it('shows the destination search in the top slot and no price sheet initially', () => {
@@ -151,6 +166,25 @@ describe('MapOrderPage', () => {
     // is enabled, so a map-landed customer sees a price without touching the map.
     const calls = mockUsePriceQuote.mock.calls.map((c) => c[0] as { pickupLat: number | null })
     expect(calls.some((a) => a.pickupLat === 50.031)).toBe(true)
+  })
+
+  it('falls back to the fleet config center as near before any map center is known (UC-018 WI-2)', () => {
+    renderPage()
+    // No onCenterChange fired yet → near comes from useGeoConfig, coarse-rounded to 2 decimals.
+    expect(lastSearchNear).toEqual({ lat: 49.95, lng: 15.27 })
+  })
+
+  it('prefers the settled map center over the config center for near (UC-018 WI-2)', () => {
+    renderPage()
+    act(() => lastOnCenterChange?.({ lat: 50.0876, lng: 14.4312 }))
+    // Map center wins, coarse-rounded to 2 decimals.
+    expect(lastSearchNear).toEqual({ lat: 50.09, lng: 14.43 })
+  })
+
+  it('near is null while the fleet config center is still loading and no map center is known', () => {
+    mockUseGeoConfig.mockReturnValue({ data: undefined })
+    renderPage()
+    expect(lastSearchNear).toBeNull()
   })
 
   it('onOrdered navigates to /customer/t/:code', async () => {

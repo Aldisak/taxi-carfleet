@@ -1,27 +1,39 @@
 {
+  "wi": "WI-1",
   "wi_id": "WI-1",
-  "uc": "UC-017",
-  "status": "done",
-  "hit_max_turns": false,
+  "uc": "UC-018",
+  "status": "complete",
   "files_changed": [
-    "api/src/Taxi.Api/Common/Dispatch/DriverCandidate.cs",
-    "api/src/Taxi.Api/Common/Dispatch/NearestDriverSelector.cs",
-    "api/tests/Taxi.Api.Tests/Dispatch/NearestDriverSelectorTests.cs"
+    "api/src/Taxi.Api/Infrastructure/Geo/IMapyClient.cs",
+    "api/src/Taxi.Api/Infrastructure/Geo/MapyClient.cs",
+    "api/src/Taxi.Api/Infrastructure/Geo/GeoService.cs",
+    "api/tests/Taxi.Api.Tests/Geo/GeoServiceTests.cs",
+    "api/tests/Taxi.Api.Tests/Geo/MapyClientHandlerTests.cs"
   ],
-  "tests_added": 15,
-  "tests_passing": 15,
-  "coverage_delta": "+15 new pure unit tests in NearestDriverSelectorTests; no regressions",
+  "tests_added": [
+    "MapyClientHandlerTests.SuggestAsync_NearSupplied_RequestUrlContainsPreferNear: URL-capture test asserting preferNear=14.43,50.08 (lng-first, dot-decimal) and preferNearPrecision= present when near=(50.08,14.43) supplied",
+    "MapyClientHandlerTests.SuggestAsync_NearNull_RequestUrlOmitsPreferNear: URL-capture test asserting preferNear is absent when near=null (regression guard for today's behaviour)",
+    "GeoServiceTests.Suggest_FleetlessBypass_ForwardsNearToClient: asserts FakeMapyClient.LastSuggestNear==(50.08,14.43) on the Guid.Empty bypass path",
+    "GeoServiceTests.Suggest_CachedFactoryPath_ForwardsNearToClient: asserts FakeMapyClient.LastSuggestNear==(50.08,14.43) on the cached-factory (cache miss) path"
+  ],
+  "tests_passing": true,
+  "coverage_delta": "n/a (scoped run reports pass/fail only)",
   "red_observed": true,
-  "notes": [
-    "RED was observed: compile errors CS0234 (Taxi.Api.Common.Dispatch namespace not found) and CS0246 (DriverCandidate type not found) — confirmed before writing any implementation.",
-    "Return type is DriverCandidate? (not Guid?) so WI-2 can build AssignPayload(candidate.DriverId, candidate.CurrentVehicleId) directly.",
-    "maxRadiusKm is int (matches FleetSettings.MaxOfferRadiusKm), not double.",
-    "F-3 (design-review finding, LOW severity) addressed: Common/Dispatch/ single-consumer exception documented in NearestDriverSelector class <remarks> XML, citing the HaversineDistance/OrderStateMachine pure-helper precedent. Future reviewers see the rationale inline.",
-    "NearestDriverSelector is internal static (InternalsVisibleTo='Taxi.Api.Tests' covers test access). DriverCandidate is public record so AutoDispatchJob in the same assembly can project rows into it.",
-    "Positional record XML docs follow the CLAUDE.md WI-11 rule: <param name='...'> tags placed in class-level doc block (not above individual parameters) to avoid CS1587.",
-    "Eligibility boundary: LastPositionAt >= now - staleThreshold (inclusive). Confirmed by a dedicated boundary test.",
-    "Tiebreak: ascending DriverId — documented in class <remarks>. Verified by SelectNearest_EqualDistance_DeterministicTiebreak with two Guids of known sort order, run with swapped input order confirming determinism.",
-    "No Docker/Testcontainers: all 15 tests are pure unit tests, running in ~55 ms without any DB container."
+  "red_details": [
+    "Assertion RED #1 (SuggestAsync_NearSupplied_RequestUrlContainsPreferNear): With the preferNear block removed from MapyClient.SuggestAsync, the test failed: 'Expected capturedUrl \"https://api.mapy.cz/v1/suggest?apikey=test-server-key&lang=cs&type=regional.address,regional.street,poi&limit=5&query=Praha\" to contain \"preferNear=14.43,50.08\" because Mapy preferNear is {lng},{lat} — longitude FIRST; tuple is (Lat,Lng) so values must be swapped.' Exit 1, 0 passing, 1 failing.",
+    "Assertion RED #2 (Suggest_FleetlessBypass_ForwardsNearToClient): With GeoService forwarding null instead of near, test failed: 'Expected fakeClient.LastSuggestNear to be {Item1 = 50.08, Item2 = 14.43} because GeoService must forward the near hint to IMapyClient on the fleetless bypass path, but found <null>.' Exit 1.",
+    "Assertion RED #3 (Suggest_CachedFactoryPath_ForwardsNearToClient): Same broken GeoService, test failed: 'Expected fakeClient.LastSuggestNear to be {Item1 = 50.08, Item2 = 14.43} because GeoService must forward the near hint to IMapyClient inside the cache-miss factory closure, but found <null>.' Exit 1. Both GeoService tests failed in the same run (2 failing, 0 passing).",
+    "SuggestAsync_NearNull_RequestUrlOmitsPreferNear is inherently a regression guard — born-green is correct (no REDs needed for a null-pass-through guard)."
   ],
-  "verification_output": "dotnet test --filter FullyQualifiedName~NearestDriverSelectorTests: Uspesne! - Neuspesne: 0, Uspesne: 15, Preskoceno: 0, Celkem: 15, Doba trvani: 55 ms. dotnet build -warnaserror: 0 upozorneni, 0 chyb."
+  "verification": {
+    "tool": "dotnet-test",
+    "filter": "Taxi.Api.Tests.Geo",
+    "exit_code": 0,
+    "result": "139 tests passing (0 failures, 0 skipped)"
+  },
+  "verification_output": "Uspesne! - Neuspesne: 0, Uspesne: 139, Preskoceno: 0, Celkem: 139, Doba trvani: 18 s - Taxi.Api.Tests.dll (net10.0)",
+  "build_result": "dotnet build api -warnaserror: 0 warnings, 0 errors. EXIT: 0",
+  "full_suite_result": "740 passing, 4 skipped (50k perf benchmarks), 0 failures. EXIT: 0",
+  "hit_max_turns": false,
+  "notes": "IMapyClient.SuggestAsync signature extended with (double Lat, double Lng)? near inserted BETWEEN query and serverKey, per design-review V-4. The interface file was edited directly (not just the implementation). XML <param name='near'> doc added to the interface member — avoids CS1573 under -warnaserror.\n\nMapyClient: near is non-null -> appends '&preferNear={n.Lng},{n.Lat}&preferNearPrecision=5000' (LONGITUDE-FIRST, mirroring RouteAsync start={fromLng},{fromLat} at MapyClient.cs:88-90). InvariantCulture used for BOTH coordinates — mirrors the existing ic=CultureInfo.InvariantCulture pattern in ReverseGeocodeAsync/RouteAsync. When near is null, the URL is unchanged.\n\nParam name used: 'preferNear' (lng,lat) + 'preferNearPrecision=5000'. Verified as best-effort per the provisional-but-documented precedent in CLAUDE.md UC-010 WI-09 and MapyConstants. The URL-capture test pins: (a) the param is present/absent on near supplied/null, (b) coord order is lng-first (literal '14.43,50.08' for near=(50.08,14.43)), (c) dot-decimal formatting ('14.43', '50.08' — never '14,43' which cs-CZ would emit).\n\nGeoService: near forwarded on BOTH paths: line 31 Guid.Empty bypass (direct call) and line 40 cache-miss factory closure. Cache key unchanged (GeoCacheKey.Suggest(q,near) already includes near).\n\nFakeMapyClient nested double: gained LastSuggestNear capture field ((double Lat, double Lng)?) mirroring LastServerKey. CountingMapyClient: signature-only update, no capture needed. All 5 existing MapyClientHandlerTests.SuggestAsync call sites updated to pass near: null positionally. Existing Suggest_NoFleetId_BypassesCacheAndUsage and Suggest_FleetHasServerKey_ResolvesAndPassesKeyToClient tests pass with near:null threaded through (regression green).\n\nFakeGeoService.cs NOT touched (implements IGeoService, whose SuggestAsync already carries near — out of scope per WI spec).\n\nNOTE: handoff-backend-developer-WI-1.json previously held a stale UC-017 WI-1 result; overwritten with UC-018 WI-1 (filename collision pattern documented in CLAUDE.md for WI-15)."
 }

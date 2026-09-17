@@ -592,4 +592,40 @@ describe('getGeoSuggest — enriched items (street + municipality, UC-010 WI-16)
     expect(res.items[0]!.street).toBe('Náměstí')
     expect(res.items[0]!.municipality).toBe('Kolín')
   })
+
+  // UC-018 WI-2: getGeoSuggest sends a `near=lat,lng` location hint (lat FIRST — the endpoint's
+  // leniently-parsed contract; the backend flips to Mapy's lng,lat internally). Dot-decimal via
+  // URLSearchParams (JS has no cs-CZ comma trap).
+  it('appends near=lat,lng (lat first, dot-decimal) when a location is supplied', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue({ items: [] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { getGeoSuggest } = await import('./client')
+    await getGeoSuggest('Kouřimská', { lat: 50.09, lng: 14.43 })
+
+    const url = fetchMock.mock.calls[0][0] as string
+    expect(url).toContain('q=Kou')
+    // lat FIRST then lng, dot-decimal (comma URL-encodes to %2C).
+    expect(decodeURIComponent(url)).toContain('near=50.09,14.43')
+    expect(decodeURIComponent(url)).not.toContain('14,43')
+  })
+
+  it('omits the near param when no location is supplied (today\'s behaviour)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: vi.fn().mockResolvedValue({ items: [] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { getGeoSuggest } = await import('./client')
+    await getGeoSuggest('Kouřimská')
+
+    const url = fetchMock.mock.calls[0][0] as string
+    expect(url).not.toContain('near=')
+  })
 })

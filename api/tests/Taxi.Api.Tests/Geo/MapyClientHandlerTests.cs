@@ -76,7 +76,7 @@ public sealed class MapyClientHandlerTests
         var handler = new StubMapyHttpHandler(HttpStatusCode.OK, SampleSuggestJson);
         var client = BuildClient(handler);
 
-        var result = await client.SuggestAsync("nádraží", TestKey, ct);
+        var result = await client.SuggestAsync("nádraží", near: null, TestKey, ct);
 
         result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Success>();
         var success = (GeoResult<IReadOnlyList<MapySuggestResult>>.Success)result;
@@ -104,7 +104,7 @@ public sealed class MapyClientHandlerTests
         int callsAtOpen = 0;
         for (int i = 0; i < 20; i++)
         {
-            var r = await client.SuggestAsync("test", TestKey, ct);
+            var r = await client.SuggestAsync("test", near: null, TestKey, ct);
             if (r is GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable u
                 && u.Reason == GeoUnavailableReason.CircuitOpen)
             {
@@ -117,7 +117,7 @@ public sealed class MapyClientHandlerTests
 
         // Now that the breaker is open, subsequent calls must NOT hit the handler
         var beforeCount = handler.CallCount;
-        var result = await client.SuggestAsync("after-open", TestKey, ct);
+        var result = await client.SuggestAsync("after-open", near: null, TestKey, ct);
         result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable>(
             "breaker is open — upstream must not be called");
         handler.CallCount.Should().Be(beforeCount, "no new handler calls after breaker opened");
@@ -215,7 +215,7 @@ public sealed class MapyClientHandlerTests
         });
         var client = BuildClient(handler);
 
-        await client.SuggestAsync("Praha", TestKey, ct);
+        await client.SuggestAsync("Praha", near: null, TestKey, ct);
 
         capturedUrl.Should().Contain("lang=cs");
         capturedUrl.Should().Contain("type=");
@@ -233,10 +233,70 @@ public sealed class MapyClientHandlerTests
         var handler = new StubMapyHttpHandler(HttpStatusCode.OK, SampleSuggestJson);
         var client = BuildClient(handler);
 
-        var result = await client.SuggestAsync("Praha", serverKey: null, ct);
+        var result = await client.SuggestAsync("Praha", near: null, serverKey: null, ct);
 
         result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable>(
             "a missing key must degrade cleanly, not fire a keyless upstream request");
         handler.CallCount.Should().Be(0, "no upstream call may be made without a key");
+    }
+
+    // ── Test 8: near supplied → URL contains preferNear in lng,lat order ────────
+
+    /// <summary>When near is supplied, the suggest URL must include preferNear={lng},{lat} (longitude-first,
+    /// dot-decimal) and preferNearPrecision. Pins coordinate order and InvariantCulture formatting.</summary>
+    [Fact]
+    public async Task SuggestAsync_NearSupplied_RequestUrlContainsPreferNear()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        string? capturedUrl = null;
+        var handler = new StubMapyHttpHandler(req =>
+        {
+            capturedUrl = req.RequestUri?.ToString();
+            return new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(SampleSuggestJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = BuildClient(handler);
+
+        // near=(50.08, 14.43) → Lat=50.08, Lng=14.43 → Mapy wants lng,lat → "14.43,50.08"
+        await client.SuggestAsync("Praha", near: (50.08, 14.43), TestKey, ct);
+
+        // Longitude-first, dot-decimal (pins coord order and InvariantCulture)
+        capturedUrl.Should().Contain("preferNear=14.43,50.08",
+            "Mapy preferNear is {lng},{lat} — longitude FIRST; tuple is (Lat,Lng) so values must be swapped");
+        capturedUrl.Should().NotContain("preferNear=50.08",
+            "50.08 in first position would indicate lat-first (wrong) coord order");
+        capturedUrl.Should().Contain("preferNearPrecision=",
+            "precision param must accompany preferNear");
+        // Dot-decimal assertion: the URL must never contain a comma-decimal like "14,43"
+        capturedUrl.Should().Contain("14.43",
+            "InvariantCulture required — cs-CZ would produce '14,43' which is invalid");
+        capturedUrl.Should().Contain("50.08",
+            "InvariantCulture required — cs-CZ would produce '50,08' which is invalid");
+    }
+
+    // ── Test 9: near null → URL omits preferNear ─────────────────────────────
+
+    /// <summary>When near is null, the suggest URL must NOT include preferNear (today's behaviour is preserved).</summary>
+    [Fact]
+    public async Task SuggestAsync_NearNull_RequestUrlOmitsPreferNear()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        string? capturedUrl = null;
+        var handler = new StubMapyHttpHandler(req =>
+        {
+            capturedUrl = req.RequestUri?.ToString();
+            return new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(SampleSuggestJson, Encoding.UTF8, "application/json")
+            };
+        });
+        var client = BuildClient(handler);
+
+        await client.SuggestAsync("Praha", near: null, TestKey, ct);
+
+        capturedUrl.Should().NotContain("preferNear",
+            "when near is null the URL must be identical to today's behaviour — no location bias param");
     }
 }

@@ -267,9 +267,67 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         result.Result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Success>();
     }
 
+    // ── Suggest_FleetlessBypass_ForwardsNearToClient ──────────────────────────
+
+    /// <summary>On the Guid.Empty fleetless bypass path, GeoService must forward the near hint
+    /// to IMapyClient.SuggestAsync verbatim — it must not swallow or null the argument.</summary>
+    [Fact]
+    public async Task Suggest_FleetlessBypass_ForwardsNearToClient()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var suggestData = new List<MapySuggestResult>
+        {
+            new MapySuggestResult("Prague, CZ", null, null, 50.08, 14.43)
+        };
+        var fakeClient = new FakeMapyClient
+        {
+            SuggestReturn = new GeoResult<IReadOnlyList<MapySuggestResult>>.Success(suggestData)
+        };
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var geoService = BuildGeoService(scope, fakeClient);
+
+        var near = (Lat: 50.08, Lng: 14.43);
+        await geoService.SuggestAsync(Guid.Empty, "Praha", near: near, ct);
+
+        fakeClient.LastSuggestNear.Should().Be(near,
+            "GeoService must forward the near hint to IMapyClient on the fleetless bypass path");
+    }
+
+    // ── Suggest_CachedFactoryPath_ForwardsNearToClient ───────────────────────
+
+    /// <summary>On the cached-factory path (real fleet, cache miss), GeoService must forward the
+    /// near hint inside the factory closure to IMapyClient.SuggestAsync.</summary>
+    [Fact]
+    public async Task Suggest_CachedFactoryPath_ForwardsNearToClient()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var fleetId = Guid.CreateVersion7();
+        await SeedFleetAsync(fleetId, $"gsvc-near-{fleetId:N}", ct);
+
+        var fakeClient = new FakeMapyClient
+        {
+            SuggestReturn = new GeoResult<IReadOnlyList<MapySuggestResult>>.Success(
+                new List<MapySuggestResult> { new("Praha", null, null, 50.08, 14.43) })
+        };
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var geoService = BuildGeoService(scope, fakeClient);
+
+        var near = (Lat: 50.08, Lng: 14.43);
+        // Unique query to guarantee a cache miss (factory will be called)
+        var uniqueQuery = $"Praha-near-{fleetId:N}";
+        await geoService.SuggestAsync(fleetId, uniqueQuery, near: near, ct);
+
+        fakeClient.LastSuggestNear.Should().Be(near,
+            "GeoService must forward the near hint to IMapyClient inside the cache-miss factory closure");
+    }
+
     // ── Nested test doubles ───────────────────────────────────────────────────
 
-    /// <summary>Controllable IMapyClient that returns pre-set results and records the last server key it received.</summary>
+    /// <summary>Controllable IMapyClient that returns pre-set results and records the last server key
+    /// and last suggest near hint it received — lets tests assert key resolution and near forwarding.</summary>
     private sealed class FakeMapyClient : IMapyClient
     {
         public GeoResult<IReadOnlyList<MapySuggestResult>> SuggestReturn { get; set; } =
@@ -287,8 +345,13 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         /// <summary>The server key passed to the most recent client call — lets tests assert key resolution.</summary>
         public string? LastServerKey { get; private set; }
 
-        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, string? serverKey, CancellationToken ct)
+        /// <summary>The near hint passed to the most recent SuggestAsync call — lets tests assert near forwarding.</summary>
+        public (double Lat, double Lng)? LastSuggestNear { get; private set; }
+
+        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(
+            string query, (double Lat, double Lng)? near, string? serverKey, CancellationToken ct)
         {
+            LastSuggestNear = near;
             LastServerKey = serverKey;
             return Task.FromResult(SuggestReturn);
         }
@@ -321,7 +384,8 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         public int RouteCalls { get; private set; }
         public int QuickPlaceCalls { get; private set; }
 
-        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(string query, string? serverKey, CancellationToken ct)
+        public Task<GeoResult<IReadOnlyList<MapySuggestResult>>> SuggestAsync(
+            string query, (double Lat, double Lng)? near, string? serverKey, CancellationToken ct)
         {
             SuggestCalls++;
             return Task.FromResult<GeoResult<IReadOnlyList<MapySuggestResult>>>(

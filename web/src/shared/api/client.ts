@@ -355,8 +355,24 @@ export interface GeoRouteRequest {
   toLng: number
 }
 
-export function getGeoSuggest(q: string): Promise<GeoSuggestResponse> {
+/**
+ * GET /geo/suggest?q=&near= — address autocomplete (UC-010 WI-16, near hint UC-018 WI-2).
+ * When `near` is supplied it appends `near={lat},{lng}` — LATITUDE FIRST, dot-decimal — matching
+ * the SuggestEndpoint's leniently-parsed `lat,lng` contract (a malformed near is ignored server-side,
+ * never a 400; the backend flips to Mapy's lng,lat internally, that is WI-1's job). The coordinate is
+ * NOT typed as the feature-layer LatLng — client.ts lives in shared/ and must not import a features/
+ * type; the inline structural `{ lat; lng }` accepts a LatLng at the call site. URLSearchParams
+ * stringifies numbers dot-decimal (JS has no cs-CZ comma trap — mirrors getGeoReverse). When `near`
+ * is null/undefined the query string is exactly today's (`?q=...`).
+ */
+export function getGeoSuggest(
+  q: string,
+  near?: { lat: number; lng: number } | null,
+): Promise<GeoSuggestResponse> {
   const params = new URLSearchParams({ q })
+  if (near) {
+    params.set('near', `${near.lat},${near.lng}`)
+  }
   return apiRequest<GeoSuggestResponse>(`/geo/suggest?${params}`)
 }
 

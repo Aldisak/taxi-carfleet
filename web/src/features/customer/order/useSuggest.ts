@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getGeoSuggest, type GeoSuggestItem } from '../../../shared/api/client'
+import type { LatLng } from '../shell/mapCamera'
 
 /** Minimum query length before geo/suggest is called (matches the backend 3-char floor). */
 export const MIN_SUGGEST_CHARS = 3
@@ -23,9 +24,13 @@ export interface UseSuggestResult {
  * attached by apiRequest). On upstream failure the endpoint returns 200-empty, so an empty list is
  * the "Žádné návrhy" case, not an error.
  *
- * Query key is hierarchical: ['geo','suggest', q] (rules/web-performance.md#query-keys).
+ * Query key is hierarchical: ['geo','suggest', debounced, near] (rules/web-performance.md#query-keys).
+ * A `near` change re-queries and caches per location; `near` is NOT debounced (only the text is), and
+ * because it is coarse-rounded upstream in suggestLocation.ts, tiny map nudges keep the same key so
+ * there is no thrash. TanStack hashes the key by value, so a fresh-but-equal `near` object does not
+ * refetch — hence no useMemo is needed (rules/web-performance.md#memoization-policy).
  */
-export function useSuggest(query: string): UseSuggestResult {
+export function useSuggest(query: string, near?: LatLng | null): UseSuggestResult {
   const [debounced, setDebounced] = useState('')
 
   useEffect(() => {
@@ -36,8 +41,8 @@ export function useSuggest(query: string): UseSuggestResult {
   const enabled = debounced.trim().length >= MIN_SUGGEST_CHARS
 
   const { data, isFetching } = useQuery({
-    queryKey: ['geo', 'suggest', debounced],
-    queryFn: () => getGeoSuggest(debounced),
+    queryKey: ['geo', 'suggest', debounced, near ?? null],
+    queryFn: () => getGeoSuggest(debounced, near),
     enabled,
     staleTime: 30_000,
   })

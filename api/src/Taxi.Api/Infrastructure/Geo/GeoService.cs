@@ -28,7 +28,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache, Taxi
         if (fleetId == Guid.Empty)
         {
             var serverKey = await ResolveServerKeyAsync(Guid.Empty, ct);
-            var directResult = await mapyClient.SuggestAsync(q, serverKey, ct);
+            var directResult = await mapyClient.SuggestAsync(q, near, serverKey, ct);
             return new GeoCacheResult<IReadOnlyList<MapySuggestResult>>(directResult, WasHit: false);
         }
 
@@ -37,7 +37,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache, Taxi
             fleetId,
             GeoCacheKind.Suggest,
             key,
-            async c => await mapyClient.SuggestAsync(q, await ResolveServerKeyAsync(fleetId, c), c),
+            async c => await mapyClient.SuggestAsync(q, near, await ResolveServerKeyAsync(fleetId, c), c),
             ct);
     }
 
