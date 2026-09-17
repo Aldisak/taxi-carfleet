@@ -67,6 +67,9 @@ vi.mock('react-leaflet', () => {
         title={title}
       />
     ),
+    Polyline: ({ positions }: { positions: [number, number][] }) => (
+      <div data-testid="route-polyline" data-positions={JSON.stringify(positions)} />
+    ),
     useMap: () => getMap(),
     useMapEvents: (handlers: { moveend?: () => void }) => {
       moveendHandler = handlers.moveend ?? null
@@ -284,6 +287,30 @@ describe('CustomerMapBackground', () => {
     mockMatchMedia(true)
     renderBackground({ carMarker: null, pickupMarker: null })
     expect(screen.queryByTestId('leaflet-marker')).not.toBeInTheDocument()
+  })
+
+  it('draws a route Polyline from routeGeometry when it has >=2 points', () => {
+    mockConfig()
+    const geometry = [
+      [50.08, 14.42],
+      [50.0, 14.8],
+      [49.95, 15.27],
+    ]
+    renderBackground({ routeGeometry: geometry })
+    const line = screen.getByTestId('route-polyline')
+    expect(line).toHaveAttribute('data-positions', JSON.stringify(geometry))
+  })
+
+  it('draws no route Polyline when routeGeometry is null', () => {
+    mockConfig()
+    renderBackground({ routeGeometry: null })
+    expect(screen.queryByTestId('route-polyline')).not.toBeInTheDocument()
+  })
+
+  it('draws no route Polyline when routeGeometry has fewer than 2 points', () => {
+    mockConfig()
+    renderBackground({ routeGeometry: [[50.08, 14.42]] })
+    expect(screen.queryByTestId('route-polyline')).not.toBeInTheDocument()
   })
 
   it('animates the car marker smoothly toward a new target over the update interval', () => {

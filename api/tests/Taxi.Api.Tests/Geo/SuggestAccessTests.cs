@@ -2,13 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Taxi.Api.Common.Geo;
 using Taxi.Api.Infrastructure.Geo;
 using Taxi.Api.Tests.Infrastructure;
 
 namespace Taxi.Api.Tests.Geo;
 
-/// <summary>Access-control tests for geo/suggest after A-geo-suggest widened it to the
-/// CustomerOrStaff policy, and confirmation that geo/route is NOT widened to customers.</summary>
+/// <summary>Access-control tests for geo/suggest and geo/route after the anonymous-route change.
+/// geo/route now uses AllowAnonymous + GeoRateLimiter guard, mirroring geo/suggest.</summary>
 [Collection(TestCollections.Database)]
 public sealed class SuggestAccessTests(PostgresFixture fixture)
 {
@@ -67,16 +68,21 @@ public sealed class SuggestAccessTests(PostgresFixture fixture)
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    /// <summary>A Customer caller receives 403 from POST geo/route (route is NOT widened to customers).</summary>
+    /// <summary>A Customer caller now receives 200 from POST geo/route (AllowAnonymous after route-anon change).</summary>
     [Fact]
-    public async Task Route_Customer_Returns403()
+    public async Task Route_Customer_Returns200()
     {
         var ct = TestContext.Current.CancellationToken;
+
+        var fake = fixture.Factory.Services.GetRequiredService<FakeGeoService>();
+        fake.Reset();
+        fake.RouteResult = new MapyRouteResultData(1000, 120, []);
+        fixture.Factory.Services.GetRequiredService<GeoRateLimiter>().Reset();
 
         var client = fixture.Factory.CreateClient();
         client.AsCustomer();
 
         var resp = await client.PostAsJsonAsync(RouteUrl, RouteBody, ct);
-        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

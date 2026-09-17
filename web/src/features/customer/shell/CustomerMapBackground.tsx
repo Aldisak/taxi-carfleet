@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Marker, useMap, useMapEvents } from 'react-leaflet'
+import { Marker, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -214,6 +214,12 @@ export interface CustomerMapBackgroundProps {
   carMarker?: LatLng | null
   /** Pickup pin position (UC-016 tracking). Null → no pickup marker. */
   pickupMarker?: LatLng | null
+  /**
+   * The fastest pickup → destination route polyline as [lat, lng] pairs (route-preview-gps). A
+   * Polyline draws inside this lazy chunk when it has >=2 points; null → no line. Plain numbers
+   * (the page never imports leaflet); useRoute (eager, best-effort) supplies it.
+   */
+  routeGeometry?: number[][] | null
 }
 
 /**
@@ -228,12 +234,15 @@ export default function CustomerMapBackground({
   onCenterChange,
   carMarker = null,
   pickupMarker = null,
+  routeGeometry = null,
 }: CustomerMapBackgroundProps) {
   const { t } = useTranslation()
+  const hasRoute = routeGeometry != null && routeGeometry.length >= 2
 
   return (
     <MapyMap ariaLabel={t('customer.shell.mapLabel')}>
       <CameraController points={cameraTarget} />
+      {hasRoute && <Polyline positions={routeGeometry as [number, number][]} />}
       {onCenterChange && <MoveendController onCenterChange={onCenterChange} />}
       {onCenterChange && <CenterPin data-testid="center-pin" aria-hidden="true" />}
       {pickupMarker && (

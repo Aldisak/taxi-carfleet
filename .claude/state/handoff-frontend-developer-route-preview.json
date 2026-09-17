@@ -1,0 +1,45 @@
+{
+  "wi": "route-preview-gps",
+  "wi_id": "route-preview-gps",
+  "uc": "UC-018",
+  "status": "complete",
+  "lane": "web",
+  "files_changed": [
+    "web/src/features/customer/shell/useCustomerLocation.ts",
+    "web/src/features/customer/shell/useCustomerLocation.test.ts",
+    "web/src/features/customer/order/useRoute.ts",
+    "web/src/features/customer/order/useRoute.test.ts",
+    "web/src/features/customer/shell/CustomerMapBackground.tsx",
+    "web/src/features/customer/shell/CustomerMapBackground.test.tsx",
+    "web/src/features/customer/shell/CustomerMapShell.tsx",
+    "web/src/features/customer/shell/CustomerMapShell.test.tsx",
+    "web/src/features/customer/order/MapOrderPage.tsx",
+    "web/src/features/customer/order/MapOrderPage.test.tsx",
+    "web/e2e/customer.spec.ts"
+  ],
+  "tests_added": [
+    "web/src/features/customer/shell/useCustomerLocation.test.ts (5 tests: granted+coords; denied->null; unavailable when geolocation absent; request() re-requests; Permissions API onchange revoke->denied)",
+    "web/src/features/customer/order/useRoute.test.ts (5 tests: fetch both set; skip pickup null; skip destination null; re-query on destination coord change; degrade to geometry null on throw)",
+    "web/src/features/customer/shell/CustomerMapBackground.test.tsx (3 new tests: Polyline draws with >=2 pts; null->no polyline; single-point->no polyline; + extended react-leaflet mock with a Polyline stub)",
+    "web/src/features/customer/shell/CustomerMapShell.test.tsx (1 new test: routeGeometry threads to the lazy background)",
+    "web/src/features/customer/order/MapOrderPage.test.tsx (7 new tests: first granted GPS fix recenters camera to [gps]; camera reverts to pickup framing after settle (asserts length 2 after destination pick); GPS feeds suggest near tier; route geometry threads to shell; 'Use my location' button re-requests; denied message; unavailable message)"
+  ],
+  "tests_added_count": 21,
+  "tests_passing": true,
+  "coverage_delta": "New eager modules useCustomerLocation (hook, 5 tests) + useRoute (hook, 5 tests) fully covered. CustomerMapBackground gains 3 Polyline tests, CustomerMapShell 1 threading test, MapOrderPage 7 GPS/route/status tests. Scoped suite features/customer + shared/map: 56 files / 389 tests green.",
+  "red_observed": true,
+  "red_details": [
+    "Cycle 1 (useCustomerLocation): RED = `Failed to resolve import \"./useCustomerLocation\"` before the hook existed; after GREEN, one intermediate RED on the onchange-revoke test (test stub's .state was a captured value not a getter) fixed in the test.",
+    "Cycle 2 (useRoute): RED = import-resolve failure before the hook existed.",
+    "Cycle 3 (CustomerMapBackground Polyline): RED = the 'draws a route Polyline' test failed (no Polyline rendered) before adding the Polyline to the component.",
+    "Cycle 4 (MapOrderPage): RED = 7 new tests failed (no GPS wiring / no route thread / no Use-my-location button) before wiring the page."
+  ],
+  "tsc": "pass (0 errors)",
+  "lint": "pass (0 warnings; check:geo OK)",
+  "verification": { "tool": "vitest", "filter": "features/customer", "exit_code": 0, "result": "56 files / 389 tests passed" },
+  "verification_output": "npm run --prefix web test -- \"useCustomerLocation\" \"order/useRoute\" \"CustomerMapBackground\" \"CustomerMapShell\" \"MapOrderPage\" => Test Files 5 passed (5), Tests 57 passed (57), EXIT=0. Broader scoped run npm run --prefix web test -- \"features/customer\" \"shared/map\" => Test Files 56 passed (56), Tests 389 passed (389). npm run --prefix web tsc => 0 errors. npm run --prefix web lint => 0 warnings (check:geo OK).",
+  "hit_max_turns": false,
+  "new_i18n_keys": [],
+  "locale_files_touched": false,
+  "notes": "TDD red-green-refactor, RED observed each cycle (see red_details). GPS RECENTER MECHANISM: MapOrderPage holds a one-shot `recenterTo: LatLng|null` state; cameraTarget = recenterTo ? [recenterTo] : orderCameraPoints(pickup, destination). An effect gated by autoRecenterDoneRef (a ref, fires ONCE) recenters to the first granted GPS fix in the SEARCH phase only -> setRecenterTo(gps). react-leaflet reads center only at mount, so the single-point cameraTarget makes the shell CameraController setView to GPS -> the existing center-pin -> useReverseGeocode -> setPickup = current location. handleCenterChange clears recenterTo once the map settles (onCenterChange), reverting the camera to orderCameraPoints so the user can drag away and pickup+destination fitBounds works (guarded by a test that picks a destination AFTER the settle and asserts cameraTarget length 2). The 'Use my location' button calls location.request() and, if coords already known, setRecenterTo(coords) to bypass the once-guard on a re-tap. No loop: CameraController's prevKeyRef dedupes identical setView intents, MapOrderPage's existing pickup skip-guard blocks the redundant setPickup, and the 300ms debounced onCenterChange lets a user drag supersede GPS -- all three brakes pre-existed. LEAFLET-LAZY CONFIRMED: CustomerMapBackground.tsx remains the ONLY real react-leaflet/leaflet/MapyMap importer under features/customer/shell (grep: CustomerMapShell.tsx only lazy()-imports it; MapOrderPage imports only CustomerMapShell). The new Polyline import lives inside CustomerMapBackground i.e. the already-lazy chunk. useRoute + useCustomerLocation are eager, leaflet-free. USEROUTE: TanStack useQuery keyed on primitive coords ['geo','route',fromLat,fromLng,toLat,toLng], enabled only when BOTH pickup+destination non-null, retry:false + default throwOnError:false so a 502 settles to geometry null and NEVER throws/blocks ordering; independent of usePriceQuote. No coord rounding -- by enable time the pickup is frozen (destinationSet phase) so the key is stable. useCustomerLocation status union is 'locating'|'granted'|'denied'|'unavailable' (deliberately NOT centerPin.ts's GeoPermissionState with 'prompt' -- not cross-imported). I18N KEYS USED (all pre-existing in all 6 locales -- none added): customer.custom.useMyLocation, customer.shell.gpsDenied, customer.shell.gpsUnavailable, customer.shell.locating. NO new i18n keys, NO locale JSON edits. STATE TIERS: useState + useQuery only, NO zustand store added. NO premature useMemo/useCallback (request() is useCallback([]) only as a stable public callback + effect dep). One lint false-positive suppressed with justification: react-hooks/exhaustive-deps ref-in-cleanup on attemptRef (a plain invalidation counter, not a DOM node). E2E: added page.route(/geo/route/) fulfill with a deterministic 2-point geometry (mirrors suggest/quote/reverse stubs) + best-effort context.grantPermissions(['geolocation'])/setGeolocation(49.948,15.268) in a try/catch; the map-pin fallback path keeps existing assertions green if the grant is unavailable, so no assertion depends on GPS specifically. Full e2e NOT run (conductor runs it). STAGING NOTE FOR CONDUCTOR: api/ files (RouteEndpoint.cs, GeoService.cs, Geo tests, docs/api.md) were already staged in the index by the parallel /geo/route-anonymous backend lane BEFORE this WI began; I staged only my 11 web/e2e files + this handoff via explicit paths and did NOT stage or unstage any api/ path."
+}

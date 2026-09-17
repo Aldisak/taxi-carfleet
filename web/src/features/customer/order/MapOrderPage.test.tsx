@@ -21,15 +21,18 @@ vi.mock('react-router-dom', async () => {
 //    (camera points, onCenterChange, top/bottom slots) is assertable without leaflet. ──
 let lastCameraTarget: LatLng[] | null | undefined
 let lastOnCenterChange: ((coords: LatLng) => void) | undefined
+let lastRouteGeometry: number[][] | null | undefined
 vi.mock('../shell/CustomerMapShell', () => ({
   CustomerMapShell: (props: {
     topSlot?: React.ReactNode
     bottomSlot?: React.ReactNode
     cameraTarget?: LatLng[] | null
     onCenterChange?: (coords: LatLng) => void
+    routeGeometry?: number[][] | null
   }) => {
     lastCameraTarget = props.cameraTarget
     lastOnCenterChange = props.onCenterChange
+    lastRouteGeometry = props.routeGeometry
     return (
       <div data-testid="shell">
         <div data-testid="top-slot">{props.topSlot}</div>
@@ -37,6 +40,25 @@ vi.mock('../shell/CustomerMapShell', () => ({
       </div>
     )
   },
+}))
+
+// ── useCustomerLocation: a controllable stub for the GPS hook. ──
+const mockRequest = vi.fn()
+const mockUseCustomerLocation = vi.fn<() => {
+  coords: LatLng | null
+  status: 'locating' | 'granted' | 'denied' | 'unavailable'
+  request: () => void
+}>(() => ({ coords: null, status: 'locating', request: mockRequest }))
+vi.mock('../shell/useCustomerLocation', () => ({
+  useCustomerLocation: () => mockUseCustomerLocation(),
+}))
+
+// ── useRoute: a controllable stub for the pickup->destination route-preview hook. ──
+const mockUseRoute = vi.fn<(pickup: unknown, destination: unknown) => { geometry: number[][] | null; isLoading: boolean }>(
+  () => ({ geometry: null, isLoading: false }),
+)
+vi.mock('./useRoute', () => ({
+  useRoute: (pickup: unknown, destination: unknown) => mockUseRoute(pickup, destination),
 }))
 
 // ── DestinationSearch: a stub button that fires a fixed destination on click. It also captures
@@ -119,11 +141,14 @@ describe('MapOrderPage', () => {
     vi.clearAllMocks()
     lastCameraTarget = undefined
     lastOnCenterChange = undefined
+    lastRouteGeometry = undefined
     lastSheetPickup = undefined
     lastSearchNear = undefined
     mockUsePriceQuote.mockReturnValue({ view: null, isLoading: false, errorKey: null })
     mockReverse.mockReturnValue({ data: undefined })
     mockUseGeoConfig.mockReturnValue({ data: { mapCenterLat: 49.948, mapCenterLng: 15.268 } })
+    mockUseCustomerLocation.mockReturnValue({ coords: null, status: 'locating', request: mockRequest })
+    mockUseRoute.mockReturnValue({ geometry: null, isLoading: false })
   })
 
   it('shows the destination search in the top slot and no price sheet initially', () => {
@@ -216,6 +241,82 @@ describe('MapOrderPage', () => {
     mockReverse.mockReturnValue({ data: { found: true, label: 'Mid-route B', street: null, municipality: null } })
     act(() => lastOnCenterChange?.({ lat: 50.05, lng: 15.25 }))
     expect(lastSheetPickup).toEqual(pickupBefore)
+  })
+
+  it('recenters the camera to the GPS coords on the first granted fix (route-preview-gps)', () => {
+    mockUseCustomerLocation.mockReturnValue({
+      coords: { lat: 50.0876, lng: 14.4312 },
+      status: 'granted',
+      request: mockRequest,
+    })
+    renderPage()
+    // The one-shot GPS recenter drives the camera to [gps] (a single point → the shell setViews to
+    // it → the center-pin → reverse-geocode → pickup = current location).
+    expect(lastCameraTarget).toEqual([{ lat: 50.0876, lng: 14.4312 }])
+  })
+
+  it('reverts the camera to pickup+destination framing after the map settles on the GPS recenter', async () => {
+    const user = userEvent.setup()
+    mockUseCustomerLocation.mockReturnValue({
+      coords: { lat: 50.0876, lng: 14.4312 },
+      status: 'granted',
+      request: mockRequest,
+    })
+    mockReverse.mockReturnValue({ data: { found: true, label: 'Moje poloha', street: null, municipality: null } })
+    renderPage()
+    // While the one-shot GPS recenter is active the camera is the single GPS point.
+    expect(lastCameraTarget).toEqual([{ lat: 50.0876, lng: 14.4312 }])
+
+    // The map settles on the recenter → onCenterChange fires → the one-shot recenter clears, so the
+    // camera reverts to orderCameraPoints. Picking a destination now must yield TWO points — if the
+    // recenter had NOT cleared, cameraTarget would stay locked at the single GPS point (length 1).
+    act(() => lastOnCenterChange?.({ lat: 50.0876, lng: 14.4312 }))
+    await user.click(screen.getByRole('button', { name: 'pick-destination' }))
+    expect(lastCameraTarget).toHaveLength(2)
+  })
+
+  it('feeds the GPS coords into the suggest near tier when the map center is unknown', () => {
+    mockUseCustomerLocation.mockReturnValue({
+      coords: { lat: 50.0876, lng: 14.4312 },
+      status: 'granted',
+      request: mockRequest,
+    })
+    // No config center → GPS is the strongest available near (map center still unknown).
+    mockUseGeoConfig.mockReturnValue({ data: undefined })
+    renderPage()
+    expect(lastSearchNear).toEqual({ lat: 50.09, lng: 14.43 })
+  })
+
+  it('threads the route-preview geometry to the shell', async () => {
+    const user = userEvent.setup()
+    const geometry = [
+      [50.028, 15.2],
+      [50.0, 15.1],
+    ]
+    mockUseRoute.mockReturnValue({ geometry, isLoading: false })
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'pick-destination' }))
+    expect(lastRouteGeometry).toEqual(geometry)
+  })
+
+  it('shows a "Use my location" button that re-requests the fix on click', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const btn = screen.getByRole('button', { name: i18n.t('customer.custom.useMyLocation') })
+    await user.click(btn)
+    expect(mockRequest).toHaveBeenCalled()
+  })
+
+  it('shows the denied message when geolocation permission is refused', () => {
+    mockUseCustomerLocation.mockReturnValue({ coords: null, status: 'denied', request: mockRequest })
+    renderPage()
+    expect(screen.getByText(i18n.t('customer.shell.gpsDenied'))).toBeInTheDocument()
+  })
+
+  it('shows the unavailable message when geolocation is not supported', () => {
+    mockUseCustomerLocation.mockReturnValue({ coords: null, status: 'unavailable', request: mockRequest })
+    renderPage()
+    expect(screen.getByText(i18n.t('customer.shell.gpsUnavailable'))).toBeInTheDocument()
   })
 
   it('has no axe violations', async () => {

@@ -186,6 +186,45 @@ public sealed class GeoServiceTests(PostgresFixture fixture)
         result.Result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Unavailable>();
     }
 
+    // ── Route_NoFleetId_BypassesCacheAndUsage ────────────────────────────────
+
+    /// <summary>When fleetId is Guid.Empty (fleetless anonymous customer), RouteAsync must call
+    /// IMapyClient directly without writing to GeoCache or geo_usage.
+    /// geo_cache and geo_usage have FK constraints to fleets; inserting Guid.Empty would throw.</summary>
+    [Fact]
+    public async Task Route_NoFleetId_BypassesCacheAndUsage()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        // Do NOT seed a fleet for Guid.Empty — there is no fleet with that id.
+        var fleetId = Guid.Empty;
+
+        var routeData = new MapyRouteResultData(3000, 240,
+        [
+            new MapyGeoPoint(49.95, 15.27),
+            new MapyGeoPoint(50.02, 15.20)
+        ]);
+        var fakeClient = new FakeMapyClient
+        {
+            RouteResult = new GeoResult<MapyRouteResultData>.Success(routeData)
+        };
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var geoService = BuildGeoService(scope, fakeClient);
+
+        // Must not throw (FK violation would surface here if bypass is missing).
+        var result = await geoService.RouteAsync(fleetId, 49.95, 15.27, 50.02, 15.20, ct);
+
+        // Must return the client data, not a haversine estimate.
+        result.IsEstimate.Should().BeFalse("fleetless route must return the real client result, not an estimate");
+        result.Result.Should().BeOfType<GeoResult<MapyRouteResultData>.Success>();
+        var success = (GeoResult<MapyRouteResultData>.Success)result.Result;
+        success.Value.DistanceMeters.Should().Be(3000);
+
+        // No usage row must have been written.
+        var usage = await ReadUsageCallsAsync(Guid.Empty, GeoCacheKind.Route, ct);
+        usage.Should().BeNull("fleetless route must not write geo_usage");
+    }
+
     // ── Suggest_NoFleetId_BypassesCacheAndUsage ──────────────────────────────
 
     /// <summary>When fleetId is Guid.Empty (fleetless customer), SuggestAsync must call

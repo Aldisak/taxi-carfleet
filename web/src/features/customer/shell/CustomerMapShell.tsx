@@ -150,6 +150,11 @@ export interface CustomerMapShellProps {
   carMarker?: LatLng | null
   /** Pickup pin position (UC-016 tracking). Null → no pickup marker. */
   pickupMarker?: LatLng | null
+  /**
+   * The fastest pickup → destination route polyline as [lat, lng] pairs (route-preview-gps).
+   * Threaded straight to the lazy map background, which draws a Polyline when it has >=2 points.
+   */
+  routeGeometry?: number[][] | null
 }
 
 /** The full-bleed map-first customer shell. See the file-level doc comment (SIBLING, not nested). */
@@ -160,6 +165,7 @@ export function CustomerMapShell({
   onCenterChange,
   carMarker,
   pickupMarker,
+  routeGeometry,
 }: CustomerMapShellProps) {
   const { t } = useTranslation()
 
@@ -189,6 +195,7 @@ export function CustomerMapShell({
               onCenterChange={onCenterChange}
               carMarker={carMarker}
               pickupMarker={pickupMarker}
+              routeGeometry={routeGeometry}
             />
           </Suspense>
         </MapLayer>

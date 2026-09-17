@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import styled from 'styled-components'
 import { CustomerMapShell } from '../shell/CustomerMapShell'
 import { useReverseGeocode } from '../shell/useReverseGeocode'
+import { useCustomerLocation } from '../shell/useCustomerLocation'
 import type { LatLng } from '../shell/mapCamera'
 import { useGeoConfig } from '../../../shared/map/useGeoConfig'
 import { DestinationSearch } from './DestinationSearch'
 import { PriceSheet } from './PriceSheet'
 import { usePriceQuote } from './usePriceQuote'
+import { useRoute } from './useRoute'
 import { pickSuggestLocation } from './suggestLocation'
 import {
   clearDestination,
@@ -18,6 +21,48 @@ import {
   type SelectedPlace,
 } from './orderFlowState'
 import { orderCameraPoints } from './orderCamera'
+
+// The "Use my location" pill lives in the top search slot (its container re-enables pointer events).
+// ≥48 px tall for the touch-target rule (rules/web-accessibility.md#touch-targets).
+const LocationControls = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing.xs};
+`
+
+const UseMyLocationButton = styled.button`
+  align-self: flex-start;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.xs};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  border: none;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+`
+
+// A translucent status pill for the GPS denied/unavailable/locating messages, legible over the map.
+const LocationStatus = styled.p`
+  margin: 0;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+`
 
 /**
  * The map-first customer order page (UC-015 WI-4) — the single `/customer` surface, mounted as a
@@ -50,8 +95,29 @@ export function MapOrderPage() {
   // the search phase. Frozen (not updated) once a destination is set.
   const [pendingCenter, setPendingCenter] = useState<LatLng | null>(null)
 
+  // A one-shot camera override that drives the map to the GPS coords (react-leaflet reads center
+  // only at mount, so a recenter is expressed as a single-point cameraTarget). Cleared once the
+  // map settles (onCenterChange), reverting the camera to orderCameraPoints(pickup, destination).
+  const [recenterTo, setRecenterTo] = useState<LatLng | null>(null)
+
   const reverse = useReverseGeocode(pendingCenter)
   const reverseLabel = reverse.data?.label ?? null
+
+  // Browser GPS (one-shot + Permissions API). Feeds the suggest `near` tier and drives the initial
+  // recenter so the pickup defaults to the customer's current location (map-pin stays the fallback).
+  const location = useCustomerLocation()
+
+  // Auto-recenter to the FIRST granted GPS fix exactly once (a ref, not state, so a later user drag
+  // is never overridden). Only in the search phase — "GPS as pickup" is a pre-destination action;
+  // once a destination is set the camera wants the pickup+destination fitBounds.
+  const autoRecenterDoneRef = useRef(false)
+  useEffect(() => {
+    if (autoRecenterDoneRef.current) return
+    if (location.status !== 'granted' || location.coords === null) return
+    if (flow.phase !== 'search') return
+    autoRecenterDoneRef.current = true
+    setRecenterTo(location.coords)
+  }, [location.status, location.coords, flow.phase])
 
   // The fleet's configured default map center — the weakest `near` fallback (config-center tier).
   const geoConfig = useGeoConfig()
@@ -66,14 +132,26 @@ export function MapOrderPage() {
   // needed (rules/web-performance.md#memoization-policy).
   const suggestNear = pickSuggestLocation({
     mapCenter: pendingCenter,
-    gpsLocation: null,
+    gpsLocation: location.coords,
     configCenter,
   })
 
   // Center changes update the pickup only in the search phase (freeze pickup once a destination
-  // is chosen — the fitBounds center is no longer the pickup).
+  // is chosen — the fitBounds center is no longer the pickup). Once the map settles, clear the
+  // one-shot GPS recenter so the camera reverts to orderCameraPoints (the user can drag away).
   const handleCenterChange = (coords: LatLng) => {
     setPendingCenter(coords)
+    setRecenterTo((prev) => (prev === null ? prev : null))
+  }
+
+  // The "Use my location" tap: re-request a fix; if coords are already known, recenter now (a fresh
+  // fix flowing in later is picked up by the auto-recenter effect only once — this covers the case
+  // where the user re-taps after already having a fix, bypassing the once-guard).
+  const handleUseMyLocation = () => {
+    location.request()
+    if (location.coords !== null) {
+      setRecenterTo(location.coords)
+    }
   }
 
   // Fold the resolved reverse-geocode label into the pickup (search phase only). Effect-gated on
@@ -112,14 +190,43 @@ export function MapOrderPage() {
     navigate(`/customer/t/${publicCode}`)
   }
 
-  const cameraTarget = orderCameraPoints(flow.pickup, flow.destination)
+  // The one-shot GPS recenter overrides the normal pickup/destination framing while active.
+  const cameraTarget = recenterTo ? [recenterTo] : orderCameraPoints(flow.pickup, flow.destination)
   const showSheet = flow.phase === 'destinationSet' && flow.destination !== null
+
+  // Best-effort fastest-route preview (pickup → destination). Enabled only when both are set; a
+  // fetch failure degrades to geometry null and never blocks the order button.
+  const route = useRoute(flow.pickup, flow.destination)
+
+  const locationStatusMessage =
+    location.status === 'denied'
+      ? t('customer.shell.gpsDenied')
+      : location.status === 'unavailable'
+        ? t('customer.shell.gpsUnavailable')
+        : location.status === 'locating'
+          ? t('customer.shell.locating')
+          : null
 
   return (
     <CustomerMapShell
       cameraTarget={cameraTarget}
       onCenterChange={handleCenterChange}
-      topSlot={<DestinationSearch onSelectDestination={handleSelectDestination} near={suggestNear} />}
+      routeGeometry={route.geometry}
+      topSlot={
+        <LocationControls>
+          <DestinationSearch onSelectDestination={handleSelectDestination} near={suggestNear} />
+          <UseMyLocationButton
+            type="button"
+            onClick={handleUseMyLocation}
+            disabled={location.status === 'unavailable'}
+          >
+            {t('customer.custom.useMyLocation')}
+          </UseMyLocationButton>
+          {locationStatusMessage && (
+            <LocationStatus role="status">{locationStatusMessage}</LocationStatus>
+          )}
+        </LocationControls>
+      }
       bottomSlot={
         showSheet ? (
           <PriceSheet

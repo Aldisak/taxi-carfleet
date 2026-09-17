@@ -258,7 +258,7 @@ test.describe.serial('Tenant onboarding + branding', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: [{ label: 'Centrum, Kutná Hora', street: 'Palackého náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 }],
+          items: [{ name: 'Centrum, Kutná Hora', label: 'Adresa', street: 'Palackého náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 }],
         }),
       }),
     )

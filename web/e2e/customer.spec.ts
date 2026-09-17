@@ -308,7 +308,7 @@ test.describe.serial('Customer PWA', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           items: [
-            { label: 'Centrum, Kutná Hora', street: 'Palackého náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
+            { name: 'Centrum, Kutná Hora', label: 'Adresa', street: 'Palackého náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
           ],
         }),
       }),
@@ -331,6 +331,35 @@ test.describe.serial('Customer PWA', () => {
         body: JSON.stringify({ found: true, label: 'Nádraží, Kutná Hora', street: 'Nádražní', municipality: 'Kutná Hora' }),
       }),
     )
+    // Route preview (pickup → destination) is keyed too — stub it with a deterministic 2-point
+    // geometry so the map draws the fastest-route line BEFORE Order (route-preview-gps). Best-effort
+    // in the client: even without this stub the flow still works (geometry null → no line, order
+    // unaffected); the stub only makes the preview line deterministic in the keyless harness.
+    await page.route(/\/api\/v1\/geo\/route/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          distanceMeters: 90000,
+          durationSeconds: 4200,
+          estimatedPriceCzk: 1800,
+          geometry: [
+            [50.08, 14.42],
+            [49.95, 15.27],
+          ],
+        }),
+      }),
+    )
+
+    // Grant + seed a browser geolocation so the GPS-pickup path (auto-recenter + "Použít moji
+    // polohu") is exercised. If the grant is unavailable the map-pin fallback keeps the flow
+    // working, so this is best-effort and the assertions below never depend on GPS specifically.
+    try {
+      await page.context().grantPermissions(['geolocation'])
+      await page.context().setGeolocation({ latitude: 49.948, longitude: 15.268 })
+    } catch {
+      // Fallback: the center-pin pickup path (reverse-geocode above) still resolves a pickup.
+    }
 
     // Fresh/logged-out visit to the map-first customer surface (localhost → slug 'demo').
     await page.goto('/customer')

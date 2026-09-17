@@ -14,6 +14,7 @@ vi.mock('./CustomerMapBackground', () => ({
     onCenterChange?: unknown
     carMarker?: unknown
     pickupMarker?: unknown
+    routeGeometry?: unknown
   }) => (
     <div
       data-testid="map-background"
@@ -21,6 +22,7 @@ vi.mock('./CustomerMapBackground', () => ({
       data-has-center-change={props.onCenterChange ? 'yes' : undefined}
       data-car-marker={props.carMarker ? JSON.stringify(props.carMarker) : undefined}
       data-pickup-marker={props.pickupMarker ? JSON.stringify(props.pickupMarker) : undefined}
+      data-route-geometry={props.routeGeometry ? JSON.stringify(props.routeGeometry) : undefined}
     />
   ),
 }))
@@ -126,6 +128,16 @@ describe('CustomerMapShell', () => {
     const bg = await screen.findByTestId('map-background')
     expect(bg).toHaveAttribute('data-car-marker', JSON.stringify(carMarker))
     expect(bg).toHaveAttribute('data-pickup-marker', JSON.stringify(pickupMarker))
+  })
+
+  it('threads routeGeometry down to the lazy map background (route-preview-gps)', async () => {
+    const routeGeometry = [
+      [50.08, 14.42],
+      [49.95, 15.27],
+    ]
+    renderShell({ routeGeometry })
+    const bg = await screen.findByTestId('map-background')
+    expect(bg).toHaveAttribute('data-route-geometry', JSON.stringify(routeGeometry))
   })
 
   it('has no axe violations', async () => {

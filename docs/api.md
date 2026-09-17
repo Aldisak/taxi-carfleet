@@ -80,7 +80,7 @@ Base path: `/api/v1` (all routes below are relative to this prefix)
 | Method | Route | Summary | Auth |
 |--------|-------|---------|------|
 | GET | `/geo/suggest` | Address autocomplete | Anonymous |
-| POST | `/geo/route` | Get route distance and duration | Bearer |
+| POST | `/geo/route` | Get route distance and duration | Anonymous |
 | GET | `/geo/reverse` | Reverse geocode | Anonymous |
 | GET | `/geo/geocode` | Forward geocode | Anonymous |
 | GET | `/geo/config` | Get geo tile configuration | Anonymous |

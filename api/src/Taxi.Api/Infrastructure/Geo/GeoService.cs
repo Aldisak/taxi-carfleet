@@ -71,15 +71,33 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache, Taxi
     public async Task<GeoRouteServiceResult> RouteAsync(
         Guid fleetId, double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct)
     {
-        var key = GeoCacheKey.Route(fromLat, fromLng, toLat, toLng);
-        var cacheResult = await geoCache.GetOrAddAsync(
-            fleetId,
-            GeoCacheKind.Route,
-            key,
-            async c => await mapyClient.RouteAsync(fromLat, fromLng, toLat, toLng, await ResolveServerKeyAsync(fleetId, c), c),
-            ct);
+        GeoResult<MapyRouteResultData> routeResult;
+        bool wasHit;
 
-        if (cacheResult.Result is GeoResult<MapyRouteResultData>.Unavailable)
+        if (fleetId == Guid.Empty)
+        {
+            // Fleetless callers (anonymous customers with no fleet_id claim) pass Guid.Empty.
+            // geo_cache and geo_usage both have FK constraints to the fleets table; inserting a
+            // row with FleetId=Guid.Empty would throw an EF/DB error.
+            // Bypass the cache entirely and call the client directly — same pattern as SuggestAsync.
+            var serverKey = await ResolveServerKeyAsync(Guid.Empty, ct);
+            routeResult = await mapyClient.RouteAsync(fromLat, fromLng, toLat, toLng, serverKey, ct);
+            wasHit = false;
+        }
+        else
+        {
+            var key = GeoCacheKey.Route(fromLat, fromLng, toLat, toLng);
+            var cacheResult = await geoCache.GetOrAddAsync(
+                fleetId,
+                GeoCacheKind.Route,
+                key,
+                async c => await mapyClient.RouteAsync(fromLat, fromLng, toLat, toLng, await ResolveServerKeyAsync(fleetId, c), c),
+                ct);
+            routeResult = cacheResult.Result;
+            wasHit = cacheResult.WasHit;
+        }
+
+        if (routeResult is GeoResult<MapyRouteResultData>.Unavailable)
         {
             // Degrade to haversine×1.3 estimate — never 502 from GeoService.
             // Callers (RouteEndpoint → 502, QuoteEndpoint → orientační odhad) decide the surface.
@@ -93,7 +111,7 @@ internal sealed class GeoService(IMapyClient mapyClient, GeoCache geoCache, Taxi
                 IsEstimate: true);
         }
 
-        return new GeoRouteServiceResult(cacheResult.Result, cacheResult.WasHit, IsEstimate: false);
+        return new GeoRouteServiceResult(routeResult, wasHit, IsEstimate: false);
     }
 
     /// <inheritdoc />
