@@ -160,6 +160,7 @@ export function MapyMap({ center, zoom, ariaLabel, children, ...rest }: MapyMapP
           center={center ?? FALLBACK_CENTER}
           zoom={zoom ?? FALLBACK_ZOOM}
           style={{ width: '100%', height: '100%' }}
+          zoomControl={false}
           aria-label={ariaLabel}
           {...rest}
         >
@@ -188,6 +189,7 @@ export function MapyMap({ center, zoom, ariaLabel, children, ...rest }: MapyMapP
         center={resolvedCenter}
         zoom={resolvedZoom}
         style={{ width: '100%', height: '100%' }}
+        zoomControl={false}
         aria-label={ariaLabel}
         {...rest}
       >
