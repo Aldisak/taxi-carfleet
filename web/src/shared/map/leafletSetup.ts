@@ -13,6 +13,11 @@
  */
 
 import L from 'leaflet'
+// Leaflet's own stylesheet — REQUIRED for tiles/panes to be positioned and sized (.leaflet-tile,
+// .leaflet-pane, .leaflet-container overflow). Without it the tile grid renders broken/misaligned
+// with white gaps on pan/zoom. Imported here (not eagerly) so it rides the lazy map chunk with the
+// rest of leaflet, keeping it out of the eager app bundle. Must load before any map mounts.
+import 'leaflet/dist/leaflet.css'
 
 // Patch the default icon by nullifying the broken auto-resolver
 // and providing explicit URLs from the leaflet package.

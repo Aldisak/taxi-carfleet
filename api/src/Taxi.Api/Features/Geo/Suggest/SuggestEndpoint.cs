@@ -89,7 +89,7 @@ internal sealed class SuggestEndpoint(IGeoService geoService, ICurrentTenant cur
         }
 
         var items = ((GeoResult<IReadOnlyList<MapySuggestResult>>.Success)cacheResult.Result).Value
-            .Select(r => new SuggestItemDto(r.Label, r.Street, r.Municipality, r.Lat, r.Lng))
+            .Select(r => new SuggestItemDto(r.Name, r.Label, r.Street, r.Municipality, r.Lat, r.Lng))
             .ToList();
 
         await Send.OkAsync(new SuggestResponse(items), ct);

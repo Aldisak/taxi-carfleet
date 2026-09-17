@@ -38,7 +38,7 @@ describe('useSuggest', () => {
   })
 
   it('debounces: no call before the window elapses, one call after', async () => {
-    mockSuggest.mockResolvedValue({ items: [{ label: 'Hlavní 1, Praha', lat: 50.08, lng: 14.42 }] })
+    mockSuggest.mockResolvedValue({ items: [{ name: 'Hlavní 1, Praha', label: 'Adresa', lat: 50.08, lng: 14.42 }] })
     renderHook(() => useSuggest('Hlavní'), { wrapper })
 
     // Before the debounce window elapses, no call.
@@ -53,10 +53,10 @@ describe('useSuggest', () => {
 
   it('surfaces the returned items for a settled >= 3-char query', async () => {
     vi.useRealTimers()
-    mockSuggest.mockResolvedValue({ items: [{ label: 'Hlavní 1, Praha', lat: 50.08, lng: 14.42 }] })
+    mockSuggest.mockResolvedValue({ items: [{ name: 'Hlavní 1, Praha', label: 'Adresa', lat: 50.08, lng: 14.42 }] })
     const { result } = renderHook(() => useSuggest('Hlavní'), { wrapper })
     await waitFor(() => expect(result.current.items).toHaveLength(1))
-    expect(result.current.items[0].label).toBe('Hlavní 1, Praha')
+    expect(result.current.items[0].name).toBe('Hlavní 1, Praha')
   })
 
   it('queries when logged out for a >= 3-char query (suggest is anonymous-by-slug, WI-1)', () => {

@@ -44,27 +44,30 @@ describe('DestinationSearch', () => {
     vi.restoreAllMocks()
   })
 
-  it('typing >= 3 chars shows suggestions (works logged-out, anonymous-by-slug)', async () => {
+  it('shows the full address (name, incl. house number) as the option — not the type label', async () => {
     const user = userEvent.setup()
+    // Real Mapy shape: `name` is the full address WITH house number; `label` is only the TYPE.
     mockSuggest.mockResolvedValue({
-      items: [{ label: 'Nádraží', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
+      items: [{ name: 'Kováků 856', label: 'Adresa', street: 'Kováků', municipality: 'Praha', lat: 49.95, lng: 15.27 }],
     })
     renderSearch()
 
     // No token in localStorage — logged-out visitor still gets the dropdown.
-    await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
+    await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Ková')
 
-    const option = await screen.findByRole('option', { name: /nádraží/i })
-    expect(option).toHaveTextContent('Nádraží')
-    expect(option).toHaveTextContent('Kutná Hora')
+    const option = await screen.findByRole('option', { name: /kováků 856/i })
+    // The house number is shown (Bug B) and the type label "Adresa" is NOT the primary text (Bug A).
+    expect(option).toHaveTextContent('Kováků 856')
+    expect(option).toHaveTextContent('Praha')
+    expect(option).not.toHaveTextContent('Adresa')
   })
 
   it('ArrowDown + Enter selects the active option and fires onSelectDestination with coords', async () => {
     const user = userEvent.setup()
     mockSuggest.mockResolvedValue({
       items: [
-        { label: 'Náměstí', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
-        { label: 'Nádraží', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 },
+        { name: 'Náměstí 1, Kolín', label: 'Adresa', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
+        { name: 'Nádražní 1, Kutná Hora', label: 'Adresa', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 },
       ],
     })
     const { onSelectDestination } = renderSearch()
@@ -72,13 +75,14 @@ describe('DestinationSearch', () => {
     const input = screen.getByRole('combobox', { name: /kam to bude/i })
     await user.type(input, 'Ná')
     await user.type(input, 'd')
-    await screen.findByRole('option', { name: /náměstí/i })
+    await screen.findByRole('option', { name: /náměstí 1, kolín/i })
 
     // Move to the second option and select it.
     await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
 
+    // SelectedPlace.label carries the full address (name), not the type category.
     expect(onSelectDestination).toHaveBeenCalledWith<[SelectedPlace]>({
-      label: 'Nádraží',
+      label: 'Nádražní 1, Kutná Hora',
       lat: 49.95,
       lng: 15.27,
     })
@@ -87,15 +91,15 @@ describe('DestinationSearch', () => {
   it('clicking a suggestion fires onSelectDestination with a SelectedPlace', async () => {
     const user = userEvent.setup()
     mockSuggest.mockResolvedValue({
-      items: [{ label: 'Nádraží', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
+      items: [{ name: 'Nádražní 1, Kutná Hora', label: 'Adresa', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
     })
     const { onSelectDestination } = renderSearch()
 
     await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
-    await user.click(await screen.findByRole('option', { name: /nádraží/i }))
+    await user.click(await screen.findByRole('option', { name: /nádražní 1, kutná hora/i }))
 
     expect(onSelectDestination).toHaveBeenCalledWith<[SelectedPlace]>({
-      label: 'Nádraží',
+      label: 'Nádražní 1, Kutná Hora',
       lat: 49.95,
       lng: 15.27,
     })
@@ -104,13 +108,13 @@ describe('DestinationSearch', () => {
   it('Escape collapses the overlay', async () => {
     const user = userEvent.setup()
     mockSuggest.mockResolvedValue({
-      items: [{ label: 'Nádraží', lat: 49.95, lng: 15.27 }],
+      items: [{ name: 'Nádražní 1, Kutná Hora', label: 'Adresa', lat: 49.95, lng: 15.27 }],
     })
     renderSearch()
 
     const input = screen.getByRole('combobox', { name: /kam to bude/i })
     await user.type(input, 'Nádr')
-    await screen.findByRole('option', { name: /nádraží/i })
+    await screen.findByRole('option', { name: /nádražní/i })
 
     await user.keyboard('{Escape}')
 
@@ -159,12 +163,12 @@ describe('DestinationSearch', () => {
   it('has no axe violations with the suggestion list open', async () => {
     const user = userEvent.setup()
     mockSuggest.mockResolvedValue({
-      items: [{ label: 'Nádraží', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
+      items: [{ name: 'Nádražní 1, Kutná Hora', label: 'Adresa', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
     })
     const { container } = renderSearch()
 
     await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
-    await screen.findByRole('option', { name: /nádraží/i })
+    await screen.findByRole('option', { name: /nádražní/i })
 
     expect(await axe(container)).toHaveNoViolations()
   })

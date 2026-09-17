@@ -100,8 +100,8 @@ describe('OrderForm — enriched suggestions (AC#2)', () => {
     const { getGeoSuggest } = await import('../../shared/api/client')
     vi.mocked(getGeoSuggest).mockResolvedValue({
       items: [
-        { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
-        { label: 'Náměstí 1', street: 'Náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
+        { name: 'Náměstí 1', label: 'Adresa', street: 'Náměstí', municipality: 'Kolín', lat: 50.028, lng: 15.2 },
+        { name: 'Náměstí 1', label: 'Adresa', street: 'Náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
       ],
     })
 

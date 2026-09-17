@@ -3,7 +3,7 @@ import { suggestionMeta } from './suggestionMeta'
 import type { GeoSuggestItem } from '../api/client'
 
 function item(overrides: Partial<GeoSuggestItem>): GeoSuggestItem {
-  return { label: 'Náměstí 1', lat: 50, lng: 15, ...overrides }
+  return { name: 'Náměstí 1', label: 'Adresa', lat: 50, lng: 15, ...overrides }
 }
 
 describe('suggestionMeta', () => {

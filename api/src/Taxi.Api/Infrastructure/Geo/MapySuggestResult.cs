@@ -1,12 +1,13 @@
 namespace Taxi.Api.Infrastructure.Geo;
 
 /// <summary>Enriched address suggestion result from Mapy.com, carrying parsed regionalStructure fields.</summary>
-/// <param name="Label">Full human-readable label from the upstream.</param>
+/// <param name="Label">Mapy's TYPE category for the result (e.g. "Adresa", "Ulice") — NOT the address text. Use <paramref name="Name"/> for display.</param>
 /// <param name="Street">Street name from regionalStructure, or <see langword="null"/> if not present.</param>
 /// <param name="Municipality">Municipality name from regionalStructure, or <see langword="null"/> if not present.</param>
 /// <param name="Lat">Latitude of the suggested point.</param>
 /// <param name="Lng">Longitude of the suggested point.</param>
-public record MapySuggestResult(string Label, string? Street, string? Municipality, double Lat, double Lng);
+/// <param name="Name">Mapy's full address text incl. house number for address results (e.g. "Kouřimská 2368/4") — the primary display value. Trailing-optional to keep existing test fakes compiling.</param>
+public record MapySuggestResult(string Label, string? Street, string? Municipality, double Lat, double Lng, string Name = "");
 
 /// <summary>Route result parsed from the Mapy.com routing API.</summary>
 /// <param name="DistanceMeters">Total route length in metres.</param>

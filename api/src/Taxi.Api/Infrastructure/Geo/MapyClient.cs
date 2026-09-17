@@ -25,7 +25,7 @@ internal sealed class MapyClient(
         if (MissingKey<IReadOnlyList<MapySuggestResult>>(serverKey, "suggest", out var unavailable))
             return Task.FromResult(unavailable);
 
-        var url = $"v1/suggest?apikey={serverKey}&lang=cs&type={SuggestTypes}&limit=5&query={Uri.EscapeDataString(query)}";
+        var url = $"v1/suggest?apikey={serverKey}&lang=cs&type={SuggestTypes}&limit=8&query={Uri.EscapeDataString(query)}";
 
         if (near is { } n)
         {
@@ -185,8 +185,15 @@ internal sealed class MapyClient(
                     .FirstOrDefault(r => r.Type == "regional.street")?.Name;
                 var municipality = item.RegionalStructure
                     .FirstOrDefault(r => r.Type == "regional.municipality")?.Name;
+                // Mapy populates the top-level `name` only for ADDRESS results (incl. house number,
+                // e.g. "Kováků 856/8"). For street/POI results `name` is empty — fall back to the
+                // street (then municipality, then the type label) so the UI always has a non-empty
+                // primary line and never renders a blank suggestion.
+                var displayName = !string.IsNullOrWhiteSpace(item.Name)
+                    ? item.Name
+                    : street ?? municipality ?? item.Label;
                 return new MapySuggestResult(item.Label, street, municipality,
-                    item.Position!.Lat, item.Position!.Lon);
+                    item.Position!.Lat, item.Position!.Lon, displayName);
             })
             .ToList();
 

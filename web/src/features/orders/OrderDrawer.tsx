@@ -126,7 +126,7 @@ function AddressEditInput({ value, onChange, onSelect, 'aria-label': ariaLabel }
                   handleItemMouseDown(item)
                 }}
               >
-                <span>{item.label}</span>
+                <span>{item.name}</span>
                 {meta && <SuggestMeta $highlighted={i === highlightedIndex}>{meta}</SuggestMeta>}
               </SuggestItem>
             )
@@ -611,7 +611,7 @@ export function OrderDrawer() {
                   <AddressEditInput
                     value={editState.pickupAddress}
                     onChange={(val) => setEditState(s => ({ ...s, pickupAddress: val, pickupLat: null, pickupLng: null }))}
-                    onSelect={(item) => setEditState(s => ({ ...s, pickupAddress: item.label, pickupLat: item.lat, pickupLng: item.lng }))}
+                    onSelect={(item) => setEditState(s => ({ ...s, pickupAddress: item.name, pickupLat: item.lat, pickupLng: item.lng }))}
                     aria-label={t('orders.drawer.fields.pickup')}
                   />
                 ) : (
@@ -632,7 +632,7 @@ export function OrderDrawer() {
                   <AddressEditInput
                     value={editState.dropoffAddress}
                     onChange={(val) => setEditState(s => ({ ...s, dropoffAddress: val, dropoffLat: null, dropoffLng: null }))}
-                    onSelect={(item) => setEditState(s => ({ ...s, dropoffAddress: item.label, dropoffLat: item.lat, dropoffLng: item.lng }))}
+                    onSelect={(item) => setEditState(s => ({ ...s, dropoffAddress: item.name, dropoffLat: item.lat, dropoffLng: item.lng }))}
                     aria-label={t('orders.drawer.fields.dropoff')}
                   />
                 ) : (

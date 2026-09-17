@@ -123,8 +123,10 @@ export function DestinationSearch({ onSelectDestination, near }: DestinationSear
   function pick(item: GeoSuggestItem): void {
     setOpen(false)
     setActiveIndex(-1)
-    setQuery(item.label)
-    onSelectDestination({ label: item.label, lat: item.lat, lng: item.lng })
+    // Use Mapy's `name` (the full address incl. house number) — NOT `label` (the type category
+    // "Adresa"/"Ulice"), which used to leak into the input as the literal word "Adresa".
+    setQuery(item.name)
+    onSelectDestination({ label: item.name, lat: item.lat, lng: item.lng })
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
@@ -176,7 +178,7 @@ export function DestinationSearch({ onSelectDestination, near }: DestinationSear
             const meta = suggestionMeta(item)
             return (
               <Option
-                key={`${item.label}-${item.lat}-${item.lng}`}
+                key={`${item.name}-${item.lat}-${item.lng}`}
                 id={optionId(index)}
                 role="option"
                 aria-selected={index === activeIndex}
@@ -184,7 +186,7 @@ export function DestinationSearch({ onSelectDestination, near }: DestinationSear
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(item)}
               >
-                <OptionLabel>{item.label}</OptionLabel>
+                <OptionLabel>{item.name}</OptionLabel>
                 {meta && <OptionMeta>{meta}</OptionMeta>}
               </Option>
             )

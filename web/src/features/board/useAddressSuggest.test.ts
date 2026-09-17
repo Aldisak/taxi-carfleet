@@ -37,7 +37,7 @@ describe('useAddressSuggest — debounce logic', () => {
 
   it('calls getGeoSuggest once after debounce settles despite rapid typing', async () => {
     const { getGeoSuggest } = await import('../../shared/api/client')
-    vi.mocked(getGeoSuggest).mockResolvedValue({ items: [{ label: 'Praha', lat: 50.08, lng: 14.43 }] })
+    vi.mocked(getGeoSuggest).mockResolvedValue({ items: [{ name: 'Praha', label: 'Obec', lat: 50.08, lng: 14.43 }] })
 
     const { rerender } = renderHook(({ q }: { q: string }) => useAddressSuggest(q), {
       initialProps: { q: 'Pr' },
@@ -63,7 +63,7 @@ describe('useAddressSuggest — debounce logic', () => {
   it('returns suggestions in items after debounce resolves', async () => {
     const { getGeoSuggest } = await import('../../shared/api/client')
     vi.mocked(getGeoSuggest).mockResolvedValue({
-      items: [{ label: 'Kolín nádraží', lat: 50.027, lng: 15.2 }],
+      items: [{ name: 'Kolín nádraží', label: 'Adresa', lat: 50.027, lng: 15.2 }],
     })
 
     const { result } = renderHook(() => useAddressSuggest('Kolín'))
@@ -75,6 +75,6 @@ describe('useAddressSuggest — debounce logic', () => {
     })
 
     expect(result.current.items).toHaveLength(1)
-    expect(result.current.items[0]!.label).toBe('Kolín nádraží')
+    expect(result.current.items[0]!.name).toBe('Kolín nádraží')
   })
 })

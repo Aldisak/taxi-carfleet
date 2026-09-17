@@ -11,15 +11,37 @@ namespace Taxi.Api.Tests.Geo;
 /// These tests do NOT need Testcontainers — the client is constructed directly with a test DI container.</summary>
 public sealed class MapyClientHandlerTests
 {
+    // Real Mapy /v1/suggest shape: top-level `name` is the full address WITH house number; `label`
+    // is only the TYPE category ("Adresa"/"Ulice"). regionalStructure carries the bare street +
+    // municipality for the secondary line.
     private const string SampleSuggestJson = """
         {
           "items": [
             {
-              "label": "Hlavní nádraží, Praha",
+              "name": "Kouřimská 2368/4",
+              "label": "Adresa",
               "position": { "lat": 50.0831, "lon": 14.4350 },
               "regionalStructure": [
-                { "type": "regional.address", "name": "Hlavní nádraží" },
-                { "type": "regional.street", "name": "Wilsonova" },
+                { "type": "regional.address", "name": "Kouřimská 2368/4" },
+                { "type": "regional.street", "name": "Kouřimská" },
+                { "type": "regional.municipality", "name": "Praha" }
+              ]
+            }
+          ]
+        }
+        """;
+
+    // A street-level result: Mapy leaves the top-level `name` EMPTY (the street lives only in
+    // regionalStructure). The parser must fall back to the street for the display name.
+    private const string StreetSuggestJson = """
+        {
+          "items": [
+            {
+              "name": "",
+              "label": "Ulice",
+              "position": { "lat": 50.0774, "lon": 14.4703 },
+              "regionalStructure": [
+                { "type": "regional.street", "name": "Kouřimská" },
                 { "type": "regional.municipality", "name": "Praha" }
               ]
             }
@@ -67,26 +89,49 @@ public sealed class MapyClientHandlerTests
 
     // ── Test 1: suggest parses street + municipality ─────────────────────────
 
-    /// <summary>A successful 200 response from the Mapy suggest upstream is parsed into
-    /// enriched items carrying street and municipality from regionalStructure.</summary>
+    /// <summary>A successful 200 response is parsed with Mapy's `name` (the full address incl. house
+    /// number) captured as the display value, `label` as the TYPE, and street/municipality from
+    /// regionalStructure for the secondary line.</summary>
     [Fact]
-    public async Task SuggestAsync_Success_ParsesStreetAndMunicipality()
+    public async Task SuggestAsync_Success_ParsesNameStreetAndMunicipality()
     {
         var ct = TestContext.Current.CancellationToken;
         var handler = new StubMapyHttpHandler(HttpStatusCode.OK, SampleSuggestJson);
         var client = BuildClient(handler);
 
-        var result = await client.SuggestAsync("nádraží", near: null, TestKey, ct);
+        var result = await client.SuggestAsync("Kouřimská", near: null, TestKey, ct);
 
         result.Should().BeOfType<GeoResult<IReadOnlyList<MapySuggestResult>>.Success>();
         var success = (GeoResult<IReadOnlyList<MapySuggestResult>>.Success)result;
         success.Value.Should().HaveCount(1);
         var item = success.Value[0];
-        item.Label.Should().Be("Hlavní nádraží, Praha");
-        item.Street.Should().Be("Wilsonova");
+        // The house number MUST survive — it lives only in Mapy's `name` field (the previous bug
+        // dropped `name` entirely and showed the type label instead).
+        item.Name.Should().Be("Kouřimská 2368/4");
+        item.Label.Should().Be("Adresa");
+        item.Street.Should().Be("Kouřimská");
         item.Municipality.Should().Be("Praha");
         item.Lat.Should().BeApproximately(50.0831, 0.0001);
         item.Lng.Should().BeApproximately(14.435, 0.0001);
+    }
+
+    /// <summary>Street-level results have an EMPTY Mapy `name` (the street lives only in
+    /// regionalStructure) — the display Name must fall back to the street so the UI never shows a
+    /// blank suggestion.</summary>
+    [Fact]
+    public async Task SuggestAsync_StreetResultWithEmptyName_FallsBackToStreet()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var handler = new StubMapyHttpHandler(HttpStatusCode.OK, StreetSuggestJson);
+        var client = BuildClient(handler);
+
+        var result = await client.SuggestAsync("Kouřimská", near: null, TestKey, ct);
+
+        var success = (GeoResult<IReadOnlyList<MapySuggestResult>>.Success)result;
+        var item = success.Value[0];
+        item.Name.Should().Be("Kouřimská", "an empty Mapy name must fall back to the street");
+        item.Label.Should().Be("Ulice");
+        item.Street.Should().Be("Kouřimská");
     }
 
     // ── Test 2: five 503s open the breaker, sixth skips the handler ──────────

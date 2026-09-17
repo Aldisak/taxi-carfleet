@@ -317,10 +317,17 @@ export function verifyCustomerCode(phone: string, code: string): Promise<VerifyC
  * that omits them (or an older payload) still parses.
  */
 export interface GeoSuggestItem {
+  /**
+   * The full address text incl. house number for address results (e.g. "Kouřimská 2368/4",
+   * "Kováků 856") — the PRIMARY value to show and to insert into the input on pick. Falls back to
+   * an empty string only if the upstream omitted it (never for real Mapy address/street results).
+   */
+  name: string
+  /** Mapy's TYPE category ("Adresa"/"Ulice"/…) — a discriminator, NOT for display. */
   label: string
   /** Street line of the address, or null/absent when Mapy did not resolve one. */
   street?: string | null
-  /** Municipality / town, or null/absent. Rendered alongside the label to disambiguate (AC#2). */
+  /** Municipality / town, or null/absent. Rendered alongside the name to disambiguate (AC#2). */
   municipality?: string | null
   lat: number
   lng: number

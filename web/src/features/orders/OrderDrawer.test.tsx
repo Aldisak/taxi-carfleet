@@ -230,7 +230,7 @@ describe('OrderDrawer — address autocomplete edit', () => {
     const { getGeoSuggest } = await import('../../shared/api/client')
     const mockGeoSuggest = vi.mocked(getGeoSuggest)
     mockGeoSuggest.mockResolvedValue({
-      items: [{ label: 'Kolín nádraží', lat: 50.027, lng: 15.2005 }],
+      items: [{ name: 'Kolín nádraží', label: 'Adresa', lat: 50.027, lng: 15.2005 }],
     })
 
     const order = makeOrder({

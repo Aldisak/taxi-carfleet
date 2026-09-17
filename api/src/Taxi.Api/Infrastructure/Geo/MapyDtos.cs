@@ -15,7 +15,13 @@ internal sealed class MapySuggestResponse
 /// <summary>A single suggest item from the Mapy.com /v1/suggest response.</summary>
 internal sealed class MapySuggestItem
 {
-    /// <summary>Human-readable full label.</summary>
+    /// <summary>The full address text, incl. house number for address results (e.g. "Kouřimská 2368/4").
+    /// This is the value to display and insert on pick — NOT <see cref="Label"/>.</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = string.Empty;
+
+    /// <summary>Mapy's TYPE category for the result (e.g. "Adresa", "Ulice", "Poi") — a discriminator,
+    /// NOT the human-readable address. Use <see cref="Name"/> for display.</summary>
     [JsonPropertyName("label")]
     public string Label { get; init; } = string.Empty;
 

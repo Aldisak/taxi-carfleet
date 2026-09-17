@@ -255,7 +255,7 @@ function AddressInput({ id, label, value, onChange, onSelect, onClear, error }: 
                   handleItemClick(item)
                 }}
               >
-                <span>{item.label}</span>
+                <span>{item.name}</span>
                 {meta && <SuggestMeta $highlighted={i === highlightedIndex}>{meta}</SuggestMeta>}
               </SuggestItem>
             )
@@ -416,7 +416,7 @@ export function OrderForm({ onOrderCreated }: OrderFormProps) {
           value={values.pickup.address}
           onChange={val => setAddressField('pickup', { address: val, lat: null, lng: null })}
           onSelect={item =>
-            setAddressField('pickup', { address: item.label, lat: item.lat, lng: item.lng })
+            setAddressField('pickup', { address: item.name, lat: item.lat, lng: item.lng })
           }
           onClear={() => setAddressField('pickup', { address: '', lat: null, lng: null })}
           error={errors.pickup ? t(errors.pickup) : undefined}
@@ -444,7 +444,7 @@ export function OrderForm({ onOrderCreated }: OrderFormProps) {
           value={values.dropoff.address}
           onChange={val => setAddressField('dropoff', { address: val, lat: null, lng: null })}
           onSelect={item =>
-            setAddressField('dropoff', { address: item.label, lat: item.lat, lng: item.lng })
+            setAddressField('dropoff', { address: item.name, lat: item.lat, lng: item.lng })
           }
           onClear={() => setAddressField('dropoff', { address: '', lat: null, lng: null })}
         />
