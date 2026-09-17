@@ -1,0 +1,26 @@
+{
+  "wi": "WI-5-fix",
+  "uc": "UC-019",
+  "status": "complete",
+  "files_changed": [
+    "web/src/features/driver/offer/OfferCard.tsx",
+    "web/src/features/driver/offer/OfferCard.test.tsx",
+    "web/src/features/driver/offer/acceptHydration.test.tsx",
+    "CLAUDE.md"
+  ],
+  "tests_added": [
+    "web/src/features/driver/offer/acceptHydration.test.tsx :: starts with an empty store: DriverMapScreen shows the Free panel, not the ride view",
+    "web/src/features/driver/offer/acceptHydration.test.tsx :: after tapping Accept, hydrates the store from the server so the ride view (Jsem na místě) renders on /driver",
+    "web/src/features/driver/offer/acceptHydration.test.tsx :: does NOT hydrate on a non-active reconcile outcome (offer already gone / terminal)"
+  ],
+  "red_observed": true,
+  "red_note": "Before the fix, the accept-hydration test FAILED at findByRole('button', {name:'Jsem na místě'}) — after Accept the DriverMapScreen still rendered the Free panel ('Čekám na objednávku') because the store was never hydrated. The two guard tests (empty-store Free panel, non-active reconcile) passed, confirming the harness is sound and the failure was the real defect.",
+  "tsc": "pass (0 errors)",
+  "lint": "pass (0 warnings; check:geo OK)",
+  "scoped_vitest": "pass — 57 files / 351 tests (features/driver + src/app), incl. OfferCard (8), DriverMapScreen, DriverLayout, and acceptHydration (3)",
+  "seam": "OfferCard.handleAccept — on outcome.type === 'success', fire-and-forget reconcileActiveRide('').then(r => { if (r.outcome === 'active' && r.order) setOrder(r.order) }) BEFORE applyDecision/onDismiss. setOrder is obtained via an ATOMIC useActiveOrderStore(s => s.setOrder) selector.",
+  "seam_rationale": "The accept-success path is the direct, race-free trigger — the POST /orders/{id}/accept has committed server-side before reconcile runs, so GET /drivers/me now carries the activeOrderId (AC#6 authoritative). Reuses the existing reconcileActiveRide (does NOT write a parallel hydration path). OfferCard is session-wide in DriverLayout, so it hydrates the store regardless of which /driver sub-route the driver is on, and the state-driven DriverMapScreen renders RideSheet with NO route change. reconcileActiveRide ignores its myDriverId arg (does `void myDriverId`) and fetches GET /drivers/me itself, so no useDriverMe/QueryClient dependency was introduced into OfferCard (which renders under only I18n+Theme in its tests). Fire-and-forget (not awaited) keeps the pre-existing no-navigate + onDismiss contract intact; the new test awaits the store write via findBy*. useRideRestore's mount-only behavior is UNCHANGED (extended, not broken).",
+  "new_test_note": "acceptHydration.test.tsx composes <OfferCard> + <DriverMapScreen> as siblings sharing the module-global zustand store, STARTING FROM AN EMPTY STORE, with REAL useActiveOrder + REAL useActiveOrderStore (unlike WI-5's DriverMapScreen.test.tsx which vi.mock'd useActiveOrder to already return an order — the gap that let the defect ship). Only useOfferAccept (accept POST) and reconcileActiveRide are mocked; a successful accept must flow through the real store into the real DriverMapScreen and paint RideSheet's 'Jsem na místě'. This pins the accept->hydration contract so a regression goes RED without the e2e.",
+  "hit_max_turns": false,
+  "notes": "HIGH defect fixed with a minimal, decoupled seam. Did NOT modify DriverMapInner/RideSheet contracts, did NOT change useRideRestore's mount-only behavior, did NOT change DriverMapScreen wiring. Also had to mock reconcileActiveRide in the existing OfferCard.test.tsx (default {outcome:'none'}) so its Accept-success tests don't hit the real GET /drivers/me network path — that file renders OfferCard under only I18n+Theme (no QueryClient). Updated the CLAUDE.md OPEN trap note to FIXED with the chosen seam. Did NOT run the full e2e (conductor owns it) and did NOT paper over the defect with a reload. Left the WI-6 ConnectionDot/websocket-wait trap note untouched. AC#6 (server-authoritative reconcile) intact — the unit test trusts the server contract that GET /drivers/me reflects activeOrderId immediately post-accept, which the conductor's e2e verifies end-to-end."
+}

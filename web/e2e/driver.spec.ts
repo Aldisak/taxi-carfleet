@@ -1,15 +1,29 @@
 /**
  * Driver PWA E2E tests — UC-003 AC#2 (full flow), AC#4 (decline → New), AC#5 (offline queue).
+ * Retargeted for the UC-019 map-first driver redesign.
  *
  * Runs on the `mobile-driver` Playwright project (Pixel 5 viewport, geolocation granted).
  * Serial (1 worker) and shares the seeded DB with dispatcher.spec.ts (which runs first in the
  * chromium project). All three specs drive the real /d UI and use the dispatcher API helpers to
  * create/assign/read orders.
  *
+ * UC-019 map-first UI contracts (what changed vs the pre-redesign spec):
+ *   - The offer is a top OfferCard, role="region" name "Nová objednávka" (was a full-screen
+ *     role="dialog" name "Nástup"). Accept/Decline buttons live inside that region.
+ *   - Accept does NOT navigate. The shared /driver screen reactively renders the ride view
+ *     (state-driven from useActiveOrderStore + useDriverMe); there is NO /driver/ride route.
+ *     So there is no waitForURL('/driver/ride') — instead the RideSheet "Jsem na místě" button
+ *     appears while the URL stays /driver.
+ *   - Ride controls (Jsem na místě → Zahájit jízdu → Ukončit jízdu) live in the RideSheet
+ *     BottomSheet, reached on /driver. Complete still navigates to /driver/ride/complete (route
+ *     kept); the completion screen + return-Home "Hotovo ✓" toast are unchanged.
+ *   - The Free (waiting) state has NO summary chips by design (DriverMapScreen shows only
+ *     "Čekám na objednávku"). The FullFlow completion is asserted via the flow ("Hotovo ✓") and
+ *     server state (Completed + finalPriceCzk + paymentType), NOT via chips.
+ *
  * Driver choice — driver2 (Petr Svoboda, vehicle "2K2 5678"):
  *   driver1 (Jan Novák) is polluted by dispatcher.spec (assigned+accepted) and DEMO05-completed;
- *   driver2 starts Free with one seeded Accepted order (DEMO03) and ZERO completed rides, so the
- *   summary totals assertion starts from a known zero baseline.
+ *   driver2 starts Free with one seeded Accepted order (DEMO03) and ZERO completed rides.
  *
  * AC#2 precondition note — start-shift is NOT UI-driveable (documented B-home gap):
  *   The home vehicle selector is built ONLY from GET /drivers/me `currentVehicleId`, and
@@ -17,7 +31,7 @@
  *   offline driver cannot pick a vehicle to start a shift through the UI. These specs therefore
  *   drive from the ONLINE precondition (driver2 kept Free via the go-online API), which still
  *   proves the substantive heart of AC#2 end-to-end through the UI:
- *   offer → accept → arrive → start → complete(fixed) → Home totals. See handoff notes + DEMO.md.
+ *   offer → accept → arrive → start → complete(fixed) → Home. See handoff notes + DEMO.md.
  */
 
 import { test, expect, type Page } from '@playwright/test'
@@ -45,23 +59,35 @@ const TERMINAL = new Set(['Completed', 'Cancelled'])
 let dispatcherToken: string
 let driverId: string
 
-/** Driver UI login: fill slug/email/password, submit, land on /d. */
+/**
+ * Driver UI login: fill slug/email/password, submit, land on /driver, then WAIT for the SignalR
+ * hub transport to open before returning.
+ *
+ * UC-019: the map-first driver UI no longer renders the ConnectionDot (its "green" label was the
+ * old hub-connected signal). DriverMapScreen/DriverLayout expose no connection-state text, so the
+ * hub-connected wait is re-anchored to a UI-independent, POSITIVE signal: the SignalR WebSocket
+ * opening to /hubs/fleet. A positive wait is required here (not "banner absent") because a missed
+ * NewOrderOffered push is unrecoverable — there is no offer catch-up — so we must be certain the
+ * hub is connected before the dispatcher assigns. The WS-open promise is armed BEFORE navigation
+ * so the connect (which fires moments after landing on /driver) is never missed. The harness uses
+ * a real WebSocket transport (see the OfflineArrive note re: setOffline not dropping the WS).
+ */
 async function driverUiLogin(page: Page): Promise<void> {
   await page.goto('/driver/login')
   await page.locator('#driver-fleet-slug').fill('demo')
   await page.locator('#driver-email').fill(DRIVER_EMAIL)
   await page.locator('#driver-password').fill(DRIVER_PASSWORD)
+
+  // Arm the WebSocket wait BEFORE the app can open it (login navigation mounts DriverLayout →
+  // useFleetHub → hub.start()). Filter to the fleet hub so an unrelated socket cannot satisfy it.
+  const hubSocket = page.waitForEvent('websocket', {
+    predicate: ws => ws.url().includes('/hubs/fleet'),
+    timeout: 15_000,
+  })
+
   await page.getByRole('button', { name: 'Přihlásit se' }).click()
   await page.waitForURL('/driver')
-}
-
-/**
- * Wait until the SignalR hub is connected before assigning (so the NewOrderOffered
- * push cannot race the assign). The ConnectionDot renders its raw state word
- * ("green" when connected) as its label — there is no translated title.
- */
-async function waitForHubConnected(page: Page): Promise<void> {
-  await expect(page.getByText('green', { exact: true })).toBeVisible({ timeout: 10_000 })
+  await hubSocket
 }
 
 test.describe.serial('Driver PWA', () => {
@@ -98,9 +124,8 @@ test.describe.serial('Driver PWA', () => {
   })
 
   test('Driver_FullFlow_StartShiftToCompleteFixed_ShowsTotals', async ({ page }) => {
-    // ── Driver logs in on the mobile UI and the hub connects ─────────────────
+    // ── Driver logs in on the mobile UI; driverUiLogin awaits the hub WebSocket ──
     await driverUiLogin(page)
-    await waitForHubConnected(page)
 
     // ── Dispatcher creates + assigns a FIXED-price order ─────────────────────
     const FIXED_PRICE = 250
@@ -112,24 +137,29 @@ test.describe.serial('Driver PWA', () => {
     const assignStart = Date.now()
     await assignOrder(dispatcherToken, order.id, driverId)
 
-    // ── Offer takeover appears in the foreground within 2 s (AC#3 foreground half) ──
-    const offerDialog = page.getByRole('dialog', { name: 'Nástup' })
-    await expect(offerDialog).toBeVisible({ timeout: 2000 })
-    console.log(`[FullFlow] Offer takeover shown ~${Date.now() - assignStart}ms after assign`)
+    // ── Offer top-box (OfferCard region) appears within 2 s (AC#3 foreground half) ──
+    // UC-019: OfferCard is role="region" name "Nová objednávka" (was role="dialog" "Nástup").
+    const offerCard = page.getByRole('region', { name: 'Nová objednávka' })
+    await expect(offerCard).toBeVisible({ timeout: 2000 })
+    console.log(`[FullFlow] Offer box shown ~${Date.now() - assignStart}ms after assign`)
 
-    // ── Přijmout → navigates to /driver/ride ──────────────────────────────────────
-    await offerDialog.getByRole('button', { name: 'Přijmout' }).click()
-    await page.waitForURL('/driver/ride')
+    // ── Přijmout → NO navigation; the ride view renders on /driver ────────────────
+    // UC-019: accept updates the active-order store and the SAME /driver screen reactively
+    // shows the RideSheet ride controls. There is no /driver/ride route — do NOT waitForURL.
+    await offerCard.getByRole('button', { name: 'Přijmout' }).click()
 
-    // ── Jsem na místě (arrive) ────────────────────────────────────────────────
-    await page.getByRole('button', { name: 'Jsem na místě' }).click()
+    // ── Jsem na místě (arrive) — RideSheet button on /driver, no route change ──────
+    const arriveButton = page.getByRole('button', { name: 'Jsem na místě' })
+    await expect(arriveButton).toBeVisible({ timeout: 10_000 })
+    expect(new URL(page.url()).pathname).toBe('/driver')
+    await arriveButton.click()
     await waitForOrderStatus(dispatcherToken, order.id, 'Arrived')
 
-    // ── Zahájit jízdu (start) ─────────────────────────────────────────────────
+    // ── Zahájit jízdu (start) — RideSheet button ──────────────────────────────────
     await page.getByRole('button', { name: 'Zahájit jízdu' }).click()
     await waitForOrderStatus(dispatcherToken, order.id, 'InProgress')
 
-    // ── Ukončit jízdu → complete screen (fixed price is locked) ───────────────
+    // ── Ukončit jízdu → complete screen (route kept; fixed price is locked) ───────
     await page.getByRole('button', { name: 'Ukončit jízdu' }).click()
     await page.waitForURL('/driver/ride/complete')
 
@@ -138,30 +168,23 @@ test.describe.serial('Driver PWA', () => {
     await page.getByRole('button', { name: 'Hotově' }).click()
     await page.getByRole('button', { name: 'Dokončit' }).click()
 
-    // ── Back Home with the "Hotovo ✓" confirmation ────────────────────────────
+    // ── Back on /driver with the "Hotovo ✓" confirmation toast ────────────────
+    // UC-019: CompletePage navigates to /driver with a success toast; DriverMapScreen renders it
+    // via useRouteToast (role="status"). The URL returns to /driver (no /driver/ride).
     await page.waitForURL('/driver')
     await expect(page.getByText('Hotovo ✓')).toBeVisible({ timeout: 3000 })
 
     // ── Server confirms the order is Completed with the fixed price ───────────
+    // UC-019: the Free-state map screen has NO summary chips by design — the completion is asserted
+    // via the flow (the "Hotovo ✓" toast above) and authoritative server state below (was: reload +
+    // "Jízdy"/"Hotovost" chips, which no longer exist in the map-first UI).
     const completed = await waitForOrderStatus(dispatcherToken, order.id, 'Completed')
     expect(completed.finalPriceCzk).toBe(FIXED_PRICE)
     expect(completed.paymentType).toBe('Cash')
-
-    // ── Home summary chips: 1 ride + cash total equals the fixed price ────────
-    // The summary query (useMySummary) has a 30s staleTime, so a same-session remount
-    // serves the stale cache. A full reload rebuilds the QueryClient and forces a fresh
-    // GET /drivers/me/summary that reflects the just-completed ride.
-    await page.reload()
-    await page.waitForURL('/driver')
-    const ridesChip = page.getByText('Jízdy').locator('..')
-    await expect(ridesChip).toContainText('1', { timeout: 5000 })
-    const cashChip = page.getByText('Hotovost').locator('..')
-    await expect(cashChip).toContainText(`${FIXED_PRICE} Kč`)
   })
 
   test('Driver_Decline_ReturnsOrderToNew', async ({ page }) => {
     await driverUiLogin(page)
-    await waitForHubConnected(page)
 
     // Dispatcher creates + assigns a new order to driver2 (now Free again after completing above).
     const order = await createOrder(dispatcherToken, {
@@ -171,15 +194,17 @@ test.describe.serial('Driver PWA', () => {
     })
     await assignOrder(dispatcherToken, order.id, driverId)
 
-    const offerDialog = page.getByRole('dialog', { name: 'Nástup' })
-    await expect(offerDialog).toBeVisible({ timeout: 2000 })
+    // UC-019: OfferCard region (was role="dialog" "Nástup"). Scope every click to the region so
+    // the simultaneously-mounted Free-state panel ("Ukončit směnu") cannot steal a match.
+    const offerCard = page.getByRole('region', { name: 'Nová objednávka' })
+    await expect(offerCard).toBeVisible({ timeout: 2000 })
 
-    // ── Odmítnout requires a reason ───────────────────────────────────────────
-    await offerDialog.getByRole('button', { name: 'Odmítnout' }).click()
+    // ── Odmítnout requires a reason (OfferCard declining phase) ────────────────
+    await offerCard.getByRole('button', { name: 'Odmítnout' }).click()
     // Reason picker appears; pick "Daleko".
-    await offerDialog.getByRole('button', { name: 'Daleko' }).click()
+    await offerCard.getByRole('button', { name: 'Daleko' }).click()
     // Confirm decline ("Odmítnout" is the confirm label in the declining phase).
-    await offerDialog.getByRole('button', { name: 'Odmítnout' }).click()
+    await offerCard.getByRole('button', { name: 'Odmítnout' }).click()
 
     // ── Order returns to New, dispatcher-visible within ~1 s ──────────────────
     const back = await waitForOrderStatus(dispatcherToken, order.id, 'New', 2000)
@@ -191,7 +216,6 @@ test.describe.serial('Driver PWA', () => {
     // the cold-connect queue drain.
     test.setTimeout(45_000)
     await driverUiLogin(page)
-    await waitForHubConnected(page)
 
     // Dispatcher creates + assigns; driver accepts through the UI.
     const order = await createOrder(dispatcherToken, {
@@ -201,17 +225,19 @@ test.describe.serial('Driver PWA', () => {
     })
     await assignOrder(dispatcherToken, order.id, driverId)
 
-    const offerDialog = page.getByRole('dialog', { name: 'Nástup' })
-    await expect(offerDialog).toBeVisible({ timeout: 2000 })
-    await offerDialog.getByRole('button', { name: 'Přijmout' }).click()
-    await page.waitForURL('/driver/ride')
+    // UC-019: OfferCard region; accept does NOT navigate — the ride view renders on /driver.
+    const offerCard = page.getByRole('region', { name: 'Nová objednávka' })
+    await expect(offerCard).toBeVisible({ timeout: 2000 })
+    await offerCard.getByRole('button', { name: 'Přijmout' }).click()
     await waitForOrderStatus(dispatcherToken, order.id, 'Accepted')
 
-    // Wait for the ride screen to finish restoring the order (arrive button visible) BEFORE
-    // going offline — otherwise setOffline(true) can abort the in-flight reconcile fetch
-    // (GET /drivers/me + GET /orders/{id}) and the ride screen renders blank with no button.
+    // Wait for the RideSheet to finish restoring the order (arrive button visible) BEFORE going
+    // offline — otherwise setOffline(true) can abort the in-flight reconcile fetch (GET /drivers/me
+    // + GET /orders/{id}) and the ride view renders with no button. The URL stays /driver (no
+    // /driver/ride route in the map-first UI).
     const arriveButton = page.getByRole('button', { name: 'Jsem na místě' })
     await expect(arriveButton).toBeVisible({ timeout: 10_000 })
+    expect(new URL(page.url()).pathname).toBe('/driver')
 
     // ── Go offline, tap "Jsem na místě" → the transition is QUEUED ────────────
     await context.setOffline(true)

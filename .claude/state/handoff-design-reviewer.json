@@ -1,29 +1,46 @@
 {
-  "uc": "UC-018",
+  "uc": "UC-019",
   "round": 1,
   "blocks_merge": false,
   "findings": [
     {
       "id": "F-1",
+      "severity": "MEDIUM",
+      "wi": "WI-3",
+      "rule": "rules/web-performance.md#code-splitting + rules/web-architecture.md#pure-logic-modules (copy-not-share for lazy-chunk-coupled code)",
+      "detail": "WI-3 AC#1 says DriverMapInner should 'reuse RideMapInner's OWN_ICON/PICKUP_ICON/DROPOFF_ICON svg', but WI-5 REMOVES RideMapInner.tsx and WI-3 does not edit it. If the implementer imports the icon consts from RideMapInner (DRY reflex), WI-5's removal dangles (tsc breaks) OR retains a dead leaflet-importing module inside the driver tree (defeats removal + risks extra eager-leaflet surface). CustomerMapBackground copies CAR_ICON/PICKUP_ICON as module-level L.divIcon consts (copied not shared) — the exact pattern to mirror.",
+      "suggested_fix": "WI-3 AC#1: the OWN/PICKUP/DROPOFF divIcon svg markup is COPIED into DriverMapInner.tsx as module-level consts (mirroring the copied CameraController + CustomerMapBackground icons), so RideMapInner has zero remaining importers when WI-5 deletes it."
+    },
+    {
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "wi": "WI-5",
+      "rule": "rules/web-testing.md#test-ordering (behaviour specified must be tested) + spec AC#4/#5 (restore + mid-ride reassignment intact)",
+      "detail": "WI-5 correctly RE-HOMES the DriverRidePage session hooks (useRideRestore, useLiveClear/F-04, useWakeLock, useActiveOrder, useQueuePendingCount) into DriverMapScreen — design-complete, not a gap. BUT WI-5 test_cases only assert the reconciledNote banner; nothing asserts these hooks are MOUNTED. tsc will NOT catch a silently-omitted hook call (a missing useRideRestore()/useLiveClear() still type-checks), so active-ride restore (AC#6 server-over-IDB) or F-04 reassignment could regress with a green suite. Specified-but-untested -> MEDIUM.",
+      "suggested_fix": "Add a WI-5 DriverMapScreen test that vi.mock's useRideRestore/useLiveClear/useWakeLock and asserts each is called on mount in the EnRoute state (useRideRestore/useLiveClear with myDriverId; useWakeLock(order != null)) — pins the re-home so a future drop goes RED."
+    },
+    {
+      "id": "F-3",
       "severity": "LOW",
       "wi": "WI-1",
-      "rule": "rules/naming.md#test-naming + WI-1 AC#1 (signature) vs existing call sites",
-      "detail": "WI-1 places the new near parameter BETWEEN query and serverKey: SuggestAsync(string query, (double Lat, double Lng)? near, string? serverKey, CancellationToken ct). Mid-signature insertion, so EVERY positional call site breaks at compile time. Confirmed sites all in files_touched: MapyClient.cs (impl), GeoService.cs:31 + closure at :40, MapyClientHandlerTests.cs (5 calls), FakeMapyClient/CountingMapyClient nested in GeoServiceTests.cs. Coverage-complete per grep — flagged LOW only to make explicit all 5 MapyClientHandlerTests calls must gain near: null.",
-      "suggested_fix": "No change needed; the WI enumerates every call site. Developer updates all 5 MapyClientHandlerTests.SuggestAsync calls with positional near (e.g. SuggestAsync(\"Praha\", near: null, TestKey, ct)). ALSO edit the IMapyClient.cs interface itself (it is in required_reads + AC#1 changes its signature, even though files_touched shows MapyClient.cs as the edit locus)."
+      "rule": "rules/web-react-style.md#i18n-czech-first (informal 'ty' driver register)",
+      "detail": "WI-1 mandates informal 'ty'/'du' for ru/uk/de on new driver keys, but locales.parity.test.ts only checks key-set SYMMETRY — it cannot detect a Czech-placeholder value or a formal-register slip. Inherent to the tooling; the implementer must eyeball ru/uk/de VALUES for informal register (German 'Wähle'/imperative not 'Sie') and genuine translation.",
+      "suggested_fix": "During WI-1 manually verify ru/uk/de values for the new driver.* keys use informal register and are genuinely translated (not Czech placeholders); enumerate the final added-key list."
     }
   ],
   "verified_not_findings": [
-    { "id": "V-1", "detail": "COORDINATE-ORDER CORRECTNESS (highest risk) CORRECT + consistent at every hop. Frontend getGeoSuggest emits near={lat},{lng}. SuggestEndpoint.cs:71-74 parses parts[0]=lat, parts[1]=lng into (Lat,Lng). GeoService forwards the tuple unchanged on both paths. MapyClient flips ONCE to preferNear={lng},{lat}, mirroring existing RouteAsync start={fromLng},{fromLat} (MapyClient.cs:88-90). Pinned by value assertions: frontend near=50.09,14.43 (lat-first); backend preferNear=14.43,50.08 (lng-first). A silent swap moves bias to open sea and is caught." },
-    { "id": "V-2", "detail": "Mapy preferNear treated as BEST-EFFORT: preferNear + preferNearPrecision=5000 flagged provisional/verify-vs-live-docs (MapyConstants/UC-010 WI-09 precedent); real gate is URL present/absent + coord-order + dot-decimal test, not the exact param name. InvariantCulture mandated + pinned by the never-comma assertion." },
-    { "id": "V-3", "detail": "GeoService forwards near on BOTH paths (line 31 Guid.Empty bypass + line 40 cache-miss factory closure); pinned per-path via FakeMapyClient.LastSuggestNear. Cache key unchanged (already includes near)." },
-    { "id": "V-4", "detail": "Signature-change completeness verified by grep. MapyClient the only production implementer. FakeMapyClient gains LastSuggestNear; CountingMapyClient signature-only (both nested in GeoServiceTests.cs). FakeGeoService correctly NOT touched (implements IGeoService whose SuggestAsync already carries near). Developer MUST also edit IMapyClient.cs interface." },
-    { "id": "V-5", "detail": "Frontend location-selection sound: pickSuggestLocation pure (mapCenter -> GPS -> configCenter -> null) with 2-decimal (~1.1km) coarse rounding INSIDE the helper (coarser than client.ts roundCoord 4-decimal). useSuggest keys on ['geo','suggest',debounced,near] so coarse-near change re-queries, equal does not. GPS tier supplied null by MapOrderPage = documented deliberate placeholder, not a gap." },
-    { "id": "V-6", "detail": "Referenced frontend surfaces exist: LatLng {lat,lng} in shell/mapCamera.ts; GeoConfigResponse mapCenterLat/mapCenterLng; MapOrderPage owns pendingCenter + useGeoConfig. No memoization added." },
-    { "id": "V-7", "detail": "AC#1 (Prague above Kolin) not an untested gap: re-ranking is Mapy-side, no e2e by design (ranking not flow/DOM change). Maps to backend preferNear URL test + frontend near-send + useSuggest re-query tests. Complete at every testable layer." },
-    { "id": "V-8", "detail": "Cross-feature import cleared: suggestLocation.ts imports LatLng from shell/mapCamera (declared 'Exported for UC-015/016/019'; MapOrderPage already imports it). customer/ is the feature boundary, shell/ the shared shell. Consistent with precedent." },
-    { "id": "V-9", "detail": "No route/verb/policy/result-shape change; rate limiter, key-missing short-circuit, GeoResult.Unavailable degradation untouched; lenient near-parse unchanged; per-location caching kept. No new i18n string." },
-    { "id": "V-10", "detail": "Topology acyclic (WI-1 -> WI-2); lanes correct (WI-1 api, WI-2 web); test-ordering follows the ladder; AC#5 both-lane gates present, no e2e (justified); no architecture-ban violations." }
+    { "id": "V-1", "detail": "LEAFLET-LAZY (highest risk) SOUND. DriverMapInner is a default-export presentational component and the ONLY driver-side importer of MapyMap/react-leaflet/leaflet (mirrors CustomerMapBackground); WI-5 loads it via lazy(() => import('./DriverMapInner')) inside Suspense, the only import site. Polyline + Markers render as MapyMap children, keeping react-leaflet in the lazy chunk. WI-5 npm-build is the dist gate. No WI risks eager leaflet." },
+    { "id": "V-2", "detail": "mapCamera PROMOTION is a re-export shim, zero dangling imports. All 9 importers use relative ../shell/mapCamera resolving through the shim after WI-1 reduces it to `export * from '../../../shared/map/mapCamera'` (priceQuote precedent). tsc is the no-dangle gate. UC-015/016 imports keep working. Assumption 3 sound." },
+    { "id": "V-3", "detail": "SESSION-HOOK RE-HOMING designed in (only untested — see F-2). WI-5 AC#3 re-homes useRideRestore, useLiveClear (F-04), useWakeLock, useActiveOrder, useQueuePendingCount + runTransition->reconciledNote into DriverMapScreen; owns useRideTransition, passes handlers to presentational RideSheet. Removing DriverRidePage does not drop restore (AC#6) or mid-ride reassignment." },
+    { "id": "V-4", "detail": "NO-NAVIGATE-ON-ACCEPT consistent. WI-2 removes navigate('/driver/ride') on accept (spy-0-calls test); WI-5 makes /driver state-driven; router deletes the ride child. Only navigate('/driver/ride') sites are OfferTakeover.tsx + DriverHomePage.tsx (both WI-5-removed). Complete still navigates KEPT /driver/ride/complete. useRouteToast return-home preserved." },
+    { "id": "V-5", "detail": "REMOVAL LIST COMPLETE. Grep of actual imports of the 5 removed modules: all importers are in WI-5 files_touched (router.tsx edits, DriverLayout.tsx edits, RideMapStrip/RideMapInner/DriverRidePage removed). Other grep hits are comment-only. tsc-no-dangle achievable." },
+    { "id": "V-6", "detail": "LAYOUT/BOTTOMNAV resolved. useActiveOrderStore(s => s.order) atomic selector hides BottomNav only during active ride; Offline/Free panels are in-screen absolute overlays (not fixed BottomSheet), no collision with visible BottomNav. jsdom map-height trap called out in WI-5 AC#2." },
+    { "id": "V-7", "detail": "BODYLESS POSTS + offer robustness preserved. WI-6 keeps accept/arrive/start bodyless (apiDriver omits Content-Type); complete/assign/cancel keep JSON. WI-2 preserves double-tap (isPending), stale 404/409->role=alert +2s dismiss, offline hint, useOfferSound(phase==='offer'). useOfferListener untouched." },
+    { "id": "V-8", "detail": "ZUSTAND ATOMIC SELECTORS enforced (WI-5 AC#1/#4): useOwnPositionStore(s=>s.position), useActiveOrderStore(s=>s.order) — never object selectors (laneB3c loop). No-loop smoke test in WI-5. No object-selector introduced." },
+    { "id": "V-9", "detail": "I18N front-loaded to WI-1 (Assumption 4). All new driver.* keys in all 6 locales in WI-1; WI-2/3/4/5 cite but never edit locale files (avoids parity race across concurrent WIs). Reused keys verified present: driver.home.status.waitingForOrder, driver.offer.staleOffer. Repo uses cs-CZ.json/en-US.json (six)." },
+    { "id": "V-10", "detail": "TOPOLOGY+LANES+AC sound. WI-1 -> (WI-2||WI-3||WI-4) -> WI-5 -> WI-6 acyclic; WI-2/3/4 disjoint-file parallel-safe; all lane=web. All 6 ACs map to WIs. No architecture-ban violations (mapCamera promoted to shared, no cross-feature import; single hub kept)." },
+    { "id": "V-11", "detail": "Both Assumptions sound. (1) Offer box session-wide in DriverLayout preserves today's behaviour (offer on /driver/history still shows Accept/Decline). (2) DriverMapScreen nests as /driver INDEX CHILD of DriverLayout (not sibling) so session mounts survive /driver/* nav; map fills Content (not fixed inset:0) is the right BottomNav-overlap fix." }
   ],
-  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 2, "LOW": 1 },
   "persisted_by": "conductor on behalf of design-reviewer agent (no Write tool); returned as text, persisted verbatim"
 }

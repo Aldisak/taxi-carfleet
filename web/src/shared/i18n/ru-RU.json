@@ -682,6 +682,19 @@
         "goOnlineFailed": "Не удалось начать смену. Попробуй ещё раз."
       }
     },
+    "map": {
+      "label": "Карта",
+      "ownLabel": "Моё местоположение",
+      "pickupLabel": "Подача",
+      "dropoffLabel": "Назначение",
+      "routeLabel": "Маршрут",
+      "online": {
+        "subtitle": "Ты онлайн и готов"
+      },
+      "offline": {
+        "title": "Выбери автомобиль для смены"
+      }
+    },
     "ride": {
       "navigate": "Навигация",
       "navigateToDropoff": "Навигация к месту высадки",
@@ -701,7 +714,10 @@
       "reassigned": "Заказ был переназначен",
       "loading": "Загрузка поездки...",
       "noRide": "Нет активной поездки",
-      "backHome": "На главную"
+      "backHome": "На главную",
+      "sheetLabel": "Активная поездка",
+      "etaToPickup": "Приезд через {{min}} мин",
+      "etaToDropoff": "Назначение через {{min}} мин"
     },
     "complete": {
       "title": "Завершить поездку",
@@ -734,6 +750,8 @@
     "offer": {
       "accept": "Принять",
       "decline": "Отклонить",
+      "boxLabel": "Новый заказ",
+      "distanceEta": "{{km}} км / {{min}} мин",
       "pickup": "Подача",
       "dropoff": "Назначение",
       "distance": "{{km}} км",

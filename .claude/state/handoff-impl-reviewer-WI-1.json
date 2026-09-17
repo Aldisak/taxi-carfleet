@@ -1,25 +1,27 @@
 {
   "$schema": ".claude/schemas/impl-review.v1.json",
   "kind": "impl",
-  "uc": "UC-018",
+  "uc": "UC-019",
   "wi": "WI-1",
-  "wi_id": "WI-1",
   "round": 1,
+  "wi_id": "WI-1",
   "commit_range": "staged",
   "blocks_merge": false,
   "findings": [],
-  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0 },
+  "summary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
   "automated_checks": {
-    "build_warnaserror": "PASS - fresh C:\Users\alesm\AppData\Local\Microsoft\dotnet\dotnet.exe build api -warnaserror: 0 warnings, 0 errors, exit 0.",
-    "scoped_tests": "PASS - fresh dotnet test api --filter FullyQualifiedName~Taxi.Api.Tests.Geo --no-build: 139 passing, 0 failing, 0 skipped, exit 0 (covers MapyClientHandlerTests + GeoServiceTests).",
-    "scope": "EXACT: only the 5 WI-1 files_touched staged (IMapyClient.cs, MapyClient.cs, GeoService.cs, GeoServiceTests.cs, MapyClientHandlerTests.cs). No out-of-scope changes.",
-    "coord_order": "CORRECT. IMapyClient.SuggestAsync takes (double Lat, double Lng)? near; GeoService forwards the tuple unchanged on both paths; MapyClient flips ONCE to preferNear={lng},{lat}. Test SuggestAsync_NearSupplied_RequestUrlContainsPreferNear pins the literal preferNear=14.43,50.08 for near=(50.08,14.43) (lng-first) plus a NotContain(preferNear=50.08) guard against a lat-first regression. A silent swap cannot pass.",
-    "invariant_culture": "CORRECT. Both coords formatted via CultureInfo.InvariantCulture (System.Globalization imported); test asserts dot-decimal 14.43 / 50.08 and documents that cs-CZ 14,43/50,08 would be caught.",
-    "both_paths_forwarding": "CORRECT. near forwarded on the Guid.Empty fleetless bypass (GeoService.cs:31) AND the cache-miss factory closure (GeoService.cs:40); each pinned by FakeMapyClient.LastSuggestNear == near (Suggest_FleetlessBypass_ForwardsNearToClient, Suggest_CachedFactoryPath_ForwardsNearToClient).",
-    "present_absent": "CORRECT. preferNear present-when-supplied / absent-when-null pinned by SuggestAsync_NearSupplied_RequestUrlContainsPreferNear and SuggestAsync_NearNull_RequestUrlOmitsPreferNear.",
-    "signature_completeness": "CORRECT. Interface IMapyClient.cs itself edited (not just impl) with XML <param name=near> doc; all 5 MapyClientHandlerTests.SuggestAsync call sites updated to near:null; FakeMapyClient gains LastSuggestNear; CountingMapyClient signature-only. grep confirms MapyClient is the only production implementer (IGeoService.cs + GeoFeatureConfiguration.cs matches are comment/DI-only); FakeGeoService correctly NOT touched.",
-    "unchanged_surfaces": "CONFIRMED. No route/verb/policy/result-shape change; rate limiter, key-missing short-circuit (MissingKey), and GeoResult.Unavailable degradation untouched; cache key unchanged (GeoCacheKey.Suggest already includes near).",
-    "csharp_style": "CLEAN. XML doc on the changed interface member; nullable tuple correct; internal sealed preserved; InvariantCulture per rules/csharp-style. No violations of the WI rule_citations.",
-    "note": "Zero findings; blocks_merge=false. .claude/schemas/impl-review.v1.json does not exist (documented scaffold gap in CLAUDE.md); handoff shape mirrors the existing .claude/state/handoff-impl-reviewer.json precedent."
+    "tsc": "PASS - fresh npm run --prefix web tsc (tsc --noEmit) = 0 errors, exit 0. Proves the mapCamera re-export shim left NOTHING dangling: all customer consumers import via '../shell/mapCamera' (resolving through the one-line shim), driver code imports '../../../shared/map/mapCamera', moved test imports './mapCamera'.",
+    "eslint": "PASS - fresh npm run --prefix web lint (check:geo + eslint --max-warnings 0) = 0 warnings, exit 0.",
+    "vitest": "PASS - fresh scoped re-run (src/features/driver + shared/map/mapCamera.test.ts + locales.parity.test.ts + formatStaysCs.test.ts): 53 files / 309 tests green, exit 0. New WI-1 specs: routeLeg (11), offerCardState (4), driverMapView (4), mapCamera moved (4), locales.parity (5), formatStaysCs (2) all green.",
+    "mapcamera_no_dangle": "VERIFIED. Grepped every mapCamera importer in web/src. Real module lives at web/src/shared/map/mapCamera.ts (verbatim move: LatLng/LatLngBounds/SetViewIntent/FitBoundsIntent/CameraIntent/CameraInput/MIN_CAMERA_ZOOM/cameraIntent). web/src/features/customer/shell/mapCamera.ts is exactly `export * from '../../../shared/map/mapCamera'` (correct relative depth). ~10 customer importers (CustomerMapBackground, CustomerMapShell, TrackingPage, MapOrderPage, orderCamera, useSuggest, suggestLocation, DestinationSearch, markerInterpolation, tests) still reference '../shell/mapCamera' / './mapCamera' and resolve through the shim. Zero import statements churned. tsc 0 errors confirms.",
+    "pure_modules": "VERIFIED. routeLeg.ts: selectRouteLeg Accepted/Arrived->toPickup, InProgress->toDropoff|null(no dropoff), else null; legEndpoint('toDropoff', orderNoDropoff)->null skip-leg. offerCardState.ts: success->dismissAfterMs 0, stale->expired+2000ms+showStale, offline/noReason->stay(null)+respective flag. driverMapView.ts: selectDriverMapCamera filters [own, legEnd] non-null; legStart is a signature slot only and is NOT framed (WI-5 dedupe pin test asserts legStart:own still yields [own,legEnd], length 2). All three import only types (or nothing) from shared/map/mapCamera; no react/leaflet/DOM/I-O. Tests exercise real branches.",
+    "i18n": "VERIFIED. 12 new driver.* keys added to ALL 6 locale JSONs (map.label/ownLabel/pickupLabel/dropoffLabel/routeLabel/online.subtitle/offline.title, offer.boxLabel/distanceEta, ride.sheetLabel/etaToPickup/etaToDropoff). parity + formatStaysCs green. No existing key re-declared (waitingForOrder/staleOffer untouched; new keys are net-new inserts). Money cs-CZ/Kc and Europe/Prague dates untouched (no new currency/date keys). Register: ru informal ('Ты онлайн и готов','Выбери автомобиль'), uk informal ('Ти онлайн і готовий','Вибери автомобіль'), de informal du/imperative ('Du bist online und bereit','Wähle ein Fahrzeug' - NOT Sie). Values genuinely translated, not Czech placeholders. cs-CZ formal ('Jste online a připraveni','Vyberte vozidlo') matches existing formal cs driver strings (informal scoped to ru/uk/de per spec §5). German ä/ö/ü/ß (Fahrzeug/Zurück/für/abschließen) legitimate, not Czech-leftover.",
+    "scope": "EXACT. Staged: 2 mapCamera files (shim + real module), moved mapCamera.test.ts, 3 pure modules + 3 tests, 6 locale JSONs, and the developer handoff. No OfferCard/DriverMapInner/RideSheet/DriverMapScreen, no router/DriverLayout, no premature memoization. All files match WI-1 files_changed.",
+    "code_quality": "One type/concern per file; PascalCase.tsx N/A (all .ts logic modules); test names are behavior sentences; TS strict, no `any`, explicit return types on exported functions (RouteLeg, OfferActionDecision, LatLng[]); no useMemo/useCallback/React.memo (pure modules, no React)."
   }
 }

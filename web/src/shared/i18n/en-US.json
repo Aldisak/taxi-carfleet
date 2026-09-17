@@ -682,6 +682,19 @@
         "goOnlineFailed": "Failed to start shift. Please try again."
       }
     },
+    "map": {
+      "label": "Map",
+      "ownLabel": "My location",
+      "pickupLabel": "Pickup",
+      "dropoffLabel": "Dropoff",
+      "routeLabel": "Route",
+      "online": {
+        "subtitle": "You're online and ready"
+      },
+      "offline": {
+        "title": "Pick a vehicle for your shift"
+      }
+    },
     "ride": {
       "navigate": "Navigate",
       "navigateToDropoff": "Navigate to dropoff",
@@ -701,7 +714,10 @@
       "reassigned": "Order was reassigned",
       "loading": "Loading ride...",
       "noRide": "No active ride",
-      "backHome": "Back home"
+      "backHome": "Back home",
+      "sheetLabel": "Active ride",
+      "etaToPickup": "Arriving in {{min}} min",
+      "etaToDropoff": "Destination in {{min}} min"
     },
     "complete": {
       "title": "Complete ride",
@@ -734,6 +750,8 @@
     "offer": {
       "accept": "Accept",
       "decline": "Decline",
+      "boxLabel": "New order",
+      "distanceEta": "{{km}} km / {{min}} min",
       "pickup": "Pickup",
       "dropoff": "Dropoff",
       "distance": "{{km}} km",

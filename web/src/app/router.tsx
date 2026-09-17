@@ -8,8 +8,7 @@ import { OrderDrawer } from '../features/orders/OrderDrawer'
 import { SearchPage } from '../features/orders/SearchPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { DriverLoginPage } from '../features/driver/auth/DriverLoginPage'
-import { DriverHomePage } from '../features/driver/home/DriverHomePage'
-import { DriverRidePage } from '../features/driver/ride/DriverRidePage'
+import { DriverMapScreen } from '../features/driver/map/DriverMapScreen'
 import { CompletePage } from '../features/driver/complete/CompletePage'
 import { HistoryPage } from '../features/driver/history/HistoryPage'
 import { DriverSettingsPage } from '../features/driver/settings/DriverSettingsPage'
@@ -128,8 +127,12 @@ export const router = createBrowserRouter([
     path: '/driver',
     element: <DriverLayout />,
     children: [
-      { path: '', element: <DriverHomePage /> },
-      { path: 'ride', element: <DriverRidePage /> },
+      // The map-first /driver index is the SINGLE driver screen (UC-019). It nests UNDER
+      // DriverLayout (not a sibling like the customer shell) because the session mounts —
+      // hub singleton, offer listener, position reporter, queue bar — live in DriverLayout
+      // and must survive /driver/* navigation. The old { path: 'ride' } child is removed;
+      // Accept no longer navigates — the state-driven screen reactively renders the ride view.
+      { path: '', element: <DriverMapScreen /> },
       { path: 'ride/complete', element: <CompletePage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'settings', element: <DriverSettingsPage /> },

@@ -7,7 +7,8 @@ import { enableSilentRefresh, scheduleProactiveRefresh } from '../shared/api/ref
 import { useFleetHub } from '../shared/realtime/useFleetHub'
 import { useOfferListener } from '../features/driver/offer/useOfferListener'
 import { useOfferStore } from '../features/driver/offer/useOfferStore'
-import { OfferTakeover } from '../features/driver/offer/OfferTakeover'
+import { OfferCard } from '../features/driver/offer/OfferCard'
+import { useActiveOrderStore } from '../features/driver/ride/useActiveOrderStore'
 import { DriverPositionReporter } from '../features/driver/position/DriverPositionReporter'
 import { DriverQueueBar } from '../features/driver/queue/DriverQueueBar'
 
@@ -34,7 +35,11 @@ const Content = styled.main`
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  /* position:relative so the map-first screen can absolute-fill this region and get a definite
+     size (rather than a collapsing height:100% chain). overflow:hidden keeps the map clipped to
+     the content region so it never paints over the in-flow BottomNav (UC-019 WI-5 layout fix). */
+  position: relative;
+  overflow: hidden;
 `
 
 const BottomNav = styled.nav`
@@ -69,6 +74,10 @@ export function DriverLayout() {
 
   const offer = useOfferStore(s => s.offer)
   const clearOffer = useOfferStore(s => s.clearOffer)
+  // Hide the BottomNav during an active ride so the ride BottomSheet (position:fixed bottom:0)
+  // owns the bottom edge without colliding (mirrors the customer app). ATOMIC selector
+  // (CLAUDE.md laneB3c zustand-object-selector loop trap).
+  const activeOrder = useActiveOrderStore(s => s.order)
 
   // Boot: opt the driver session into silent refresh so the 401-retry pipeline and proactive
   // timer are active even after a page reload (module state is reset on every load).
@@ -85,8 +94,11 @@ export function DriverLayout() {
 
   return (
     <Shell>
+      {/* Offer box stays SESSION-WIDE here (UC-019 Assumption 1): an offer arriving on
+          /driver/history still shows Accept/Decline. Restyled from the full-screen takeover
+          into a top-anchored region card (WI-2). */}
       {offer && (
-        <OfferTakeover
+        <OfferCard
           dto={offer.dto}
           expiresAt={offer.expiresAt}
           onDismiss={clearOffer}
@@ -97,11 +109,13 @@ export function DriverLayout() {
       <Content>
         <Outlet />
       </Content>
-      <BottomNav aria-label={t('driver.nav.label')}>
-        <NavItem to="/driver" end>{t('driver.nav.home')}</NavItem>
-        <NavItem to="/driver/history">{t('driver.nav.history')}</NavItem>
-        <NavItem to="/driver/settings">{t('driver.nav.settings')}</NavItem>
-      </BottomNav>
+      {activeOrder == null && (
+        <BottomNav aria-label={t('driver.nav.label')}>
+          <NavItem to="/driver" end>{t('driver.nav.home')}</NavItem>
+          <NavItem to="/driver/history">{t('driver.nav.history')}</NavItem>
+          <NavItem to="/driver/settings">{t('driver.nav.settings')}</NavItem>
+        </BottomNav>
+      )}
     </Shell>
   )
 }

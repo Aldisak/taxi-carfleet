@@ -682,6 +682,19 @@
         "goOnlineFailed": "Der Schichtbeginn ist fehlgeschlagen. Versuche es erneut."
       }
     },
+    "map": {
+      "label": "Karte",
+      "ownLabel": "Mein Standort",
+      "pickupLabel": "Abholung",
+      "dropoffLabel": "Ziel",
+      "routeLabel": "Route",
+      "online": {
+        "subtitle": "Du bist online und bereit"
+      },
+      "offline": {
+        "title": "Wähle ein Fahrzeug für die Schicht"
+      }
+    },
     "ride": {
       "navigate": "Navigieren",
       "navigateToDropoff": "Zum Ziel navigieren",
@@ -701,7 +714,10 @@
       "reassigned": "Die Bestellung wurde neu zugewiesen",
       "loading": "Fahrt wird geladen...",
       "noRide": "Keine aktive Fahrt",
-      "backHome": "Zurück zur Startseite"
+      "backHome": "Zurück zur Startseite",
+      "sheetLabel": "Aktive Fahrt",
+      "etaToPickup": "Ankunft in {{min}} min",
+      "etaToDropoff": "Ziel in {{min}} min"
     },
     "complete": {
       "title": "Fahrt abschließen",
@@ -734,6 +750,8 @@
     "offer": {
       "accept": "Annehmen",
       "decline": "Ablehnen",
+      "boxLabel": "Neue Bestellung",
+      "distanceEta": "{{km}} km / {{min}} min",
       "pickup": "Abholung",
       "dropoff": "Ziel",
       "distance": "{{km}} km",

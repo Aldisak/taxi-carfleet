@@ -1,23 +1,20 @@
 {
+  "$schema": ".claude/schemas/impl-review.v1.json",
   "kind": "impl",
-  "uc": "UC-016",
+  "uc": "UC-019",
   "wi": "WI-3",
+  "wi_id": "WI-3",
   "round": 1,
+  "commit_range": "staged",
+  "findings": [],
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0 },
   "blocks_merge": false,
-  "findings": [
-    {
-      "severity": "LOW",
-      "rule": "rules/web-performance.md#high-frequency-events",
-      "file": "web/src/features/customer/shell/CustomerMapBackground.tsx",
-      "hunk": "@@ AnimatedCarMarker useEffect (lines 169-192)",
-      "detail": "On the very first carMarker (motion allowed), the mount effect runs with from===target, so it spins the rAF loop for the full MARKER_ANIMATION_MS performing a visually-null interpolation (setRendered with a fresh same-valued object each frame). Confined to the local marker component; never threaded through the shell, so no shell re-render. Harmless observation, not a violation."
-    }
-  ],
-  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
   "automated_checks": {
-    "vitest": "pass (filter=features/customer/shell: 12 files, 71 tests, fresh re-run exit 0)",
-    "leaflet_import_scan": "PASS - only CustomerMapBackground.tsx imports leaflet/react-leaflet under web/src/features/customer/shell; imported solely via lazy(() => import('./CustomerMapBackground')) in CustomerMapShell",
-    "tsc": "reported pass by developer handoff (not independently re-run; scoped review)",
-    "lint": "reported pass by developer handoff (not independently re-run; scoped review)"
+    "vitest": { "filter": "features/driver/map", "exit_code": 0, "result": "3 files / 19 tests passed (DriverMapInner 10, useRouteGeometry 5, driverMapView 4)" },
+    "tsc": { "exit_code": 0, "wi3_errors": 0, "project_errors": 0 },
+    "lint": { "exit_code": 0, "warnings": 0, "scope": "4 WI-3 files, --max-warnings 0" },
+    "leaflet_lazy_ok": true,
+    "f1_icons_copied_not_imported": true,
+    "no_eager_drivermapinner_importer": true
   }
 }

@@ -1,0 +1,28 @@
+{
+  "kind": "impl",
+  "uc": "UC-019",
+  "wi": "WI-5",
+  "wi_id": "WI-5",
+  "round": 1,
+  "commit_range": "staged",
+  "scope_note": "Staged diff is CUMULATIVE across branch uc-015-customer-order-flow (contains WI-1..WI-4 outputs already reviewed: mapCamera->shared promotion = WI-1; OfferCard = WI-2; DriverMapInner/driverMapView/useRouteGeometry = WI-3; RideSheet/routeLeg = WI-4; 6 locale JSONs = WI-1). This review is scoped to WI-5's hunks only (DriverMapScreen +test, DriverLayout +test, router.tsx, and the 7 removals). A clean WI-5 verdict does NOT clear the ~2700 cumulative lines; those were reviewed under their own WIs.",
+  "findings": [],
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0 },
+  "blocks_merge": false,
+  "automated_checks": {
+    "tsc": "PASS - fresh tree-wide `npm run --prefix web tsc` (tsc --noEmit) = 0 errors, exit 0. This is the authoritative no-dangle gate: all 7 removals (DriverHomePage, DriverRidePage +test, OfferTakeover, RideMapStrip +test, RideMapInner) left ZERO dangling imports. Grep of web/src for the 7 removed module names returns only comments/test-descriptions, no `import` statements.",
+    "lint": "PASS - `npm run --prefix web lint` = check:geo OK + eslint --max-warnings 0, 0 warnings.",
+    "vitest_scoped": "PASS - `npx vitest run src/features/driver src/app` = 56 files / 348 tests passed, exit 0. Pre-existing jsdom 'navigation not implemented' stderr in customerRoutes.test.ts is unrelated to WI-5 and the test passes. Fresh focused re-run of DriverMapScreen.test.tsx + DriverLayout.test.tsx = exit 0.",
+    "vitest_exit_code": 0,
+    "npm_build": "PASS - `npm run build` exit 0, vite built in 5.96s + PWA precache 32 entries. (>500kB index chunk warning is pre-existing/informational, dispatcher board leaflet.)",
+    "size_budget": "PASS - `npm run size` all three budgets green: app js 195.95kB / 260kB; analytics 94.87kB / 115kB; admin 64kB / 70kB.",
+    "leaflet_lazy": "CONFIRMED. Only react-leaflet/leaflet static import under features/driver is DriverMapInner.tsx, reached exclusively via lazy(() => import('./DriverMapInner')) in DriverMapScreen (grep: exactly one runtime importer + its own test). dist has a distinct DriverMapInner-DbaJAMXU.js lazy chunk (2.13kB) carrying leaflet-container. The leaflet-container substring in the eager index-*.js is the PRE-EXISTING dispatcher BoardPage static react-leaflet import (router.tsx line 6, documented CLAUDE.md UC-010 WI-15), NOT a WI-5 driver regression - no eager-reachable driver module statically imports leaflet.",
+    "f2_rehome_pinned": "CONFIRMED non-vacuous. DriverMapScreen.test.tsx vi.mocks useRideRestore/useLiveClear/useWakeLock and asserts useRideRestore('d1'), useLiveClear('d1'), useWakeLock(true) on mount in EnRoute+order state, plus useWakeLock(false) when order==null. A silently dropped session hook (which tsc cannot catch) goes RED. Design-review F-2 fully folded in.",
+    "atomic_selectors": "CONFIRMED. useOwnPositionStore(s=>s.position) in DriverMapScreen and useActiveOrderStore(s=>s.order) in DriverLayout are atomic one-field selectors (no object-selector laneB3c loop trap). A no-loop smoke test asserts no console.error on render.",
+    "state_driven_rendering": "CONFIRMED. Ride view gated on `order != null` (from useActiveOrder), NOT on useDriverMe status - same signal DriverLayout uses to hide BottomNav, so no accept/hub race. Offline = VehicleSelector + Zacit smenu + geo-permission hint (noLocationHint via Permissions API); Free = waitingForOrder (role=status) + Ukoncit smenu; Busy/EnRoute = RideSheet + lazy DriverMapInner + route geometry. OfferCard mounted session-wide in DriverLayout (offer on /driver/history still shows Accept/Decline).",
+    "router": "CONFIRMED. /driver index child of DriverLayout -> DriverMapScreen; { path: 'ride' } child DELETED; ride/complete + history + settings + /driver/login KEPT. Grep: no kept file navigates to /driver/ride.",
+    "layout": "CONFIRMED. DriverLayout <Content> is position:relative + overflow:hidden; Screen is flex:1 min-height:0; MapLayer position:absolute inset:0 (definite size, jsdom height-collapse trap avoided - not fixed inset:0). Offline/Free panels are in-screen absolute BottomSlot overlays (not fixed BottomSheet) so they never collide with the visible BottomNav; BottomNav hidden only when activeOrder != null. All styling uses theme tokens (colors/spacing/zIndex.map/zIndex.overlay) - no hardcoded colors or magic px.",
+    "a11y": "PASS - three axe tests (Offline/Free/active-ride) on DriverMapScreen, all green; map mocked. Offer role/label handled in OfferCard (WI-2).",
+    "scope": "EXACT. WI-5 hunks match declared files: DriverMapScreen.tsx +test (new), DriverLayout.tsx +test (edited), router.tsx (edited), 7 modules removed via git rm. No premature memoization (module-level NO_LEG_ORDER const). No cross-role-group edit attributable to WI-5 (the customer/shell mapCamera shim edit belongs to WI-1, already reviewed)."
+  }
+}

@@ -1,31 +1,27 @@
 {
   "$schema": ".claude/schemas/impl-review.v1.json",
   "kind": "impl",
-  "uc": "UC-018",
+  "uc": "UC-019",
   "wi": "WI-2",
-  "round": 1,
   "wi_id": "WI-2",
+  "round": 2,
   "commit_range": "staged",
-  "blocks_merge": false,
   "findings": [],
-  "summary": {
-    "CRITICAL": 0,
-    "HIGH": 0,
-    "MEDIUM": 0,
-    "LOW": 0
-  },
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0 },
+  "blocks_merge": false,
   "automated_checks": {
-    "vitest": "PASS - fresh scoped re-run `npm run --prefix web test -- \"customer/order\" \"suggestLocation\"`: 15 files, 114/114 tests green, exit 0. The two `An update to DestinationSearch was not wrapped in act(...)` stderr lines are pre-existing benign noise (findBy/waitFor on a mocked-client suggest), not failures.",
-    "tsc": "PASS - fresh `npm run --prefix web tsc` (tsc --noEmit) clean, 0 errors.",
-    "lint": "PASS - fresh `npm run --prefix web lint` = check:geo OK (no legacy OSM/OSRM/Nominatim/Photon hosts) + eslint --max-warnings 0, 0 warnings.",
-    "scope": "EXACT: only the 10 WI-2 files_touched staged (client.ts/.test.ts, suggestLocation.ts/.test.ts, useSuggest.ts/.test.ts, DestinationSearch.tsx/.test.tsx, MapOrderPage.tsx/.test.tsx). The 5 api/ files staged are WI-1 (out of lane, not reviewed here).",
-    "coord_contract": "CONFIRMED lat-first. getGeoSuggest formats `near=${near.lat},${near.lng}` (lat FIRST) matching the endpoint's leniently-parsed parts[0]=lat contract; client.test.ts pins decodeURIComponent(url) contains 'near=50.09,14.43' and NOT '14,43' (dot-decimal via URLSearchParams, no cs-CZ comma). `near` omitted entirely when absent (test 'omits the near param' asserts url NOT contains 'near='). This is the intended asymmetric contract (backend WI-1 flips to Mapy lng-first internally) - correctly NOT flagged.",
-    "pure_helper": "CONFIRMED pickSuggestLocation is pure: imports ONLY `type { LatLng }` from ../shell/mapCamera (a plain interface); no React/I/O/DI. Precedence mapCenter -> gpsLocation -> configCenter -> null via `??` chain. 2-decimal (~1.1 km) coarse rounding INSIDE the helper (NEAR_DECIMALS=2), coarser than client.ts roundCoord's 4 decimals. Tests pin precedence (all 4 tiers), rounding granularity (tiny nudge 50.0812/50.0834 both -> 50.08 equal; >~1.1 km move 50.08->50.10 differs).",
-    "query_key": "CONFIRMED useSuggest key is ['geo','suggest', debounced, near ?? null] and queryFn passes `near` through to getGeoSuggest. `near` NOT debounced (only text is); TanStack value-hashes the key so a fresh-but-equal near object does not refetch. No premature useMemo/useCallback added (rules/web-performance.md#memoization-policy) - correct per the value-hash reasoning; tests pin re-query on changed coarse near and no extra call on equal-rounded near.",
-    "wiring": "CONFIRMED MapOrderPage computes suggestNear = pickSuggestLocation({ mapCenter: pendingCenter, gpsLocation: null, configCenter }) where configCenter maps useGeoConfig().data.{mapCenterLat,mapCenterLng} (field names verified against GeoConfigResponse in client.ts). GPS null is the documented deliberate placeholder (spec Assumptions, no geolocation hook yet) - correctly NOT flagged as a gap. DestinationSearch stays presentational: near? prop forwarded to useSuggest, no logic added.",
-    "shared_no_feature_import": "CONFIRMED client.ts (shared/) has ZERO imports from features/ (grep clean). near typed as inline structural `{ lat: number; lng: number } | null` - NOT the feature-layer LatLng - so no shared->feature architecture violation (rules/web-architecture.md#api-client). LatLng is used only in the feature-lane files (suggestLocation.ts, useSuggest.ts, DestinationSearch.tsx, MapOrderPage.tsx) importing from ../shell/mapCamera (sanctioned cross-sub-feature).",
-    "i18n": "CONFIRMED no i18n change: `git diff --staged -- web/src/shared/i18n/` empty. No new user-facing string (near is a numeric hint). Parity untouched. No route/verb/result-shape change (getGeoSuggest still GET /geo/suggest returning GeoSuggestResponse).",
-    "a11y": "CONFIRMED DestinationSearch adds only a data prop (near), no new interactive element; existing combobox ARIA/keyboard/empty-state + vitest-axe tests unchanged and green (9 tests incl. 'has no axe violations with the suggestion list open').",
-    "ts_strict": "CONFIRMED no `any` introduced; near typed explicitly (`{ lat: number; lng: number } | null` in client.ts, `LatLng | null` in feature files). No style bodies touched - no styled-components token concern."
-  }
+    "vitest": { "filter": "features/driver/offer/OfferCard", "exit_code": 0, "result": "2 files / 12 tests passed" },
+    "tsc": { "exit_code": 0, "errors": 0 },
+    "lint": { "exit_code": 0, "warnings": 0 },
+    "roslyn_diagnostics": null,
+    "antipatterns_detected": [],
+    "dead_code_count": 0,
+    "circular_deps": 0
+  },
+  "round_1_findings_resolution": {
+    "HIGH_applyDecision_useCallback": "RESOLVED — useCallback wrapper removed at line 180; applyDecision is now a plain function. Verified: no useCallback in file; react import is now `useState, useRef` only (no unused import / TS6133).",
+    "MEDIUM_MetaChip_hardcoded_padding": "RESOLVED — line 82 padding now theme.spacing.xs theme.spacing.sm; no hardcoded px remain in style bodies (grep confirmed).",
+    "LOW_handleExpired_useCallback": "RESOLVED — useCallback wrapper removed; handleExpired is now a plain function."
+  },
+  "notes": "Round-2 re-review verified against the file directly (not the fix-task report). All three round-1 findings resolved; no new findings. Behavior/props unchanged; OfferCard.test.tsx untouched and all 12 tests still pass. Fresh checks: vitest 12/12, tsc 0, lint 0. blocks_merge=false."
 }

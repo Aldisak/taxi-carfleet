@@ -682,6 +682,19 @@
         "goOnlineFailed": "Hindi nasimulan ang shift. Subukan mo muli."
       }
     },
+    "map": {
+      "label": "Mapa",
+      "ownLabel": "Aking lokasyon",
+      "pickupLabel": "Pickup",
+      "dropoffLabel": "Destinasyon",
+      "routeLabel": "Ruta",
+      "online": {
+        "subtitle": "Online ka at handa na"
+      },
+      "offline": {
+        "title": "Pumili ng sasakyan para sa shift"
+      }
+    },
     "ride": {
       "navigate": "Mag-navigate",
       "navigateToDropoff": "Mag-navigate sa destinasyon",
@@ -701,7 +714,10 @@
       "reassigned": "Naitalaga muli ang order",
       "loading": "Naglo-load ng biyahe...",
       "noRide": "Walang aktibong biyahe",
-      "backHome": "Bumalik sa home"
+      "backHome": "Bumalik sa home",
+      "sheetLabel": "Aktibong biyahe",
+      "etaToPickup": "Darating sa {{min}} min",
+      "etaToDropoff": "Destinasyon sa {{min}} min"
     },
     "complete": {
       "title": "Tapusin ang biyahe",
@@ -734,6 +750,8 @@
     "offer": {
       "accept": "Tanggapin",
       "decline": "Tanggihan",
+      "boxLabel": "Bagong order",
+      "distanceEta": "{{km}} km / {{min}} min",
       "pickup": "Pickup",
       "dropoff": "Destinasyon",
       "distance": "{{km}} km",

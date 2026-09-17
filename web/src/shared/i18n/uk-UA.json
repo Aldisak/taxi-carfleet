@@ -682,6 +682,19 @@
         "goOnlineFailed": "Не вдалося почати зміну. Спробуй ще раз."
       }
     },
+    "map": {
+      "label": "Мапа",
+      "ownLabel": "Моє місцезнаходження",
+      "pickupLabel": "Посадка",
+      "dropoffLabel": "Призначення",
+      "routeLabel": "Маршрут",
+      "online": {
+        "subtitle": "Ти онлайн і готовий"
+      },
+      "offline": {
+        "title": "Вибери автомобіль для зміни"
+      }
+    },
     "ride": {
       "navigate": "Навігувати",
       "navigateToDropoff": "Навігувати до призначення",
@@ -701,7 +714,10 @@
       "reassigned": "Замовлення перепризначено",
       "loading": "Завантаження поїздки...",
       "noRide": "Немає активної поїздки",
-      "backHome": "На головну"
+      "backHome": "На головну",
+      "sheetLabel": "Активна поїздка",
+      "etaToPickup": "Прибуття за {{min}} хв",
+      "etaToDropoff": "Призначення за {{min}} хв"
     },
     "complete": {
       "title": "Завершити поїздку",
@@ -734,6 +750,8 @@
     "offer": {
       "accept": "Прийняти",
       "decline": "Відхилити",
+      "boxLabel": "Нове замовлення",
+      "distanceEta": "{{km}} км / {{min}} хв",
       "pickup": "Посадка",
       "dropoff": "Призначення",
       "distance": "{{km}} км",
