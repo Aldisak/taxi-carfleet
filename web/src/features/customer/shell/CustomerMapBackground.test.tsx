@@ -21,46 +21,59 @@ let moveendHandler: (() => void) | null = null
 // children and exposes its aria-label as a data attr (mirrors MapyMap.test.tsx precedent).
 // Marker echoes its position (JSON) as a data-attr and renders `title` as a plain title
 // attribute (NOT aria-label — that would re-trigger the aria-prohibited-attr axe trap).
-vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children, ...rest }: { children?: ReactNode } & Record<string, unknown>) => (
-    <div
-      data-testid="map-container"
-      role="application"
-      aria-label={rest['aria-label'] as string | undefined}
-    >
-      {children}
-    </div>
-  ),
-  TileLayer: ({ url, attribution }: { url: string; attribution?: string }) => (
-    <div data-testid="tile-layer" data-url={url} data-attribution={attribution} />
-  ),
-  Marker: ({
-    position,
-    title,
-    icon,
-  }: {
-    position: [number, number]
-    title?: string
-    icon?: { options?: { className?: string } }
-  }) => (
-    <div
-      data-testid="leaflet-marker"
-      data-position={JSON.stringify(position)}
-      data-icon-class={icon?.options?.className}
-      title={title}
-    />
-  ),
-  useMap: () => ({
-    setView,
-    fitBounds,
-    getZoom: () => 15,
-    getCenter: () => mapCenter,
-  }),
-  useMapEvents: (handlers: { moveend?: () => void }) => {
-    moveendHandler = handlers.moveend ?? null
-    return { getZoom: () => 15, getCenter: () => mapCenter }
-  },
-}))
+vi.mock('react-leaflet', () => {
+  // Real react-leaflet's useMap returns a STABLE map instance for the map's lifetime. Mirror that
+  // so effects keyed on the map (e.g. MapyMap's InvalidateSizeController, dep [map]) run once at
+  // mount and do NOT re-run on every rerender. Created lazily (not at factory-hoist time) because
+  // the module spies below are declared after this hoisted vi.mock call (TDZ otherwise).
+  let mapInstance: Record<string, unknown> | null = null
+  const getMap = () =>
+    (mapInstance ??= {
+      setView,
+      fitBounds,
+      getZoom: () => 15,
+      getCenter: () => mapCenter,
+      // MapyMap's InvalidateSizeController (this test renders the real MapyMap) calls these on
+      // mount; stub them so the scheduled invalidateSize frame doesn't throw.
+      invalidateSize: vi.fn(),
+      getContainer: () => document.createElement('div'),
+    })
+  return {
+    MapContainer: ({ children, ...rest }: { children?: ReactNode } & Record<string, unknown>) => (
+      <div
+        data-testid="map-container"
+        role="application"
+        aria-label={rest['aria-label'] as string | undefined}
+      >
+        {children}
+      </div>
+    ),
+    TileLayer: ({ url, attribution }: { url: string; attribution?: string }) => (
+      <div data-testid="tile-layer" data-url={url} data-attribution={attribution} />
+    ),
+    Marker: ({
+      position,
+      title,
+      icon,
+    }: {
+      position: [number, number]
+      title?: string
+      icon?: { options?: { className?: string } }
+    }) => (
+      <div
+        data-testid="leaflet-marker"
+        data-position={JSON.stringify(position)}
+        data-icon-class={icon?.options?.className}
+        title={title}
+      />
+    ),
+    useMap: () => getMap(),
+    useMapEvents: (handlers: { moveend?: () => void }) => {
+      moveendHandler = handlers.moveend ?? null
+      return { getZoom: () => 15, getCenter: () => mapCenter }
+    },
+  }
+})
 
 // leafletSetup runs an icon-fix side effect on import — stub it (MapyMap imports it).
 vi.mock('../../../shared/map/leafletSetup', () => ({}))
@@ -316,6 +329,9 @@ describe('CustomerMapBackground', () => {
     mockConfig()
     const { rerender } = renderBackground({ carMarker: { lat: 50.0, lng: 15.0 } })
 
+    // MapyMap's InvalidateSizeController schedules one mount frame (invalidateSize); baseline it so
+    // this test isolates the MARKER's behavior rather than counting unrelated global rAF calls.
+    const framesBeforeTargetChange = rafCallbacks.length
     rerender(
       <ThemeProvider theme={theme}>
         <I18nextProvider i18n={i18n}>
@@ -324,8 +340,8 @@ describe('CustomerMapBackground', () => {
       </ThemeProvider>,
     )
 
-    // No animation frame was scheduled — the marker is already at the new target.
-    expect(rafCallbacks).toHaveLength(0)
+    // The reduced-motion marker target change scheduled NO new animation frame — it jumped directly.
+    expect(rafCallbacks).toHaveLength(framesBeforeTargetChange)
     const car = screen
       .getAllByTestId('leaflet-marker')
       .find((m) => m.getAttribute('data-icon-class') === 'tracking-car-icon')!

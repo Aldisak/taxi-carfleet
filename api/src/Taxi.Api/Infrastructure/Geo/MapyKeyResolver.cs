@@ -5,7 +5,10 @@ namespace Taxi.Api.Infrastructure.Geo;
 
 /// <summary>Resolves the Mapy.com server API key for a fleet.
 /// Resolution order: (1) fleet's encrypted MapyServerKey column (decrypted via IFleetKeyProtector);
-/// (2) environment/config fallback Mapy__ServerKey. The key is never logged.</summary>
+/// (2) environment/config fallback. The env var is <c>Mapy__ServerKey</c>, which .NET's
+/// environment-variable provider stores under the config key <c>Mapy:ServerKey</c> (it replaces
+/// <c>__</c> with <c>:</c>) — so the read MUST use the colon form, not the literal double-underscore.
+/// The key is never logged.</summary>
 internal sealed class MapyKeyResolver(IFleetKeyProtector keyProtector, IConfiguration configuration)
 {
     /// <summary>Returns the server key to use for the given fleet settings, or the env fallback if no fleet key is configured.</summary>
@@ -22,6 +25,6 @@ internal sealed class MapyKeyResolver(IFleetKeyProtector keyProtector, IConfigur
                 return plain;
         }
 
-        return configuration["Mapy__ServerKey"];
+        return configuration["Mapy:ServerKey"];
     }
 }

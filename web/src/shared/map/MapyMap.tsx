@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { MapContainer, TileLayer } from 'react-leaflet'
+import { useEffect, useState, type ReactNode } from 'react'
+import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import './leafletSetup'
@@ -76,6 +76,57 @@ export interface MapyMapProps {
 }
 
 /**
+ * Headless controller (rendered inside MapContainer, mirroring the CameraController pattern) that
+ * keeps Leaflet's internal size in sync with its container. The map now mounts inside containers
+ * whose size settles AFTER mount — post-Suspense reveal of the lazy *Inner chunk, flex/100dvh
+ * layout, and BottomSheet overlays sliding over the map (UC-015/016/019). Leaflet measures its
+ * container once at mount and never re-measures on its own for a container-only resize (no window
+ * event fires), so it computes tile positions against the wrong size → partial tiles + white gaps
+ * on pan/zoom. This observes the container and calls invalidateSize so Leaflet re-measures and
+ * reloads the correct tiles. Lives in MapyMap so all six map surfaces get it for free.
+ */
+function InvalidateSizeController() {
+  const map = useMap()
+
+  useEffect(() => {
+    let rafId: number | null = null
+    // Coalesce observer bursts to one invalidate per frame. { pan: false } recomputes the pixel
+    // origin + reloads tiles without a pan animation, so it never nudges the CameraController
+    // (target-guarded) or re-emits a moved center to the MoveendController.
+    const scheduleInvalidate = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        map.invalidateSize({ pan: false })
+      })
+    }
+
+    // Initial settle: the container commonly reveals a frame or two after mount (Suspense reveal,
+    // flex/dvh layout) — Leaflet never learns of that first resize otherwise.
+    scheduleInvalidate()
+
+    // The container-only resize (BottomSheet slide, Suspense reveal) fires no window event, so a
+    // ResizeObserver on the map container is the mechanism that actually catches it. Guarded for
+    // jsdom (no ResizeObserver) — the observer path is exercised in e2e, not unit tests.
+    let observer: ResizeObserver | undefined
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => scheduleInvalidate())
+      observer.observe(map.getContainer())
+    }
+    // orientationchange is not covered by the container observer; cheap belt-and-suspenders.
+    window.addEventListener('orientationchange', scheduleInvalidate)
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      observer?.disconnect()
+      window.removeEventListener('orientationchange', scheduleInvalidate)
+    }
+  }, [map])
+
+  return null
+}
+
+/**
  * The single shared map wrapper for all three role apps (dispatcher / driver / customer).
  * Wraps a Leaflet MapContainer + a Mapy.com TileLayer (built from the per-fleet /geo/config:
  * tile template + browser key + @2x retina) + the mandatory Mapy attribution (attribution
@@ -112,6 +163,7 @@ export function MapyMap({ center, zoom, ariaLabel, children, ...rest }: MapyMapP
           aria-label={ariaLabel}
           {...rest}
         >
+          <InvalidateSizeController />
           {children}
         </MapContainer>
         <MapUnavailableBanner />
@@ -139,10 +191,13 @@ export function MapyMap({ center, zoom, ariaLabel, children, ...rest }: MapyMapP
         aria-label={ariaLabel}
         {...rest}
       >
+        <InvalidateSizeController />
         {!tilesFailed && (
           <TileLayer
             url={tileUrl}
             attribution={config.attributionHtml}
+            keepBuffer={4}
+            updateWhenIdle={false}
             eventHandlers={{ tileerror: () => setTilesFailed(true) }}
           />
         )}

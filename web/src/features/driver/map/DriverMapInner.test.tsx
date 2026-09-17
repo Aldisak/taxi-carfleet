@@ -53,6 +53,10 @@ vi.mock('react-leaflet', () => ({
     setView,
     fitBounds,
     getZoom: () => 15,
+    // MapyMap's InvalidateSizeController (this test renders the real MapyMap) calls these on mount;
+    // stub them so the scheduled invalidateSize frame doesn't throw.
+    invalidateSize: vi.fn(),
+    getContainer: () => document.createElement('div'),
   }),
 }))
 

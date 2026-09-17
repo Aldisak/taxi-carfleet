@@ -40,7 +40,7 @@ public sealed class MapyKeyResolverTests
         }
     }
 
-    /// <summary>When FleetSettings has no server key, falls back to configuration["Mapy__ServerKey"].</summary>
+    /// <summary>When FleetSettings has no server key, falls back to configuration["Mapy:ServerKey"].</summary>
     [Fact]
     public void Resolve_NullServerKey_FallsBackToConfig()
     {
@@ -65,7 +65,7 @@ public sealed class MapyKeyResolverTests
     }
 
     /// <summary>F5 design-review finding: a raw (non-ciphertext) stored value must not throw;
-    /// it falls back to configuration["Mapy__ServerKey"] instead of CryptographicException.</summary>
+    /// it falls back to configuration["Mapy:ServerKey"] instead of CryptographicException.</summary>
     [Fact]
     public void Resolve_RawNonCiphertextServerKey_FallsBackToConfig()
     {
@@ -96,7 +96,7 @@ public sealed class MapyKeyResolverTests
         }
     }
 
-    /// <summary>When FleetSettings is null, falls back to configuration["Mapy__ServerKey"].</summary>
+    /// <summary>When FleetSettings is null, falls back to configuration["Mapy:ServerKey"].</summary>
     [Fact]
     public void Resolve_NullFleetSettings_FallsBackToConfig()
     {
@@ -132,10 +132,14 @@ public sealed class MapyKeyResolverTests
         var provider = services.BuildServiceProvider();
 
         var protector = provider.GetRequiredService<IFleetKeyProtector>();
+        // .NET's environment-variable provider stores the `Mapy__ServerKey` env var under the
+        // config key `Mapy:ServerKey` (it replaces `__` with `:`). Mirror that normalized colon
+        // form here so this unit test exercises the real production key form — using the literal
+        // `Mapy__ServerKey` here would mask a resolver that reads the wrong (double-underscore) key.
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Mapy__ServerKey"] = configServerKey
+                ["Mapy:ServerKey"] = configServerKey
             })
             .Build();
 

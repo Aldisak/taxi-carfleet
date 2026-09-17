@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, waitFor } from '@testing-library/react'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
 import type { ReactNode } from 'react'
@@ -9,9 +9,14 @@ import { axe } from '../test/axe'
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { GeoConfigResponse } from '../api/client'
 
+// Shared spy for the map instance so the InvalidateSizeController test can assert invalidateSize.
+// vi.hoisted so the vi.mock factory (hoisted above imports) can reference it.
+const leafletMocks = vi.hoisted(() => ({ invalidateSize: vi.fn() }))
+
 // Mock react-leaflet pieces so jsdom never mounts a real Leaflet map. MapContainer renders its
 // children (preserving the react-leaflet context contract); TileLayer exposes its url/attribution
-// as data attributes so the test can assert the config-derived values.
+// + tile robustness props as data attributes so the test can assert them; useMap returns a stub
+// map so the InvalidateSizeController (rendered inside MapContainer) works headlessly.
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children, center, zoom, ...rest }: { children?: ReactNode; center?: [number, number]; zoom?: number } & Record<string, unknown>) => (
     <div
@@ -23,11 +28,13 @@ vi.mock('react-leaflet', () => ({
       {children}
     </div>
   ),
-  TileLayer: ({ url, attribution, eventHandlers }: { url: string; attribution?: string; eventHandlers?: { tileerror?: () => void } }) => (
+  TileLayer: ({ url, attribution, keepBuffer, updateWhenIdle, eventHandlers }: { url: string; attribution?: string; keepBuffer?: number; updateWhenIdle?: boolean; eventHandlers?: { tileerror?: () => void } }) => (
     <div
       data-testid="tile-layer"
       data-url={url}
       data-attribution={attribution}
+      data-keep-buffer={String(keepBuffer)}
+      data-update-when-idle={String(updateWhenIdle)}
       ref={(el) => {
         // Bridge the react-leaflet eventHandlers.tileerror to a DOM event the test can dispatch.
         if (el && eventHandlers?.tileerror) {
@@ -36,6 +43,10 @@ vi.mock('react-leaflet', () => ({
       }}
     />
   ),
+  useMap: () => ({
+    invalidateSize: leafletMocks.invalidateSize,
+    getContainer: () => document.createElement('div'),
+  }),
 }))
 
 // Leaflet setup runs an icon-fix side effect on import — stub it so no real leaflet is needed.
@@ -88,6 +99,26 @@ describe('MapyMap', () => {
     expect(tile.getAttribute('data-url')).toContain('apikey=browser-key-123')
     expect(tile.getAttribute('data-url')).not.toContain('{apikey}')
     expect(tile.getAttribute('data-url')).toContain('{z}/{x}/{y}')
+  })
+
+  it('sets tile robustness options (keepBuffer, updateWhenIdle) to reduce white tiles on pan', () => {
+    mockConfig()
+    renderMap()
+    const tile = screen.getByTestId('tile-layer')
+    // keepBuffer raised above Leaflet's default 2 so panning reveals cached tiles, not white gaps.
+    expect(tile.getAttribute('data-keep-buffer')).toBe('4')
+    // updateWhenIdle=false so tiles load during pan on mobile too (default is true on touch).
+    expect(tile.getAttribute('data-update-when-idle')).toBe('false')
+  })
+
+  it('invalidates the map size after mount so tiles re-measure against the settled container', async () => {
+    mockConfig()
+    leafletMocks.invalidateSize.mockClear()
+    renderMap()
+    // The InvalidateSizeController schedules invalidateSize on the next animation frame — this is
+    // what recovers from the container settling its size after mount (Suspense reveal / flex layout).
+    await waitFor(() => expect(leafletMocks.invalidateSize).toHaveBeenCalled())
+    expect(leafletMocks.invalidateSize).toHaveBeenCalledWith({ pan: false })
   })
 
   it('passes the mandatory Mapy attribution to the TileLayer', () => {
