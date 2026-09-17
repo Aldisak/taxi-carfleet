@@ -3,37 +3,37 @@ import styled from 'styled-components'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { authStorage } from '../../../shared/api/auth-storage'
-import { formatCzk } from '../../../shared/format/money'
+import { ensureFleetSlug } from '../shell/ensureFleetSlug'
+import { CustomerMapShell } from '../shell/CustomerMapShell'
 import { CallButton } from '../shell/CallButton'
+import type { LatLng } from '../shell/mapCamera'
 import { resolveTrackingMode } from './trackingMode'
 import { deriveHeadline, type TrackVm } from './headlineRules'
 import { useTrackingAuthed } from './useTrackingAuthed'
 import { useTrackingPublic } from './useTrackingPublic'
 import { useCancelOrder } from './useCancelOrder'
 import { selectCarMarker } from './trackingMarker'
-import { StatusHeadline } from './StatusHeadline'
-import { TrackingMap } from './TrackingMap'
-import { CancelDialog } from './CancelDialog'
+import { TrackingSheet } from './TrackingSheet'
 import { PushPrompt } from './PushPrompt'
 import { RatingForm } from './RatingForm'
 
-const Page = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
-  padding-bottom: ${({ theme }) => theme.spacing.xl};
-`
-
+// Standalone meta-state surface (expired / login-needed / loading): these are NOT order-status
+// phases (TrackingSheet owns only the 6 phases). They render full-viewport with the heading
+// preserved as an <h2> ('Odkaz vypršel') and the call fallback — a load-bearing e2e contract
+// (customer.spec.ts locates getByRole('heading', { name: 'Odkaz vypršel' })).
 const Centered = styled.div`
   display: flex;
   flex-direction: column;
+  min-height: 100dvh;
   gap: ${({ theme }) => theme.spacing.md};
   align-items: center;
+  justify-content: center;
   text-align: center;
   padding: ${({ theme }) => theme.spacing.xl} ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.background};
 `
 
-const ExpiredTitle = styled.h2`
+const MetaTitle = styled.h2`
   margin: 0;
   font-size: ${({ theme }) => theme.typography.fontSizeXl};
   font-weight: ${({ theme }) => theme.typography.fontWeightBold};
@@ -46,151 +46,36 @@ const Muted = styled.p`
   color: ${({ theme }) => theme.colors.textSecondary};
 `
 
-const CancelButton = styled.button`
-  width: calc(100% - 2 * ${({ theme }) => theme.spacing.md});
-  margin: 0 ${({ theme }) => theme.spacing.md};
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  background: ${({ theme }) => theme.colors.surface};
-  color: ${({ theme }) => theme.colors.error};
-  border: 1px solid ${({ theme }) => theme.colors.error};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.error};
-    outline-offset: 2px;
-  }
-`
-
-const Details = styled.details`
-  margin: 0 ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  background: ${({ theme }) => theme.colors.surface};
-`
-
-const Summary = styled.summary`
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  display: flex;
-  align-items: center;
-  padding: 0 ${({ theme }) => theme.spacing.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.text};
-  cursor: pointer;
-`
-
-const DetailRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: ${({ theme }) => theme.spacing.md};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
-`
-
-const DetailLabel = styled.span`
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const DetailValue = styled.span`
-  color: ${({ theme }) => theme.colors.text};
-  text-align: right;
-`
-
-const ErrorText = styled.p`
-  margin: 0 ${({ theme }) => theme.spacing.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.error};
-`
-
-/** Formats an optional ISO timestamp in Europe/Prague, or the ASAP label when null. */
-function formatPragueTime(iso: string | null, asapLabel: string): string {
-  if (!iso) return asapLabel
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return asapLabel
-  return new Intl.DateTimeFormat('cs-CZ', {
-    timeZone: 'Europe/Prague',
-    day: 'numeric',
-    month: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
-}
-
-interface DetailsBlockProps {
-  code: string
-  vm: TrackVm
-  pickupAddress: string | null
-  scheduledAt: string | null
-}
-
-function DetailsBlock({ code, vm, pickupAddress, scheduledAt }: DetailsBlockProps) {
-  const { t } = useTranslation()
-  return (
-    <Details>
-      <Summary>{t('customer.tracking.detailsTitle')}</Summary>
-      <DetailRow>
-        <DetailLabel>{t('customer.tracking.codeLabel')}</DetailLabel>
-        <DetailValue>{code}</DetailValue>
-      </DetailRow>
-      {pickupAddress && (
-        <DetailRow>
-          <DetailLabel>{t('customer.tracking.pickupAddress')}</DetailLabel>
-          <DetailValue>{pickupAddress}</DetailValue>
-        </DetailRow>
-      )}
-      {vm.dropoffAddress && (
-        <DetailRow>
-          <DetailLabel>{t('customer.tracking.dropoffAddress')}</DetailLabel>
-          <DetailValue>{vm.dropoffAddress}</DetailValue>
-        </DetailRow>
-      )}
-      <DetailRow>
-        <DetailLabel>{t('customer.tracking.timeLabel')}</DetailLabel>
-        <DetailValue>{formatPragueTime(scheduledAt, t('customer.tracking.timeAsap'))}</DetailValue>
-      </DetailRow>
-      {vm.priceCzk != null && (
-        <DetailRow>
-          <DetailLabel>{t('customer.tracking.priceLabel')}</DetailLabel>
-          <DetailValue>{formatCzk(vm.priceCzk)}</DetailValue>
-        </DetailRow>
-      )}
-      {vm.driverFirstName && (
-        <DetailRow>
-          <DetailLabel>{t('customer.tracking.driverLabel')}</DetailLabel>
-          <DetailValue>{vm.driverFirstName}</DetailValue>
-        </DetailRow>
-      )}
-      {(vm.vehicleColor || vm.vehiclePlate) && (
-        <DetailRow>
-          <DetailLabel>{t('customer.tracking.vehicleLabel')}</DetailLabel>
-          <DetailValue>{[vm.vehicleColor, vm.vehiclePlate].filter(Boolean).join(' · ')}</DetailValue>
-        </DetailRow>
-      )}
-    </Details>
-  )
-}
-
 /**
- * Two-mode customer tracking screen (/customer/t/:code).
+ * Map-first customer tracking screen (/customer/t/:code) — UC-016 WI-4.
+ *
+ * A SIBLING leaf of the CustomerLayout group (mirroring MapOrderPage / /customer/login): it owns
+ * the full-viewport CustomerMapShell and re-runs the one-shot slug/silent-refresh initializers
+ * itself, so it must NOT nest under CustomerLayout (which would double-invoke them).
  *
  * - Authed (logged-in): reuses the single /hubs/fleet SignalR connection, Subscribe(orderId),
  *   live headline (cache-patch + stale guard) and moving car marker (useTrackingAuthed).
  * - Public (logged-out SMS link, ?k=token): polls GET public/track every 10 s (useTrackingPublic);
  *   a 410 shows "Odkaz vypršel" + the call button.
  *
- * The headline is a pure mapping (statusHeadline.ts). Cancel is offered only in New/Assigned/
- * Accepted via a focus-trapping confirm dialog (post-Accepted hint). A rating seam is exposed on
- * Completed (B-rating fills it). The push-subscription prompt (permission only) shows after the
- * first order. Offline/SignalR-down falls back to the last cached state (never a blank screen).
+ * Both modes build ONE normalized TrackVm + orderId + marker coords and feed the SAME TrackingSheet
+ * + shell (AC#5 parity). Public degrades gracefully (ETA null → line omitted; no cancel/rating
+ * without an id/authed customer). The full-bleed map background renders the smoothly-interpolated
+ * car marker inside its lazy chunk (leaflet never enters the eager page chunk).
  */
 export function TrackingPage(): ReactNode {
   const { t } = useTranslation()
   const { code = '' } = useParams<{ code: string }>()
   const [searchParams] = useSearchParams()
   const linkToken = searchParams.get('k')
+
+  // F1 (design-review HIGH): persist the resolved slug synchronously, during render, BEFORE any
+  // public/auth fetch effect fires — the CustomerLoginPage precedent (a sibling for the same F-05
+  // reason). The meta-state early-returns below never mount CustomerMapShell, so its own
+  // ensureFleetSlug initializer would not run; hoisting it here guarantees the public/track call
+  // (and the branding query) carry X-Fleet-Slug and do not 404 on localhost. Idempotent — safe to
+  // run again inside CustomerMapShell in the non-meta case (CLAUDE.md → "F-05 fleet-slug resolution").
+  useState(ensureFleetSlug)
 
   const hasToken = authStorage.getAccessToken() != null
   const mode = resolveTrackingMode({ hasToken, linkToken })
@@ -200,22 +85,23 @@ export function TrackingPage(): ReactNode {
   const authed = useTrackingAuthed(mode === 'authed' ? code : '')
   const publicTrack = useTrackingPublic(mode === 'public' ? code : '', mode === 'public' ? linkToken : null)
 
-  const [showCancel, setShowCancel] = useState(false)
   const orderId = mode === 'authed' ? authed.orderId : null
   const cancel = useCancelOrder(orderId)
 
-  // Expired logged-out link: show "Odkaz vypršel" + the call button (AC #3).
+  // ── Meta-states (not order-status phases) ────────────────────────────────────
+  // Expired logged-out link: "Odkaz vypršel" + the call button (AC #3). Kept as a heading-role
+  // element (F2 — e2e locates getByRole('heading', { name: 'Odkaz vypršel' })).
   if (mode === 'public' && publicTrack.isExpired) {
     return (
       <Centered>
-        <ExpiredTitle>{t('customer.tracking.expired')}</ExpiredTitle>
+        <MetaTitle>{t('customer.tracking.expired')}</MetaTitle>
         <Muted>{t('customer.tracking.expiredHint')}</Muted>
         <CallButton phone={undefined} />
       </Centered>
     )
   }
 
-  // Logged out with no link token: nothing to show.
+  // Logged out with no link token: prompt login + a call fallback.
   if (mode === 'none') {
     return (
       <Centered>
@@ -225,7 +111,19 @@ export function TrackingPage(): ReactNode {
     )
   }
 
-  // Build the view-model + marker from the active mode.
+  const isLoading = mode === 'authed' ? authed.isLoading : publicTrack.isLoading
+  const hasData = mode === 'authed' ? authed.orderId != null || !authed.isLoading : publicTrack.data != null
+
+  if (isLoading && !hasData) {
+    return (
+      <Centered>
+        <Muted>{t('customer.tracking.loading')}</Muted>
+        <CallButton phone={undefined} />
+      </Centered>
+    )
+  }
+
+  // ── Build ONE normalized VM + marker coords from the active mode (AC#5 parity) ─
   const vm: TrackVm =
     mode === 'authed'
       ? authed.vm
@@ -241,71 +139,42 @@ export function TrackingPage(): ReactNode {
           }
         : { status: 'New', driverFirstName: null, etaMinutes: null, vehiclePlate: null, vehicleColor: null, dropoffAddress: null, priceCzk: null }
 
-  const isLoading = mode === 'authed' ? authed.isLoading : publicTrack.isLoading
-  const hasData = mode === 'authed' ? authed.orderId != null || !authed.isLoading : publicTrack.data != null
-
-  if (isLoading && !hasData) {
-    return (
-      <Centered>
-        <Muted>{t('customer.tracking.loading')}</Muted>
-        <CallButton phone={undefined} />
-      </Centered>
-    )
-  }
-
   const descriptor = deriveHeadline(vm)
 
-  const carMarker =
+  const carMarker: LatLng | null =
     mode === 'authed'
       ? authed.carMarker
       : selectCarMarker({ livePosition: null, fallbackPosition: publicTrack.data?.position ?? null })
 
-  const pickupMarker = mode === 'authed' ? authed.pickup : null
-  const pickupAddress = mode === 'authed' ? authed.pickupAddress : publicTrack.data?.pickupAddress ?? null
-  const scheduledAt = mode === 'authed' ? authed.scheduledAt : publicTrack.data?.scheduledAt ?? null
+  const pickupMarker: LatLng | null = mode === 'authed' ? authed.pickup : null
 
-  // The rating form is authed-only: POST orders/{id}/rating is CustomerOnly and needs the
-  // resolved order id (a logged-out public viewer sees the default seam text). It is mounted only
-  // on the Completed state (descriptor.showRating) to avoid the orders/mine lookup otherwise.
+  // Camera frames [car, pickup] when both are known (fitBounds); a single point → setView; none →
+  // no move (the shell's CameraController reads cameraTarget.length). No new camera math.
+  const cameraTarget: LatLng[] = [carMarker, pickupMarker].filter((p): p is LatLng => p != null)
+
+  // The rating form is authed-only: POST orders/{id}/rating is CustomerOnly and needs the resolved
+  // order id (a logged-out public viewer sees the default seam text). Mounted only on Completed
+  // (descriptor.showRating) to avoid the orders/mine lookup otherwise.
   const ratingSlot =
     mode === 'authed' && descriptor.showRating ? <RatingForm publicCode={code} /> : undefined
 
   return (
-    <Page>
-      <StatusHeadline descriptor={descriptor} vm={vm} ratingSlot={ratingSlot} />
-
-      <TrackingMap car={carMarker} pickup={pickupMarker} />
-
-      {descriptor.showCancel && orderId && (
-        <CancelButton type="button" onClick={() => setShowCancel(true)}>
-          {t('customer.tracking.cancel')}
-        </CancelButton>
-      )}
-
-      {cancel.errorKey && !showCancel && <ErrorText role="alert">{t(cancel.errorKey)}</ErrorText>}
-
-      <DetailsBlock code={code} vm={vm} pickupAddress={pickupAddress} scheduledAt={scheduledAt} />
-
-      {descriptor.showCall && <CallButton phone={undefined} />}
-
-      <PushPrompt />
-
-      {showCancel && (
-        <CancelDialog
-          showAcceptedHint={descriptor.showAcceptedHint}
-          isPending={cancel.isPending}
-          errorKey={cancel.errorKey}
-          onConfirm={() => {
-            // Branch on the returned outcome (NOT the captured cancel.errorKey, which is a stale
-            // closure frozen at the render when the dialog opened): close only on success, keep
-            // the dialog open on failure so its in-dialog error (e.g. 409 "už nelze zrušit") shows.
-            void cancel.cancel().then((ok) => {
-              if (ok) setShowCancel(false)
-            })
-          }}
-          onDismiss={() => setShowCancel(false)}
-        />
-      )}
-    </Page>
+    <CustomerMapShell
+      carMarker={carMarker}
+      pickupMarker={pickupMarker}
+      cameraTarget={cameraTarget}
+      bottomSlot={
+        <>
+          <TrackingSheet
+            vm={vm}
+            descriptor={descriptor}
+            orderId={orderId}
+            cancel={cancel}
+            ratingSlot={ratingSlot}
+          />
+          <PushPrompt />
+        </>
+      }
+    />
   )
 }

@@ -16,11 +16,29 @@ export interface TrackVm {
 }
 
 /**
+ * Stable phase discriminant for the map-first tracking sheet (UC-016 WI-1). One phase per
+ * status so TrackingSheet renders the right block from a single source of truth instead of
+ * re-deriving the status switch in the component. NOTE the deliberate name inversion: backend
+ * status "Assigned" collapses to the `searching` phase (per spec §2 — "Looking for drivers…"
+ * for New AND Assigned, so the searching loader is never paired with a "driver on the way"
+ * heading), and backend status "Accepted" maps to the `assigned` phase.
+ */
+export type TrackPhase =
+  | 'searching'
+  | 'assigned'
+  | 'arrived'
+  | 'inProgress'
+  | 'completed'
+  | 'cancelled'
+
+/**
  * Structured headline descriptor. The Czech string is NOT baked here (rules/web-react-style.md
- * #i18n-czech-first — all user-facing strings go through useTranslation); StatusHeadline.tsx
+ * #i18n-czech-first — all user-facing strings go through useTranslation); the tracking sheet
  * composes `t(key, values)`. The boolean flags drive which sections the tracking screen shows.
  */
 export interface HeadlineDescriptor {
+  /** Stable phase discriminant driving which sheet block renders. */
+  phase: TrackPhase
   /** i18n key for the one-line headline. */
   key: string
   /** Interpolation values for the headline (name, eta, price). */
@@ -49,6 +67,7 @@ const CANCELLABLE = new Set(['New', 'Assigned', 'Accepted'])
  */
 export function deriveHeadline(vm: TrackVm): HeadlineDescriptor {
   const base: HeadlineDescriptor = {
+    phase: 'searching',
     key: 'customer.tracking.headline.new',
     values: {},
     showVehicle: false,
@@ -60,35 +79,37 @@ export function deriveHeadline(vm: TrackVm): HeadlineDescriptor {
   }
 
   switch (vm.status) {
+    // New AND Assigned collapse to the searching phase with the same looking-for-driver heading
+    // (spec §2) — the searching loader is never paired with a "driver on the way" heading.
     case 'New':
+    case 'Assigned':
       return base
 
-    case 'Assigned':
     case 'Accepted': {
       const name = vm.driverFirstName ?? ''
       if (vm.etaMinutes != null) {
-        return { ...base, key: 'customer.tracking.headline.assignedEta', values: { name, eta: vm.etaMinutes } }
+        return { ...base, phase: 'assigned', key: 'customer.tracking.headline.assignedEta', values: { name, eta: vm.etaMinutes } }
       }
-      return { ...base, key: 'customer.tracking.headline.assignedNoEta', values: { name } }
+      return { ...base, phase: 'assigned', key: 'customer.tracking.headline.assignedNoEta', values: { name } }
     }
 
     case 'Arrived':
-      return { ...base, key: 'customer.tracking.headline.arrived', showVehicle: true }
+      return { ...base, phase: 'arrived', key: 'customer.tracking.headline.arrived', showVehicle: true }
 
     case 'InProgress':
-      return { ...base, key: 'customer.tracking.headline.inProgress', showDropoff: true }
+      return { ...base, phase: 'inProgress', key: 'customer.tracking.headline.inProgress', showDropoff: true }
 
     case 'Completed':
       if (vm.priceCzk != null) {
-        return { ...base, key: 'customer.tracking.headline.completed', values: { price: vm.priceCzk }, showRating: true }
+        return { ...base, phase: 'completed', key: 'customer.tracking.headline.completed', values: { price: vm.priceCzk }, showRating: true }
       }
-      return { ...base, key: 'customer.tracking.headline.completedNoPrice', showRating: true }
+      return { ...base, phase: 'completed', key: 'customer.tracking.headline.completedNoPrice', showRating: true }
 
     case 'Cancelled':
-      return { ...base, key: 'customer.tracking.headline.cancelled', showCall: true }
+      return { ...base, phase: 'cancelled', key: 'customer.tracking.headline.cancelled', showCall: true }
 
     default:
-      // Unknown status — safe default: new headline, no cancel.
+      // Unknown status — safe default: searching phase, new headline, no cancel.
       return { ...base, showCancel: false, showAcceptedHint: false }
   }
 }

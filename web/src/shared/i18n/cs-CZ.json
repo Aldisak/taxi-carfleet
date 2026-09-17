@@ -1009,6 +1009,8 @@
       "cancelFailed": "Objednávku se nepodařilo zrušit. Zkuste to prosím znovu.",
       "cancelling": "Ruším...",
       "ratingSeam": "Ohodnoťte prosím svoji jízdu.",
+      "reorder": "Objednat znovu",
+      "sheetLabel": "Stav jízdy",
       "pushPromptTitle": "Chcete dostat upozornění, až řidič dorazí?",
       "pushAllow": "Zapnout upozornění",
       "pushDismiss": "Teď ne"

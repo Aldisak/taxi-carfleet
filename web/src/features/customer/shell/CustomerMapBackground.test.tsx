@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
 import type { ReactNode } from 'react'
@@ -19,6 +19,8 @@ let moveendHandler: (() => void) | null = null
 
 // Mock react-leaflet so jsdom never mounts a real Leaflet map — MapContainer renders its
 // children and exposes its aria-label as a data attr (mirrors MapyMap.test.tsx precedent).
+// Marker echoes its position (JSON) as a data-attr and renders `title` as a plain title
+// attribute (NOT aria-label — that would re-trigger the aria-prohibited-attr axe trap).
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children, ...rest }: { children?: ReactNode } & Record<string, unknown>) => (
     <div
@@ -31,6 +33,22 @@ vi.mock('react-leaflet', () => ({
   ),
   TileLayer: ({ url, attribution }: { url: string; attribution?: string }) => (
     <div data-testid="tile-layer" data-url={url} data-attribution={attribution} />
+  ),
+  Marker: ({
+    position,
+    title,
+    icon,
+  }: {
+    position: [number, number]
+    title?: string
+    icon?: { options?: { className?: string } }
+  }) => (
+    <div
+      data-testid="leaflet-marker"
+      data-position={JSON.stringify(position)}
+      data-icon-class={icon?.options?.className}
+      title={title}
+    />
   ),
   useMap: () => ({
     setView,
@@ -48,7 +66,7 @@ vi.mock('react-leaflet', () => ({
 vi.mock('../../../shared/map/leafletSetup', () => ({}))
 vi.mock('../../../shared/map/useGeoConfig', () => ({ useGeoConfig: vi.fn() }))
 
-import CustomerMapBackground from './CustomerMapBackground'
+import CustomerMapBackground, { MARKER_ANIMATION_MS } from './CustomerMapBackground'
 import { useGeoConfig } from '../../../shared/map/useGeoConfig'
 
 const CONFIG: GeoConfigResponse = {
@@ -79,14 +97,53 @@ function renderBackground(props: React.ComponentProps<typeof CustomerMapBackgrou
   )
 }
 
+// Manual requestAnimationFrame harness: vitest does not fake rAF/performance.now, so we queue
+// the callbacks and flush them with explicit timestamps. The animated car marker computes
+// elapsed from the timestamp rAF passes its callback, so flushing at chosen timestamps drives
+// the animation deterministically (no wall-clock, no real frames).
+let rafCallbacks: Array<(ts: number) => void> = []
+function installRaf(): void {
+  rafCallbacks = []
+  vi.stubGlobal('requestAnimationFrame', (cb: (ts: number) => void) => {
+    rafCallbacks.push(cb)
+    return rafCallbacks.length
+  })
+  vi.stubGlobal('cancelAnimationFrame', () => {})
+}
+// Flush exactly the frames currently queued (a callback re-queues the next frame; flushing a
+// snapshot avoids an unbounded loop) with the given timestamp.
+function flushFrame(ts: number): void {
+  const pending = rafCallbacks
+  rafCallbacks = []
+  for (const cb of pending) cb(ts)
+}
+
+function mockMatchMedia(reduced: boolean): void {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: reduced && query.includes('reduce'),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      onchange: null,
+    })),
+  )
+}
+
 describe('CustomerMapBackground', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     vi.useRealTimers()
     setView.mockClear()
     fitBounds.mockClear()
     moveendHandler = null
     mapCenter = { lat: 50.03, lng: 15.2 }
+    rafCallbacks = []
   })
 
   it('renders the map region with the shell aria-label (config resolved)', () => {
@@ -175,9 +232,114 @@ describe('CustomerMapBackground', () => {
     expect(setView).toHaveBeenCalledWith([49.948, 15.268], 15)
   })
 
+  it('renders the pickup marker with the pickup icon class and i18n title', () => {
+    mockConfig()
+    mockMatchMedia(true)
+    renderBackground({ pickupMarker: { lat: 49.95, lng: 15.27 } })
+    const markers = screen.getAllByTestId('leaflet-marker')
+    const pickup = markers.find((m) => m.getAttribute('data-icon-class') === 'tracking-pickup-icon')
+    expect(pickup).toBeDefined()
+    expect(pickup).toHaveAttribute('data-position', JSON.stringify([49.95, 15.27]))
+    expect(pickup).toHaveAttribute('title', i18n.t('customer.tracking.pickupLabel'))
+  })
+
+  it('renders the car marker with the tracking-car-icon class and i18n title', () => {
+    mockConfig()
+    mockMatchMedia(true) // reduced-motion: car snaps to the target, no rAF loop
+    renderBackground({ carMarker: { lat: 49.948, lng: 15.268 } })
+    const car = screen
+      .getAllByTestId('leaflet-marker')
+      .find((m) => m.getAttribute('data-icon-class') === 'tracking-car-icon')
+    expect(car).toBeDefined()
+    expect(car).toHaveAttribute('data-position', JSON.stringify([49.948, 15.268]))
+    expect(car).toHaveAttribute('title', i18n.t('customer.tracking.carLabel'))
+  })
+
+  it('renders no car marker when carMarker is null (pickup pin only)', () => {
+    mockConfig()
+    mockMatchMedia(true)
+    renderBackground({ carMarker: null, pickupMarker: { lat: 49.95, lng: 15.27 } })
+    const classes = screen
+      .getAllByTestId('leaflet-marker')
+      .map((m) => m.getAttribute('data-icon-class'))
+    expect(classes).toContain('tracking-pickup-icon')
+    expect(classes).not.toContain('tracking-car-icon')
+  })
+
+  it('renders no markers when both carMarker and pickupMarker are null', () => {
+    mockConfig()
+    mockMatchMedia(true)
+    renderBackground({ carMarker: null, pickupMarker: null })
+    expect(screen.queryByTestId('leaflet-marker')).not.toBeInTheDocument()
+  })
+
+  it('animates the car marker smoothly toward a new target over the update interval', () => {
+    installRaf()
+    mockMatchMedia(false) // motion allowed → interpolate frame by frame
+    mockConfig()
+    const { rerender } = renderBackground({ carMarker: { lat: 50.0, lng: 15.0 } })
+
+    // First fix snaps (no prev) — the marker sits exactly on the first target.
+    const firstCar = () =>
+      screen
+        .getAllByTestId('leaflet-marker')
+        .find((m) => m.getAttribute('data-icon-class') === 'tracking-car-icon')!
+    expect(firstCar()).toHaveAttribute('data-position', JSON.stringify([50.0, 15.0]))
+
+    // A new target starts an animation from the current rendered position.
+    rerender(
+      <ThemeProvider theme={theme}>
+        <I18nextProvider i18n={i18n}>
+          <CustomerMapBackground carMarker={{ lat: 50.02, lng: 15.04 }} />
+        </I18nextProvider>
+      </ThemeProvider>,
+    )
+
+    // Frame 0 establishes the animation start timestamp (elapsed 0 → still at prev).
+    act(() => flushFrame(0))
+    // Halfway through the interval → strictly between prev and target on BOTH axes.
+    act(() => flushFrame(MARKER_ANIMATION_MS / 2))
+    const mid = JSON.parse(firstCar().getAttribute('data-position')!) as [number, number]
+    expect(mid[0]).toBeGreaterThan(50.0)
+    expect(mid[0]).toBeLessThan(50.02)
+    expect(mid[1]).toBeGreaterThan(15.0)
+    expect(mid[1]).toBeLessThan(15.04)
+
+    // At/after the interval → exactly the target (interpolateCoord clamps).
+    act(() => flushFrame(MARKER_ANIMATION_MS))
+    expect(firstCar()).toHaveAttribute('data-position', JSON.stringify([50.02, 15.04]))
+  })
+
+  it('jumps the car marker directly to a new target under prefers-reduced-motion (no rAF)', () => {
+    installRaf()
+    mockMatchMedia(true) // reduced motion → shouldAnimate === false → jump, no frames
+    mockConfig()
+    const { rerender } = renderBackground({ carMarker: { lat: 50.0, lng: 15.0 } })
+
+    rerender(
+      <ThemeProvider theme={theme}>
+        <I18nextProvider i18n={i18n}>
+          <CustomerMapBackground carMarker={{ lat: 50.02, lng: 15.04 }} />
+        </I18nextProvider>
+      </ThemeProvider>,
+    )
+
+    // No animation frame was scheduled — the marker is already at the new target.
+    expect(rafCallbacks).toHaveLength(0)
+    const car = screen
+      .getAllByTestId('leaflet-marker')
+      .find((m) => m.getAttribute('data-icon-class') === 'tracking-car-icon')!
+    expect(car).toHaveAttribute('data-position', JSON.stringify([50.02, 15.04]))
+  })
+
   it('has no axe violations', async () => {
     mockConfig()
-    const { container } = renderBackground({ onCenterChange: vi.fn() })
+    mockMatchMedia(true)
+    const { container } = renderBackground({
+      onCenterChange: vi.fn(),
+      carMarker: { lat: 49.948, lng: 15.268 },
+      pickupMarker: { lat: 49.95, lng: 15.27 },
+    })
     expect(await axe(container)).toHaveNoViolations()
   })
 })

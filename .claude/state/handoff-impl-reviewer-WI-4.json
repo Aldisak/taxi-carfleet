@@ -1,0 +1,42 @@
+{
+  "kind": "impl",
+  "uc": "UC-016",
+  "wi": "WI-4",
+  "round": 1,
+  "commit_range": "staged",
+  "blocks_merge": false,
+  "findings": [
+    {
+      "severity": "LOW",
+      "rule": "rules/web-testing.md#queries-over-testids",
+      "file": "web/src/features/customer/tracking/TrackingPage.test.tsx",
+      "hunk": "vi.mock('../shell/CustomerMapShell') echoes data-car/data-pickup/data-camera",
+      "detail": "TrackingPage.test asserts prop-threading via data-* attributes on the stubbed CustomerMapShell rather than accessible queries. Justified: WI-3 already tests real leaflet marker/icon rendering; the stub avoids the real-shell branding-fetch/Suspense. Informational only, not blocking."
+    }
+  ],
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
+  "automated_checks": {
+    "tsc": "pass (exit 0, tree-wide npx tsc --noEmit; no dangling imports from the 4 removed files)",
+    "lint": "pass (npm run lint: eslint --max-warnings 0 clean; check:geo OK)",
+    "vitest_tracking": "pass (14 files / 106 tests, features/customer/tracking)",
+    "vitest_customerRoutes": "pass (4/4, src/app/customerRoutes.test.ts)",
+    "dangling_imports_to_removed_modules": 0,
+    "leaflet_static_import_in_TrackingPage": false
+  },
+  "verified": {
+    "F1_HIGH_resolved": "useState(ensureFleetSlug) is hoisted to the TOP of TrackingPage (line 78), BEFORE all early-returns (expired/none/loading at lines 94/105/117). Matches the CustomerLoginPage.tsx:45 precedent exactly (CLAUDE.md -> 'F-05 fleet-slug resolution + synchronous persist'). A useState lazy initializer runs during render, ahead of any query fetch effect. Pinned by TrackingPage.test.tsx:256-273 asserting mockEnsureSlug.invocationCallOrder[0] < mockPublic.invocationCallOrder[0]. Direct public-link goto sets X-Fleet-Slug before public/track fires -> no 404 on localhost.",
+    "F2_MEDIUM_resolved": "'Odkaz vypršel' rendered as an <h2> (MetaTitle, TrackingPage.tsx:36-41,97) standalone in a full-viewport Centered container. Pinned by TrackingPage.test.tsx:252 getByRole('heading', { name: 'Odkaz vypršel' }) and the e2e AC#3 heading assertion (customer.spec.ts:178).",
+    "F4_LOW_resolved": "RatingForm.tsx:75 comment updated 'StatusHeadline ratingSlot' -> 'TrackingSheet ratingSlot' (comment-only, tsc-safe).",
+    "no_dangling_imports": "Grep for import.*(StatusHeadline|TrackingMap|TrackingMapInner) across web/ returns zero. The two textual hits are comments only. tsc exit 0 confirms.",
+    "router_correctness": "/customer/t/:code is a sibling leaf (router.tsx:156-159) mirroring MapOrderPage; old nested t/:code child removed; /customer/history still nested under CustomerLayout (router.tsx:160-169). customerRoutes.test.ts discriminates correctly: asserts matches.length===1, winner.route.children undefined, AND params.code==='ABC123' (winner-identity, per the UC-015 hardening pattern) — length alone cannot distinguish MapOrderPage from a childless CustomerLayout match, so the childless+params checks are load-bearing.",
+    "mode_parity_AC5": "One normalized TrackVm + orderId + carMarker/pickupMarker built from EITHER useTrackingAuthed OR useTrackingPublic (TrackingPage.tsx:127-153), feeding the SAME TrackingSheet + shell. Public degrades: ETA null -> etaMinutes null (line omitted); orderId null (public) -> TrackingSheet hides Cancel (canCancel = showCancel && orderId != null); ratingSlot undefined in public -> default ratingSeam. Public 410 -> expired state; 'none' -> login prompt. Covered by TrackingPage.test 'public mode' cases.",
+    "leaflet_stays_lazy": "TrackingPage has no static import of leaflet/react-leaflet (only a comment mentions leaflet). carMarker/pickupMarker threaded as plain LatLng data props into CustomerMapShell; markers built inside the lazy CustomerMapBackground chunk. '.tracking-car-icon' className preserved verbatim in CustomerMapBackground.tsx:144.",
+    "cancel_rating_wiring": "useCancelOrder(orderId) result passed to TrackingSheet.cancel; TrackingSheet owns CancelDialog visibility + the stale-close-avoidance branch-on-outcome (TrackingSheet.tsx:177-182, branches on returned ok, not captured errorKey). RatingForm mounted authed-only + descriptor.showRating (TrackingPage.tsx:158-159). No premature useMemo/useCallback/React.memo in TrackingPage.",
+    "e2e_update_sanity": "git diff --staged customer.spec.ts shows the ONLY assertion change is the AC#3 Zavolat swap (getByRole('main').getByRole('link').first() -> role-agnostic getByText('Zavolat')). Justified by the sibling-leaf topology (standalone expired meta-state has no CustomerLayout header/<main> chrome, so no ≥2 duplicate; CallButton renders as tel: <a> OR disabled <button> depending on the branding race, both with the visible 'Zavolat' label). Substantive proof (getByRole('heading', { name: 'Odkaz vypršel' })) precedes it. AC#2/#5/#7 assertions unchanged; '.tracking-car-icon' locator + CancelDialog flow ('Zrušit objednávku?' -> 'Ano, zrušit') preserved. Not a weakened test.",
+    "scope": "Reviewed against WI-4 files_touched (TrackingPage.tsx/.test.tsx, router.tsx, customerRoutes.test.ts, e2e/customer.spec.ts, RatingForm.tsx comment-only, and the 4 removed files). The staged diff also contains WI-1/WI-2/WI-3 hunks (TrackingSheet, CustomerMapBackground/Shell, headlineRules, markerInterpolation, the 6 i18n JSONs) because this is a cumulative branch — mapped to their owning WIs, NOT flagged as WI-4 scope creep.",
+    "a11y": "axe assertion present on the assembled screen (TrackingPage.test.tsx:324-333, authed assigned mode) — passes.",
+    "i18n": "No new keys added by WI-4 (expired/expiredHint/loginNeeded/loading all pre-exist in cs-CZ.json). All user-facing strings via useTranslation(). styled-components use theme tokens exclusively (no hardcoded colors/spacing)."
+  },
+  "known_flake_noted": "Developer reported full-suite 1648/1649 with the single fail = noLegacyMapHosts.test.ts timing out under contention (green in isolation via check:geo). Not a WI-4 defect. Tracking (106/106) and customerRoutes (4/4) confirmed green here.",
+  "persisted_by": "impl-reviewer agent"
+}

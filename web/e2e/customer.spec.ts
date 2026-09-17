@@ -176,10 +176,14 @@ test.describe.serial('Customer PWA', () => {
     const tampered = order.trackingToken.slice(0, -3) + 'AAA'
     await page.goto(`/customer/t/${order.trackingCode}?k=${encodeURIComponent(tampered)}`)
     await expect(page.getByRole('heading', { name: 'Odkaz vypršel' })).toBeVisible({ timeout: 10_000 })
-    // The expired view renders its own Zavolat fallback in <main>, on top of the always-present
-    // header Zavolat — so there are ≥2 matches (strict mode would fail a bare getByText). Assert the
-    // in-content fallback specifically: the call button inside the main region is visible.
-    await expect(page.getByRole('main').getByRole('link', { name: /Zavolat/ }).first()).toBeVisible()
+    // The map-first tracking screen is a SIBLING leaf of CustomerLayout (UC-016 WI-4), so the
+    // expired meta-state renders standalone WITHOUT the CustomerLayout header/<main> chrome — there
+    // is exactly one Zavolat fallback (the in-content CallButton), not the old ≥2 (header + main).
+    // Assert by VISIBLE TEXT (role-agnostic): CallButton renders a tel: <a> when a fleet phone is
+    // known (the valid public-link render above mounts CustomerMapShell → useFleetBranding persists
+    // fleet.phone to localStorage, which survives this goto) but a disabled <button> when it is not
+    // yet known — both render the visible label "Zavolat", so getByText survives that branding race.
+    await expect(page.getByText('Zavolat')).toBeVisible()
 
     // Cleanup.
     await customerCancelOrder(session, order.id)

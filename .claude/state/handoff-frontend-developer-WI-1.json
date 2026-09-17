@@ -1,19 +1,13 @@
 {
   "wi": "WI-1",
-  "uc": "UC-015",
+  "wi_id": "WI-1",
+  "uc": "UC-016",
   "status": "complete",
-  "hit_max_turns": false,
   "files_changed": [
-    "web/src/features/customer/order/orderFlowState.ts",
-    "web/src/features/customer/order/orderFlowState.test.ts",
-    "web/src/features/customer/order/orderCamera.ts",
-    "web/src/features/customer/order/orderCamera.test.ts",
-    "web/src/features/customer/order/buildOrderRequest.ts",
-    "web/src/features/customer/order/buildOrderRequest.test.ts",
-    "web/src/features/customer/shell/CustomerMapBackground.tsx",
-    "web/src/features/customer/shell/CustomerMapBackground.test.tsx",
-    "web/src/features/customer/shell/CustomerMapShell.tsx",
-    "web/src/features/customer/shell/CustomerMapShell.test.tsx",
+    "web/src/features/customer/tracking/headlineRules.ts",
+    "web/src/features/customer/tracking/headlineRules.test.ts",
+    "web/src/features/customer/tracking/markerInterpolation.ts",
+    "web/src/features/customer/tracking/markerInterpolation.test.ts",
     "web/src/shared/i18n/cs-CZ.json",
     "web/src/shared/i18n/en-US.json",
     "web/src/shared/i18n/ru-RU.json",
@@ -22,17 +16,21 @@
     "web/src/shared/i18n/de-DE.json"
   ],
   "tests_added": [
-    "orderFlowState.test.ts (7): initial/search phase, selectDestination flips phase, clearDestination resets + keeps pickup, setPickup preserves phase/destination, purity",
-    "orderCamera.test.ts (5): 0/1/2 points, single from either endpoint, strips label to LatLng",
-    "buildOrderRequest.test.ts (8): Fixed->Fixed+fixedPriceCzk/routeId; Estimate->Estimate+estimatedPriceCzk===null; Meter+unknown->Meter no price fields; coords/addresses; passenger clamp; scheduledAt ISO/null; note trim->null",
-    "CustomerMapBackground.test.tsx (+5): center-pin overlay renders; moveend fires onCenterChange after debounce (fake timers); rapid moveends debounce to one; cameraTarget[2] drives fitBounds; cameraTarget[1] drives setView with clamped zoom",
-    "CustomerMapShell.test.tsx (+1): cameraTarget/onCenterChange thread to the lazy background; exactly-once ensureFleetSlug/enableSilentRefresh preserved"
+    "headlineRules.test.ts: rewrote per-status assertions for the new `phase` discriminant and the Assigned->searching heading change (13 tests)",
+    "markerInterpolation.test.ts: 10 tests (midpoint lerp, elapsed==duration->next, elapsed>duration->next, elapsed==0->prev, negative elapsed->prev, null prev->next snap, duration==0->next no div-by-zero, fake-timer tick sequence converging to target, shouldAnimate reduced-motion true/false)"
   ],
+  "tests_passing": true,
+  "coverage_delta": "n/a (scoped run reports pass/fail only)",
   "red_observed": true,
-  "full_suite": "234 files, 1613 tests passed, 0 failed",
-  "tsc": "pass (tsc --noEmit, 0 errors)",
-  "lint": "pass (check:geo + eslint --max-warnings 0, 0 warnings)",
-  "build": "pass (vite build + PWA injectManifest, 35 precache entries)",
-  "size": "pass (app js 197.32/260 kB, analytics 94.79/115 kB, admin 63.97/70 kB brotli)",
-  "notes": "Scoped verification (vitest filter features/customer) = 53 files / 296 tests green. RED confirmed for every cycle (pure modules failed on missing import; shell tests failed on old CameraInput prop + missing center-pin/moveend; parity RED after cs-only add). F2 folded in: buildOrderRequest Estimate view sets estimatedPriceCzk EXPLICIT null (test asserts ===null, not undefined) matching the proven CustomOrderPage contract; only Fixed carries fixedPriceCzk+routeId. Client.ts has NO distance/duration fields on CreateOrderRequest and is read-only, so distanceM/durationS are NOT threaded (F2 note's 'if available' -> no landing spot -> dropped). F4 folded in: both 'meter' and 'unknown' map explicitly to priceType 'Meter' with no price fields (no 'Unknown' in PriceType; no undefined branch). Advisor item 3 folded in: cameraTarget prop retyped from CameraInput|null to LatLng[]|null; the in-map CameraController builds CameraInput{points, currentZoom: map.getZoom()} so the page never invents a zoom (sanctioned extension of the consumer-less UC-014 prop). MoveendController uses createMoveendDebouncer (MOVEEND_DEBOUNCE_MS=300) with a ref-to-latest-callback (no stale capture) and cancels on unmount. Center-pin is a fixed aria-hidden DOM overlay ('map moves under the pin'), pointer-events:none. Leaflet lazy discipline intact: CustomerMapBackground imported only via React.lazy in CustomerMapShell; no new eager leaflet importer (index chunk already carries leaflet for the dispatcher board per the documented MapyMap trap; app-js budget green). i18n: new customer.mapOrder.* group (12 keys) added to all 6 locales, formal 'vy' for ru/uk/de, cs-CZ authoritative; parity + formatStaysCs + extensibility green. Existing customer.order.* keys (offlineBlocked, errorCreateFailed, noteLabel, etc.) reused, not duplicated. No new npm deps. Handoff shape follows the task's explicit JSON (wi/uc/red_observed/full_suite/size) not dev-result.v1.json."
+  "red_details": [
+    "headlineRules: RED observed - 11/13 failed, `h.phase` was undefined before adding the discriminant.",
+    "markerInterpolation: RED observed - import of the non-existent module failed transform (no tests collected).",
+    "i18n parity: RED observed - after adding the 2 keys to cs-CZ only, locales.parity.test.ts failed on 5 locales (extra: customer.tracking.reorder, customer.tracking.sheetLabel). Green after adding to all 6."
+  ],
+  "verification": { "tool": "vitest", "filter": "features/customer/tracking", "exit_code": 0, "result": "14 files, 84 tests passing" },
+  "verification_output": "Test Files 14 passed (14); Tests 84 passed (84); EXIT: 0",
+  "tsc": "pass (tsc --noEmit clean)",
+  "lint": "pass (eslint --max-warnings 0 + check:geo, 0 warnings)",
+  "hit_max_turns": false,
+  "notes": "Deliverable 1 (headlineRules): added `TrackPhase` union + `phase` field on HeadlineDescriptor. Split the shared Assigned/Accepted case: backend status New AND Assigned collapse to phase 'searching' with key 'customer.tracking.headline.new' (behavior change per spec section 2 - Assigned no longer emits assignedNoEta). Backend status Accepted -> phase 'assigned' (keeps assignedEta/assignedNoEta). Deliberate name inversion (status Assigned->phase searching; status Accepted->phase assigned) documented in a doc comment. Assigned keeps showCancel true. Unknown -> safe 'searching', cancel blocked. Existing flags + TrackVm unchanged. Existing TrackingPage.test.tsx consumer stays green (does not assert the Assigned heading string directly).\n\nDeliverable 2 (markerInterpolation): new PURE module. interpolateCoord guards duration<=0 || elapsed>=duration BEFORE division (no div-by-zero), elapsed<=0->prev, null prev->next snap. shouldAnimate(prefersReducedMotion) is the pure reduced-motion decision (no matchMedia - DOM read is WI-3's). Imports only LatLng type from trackingMarker.ts; nothing from leaflet/react/DOM. Per-frame rAF tick intentionally NOT here (WI-3).\n\nDeliverable 3 (i18n): DESIGN-REVIEW FINDING F3 IS FACTUALLY WRONG - customer.tracking.reorder did NOT exist; only customer.history.reorder does. Grepped all 6 locales to confirm. Added TWO genuinely-new keys under customer.tracking in ALL SIX locales, formal 'vy': reorder (cs 'Objednat znovu', en 'Order again', ru/uk/fil/de translated) and sheetLabel (cs 'Stav jizdy', en 'Ride status', etc.) for BottomSheet's required ariaLabelKey. Chose a dedicated tracking-namespace reorder over coupling WI-2 to customer.history.reorder (WI-2 files_touched excludes locale JSONs, so all WI-2 strings must land here). All other WI-2 strings already exist and are reused as-is. German 'Fahrtstatus' has no umlaut; no diacritic-scan issue. Money cs-CZ/Kc + dates Europe/Prague untouched. parity/formatStaysCs/extensibility/locales.sentinel all green.\n\nScope: only WI-1 files_touched staged. Did not touch WI-2/3/4 files. NOTE: this handoff filename previously held a stale UC-015 WI-1 result (documented filename-collision trap); overwritten with UC-016 WI-1."
 }

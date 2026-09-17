@@ -1,56 +1,28 @@
 {
   "wi": "WI-4",
-  "uc": "UC-015",
-  "status": "in-progress",
+  "uc": "UC-016",
+  "status": "complete",
   "hit_max_turns": false,
   "files_changed": [
-    "web/src/features/customer/order/MapOrderPage.tsx",
-    "web/src/features/customer/order/MapOrderPage.test.tsx",
+    "web/src/features/customer/tracking/TrackingPage.tsx",
+    "web/src/features/customer/tracking/TrackingPage.test.tsx",
     "web/src/app/router.tsx",
     "web/src/app/customerRoutes.test.ts",
-    "web/src/features/customer/history/HistoryRow.tsx",
-    "web/src/features/customer/history/CustomerHistoryPage.test.tsx",
-    "web/e2e/customer.spec.ts"
+    "web/e2e/customer.spec.ts",
+    "web/src/features/customer/tracking/RatingForm.tsx",
+    ".claude/state/handoff-frontend-developer-WI-4.json"
   ],
   "files_removed": [
-    "web/src/features/customer/home/CustomerHomePage.tsx",
-    "web/src/features/customer/home/CustomerHomePage.test.tsx",
-    "web/src/features/customer/home/RouteCard.tsx",
-    "web/src/features/customer/home/RouteCard.test.tsx",
-    "web/src/features/customer/home/ActiveOrderBanner.tsx",
-    "web/src/features/customer/home/ActiveOrderBanner.test.tsx",
-    "web/src/features/customer/home/useCommonRoutes.ts",
-    "web/src/features/customer/home/homeContent.ts",
-    "web/src/features/customer/home/homeContent.test.ts",
-    "web/src/features/customer/order/CustomOrderPage.tsx",
-    "web/src/features/customer/order/CustomOrderPage.test.tsx",
-    "web/src/features/customer/order/RouteOrderPage.tsx",
-    "web/src/features/customer/order/RouteOrderPage.test.tsx",
-    "web/src/features/customer/order/useRouteOrder.ts",
-    "web/src/features/customer/order/useRouteOrder.test.tsx",
-    "web/src/features/customer/order/AddressAutocomplete.tsx",
-    "web/src/features/customer/order/AddressAutocomplete.test.tsx",
-    "web/src/features/customer/order/PickupMap.tsx",
-    "web/src/features/customer/order/PickupMap.test.tsx",
-    "web/src/features/customer/order/PickupMapInner.tsx",
-    "web/src/features/customer/order/FixedPriceBadge.tsx"
+    "web/src/features/customer/tracking/StatusHeadline.tsx",
+    "web/src/features/customer/tracking/TrackingMap.tsx",
+    "web/src/features/customer/tracking/TrackingMap.test.tsx",
+    "web/src/features/customer/tracking/TrackingMapInner.tsx"
   ],
-  "review_round": 2,
-  "tests_added": [
-    "web/src/features/customer/order/MapOrderPage.test.tsx (8 tests: search-in-top-slot, price-sheet-on-select, camera setView/fitBounds, onOrdered-navigate, onCancel, pickup-freeze, axe)",
-    "web/src/app/customerRoutes.test.ts (4 tests: dual /customer route ranking guard; bare-/customer test hardened round-2 to assert the winning leaf is childless)"
-  ],
+  "tests_added": 12,
   "red_observed": true,
-  "full_suite": "NOT RE-RUN round-2 (round-1 reported 229 files, 1605 tests, 0 failed; conductor runs e2e separately)",
-  "scoped_vitest_round2": "PASS: MapOrderPage.test.tsx 8/8 + customerRoutes.test.ts 4/4 (12/12 green)",
-  "tsc": "PASS (0 errors)",
-  "lint": "PASS (0 warnings; --max-warnings 0; check:geo OK)",
-  "build": "PASS (vite build + sw.js)",
-  "size": "PASS (app 194.61/260 kB, analytics 94.85/115 kB, admin 63.91/70 kB brotli)",
-  "e2e": "PENDING",
-  "round2_findings_resolved": [
-    "HIGH memoization-policy (MapOrderPage.tsx): removed all four useCallback wrappers (handleCenterChange, handleSelectDestination, handleCancel, handleOrdered) — inlined as plain const fns; dropped the useCallback import. No measured re-render problem existed and none was effective (handleCenterChange goes through MoveendController's ref-to-latest; the sheet/search/shell children are not React.memo'd). Did NOT add React.memo to justify them. MapOrderPage tests stay green (8/8), behaviour identical.",
-    "MEDIUM router-ranking guard (customerRoutes.test.ts): the bare-/customer test now asserts the last matched route's children === undefined, discriminating the childless MapOrderPage leaf from the CustomerLayout branch (which has a children array in router.tsx L153-156). Verified structurally: MapOrderPage route (L149-152) has no children key; if CustomerLayout won, winner.children would be a defined array and the assertion would fail. length===1 kept as the first-line check."
-  ],
-  "notes": "ROUND-2 FIX (both blocking findings resolved; scope limited to MapOrderPage.tsx + customerRoutes.test.ts per review; PriceSheet #ffffff LOW is WI-3 accepted precedent, untouched; locale files untouched). ORIGINAL: MapOrderPage assembled: owns orderFlowState, composes CustomerMapShell (topSlot=DestinationSearch, bottomSlot=PriceSheet shown only once destination set), drives usePriceQuote({allowAnonymous:true}), pickup from map center via debounced useReverseGeocode (search phase only - FROZEN once destinationSet so fitBounds center never overwrites pickup), cameraTarget from orderCamera.orderCameraPoints, onOrdered->navigate('/customer/t/'+code). Router: MapOrderPage is a SIBLING leaf at /customer (mirrors /customer/login), lazily; CustomerLayout branch (no index) keeps t/:code + history. Ranking verified via matchRoutes in customerRoutes.test.ts (bare /customer -> 1 leaf; /customer/history + /customer/t/:code -> 2 nested). Removed 21 old files. tsc (WI primary gate) clean = no dangling imports. HistoryRow 'Objednat znovu' retargeted /customer/order/new -> /customer (route deleted by this WI); reorder draft still passed in router state for forward-compat but the destination-first flow does not prefill from it (draft carried addresses without coords). e2e AC#1 rewritten to the map-first path (Customer_MapFirstCreateOrder_ToTracking): the keyless e2e harness (e2e-api.mjs --no-launch-profile does NOT inject Mapy__ServerKey) means /geo/suggest + /pricing/quote + /geo/reverse are stubbed via page.route (mirrors AC#4 tile-fulfill), but the REAL POST /orders + request-code/verify-code (with injected SMS hash) run end-to-end. Stubbed quote is an Estimate (routeId=null) not Fixed, so no fabricated route_id FK on the real create. No new i18n keys needed (all customer.mapOrder.* keys already existed from WI-2/WI-3). Leaflet stays out of eager path (MapOrderPage chunk does not statically import leaflet; CustomerMapBackground is the lazy importer)."
+  "tsc": "pass (exit 0, fresh re-run — primary gate; no dangling imports from the 4 removals)",
+  "lint": "pass (0 warnings; check:geo OK)",
+  "e2e": "deferred to conductor (Phase 5 runs the full playwright gate)",
+  "verification": "npm-tsc -> exit 0. Also: vitest features/customer/tracking (14 files, 106 tests) green; vitest features/customer (48 files, 328 tests) green; full vitest 1648/1649 (the single fail is noLegacyMapHosts.test.ts timing out at 5s under full-suite resource contention — passes 261ms in isolation and is green via `npm run check:geo` in lint; unrelated to this WI).",
+  "notes": "Rewrote TrackingPage as the map-first screen: it composes CustomerMapShell (full-bleed map) with bottomSlot=<TrackingSheet/> + <PushPrompt/>, threading carMarker/pickupMarker (selectCarMarker + authed.pickup) and cameraTarget=[car,pickup].filter(non-null) into the shell (0 pts -> no move, 1 -> setView, 2 -> fitBounds via the existing CameraController; no new camera math). Keeps /customer/t/:code authed + ?k=token public. Reuses trackingMode/useTrackingAuthed/useTrackingPublic UNCHANGED. AC#5 parity: ONE normalized TrackVm + orderId + marker coords is built from EITHER useTrackingAuthed (live usePositionStore via selectCarMarker) OR useTrackingPublic (DTO last-known position), feeding the SAME TrackingSheet + shell. Public degrades gracefully (ETA null -> assignedNoEta headline, no ~min; orderId null -> TrackingSheet hides Cancel; ratingSlot undefined in public -> default ratingSeam). Cancel/rating wired through the page: useCancelOrder(orderId) result passed to TrackingSheet.cancel (the sheet owns the CancelDialog visibility + the stale-close-avoidance branch-on-outcome pattern internally — I only inject the cancel result, no separate visibility prop, matching TrackingSheet's stable props vm/descriptor/orderId/cancel/ratingSlot?); RatingForm mounted (authed + descriptor.showRating only) into ratingSlot. PushPrompt still mounted (folded into the bottomSlot fragment). No premature useMemo/useCallback.\n\nROUTER: /customer/t/:code moved to a top-level SIBLING leaf (mirroring MapOrderPage / /customer/login) — removed the old nested t/:code child under CustomerLayout (no ambiguous double match); /customer/history stays under CustomerLayout. Updated the stale router comment block. Removal order respected: rewrote TrackingPage + moved the route BEFORE deleting StatusHeadline/TrackingMap/TrackingMapInner so the app never referenced a deleted module (tsc green throughout).\n\nF1 (design-review HIGH) RESOLVED via option (a): hoisted useState(ensureFleetSlug) to the TOP of TrackingPage, before ALL early-returns — the exact CustomerLoginPage.tsx:45 precedent (a sibling for the same F-05 reason, CLAUDE.md 'F-05 fleet-slug resolution + synchronous persist'). The meta-state early-returns (loading/expired/none) never mount CustomerMapShell, so its own ensureFleetSlug initializer would not run on a direct public-link load; hoisting guarantees the public/track fetch (client.ts auto-attaches X-Fleet-Slug from authStorage) never 404s on localhost. Idempotent, so it also re-runs harmlessly inside CustomerMapShell in the non-meta case. PINNED by a public-mode test that mocks ensureFleetSlug and asserts mockEnsureSlug.invocationCallOrder < mockPublic.invocationCallOrder (a useState initializer runs during render, ahead of the query's post-render fetch effect).\n\nF2 (design-review MEDIUM) RESOLVED: the meta-states (expired/none/loading) are NOT order-status phases (TrackingSheet owns only the 6 phases), so they render standalone in a full-viewport Centered. 'Odkaz vyprsel' is kept as a heading-role <h2> (MetaTitle) — a component test asserts getByRole('heading', { name: 'Odkaz vyprsel' }) so AC#3's e2e cannot RED. login-needed + loading render as muted <p> + the CallButton fallback.\n\nF4 (design-review LOW) RESOLVED: updated RatingForm.tsx doc comment 'StatusHeadline ratingSlot' -> 'TrackingSheet ratingSlot' (comment-only; no behavior change).\n\nE2E (customer.spec.ts): updated the AC#3 expired assertion — because tracking is now a SIBLING leaf (no CustomerLayout header/<main> chrome), the expired meta-state renders standalone with exactly ONE Zavolat (not the old >=2 header+main). ADVISOR-FLAGGED RACE: the standalone expired meta-state does NOT mount CustomerMapShell, so useFleetBranding never runs on the tampered navigation; CallButton phone={undefined} falls back to authStorage.getFleetPhone() (localStorage-backed, persisted by useFleetBranding in the AC#3 VALID render that runs first + mounts the shell, so it survives the goto). But if the phone is not yet known CallButton renders a disabled <button> (role=button, aria callUnavailableAria — no 'Zavolat' name) instead of a tel: <a> (role=link). To be robust to both the branding race and both CallButton branches, the assertion is now role-agnostic: page.getByText('Zavolat') (the visible label is identical in both branches). Replaced page.getByRole('main').getByRole('link',{name:/Zavolat/}).first(). All other e2e assertions unchanged and valid on the map-first UI: '.tracking-car-icon' locator (WI-3 kept the className in CustomerMapBackground), headline assertions (TrackingSheet + MetaTitle preserve <h2> heading role), and the CancelDialog flow (scoped by name 'Zrusit objednavku?'). Did NOT add a new spec.\n\ncustomerRoutes.test.ts (route-ranking guard, updated as a required consequence of the topology change): the old test asserted /customer/t/:code resolves to 2 matches under CustomerLayout; observed RED after the sibling-move, updated to assert a SINGLE childless leaf match (matches.length===1, route.children undefined, params.code==='ABC123'). /customer (MapOrderPage sibling) + /customer/history (under CustomerLayout) assertions unchanged and green.\n\nTEST STRATEGY (advisor): stubbed CustomerMapShell to echo carMarker/pickupMarker/cameraTarget as data-attrs + render the bottomSlot, so TrackingPage.test asserts prop-threading (live usePositionStore position -> data-car via the REAL useTrackingAuthed+selectCarMarker; detail pickup -> data-pickup; [car,pickup] -> data-camera) without the real-shell branding-fetch/Suspense complexity (WI-3 already tests real marker/icon/interpolation). Extended the auth-storage mock with getFleetSlug/setFleetSlug (ensureFleetSlug would throw otherwise); removed the stale vi.mock('./TrackingMapInner') (module deleted). Dialog role collision (BottomSheet role=dialog + CancelDialog role=dialog): scoped getByRole('dialog', { name }) everywhere. usePositionStore.setState resets positions per test.\n\nPUBLIC-MODE NO-REDIRECT COVERAGE (advisor note): the reviewer asked to pin 'the logged-out public link never redirects to /customer/login' with a public-mode test. My TrackingPage.test public-mode cases stub CustomerMapShell, so enableSilentRefresh does not run at the page level there — the redirect path is not exercised in the unit test. It IS genuinely covered elsewhere: (a) public/track is AllowAnonymous (410/404, never 401) so client.ts's silent-refresh-on-401 branch never fires; (b) the e2e AC#3 valid-public case proves the searching heading renders with no bounce to /customer/login; (c) CustomerMapShell's own tests cover the exactly-once enableSilentRefresh wiring. No code change needed.\n\nNo new i18n keys — verified expired/expiredHint/loginNeeded/loading/sheetLabel/reorder all already exist in cs-CZ.json (design-review F3 was WI-1's concern; nothing to add here). No api/ touched. Staged via git add web/ (+ this handoff). Nothing committed. NOTE: overwrote a stale UC-015-era handoff-frontend-developer-WI-4.json (WI numbers repeat across UCs — documented collision in CLAUDE.md); UC-015 WI-4 detail recoverable from git history."
 }

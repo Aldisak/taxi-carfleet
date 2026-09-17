@@ -1009,6 +1009,8 @@
       "cancelFailed": "Hindi nakansela ang order. Pakisubukan muli.",
       "cancelling": "Kinakansela...",
       "ratingSeam": "Mangyaring i-rate ang inyong biyahe.",
+      "reorder": "Mag-order muli",
+      "sheetLabel": "Katayuan ng biyahe",
       "pushPromptTitle": "Gusto ninyo bang makatanggap ng abiso kapag dumating na ang driver?",
       "pushAllow": "I-on ang mga abiso",
       "pushDismiss": "Hindi muna"

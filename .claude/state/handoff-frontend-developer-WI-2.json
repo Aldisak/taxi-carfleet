@@ -1,19 +1,47 @@
 {
   "wi": "WI-2",
-  "uc": "UC-015",
+  "wi_id": "WI-2",
+  "uc": "UC-016",
   "status": "complete",
-  "hit_max_turns": false,
+  "round": 2,
+  "round2_review_fixes": {
+    "review_source": ".claude/state/handoff-impl-reviewer-WI-2.json (round 1)",
+    "both_findings_resolved": true,
+    "findings": [
+      {
+        "severity": "HIGH",
+        "rule": "rules/web-react-style.md#styled-components",
+        "detail": "ReorderLink hardcoded `color: #ffffff` (the only raw color in the file). Replaced with `${({ theme }) => theme.colors.textOnPrimary}` — the purpose-built on-primary text token (theme.ts:35 = '#ffffff'), correctly paired with its `background: theme.colors.primary`. No hex literals remain in the file.",
+        "resolved": true
+      },
+      {
+        "severity": "LOW",
+        "rule": "rules/web-react-style.md#component-conventions",
+        "detail": "Removed the dead `expanded`/`setExpanded` local state (never set true — no expand control exists) and the unreachable collapse-first branch in handleClose. handleClose now just `setOpen(false)`. BottomSheet's `expanded` prop is non-optional in BottomSheetProps, so the JSX still passes `expanded={false}` (contract unchanged, public TrackingSheetProps unchanged, WI-4 import unaffected). No test asserted the dead branch — the Escape test verifies close, still correct; TrackingSheet.test.tsx unchanged, all 20 tests stay green.",
+        "resolved": true
+      }
+    ],
+    "verification": { "vitest_filter": "TrackingSheet", "vitest": "1 file, 20 tests passing, exit 0", "tsc": "pass (npm run --prefix web tsc, no errors — the round-1 CustomerMapShell.test.tsx blocker was resolved when WI-3 landed)", "lint": "pass (npm run --prefix web lint: check:geo + eslint --max-warnings 0, exit 0)" },
+    "scope": "ONLY web/src/features/customer/tracking/TrackingSheet.tsx edited and re-staged. No other file touched."
+  },
   "files_changed": [
-    "web/src/features/customer/order/DestinationSearch.tsx",
-    "web/src/features/customer/order/DestinationSearch.test.tsx",
-    ".claude/state/handoff-frontend-developer-WI-2.json"
+    "web/src/features/customer/tracking/TrackingSheet.tsx",
+    "web/src/features/customer/tracking/TrackingSheet.test.tsx"
   ],
-  "tests_added": 8,
+  "tests_added": [
+    "TrackingSheet.test.tsx: 20 tests — role=dialog aria-label 'Stav jízdy'; searching phase exact heading 'Hledáme řidiče…' + SearchingLoader role=status 'Hledám řidiče...' + Cancel; Assigned status collapses to the same searching heading; assigned phase /Řidič.*je na cestě/ no-ETA variant + driver/vehicle + Cancel, plus the ETA variant heading with no duplicate ETA line; arrived heading 'Řidič je na místě' + vehicle; inProgress heading 'Jedete' + destination; completed /^Hotovo – 1\\s200 Kč$/ (single Kč, cs-CZ grouped, no double-Kč) + ratingSlot injected vs default ratingSeam; cancelled heading 'Objednávka byla zrušena' + re-order link to /customer; Cancel visibility (hidden with no orderId / in non-cancellable phase); CancelDialog open+confirm with post-Accepted hint, stale-close avoidance on failure, dismiss; Escape closes the sheet; aria-live=polite headline; axe clean searching + assigned."
+  ],
+  "tests_passing": true,
+  "coverage_delta": "n/a (scoped run reports pass/fail only)",
   "red_observed": true,
-  "full_suite": "pass (235 files, 1621 tests)",
-  "tsc": "pass",
-  "lint": "pass (0 warnings; check:geo OK)",
-  "build": "pass (vite build + PWA injectManifest)",
-  "size": "pass (app 197.32/260 kB, analytics 94.79/115 kB, admin 63.97/70 kB brotli)",
-  "notes": "DestinationSearch.tsx is the top 'Kam to bude?' overlay for the shell topSlot. Presentational only: onSelectDestination(place: SelectedPlace) callback; the page (WI-4) owns orderFlowState (component does NOT call selectDestination — imports SelectedPlace as a type only, per the handoff AC 'component only calls back'). Reuses useSuggest directly (anonymous-by-slug, works logged-out — AC#1, verified by a no-token test) and suggestionMeta for the label+municipality secondary line (AC#2, rendered as plain text so it is part of the option's accessible name). Pending state uses shared SearchingLoader (role=status, default customer.loader.searching key). ARIA combobox: keyboard lives on the INPUT (ArrowUp/Down move active option, Enter selects, Escape collapses); active option tracked via aria-activedescendant; focus never leaves the input (deliberate divergence from AddressAutocomplete's per-<li> tabIndex/onKeyDown). IDREF HYGIENE (advisor #2): aria-controls and aria-activedescendant are emitted ONLY while the list is open, so no dangling IDREF reaches the DOM when collapsed — guarded by a dedicated collapsed-state axe assertion in addition to the open-state one (both green). No new i18n keys: customer.mapOrder.searchPlaceholder does double duty (placeholder + aria-label on the input), searchEmpty for no-results, SearchingLoader's default for pending — parity stays trivially green (no locale files touched). Leaflet stays lazy (DestinationSearch imports no leaflet). Error path: empty-list (200-empty, or non-200 kept-last via useSuggest) shows the no-results message, never a raw code. Tests use real timers + findBy* (300ms useSuggest debounce resolves under polling); pending test mocks getGeoSuggest with a never-resolving promise. Scoped filter 'DestinationSearch' green (8/8). Only WI-2's two files + this handoff staged; WI-1 staged files and pre-existing/queued files untouched. NOTE: overwrote a stale UC-014-era handoff-frontend-developer-WI-2.json (WI numbers repeat across UCs — documented collision in CLAUDE.md); UC-014 WI-2 detail recoverable from git history if needed."
+  "red_details": [
+    "Initial RED: import of the non-existent ./TrackingSheet module failed the vite transform (0 tests collected).",
+    "After minimal green, 18/19 passed; the completed-price test RED'd because the exact-string matcher used a plain space where cs-CZ NumberFormat emits a U+00A0 non-breaking group separator — switched the assertion to /^Hotovo – 1\\s200 Kč$/ (still asserts a single ' Kč', guarding the double-Kč regression the advisor flagged). Green after."
+  ],
+  "verification": { "tool": "vitest", "filter": "TrackingSheet", "exit_code": 0, "result": "1 file, 20 tests passing" },
+  "verification_output": "Test Files 1 passed (1); Tests 20 passed (20); EXIT: 0",
+  "tsc": "pass for WI-2 files — TrackingSheet.tsx + TrackingSheet.test.tsx compile clean. Project-wide `npm run tsc` is currently blocked by a SINGLE error in web/src/features/customer/shell/CustomerMapShell.test.tsx (TS2353 carMarker not in CustomerMapShellProps) — an unstaged, pre-existing WI-3 working-tree file that is OUT OF SCOPE for WI-2 and was not introduced here. tsc surfaced no error in either TrackingSheet file.",
+  "lint": "pass — `npm run --prefix web lint` (check:geo + eslint --max-warnings 0) exits 0 across the whole project.",
+  "hit_max_turns": false,
+  "notes": "TrackingSheet is a CONTROLLED PRESENTATIONAL surface (no api-client import, no data fetching). Props: { vm: TrackVm, descriptor: HeadlineDescriptor, orderId: string|null, cancel: UseCancelOrderResult, ratingSlot?: ReactNode }. Local UI state only: open (Escape → close) and showCancelDialog. (Round 2: the dead `expanded` state + collapse-first handleClose branch were removed per impl-review; the sheet is always collapsed, so BottomSheet is passed `expanded={false}`.)\n\nContent switches on descriptor.PHASE (not the flags), per advisor: assigned/arrived render vehicle, inProgress/completed render dropoff. The assigned headline (assignedEta/assignedNoEta) ALREADY contains driver name + ETA, so NO separate ETA line is rendered (would duplicate) — the vehicle line is the only extra. Flags gate only what they own: (showCancel && orderId) → Cancel button; showAcceptedHint → CancelDialog hint; showRating → rating slot.\n\nPRICE TRAP (advisor F1): the completed template 'customer.tracking.headline.completed' = 'Hotovo – {{price}} Kč' already contains ' Kč'. Fed a cs-CZ grouped NUMBER (Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(price)), NOT formatCzk (which would append a 2nd ' Kč' → 'Hotovo – 1 200 Kč Kč'). Ports StatusHeadline's values transform verbatim. Since e2e only regexes /Hotovo/, the component test asserts the exact single-Kč string.\n\nEVERY phase renders the descriptor headline as an aria-live=polite <h2> so e2e getByRole('heading',{name}) resolves the load-bearing strings: 'Hledáme řidiče…' (U+2026), /Řidič.*je na cestě/, 'Objednávka byla zrušena', /Hotovo/ — asserted with the same strings the e2e uses (customer.spec.ts:126/134/212/280).\n\nReuse-as-is: BottomSheet (role=dialog, ariaLabelKey='customer.tracking.sheetLabel'→'Stav jízdy', Escape, focus-in-on-open), SearchingLoader (role=status, prefers-reduced-motion), CancelDialog (aria-labelledby → dialog name 'Zrušit objednávku?', distinct from the sheet's 'Stav jízdy' name — two dialogs coexist harmlessly when cancel is open). Cancel mutation is NOT duplicated — the injected useCancelOrder result is passed through; onConfirm branches on the returned boolean (not the captured errorKey) so the dialog stays open on failure.\n\nRe-order CTA is a react-router <Link to='/customer'> (real <a href>, ≥48px via theme.touchTargets.min); tests wrap in MemoryRouter (advisor F3).\n\nTrackVm is unchanged (WI-1 froze it) — it has dropoffAddress but no pickupAddress, so the completed 'ride summary' shows the dropoff only (advisor F4); no prop added.\n\n48px targets: Cancel button + re-order link both use theme.touchTargets.min — verified by construction (theme token, the a11y-rule-endorsed mechanism + manual Lighthouse). No getComputedStyle assertion written: jsdom does not resolve styled-components class-selector min-height, so such a test would be false-confidence (advisor).\n\ni18n: ALL keys already exist from WI-1 (headline.*, vehicleLabel, dropoffLabel, cancel, ratingSeam, reorder, sheetLabel, loader.searching) — no locale JSON touched (out of WI-2 scope). Scope: ONLY TrackingSheet.tsx + test staged; did not touch WI-1/3/4 files, locale JSONs, or the shell. StatusHeadline is left in place (its removal is WI-4). This handoff filename previously held a stale UC-015 WI-2 result (documented filename-collision trap); overwritten with UC-016 WI-2 — stage it so the conductor picks up the current result."
 }

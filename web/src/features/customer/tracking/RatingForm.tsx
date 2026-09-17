@@ -72,7 +72,7 @@ interface RatingFormProps {
 }
 
 /**
- * Rating control dropped into the StatusHeadline ratingSlot on the Completed tracking view
+ * Rating control dropped into the TrackingSheet ratingSlot on the Completed tracking view
  * (B-rating). 1..5 stars + optional comment → POST orders/{id}/rating, once. Already-rated
  * orders (from history) and a 409 both render the read-only "Děkujeme" state (useRateOrder).
  * Offline disables submit with a message. Authed-only: TrackingPage passes this slot only in

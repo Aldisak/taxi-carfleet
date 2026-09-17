@@ -1,47 +1,53 @@
 {
-  "uc": "UC-015",
+  "uc": "UC-016",
   "round": 1,
-  "blocks_merge": false,
+  "blocks_merge": true,
   "findings": [
     {
       "id": "F1",
-      "severity": "MEDIUM",
+      "severity": "HIGH",
       "wi": "WI-4",
-      "title": "Router /customer collision resolved by declaration order + index removal, not sibling analogy",
-      "detail": "CustomerLayout is at '/customer' with an index child (CustomerHomePage) + t/:code + history. MapOrderPage must win the exact '/customer' match: (1) REMOVE the CustomerHomePage index child or it wins '/customer'; (2) declare MapOrderPage so it resolves at '/customer' while '/customer/t/:code' and '/customer/history' still resolve via CustomerLayout. The '/customer/login' sibling analogy is loose (login is a different path). Frame it as shared-path ranking + ordering, not 'like login'.",
-      "suggested_fix": "WI-4: remove the CustomerHomePage index child; place MapOrderPage as the '/customer' leaf; keep t/:code + history as CustomerLayout children. The rewritten e2e hits both '/customer' and '/customer/t/:code' so a mis-order fails CI empirically."
+      "title": "Sibling-move re-homes slug init to CustomerMapShell, but TrackingPage early-returns BEFORE the shell mounts — public link 404s on the first render",
+      "detail": "Today t/:code is a CHILD of CustomerLayout, whose useState(ensureFleetSlug) runs during render before useTrackingPublic's fetch effect fires — this is why the logged-out public link does not 404 on localhost (CLAUDE.md -> 'F-05 fleet-slug resolution + synchronous persist'; getPublicTrack attaches X-Fleet-Slug from authStorage). WI-4 removes CustomerLayout from tracking's tree and attributes slug/silent-refresh re-run to CustomerMapShell (CustomerMapShell.tsx:152-166). But the current TrackingPage returns <Centered> for loading/expired/none BEFORE rendering any map surface (TrackingPage.tsx:208,219,247). On a direct public-link load, isLoading && !hasData hits the loading early-return -> CustomerMapShell never mounts -> ensureFleetSlug never runs -> public/track fires with no X-Fleet-Slug -> 404 on localhost. MapOrderPage escapes this because it has no pre-shell early-returns; TrackingPage does. The e2e page.goto('/customer/t/...?k=...') (customer.spec.ts:171-178) with no prior page will catch this at the gate -> rework if built 'mirroring MapOrderPage'. WI-4's existing public-link note only covers the 401/silent-refresh angle, not this 404/slug angle.",
+      "suggested_fix": "WI-4 must hoist ensureFleetSlug into TrackingPage's own useState initializer — exactly the CustomerLoginPage precedent (CustomerLoginPage.tsx:45 'useState(ensureFleetSlug)', a sibling for the same F-05 reason) — OR always mount CustomerMapShell and move the loading/expired/none meta-states into bottomSlot so the shell's initializer always runs. Cite CLAUDE.md -> 'F-05 fleet-slug resolution'."
     },
     {
       "id": "F2",
       "severity": "MEDIUM",
-      "wi": "WI-1",
-      "title": "buildOrderRequest Estimate mapping: set estimatedPriceCzk NULL (range is not a point value)",
-      "detail": "PriceQuoteView estimate variant has lowCzk/highCzk/distanceKm/durationMin — NO single point value. The proven CustomOrderPage.test.tsx contract sends estimatedPriceCzk: null for Estimate orders (server recomputes). buildOrderRequest.test.ts is dev-written, so a wrong expectation (midpoint/lowCzk as estimatedPriceCzk) passes its own test but diverges from the API contract.",
-      "suggested_fix": "For an Estimate view, buildOrderRequest sets estimatedPriceCzk: null (match existing contract). Only Fixed carries a concrete price (fixedPriceCzk + routeId). Pass distanceM/durationS from the quote if available (quote-once) but NOT a fabricated point price."
+      "wi": "WI-4",
+      "title": "expired/none/loading meta-state composition unspecified; 'Odkaz vyprsel' must stay a heading-role element",
+      "detail": "WI-2's TrackingSheet owns only the 6 order-status phases (searching/assigned/arrived/inProgress/completed/cancelled). The meta-states (public 410 -> 'Odkaz vyprsel', 'none' -> login prompt, loading) are NOT order-status phases and are not covered by WI-2. WI-4 mentions them in Error Paths but does not specify their DOM. e2e customer.spec.ts:178 asserts getByRole('heading', { name: 'Odkaz vyprsel' }); the current TrackingPage renders it as a styled.h2 (ExpiredTitle, TrackingPage.tsx:36-41,211). If the rewrite drops that h2, AC#3's e2e REDs. Same root cause as F1 (early-return composition).",
+      "suggested_fix": "WI-4: specify that expired/none/loading render inside the shell (or standalone) with 'Odkaz vyprsel' kept as a heading-role element (h2 semantics preserved), and add a component test asserting getByRole('heading', { name: 'Odkaz vyprsel' }) so the e2e cannot RED."
     },
     {
       "id": "F3",
       "severity": "LOW",
-      "wi": "WI-4",
-      "title": "FixedPriceBadge orphaned after RouteOrderPage deletion, not on removal list",
-      "detail": "FixedPriceBadge.tsx is consumed ONLY by RouteOrderPage (deleted by WI-4) but is not on the removal list -> silent dead code (tsc stays green since nothing imports it).",
-      "suggested_fix": "Add FixedPriceBadge.tsx (+ test if present) to the WI-4 removal list, or explicitly retain it."
+      "wi": "WI-1",
+      "title": "customer.tracking.reorder already exists — reuse, do not re-declare",
+      "detail": "WI-1's AC#3 lists 'customer.tracking.reorder' as a likely NEW delta to add to all six locales. It already exists in cs-CZ.json:1051 ('Objednat znovu'). Re-declaring an existing key risks a merge conflict / parity churn; the WI's own assumption block correctly says 'do NOT re-declare keys that already exist' — the AC's example list contradicts it.",
+      "suggested_fix": "WI-1: verify each proposed i18n delta against cs-CZ.json first; reuse customer.tracking.reorder as-is. Only genuinely new keys (e.g. a sheet aria-label, any new ride-summary label) get added to all six locales."
     },
     {
       "id": "F4",
       "severity": "LOW",
-      "wi": "WI-3",
-      "title": "Meter/unknown view -> Order disabled; buildOrderRequest only invoked for fixed/estimate",
-      "detail": "The 'unknown' PriceQuoteView kind (malformed/no-quote) is not explicitly mapped in buildOrderRequest's priceType spec. Ensure both 'meter' and 'unknown' disable Order (fallback message) so buildOrderRequest is not called on an unknown view.",
-      "suggested_fix": "WI-3: both meter and unknown disable Order. If buildOrderRequest must accept them, define priceType explicitly in WI-1 (likely Meter, no price fields)."
+      "wi": "WI-4",
+      "title": "RatingForm.tsx doc comment references StatusHeadline (removed in WI-4) — stale reference",
+      "detail": "RatingForm.tsx:75 comment reads 'Rating control dropped into the StatusHeadline ratingSlot'. StatusHeadline is removed in WI-4; RatingForm only references it in a comment (not an import), so removal is tsc-safe, but the comment becomes stale/misleading (rating now lands in TrackingSheet's ratingSlot).",
+      "suggested_fix": "WI-4: update the RatingForm.tsx:75 comment to name TrackingSheet's ratingSlot instead of StatusHeadline."
     }
   ],
   "verified_not_findings": [
-    "Composition sanctioned: UC-014 CustomerMapBackground.cameraTarget + centerPin/useReverseGeocode were left consumer-less BY DESIGN (comments defer wiring to UC-015); WI-1 extending them is allowed, stays in lazy chunk.",
-    "CreateOrderRequest (client.ts) accepts priceType + fixedPriceCzk? + routeId? — Fixed path works.",
-    "useFleetHub only under features/customer/tracking -> customer holds no hub while ordering -> useOnlineStatus is the correct Order gate.",
-    "Removals: useMyActiveOrder/RouteCard/ActiveOrderBanner/homeContent/useCommonRoutes consumed only inside home/ (all deleted together); useSuggest + useMyActiveOrder kept, no orphans.",
-    "Order success -> existing /customer/t/:code; TrackingPage untouched (UC-016 replaces later)."
+    "Router sibling-move is CORRECT: CustomerMapShell self-runs ensureFleetSlug + enableSilentRefresh (CustomerMapShell.tsx:152-166), so nesting TrackingPage-with-shell under CustomerLayout would double-invoke them; mirrors MapOrderPage; WI-4 removes the old nested t/:code child, killing the ambiguous double-match.",
+    "Leaflet-lazy discipline holds: WI-3 threads carMarker/pickupMarker as plain LatLng data props (mirroring cameraTarget); Marker/divIcon built inside CustomerMapBackground (sole MapyMap/leaflet importer); no WI passes a Marker/ReactNode map prop; page never imports react-leaflet. AC#7 + size budget safe.",
+    "Reuse-vs-rebuild holds: WI-1 EXTENDS headlineRules; WI-2 reuses CancelDialog/RatingForm/StarPicker/useCancelOrder/useRateOrder through props (no duplicated mutation); WI-3/WI-4 reuse selectCarMarker/trackingMarker/trackingMode/useTrackingAuthed/useTrackingPublic/usePositionStore/useFleetHub unchanged.",
+    "Pure-module discipline holds: markerInterpolation (WI-1) imports nothing from leaflet/react/DOM, fake-timer testable, reduced-motion via a pure decision; the rAF per-frame tick lives in the lazy map component (WI-3) in LOCAL state, not threaded through the shell.",
+    "e2e contracts survive: headline.new/assignedNoEta/cancelled/completed/expired all pinned; WI-2 asserts headings via getByRole('heading'); WI-3 keeps '.tracking-car-icon' verbatim.",
+    "WI-1 correctly UPDATES the existing headlineRules.test.ts Assigned->assignedNoEta assertion to the new Assigned->headline.new behavior; files_touched + test_cases both cover it.",
+    "Removal without dangling: StatusHeadline/TrackingMap/TrackingMapInner consumed only within tracking/; WI-4's remove-after-rewrite order is sound.",
+    "Topo sound: WI-1 -> WI-2 || WI-3 -> WI-4; no cycles.",
+    "AC coverage: all 7 acceptance criteria map to WIs.",
+    "Public 410 stops polling; public/track AllowAnonymous (410/404 never 401) so silent-refresh-on-401 never redirects a logged-out viewer — WI-4 pins with a public-mode test."
   ],
-  "persisted_by": "conductor on behalf of design-reviewer agent adc0928a959ab5f4d (no Write tool); content verbatim, 2026-09-16"
+  "summary": { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 1, "LOW": 2 },
+  "persisted_by": "conductor on behalf of design-reviewer agent (no Write tool); returned as text, persisted verbatim"
 }

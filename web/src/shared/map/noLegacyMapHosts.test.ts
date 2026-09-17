@@ -17,11 +17,15 @@ import {
 // web/scripts/check-no-osm.mjs (outside the scan roots), so the guard never trips
 // on itself.
 describe('legacy map hosts guard', () => {
+  // This walks the whole web/src + api/src tree; the default 5s test timeout is too
+  // tight under full-suite CPU contention (it runs in ~0.25s in isolation), so give it
+  // a generous timeout to keep the quality gate from flaking. The real guard also runs
+  // via `npm run check:geo` in lint.
   it('finds no legacy OSM/OSRM/Nominatim/Photon host in web/src or api/src', async () => {
     const violations = await scanForForbiddenHosts(defaultScanRoots())
     // Surface the offending files in the failure message for a fast fix.
     expect(violations, JSON.stringify(violations, null, 2)).toEqual([])
-  })
+  }, 30_000)
 
   it('actually catches a planted forbidden host (guard is not a no-op)', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'osm-guard-'))

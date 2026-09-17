@@ -9,11 +9,18 @@ import { axe } from '../../../shared/test/axe'
 // The lazy leaflet chunk is stubbed — never mount a real MapContainer in jsdom. The stub
 // echoes the threaded props as data-attrs so the test can assert they reach the background.
 vi.mock('./CustomerMapBackground', () => ({
-  default: (props: { cameraTarget?: unknown; onCenterChange?: unknown }) => (
+  default: (props: {
+    cameraTarget?: unknown
+    onCenterChange?: unknown
+    carMarker?: unknown
+    pickupMarker?: unknown
+  }) => (
     <div
       data-testid="map-background"
       data-camera-target={props.cameraTarget ? JSON.stringify(props.cameraTarget) : undefined}
       data-has-center-change={props.onCenterChange ? 'yes' : undefined}
+      data-car-marker={props.carMarker ? JSON.stringify(props.carMarker) : undefined}
+      data-pickup-marker={props.pickupMarker ? JSON.stringify(props.pickupMarker) : undefined}
     />
   ),
 }))
@@ -110,6 +117,15 @@ describe('CustomerMapShell', () => {
     const bg = await screen.findByTestId('map-background')
     expect(bg).toHaveAttribute('data-camera-target', JSON.stringify(cameraTarget))
     expect(bg).toHaveAttribute('data-has-center-change', 'yes')
+  })
+
+  it('threads carMarker and pickupMarker down to the lazy map background', async () => {
+    const carMarker = { lat: 49.948, lng: 15.268 }
+    const pickupMarker = { lat: 49.95, lng: 15.271 }
+    renderShell({ carMarker, pickupMarker })
+    const bg = await screen.findByTestId('map-background')
+    expect(bg).toHaveAttribute('data-car-marker', JSON.stringify(carMarker))
+    expect(bg).toHaveAttribute('data-pickup-marker', JSON.stringify(pickupMarker))
   })
 
   it('has no axe violations', async () => {

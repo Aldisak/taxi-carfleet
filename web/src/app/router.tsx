@@ -143,21 +143,27 @@ export const router = createBrowserRouter([
   },
   // The map-first order page is a SIBLING of the CustomerLayout group (mirroring /customer/login):
   // it owns the full-viewport map shell and re-runs the one-shot slug/silent-refresh initializers
-  // itself, so it must NOT nest under CustomerLayout (which would double-invoke them). An exact
-  // '/customer' leaf route out-ranks the CustomerLayout branch's non-index children, so
-  // '/customer/history' and '/customer/t/:code' still resolve to CustomerLayout below.
+  // itself, so it must NOT nest under CustomerLayout (which would double-invoke them).
   {
     path: '/customer',
     element: lazyCustomer(<MapOrderPage />),
+  },
+  // The map-first tracking screen is likewise a SIBLING leaf (UC-016 WI-4): it composes the same
+  // full-viewport CustomerMapShell and re-runs the one-shot initializers itself, so nesting it
+  // under CustomerLayout would double-invoke them. TrackingPage also hoists ensureFleetSlug into
+  // its own useState initializer (F-05) so the logged-out public link (public/track is
+  // AllowAnonymous → 410/404, never 401) carries X-Fleet-Slug even on the pre-shell meta-states.
+  {
+    path: '/customer/t/:code',
+    element: lazyCustomer(<TrackingPage />),
   },
   {
     path: '/customer',
     element: lazyCustomer(<CustomerLayout />),
     children: [
-      // Tracking is nested under CustomerLayout so the shell CallButton + slug persistence apply.
-      // The logged-out public link hits only AllowAnonymous endpoints (public/track → 410/404,
-      // never 401), so CustomerLayout's silent-refresh-on-401 never redirects it to /customer/login.
-      { path: 't/:code', element: lazyCustomer(<TrackingPage />) },
+      // Non-map customer screens keep the CustomerLayout chrome (header CallButton + slug
+      // persistence). An exact '/customer' and '/customer/t/:code' leaf out-rank this branch's
+      // children, so only '/customer/history' resolves here.
       { path: 'history', element: lazyCustomer(<CustomerHistoryPage />) },
     ],
   },

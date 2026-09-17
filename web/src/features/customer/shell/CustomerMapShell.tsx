@@ -143,10 +143,24 @@ export interface CustomerMapShellProps {
   cameraTarget?: LatLng[] | null
   /** Called (debounced) with the settled map center on moveend — drives the pickup center-pin. */
   onCenterChange?: (coords: LatLng) => void
+  /**
+   * Live driver position (UC-016 tracking). Threaded straight to the lazy map background, which
+   * renders a smoothly-interpolated car marker; null → no car marker. Plain coordinates only.
+   */
+  carMarker?: LatLng | null
+  /** Pickup pin position (UC-016 tracking). Null → no pickup marker. */
+  pickupMarker?: LatLng | null
 }
 
 /** The full-bleed map-first customer shell. See the file-level doc comment (SIBLING, not nested). */
-export function CustomerMapShell({ topSlot, bottomSlot, cameraTarget, onCenterChange }: CustomerMapShellProps) {
+export function CustomerMapShell({
+  topSlot,
+  bottomSlot,
+  cameraTarget,
+  onCenterChange,
+  carMarker,
+  pickupMarker,
+}: CustomerMapShellProps) {
   const { t } = useTranslation()
 
   // Persist the resolved slug synchronously, before useFleetBranding's query fetches
@@ -170,7 +184,12 @@ export function CustomerMapShell({ topSlot, bottomSlot, cameraTarget, onCenterCh
       <Shell>
         <MapLayer>
           <Suspense fallback={null}>
-            <CustomerMapBackground cameraTarget={cameraTarget} onCenterChange={onCenterChange} />
+            <CustomerMapBackground
+              cameraTarget={cameraTarget}
+              onCenterChange={onCenterChange}
+              carMarker={carMarker}
+              pickupMarker={pickupMarker}
+            />
           </Suspense>
         </MapLayer>
 

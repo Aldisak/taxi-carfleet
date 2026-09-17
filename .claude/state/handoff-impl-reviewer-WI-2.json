@@ -1,0 +1,38 @@
+{
+  "$schema": ".claude/schemas/impl-review.v1.json",
+  "kind": "impl",
+  "uc": "UC-016",
+  "wi": "WI-2",
+  "wi_id": "WI-2",
+  "round": 1,
+  "commit_range": "staged",
+  "findings": [
+    {
+      "severity": "HIGH",
+      "rule": "rules/web-react-style.md#styled-components",
+      "file": "web/src/features/customer/tracking/TrackingSheet.tsx",
+      "hunk": "@@ ReorderLink styled(Link) line 64",
+      "detail": "ReorderLink hardcodes color: #ffffff instead of a theme token. The background above it uses theme.colors.primary; the purpose-built pairing token theme.colors.textOnPrimary ('#ffffff') exists in theme.ts and is the correct on-primary text token. The rule's stated anti-pattern is literally 'background: #fff' (any raw hex in a style body bypasses the theme)."
+    },
+    {
+      "severity": "LOW",
+      "rule": "rules/web-react-style.md#component-conventions",
+      "file": "web/src/features/customer/tracking/TrackingSheet.tsx",
+      "hunk": "@@ handleClose / expanded state lines 111-131",
+      "detail": "The `expanded` local state is never set to true by any control in the sheet, so the collapse-first branch of handleClose (if (expanded) { setExpanded(false); return }) is unreachable dead code in this file."
+    }
+  ],
+  "summary": { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 0, "LOW": 1 },
+  "blocks_merge": true,
+  "automated_checks": {
+    "vitest_filter": "TrackingSheet",
+    "vitest_exit_code": 0,
+    "vitest_result": "1 file, 20 tests passing",
+    "tsc": "pass (tree-wide npm run tsc clean; both WI-2 and WI-3 landed)",
+    "lint": "not re-run (developer reports pass; no lint-scoped finding introduced)",
+    "roslyn_diagnostics": 0,
+    "antipatterns_detected": [],
+    "dead_code_count": 1,
+    "circular_deps": 0
+  }
+}

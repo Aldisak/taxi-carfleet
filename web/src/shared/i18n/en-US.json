@@ -1009,6 +1009,8 @@
       "cancelFailed": "The order could not be cancelled. Please try again.",
       "cancelling": "Cancelling...",
       "ratingSeam": "Please rate your ride.",
+      "reorder": "Order again",
+      "sheetLabel": "Ride status",
       "pushPromptTitle": "Want a notification when the driver arrives?",
       "pushAllow": "Enable notifications",
       "pushDismiss": "Not now"

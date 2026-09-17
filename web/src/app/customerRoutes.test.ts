@@ -3,12 +3,12 @@ import { matchRoutes } from 'react-router-dom'
 import { router } from './router'
 
 /**
- * Route-ranking guard for the UC-015 dual `/customer` wiring (WI-4). MapOrderPage is mounted as a
- * SIBLING leaf at `/customer` while the CustomerLayout branch (no index route) keeps `t/:code` and
- * `history`. Two routes share the base path `/customer`, so which one wins bare `/customer` is
- * ranking/order-dependent — react-router ranks an exact leaf above a layout branch that has no
- * index, but this is invisible to tsc and to the isolated MapOrderPage test. This test pins the
- * ranking via matchRoutes (no rendering — the lazy leaflet chunks never load).
+ * Route-ranking guard for the `/customer` wiring. MapOrderPage (UC-015) AND TrackingPage
+ * (UC-016 WI-4) are each mounted as SIBLING leaves (`/customer` and `/customer/t/:code`), while the
+ * CustomerLayout branch (no index route) keeps only `history`. Several routes share the base path
+ * `/customer`, so which one wins is ranking/order-dependent — react-router ranks an exact leaf above
+ * a layout branch that has no index, but this is invisible to tsc and to the isolated page tests.
+ * This test pins the ranking via matchRoutes (no rendering — the lazy leaflet chunks never load).
  */
 describe('customer route ranking', () => {
   /** The id of the deepest matched route for a path (the element that actually renders). */
@@ -40,10 +40,14 @@ describe('customer route ranking', () => {
     expect(matches!.length).toBe(2)
   })
 
-  it('/customer/t/:code still resolves under the CustomerLayout branch (nested match)', () => {
+  it('/customer/t/:code resolves to the sibling TrackingPage leaf, not the CustomerLayout branch', () => {
     const matches = matchRoutes(router.routes, { pathname: '/customer/t/ABC123' })
     expect(matches).not.toBeNull()
-    expect(matches!.length).toBe(2)
+    // UC-016 WI-4: TrackingPage is a SIBLING leaf (owns the full-viewport CustomerMapShell +
+    // re-runs the one-shot initializers itself), so it is a SINGLE childless match — not the old
+    // nested (CustomerLayout parent + t/:code child = 2) topology.
+    expect(matches!.length).toBe(1)
+    expect(matches![matches!.length - 1].route.children).toBeUndefined()
     expect(matches![matches!.length - 1].params.code).toBe('ABC123')
   })
 

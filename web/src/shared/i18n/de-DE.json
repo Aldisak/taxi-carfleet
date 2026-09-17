@@ -1009,6 +1009,8 @@
       "cancelFailed": "Die Bestellung konnte nicht storniert werden. Bitte versuchen Sie es erneut.",
       "cancelling": "Wird storniert...",
       "ratingSeam": "Bitte bewerten Sie Ihre Fahrt.",
+      "reorder": "Erneut bestellen",
+      "sheetLabel": "Fahrtstatus",
       "pushPromptTitle": "Möchten Sie benachrichtigt werden, sobald der Fahrer eintrifft?",
       "pushAllow": "Benachrichtigungen aktivieren",
       "pushDismiss": "Jetzt nicht"

@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
-import { useMap, useMapEvents } from 'react-leaflet'
+import { useEffect, useRef, useState } from 'react'
+import { Marker, useMap, useMapEvents } from 'react-leaflet'
+import L from 'leaflet'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import { MapyMap } from '../../../shared/map/MapyMap'
 import { cameraIntent, type LatLng } from './mapCamera'
 import { createMoveendDebouncer } from './centerPin'
+import { interpolateCoord, shouldAnimate } from '../tracking/markerInterpolation'
 
 /**
  * Debounce window (ms) before a settled map center is reported through onCenterChange — avoids
@@ -118,6 +120,80 @@ const CenterPin = styled.div`
   }
 `
 
+// Duration (ms) the car marker animates over between two discrete position fixes — roughly the
+// driver-position update interval, so the marker glides continuously rather than jumping. Exported
+// so the interpolation test can pick frame timestamps against it.
+export const MARKER_ANIMATION_MS = 3000
+
+// Migrated verbatim from tracking/TrackingMapInner (removed in WI-4). The '.tracking-car-icon'
+// className is a load-bearing e2e contract (web/e2e/customer.spec.ts locates it) — do not rename.
+// Module-level consts so each divIcon is created once (rules/web-performance.md — no useMemo needed).
+const PICKUP_ICON = L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 8.4 12 20 12 20s12-11.6 12-20C24 5.373 18.627 0 12 0z" fill="#188038" stroke="white" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="5" fill="white"/></svg>`,
+  className: 'tracking-pickup-icon',
+  iconSize: [24, 32],
+  iconAnchor: [12, 32],
+})
+
+const CAR_ICON = L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+    <circle cx="14" cy="14" r="12" fill="#1a73e8" stroke="white" stroke-width="2"/>
+    <path d="M8 16v-3l1.5-3.5h9L20 13v3h-2v-1.5H10V16z" fill="white"/></svg>`,
+  className: 'tracking-car-icon',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+})
+
+/** Reads the current prefers-reduced-motion setting (defensive against jsdom without matchMedia). */
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * Renders the car/driver marker and animates its rendered position frame-by-frame between discrete
+ * `target` fixes via markerInterpolation (WI-1) + requestAnimationFrame. The interpolated position
+ * is held in LOCAL state and never threaded back up through the shell — a 60 fps shell re-render
+ * would violate rules/web-performance.md#high-frequency-events. The first fix snaps (no prev). When
+ * the user prefers reduced motion the marker jumps directly to each new target (no rAF).
+ */
+function AnimatedCarMarker({ target, title }: { target: LatLng; title: string }) {
+  const [rendered, setRendered] = useState<LatLng>(target)
+  // Ref-to-latest-rendered so the animation effect reads the current position without depending
+  // on it (mirrors MoveendController's ref-to-latest-callback pattern).
+  const renderedRef = useRef<LatLng>(target)
+  renderedRef.current = rendered
+
+  useEffect(() => {
+    const from = renderedRef.current
+    // First fix / no motion → snap directly to the target.
+    if (!shouldAnimate(prefersReducedMotion())) {
+      setRendered(target)
+      return
+    }
+
+    let rafId = 0
+    let startTs: number | null = null
+    const tick = (ts: number): void => {
+      if (startTs === null) startTs = ts
+      const elapsed = ts - startTs
+      const next = interpolateCoord(from, target, elapsed, MARKER_ANIMATION_MS)
+      setRendered(next)
+      if (elapsed < MARKER_ANIMATION_MS) {
+        rafId = requestAnimationFrame(tick)
+      }
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+    // Animate on each new target; `from` is captured from the ref at effect start.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target])
+
+  return <Marker position={[rendered.lat, rendered.lng]} icon={CAR_ICON} title={title} />
+}
+
 /** Props for the full-bleed customer map background. */
 export interface CustomerMapBackgroundProps {
   /**
@@ -131,6 +207,13 @@ export interface CustomerMapBackgroundProps {
    * overlay renders so the map "moves under" the pin and its center is the chosen pickup.
    */
   onCenterChange?: (coords: LatLng) => void
+  /**
+   * Live driver position (UC-016 tracking). Rendered as a smoothly-interpolated car marker inside
+   * this lazy chunk; null → no car marker. Plain coordinates (the page never imports leaflet).
+   */
+  carMarker?: LatLng | null
+  /** Pickup pin position (UC-016 tracking). Null → no pickup marker. */
+  pickupMarker?: LatLng | null
 }
 
 /**
@@ -143,6 +226,8 @@ export interface CustomerMapBackgroundProps {
 export default function CustomerMapBackground({
   cameraTarget = null,
   onCenterChange,
+  carMarker = null,
+  pickupMarker = null,
 }: CustomerMapBackgroundProps) {
   const { t } = useTranslation()
 
@@ -151,6 +236,14 @@ export default function CustomerMapBackground({
       <CameraController points={cameraTarget} />
       {onCenterChange && <MoveendController onCenterChange={onCenterChange} />}
       {onCenterChange && <CenterPin data-testid="center-pin" aria-hidden="true" />}
+      {pickupMarker && (
+        <Marker
+          position={[pickupMarker.lat, pickupMarker.lng]}
+          icon={PICKUP_ICON}
+          title={t('customer.tracking.pickupLabel')}
+        />
+      )}
+      {carMarker && <AnimatedCarMarker target={carMarker} title={t('customer.tracking.carLabel')} />}
     </MapyMap>
   )
 }
