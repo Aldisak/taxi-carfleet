@@ -1,38 +1,55 @@
 {
-  "$schema": ".claude/schemas/impl-review.v1.json",
   "kind": "impl",
-  "uc": "UC-016",
+  "uc": "UC-017",
   "wi": "WI-2",
-  "wi_id": "WI-2",
   "round": 1,
   "commit_range": "staged",
+  "blocks_merge": false,
   "findings": [
     {
-      "severity": "HIGH",
-      "rule": "rules/web-react-style.md#styled-components",
-      "file": "web/src/features/customer/tracking/TrackingSheet.tsx",
-      "hunk": "@@ ReorderLink styled(Link) line 64",
-      "detail": "ReorderLink hardcodes color: #ffffff instead of a theme token. The background above it uses theme.colors.primary; the purpose-built pairing token theme.colors.textOnPrimary ('#ffffff') exists in theme.ts and is the correct on-primary text token. The rule's stated anti-pattern is literally 'background: #fff' (any raw hex in a style body bypasses the theme)."
+      "severity": "LOW",
+      "rule": "rules/ef-core.md#projections",
+      "file": "api/src/Taxi.Api/Infrastructure/Jobs/AutoDispatchJob.cs",
+      "line": "89-103",
+      "detail": "AC line 109 explicitly says 'Prefer a SINGLE nullable-settings projection (one row read into a nullable-tuple / anonymous shape) over three correlated subqueries — the three fields live in the same FleetSettings row.' The implementation reads AutoDispatchEnabled, AfterSeconds, and MaxRadiusKm via THREE separate correlated subqueries against FleetSettings for the same fleet, not a single joined row read. Results are correct and the cost is negligible on the small New-order set, and 'Prefer' is a soft directive; but this is the one place the code diverges from a stated AC. The developer handoff justifies it as 'mirrors OfferTimeoutJob's (int?) guard', which is thin — OfferTimeoutJob reads only ONE field so it set no three-subquery precedent."
     },
     {
       "severity": "LOW",
-      "rule": "rules/web-react-style.md#component-conventions",
-      "file": "web/src/features/customer/tracking/TrackingSheet.tsx",
-      "hunk": "@@ handleClose / expanded state lines 111-131",
-      "detail": "The `expanded` local state is never set to true by any control in the sheet, so the collapse-first branch of handleClose (if (expanded) { setExpanded(false); return }) is unreachable dead code in this file."
+      "rule": "rules/naming.md#test-naming",
+      "file": "api/tests/Taxi.Api.Tests/Jobs/AutoDispatchJobTests.cs",
+      "line": "283-342",
+      "detail": "Spec test_case 4 and the WI notes call for a pool-exhaustion assertion (all candidates excluded -> order stays New, proving no infinite re-offer). RunTick_TimedOutDriverExcluded_NextNearestAssigned asserts only that the next-nearest driver (driverB) is assigned; it does not add a second phase where driverB is also excluded/unavailable and asserts the order then stays New. The exhaustion path is covered only transitively by OutsideRadius and OfflineAndStaleDrivers (no-eligible -> stays New). The test is not mislabeled (its name does not claim exhaustion), so this is a coverage gap, not a false test."
     }
   ],
-  "summary": { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 0, "LOW": 1 },
-  "blocks_merge": true,
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2 },
   "automated_checks": {
-    "vitest_filter": "TrackingSheet",
-    "vitest_exit_code": 0,
-    "vitest_result": "1 file, 20 tests passing",
-    "tsc": "pass (tree-wide npm run tsc clean; both WI-2 and WI-3 landed)",
-    "lint": "not re-run (developer reports pass; no lint-scoped finding introduced)",
-    "roslyn_diagnostics": 0,
-    "antipatterns_detected": [],
-    "dead_code_count": 1,
-    "circular_deps": 0
-  }
+    "build_warnaserror_exit": 0,
+    "build_warnings": 0,
+    "build_errors": 0,
+    "test_command": "dotnet test api --filter FullyQualifiedName~AutoDispatchJob",
+    "test_exit": 0,
+    "tests_passed": 13,
+    "tests_failed": 0,
+    "tests_skipped": 0,
+    "test_duration_ms": 10000,
+    "docker_required": true
+  },
+  "verified": {
+    "f1_within_tick_guard": "PASS (top risk) - pending-Assigned exclusion built INSIDE each per-order fresh scope (AutoDispatchJob.cs:188-197), unioned with THIS order's Declined/Timeout payload driver ids (166-197), and passed as the single excludedDriverIds to NearestDriverSelector.SelectNearest (213-219). Uses the tenant-scoped db (NO IgnoreQueryFilters) so fleet isolation is free and a prior same-tick commit is visible when the next order re-queries. NOT computed in the scan phase. RunTick_TwoNewOrdersOneEligibleDriver_AssignsExactlyOne (517-554) genuinely proves exactly one of two competing orders is assigned to the shared driver and the other stays New: order A commits Assigned (driver still Free), then order B's fresh scope re-reads Assigned drivers and excludes it.",
+    "state_machine_discipline": "PASS - assign via OrderService.TransitionAsync(orderId, OrderTransition.Assign, Actor.System, new AssignPayload(DriverId, CurrentVehicleId), ct) (231-236); job never sets order.Status and never publishes OrderChanged. StaleVersion/IllegalTransition returned as IsSuccess==false are logged at Debug with Reason=FailureKind, no exception surfaced (244-252). RunTick_ManualAssignWinsRace_JobNoOp covers the scan-level Status==New filter (already-Assigned order never picked); RunTick_TwoConcurrentTicks_ExactlyOneAssignedEvent covers the TransitionAsync StaleVersion else-branch (exactly one Assigned event under Task.WhenAll).",
+    "job_pattern_fidelity": "PASS - internal sealed AutoDispatchJob : BackgroundService; ctor (IServiceScopeFactory, TimeProvider, ILogger) matches OfferTimeoutJob; thin PeriodicTimer(5s, timeProvider) ExecuteAsync -> RunTickAsync with the same OperationCanceledException-excluded catch + LogError; scan in one scope IgnoreQueryFilters+AsNoTracking; per-order FRESH scope resolves concrete CurrentTenant, sets FleetId, resolves TaxiDbContext + OrderService; one scope per order; (bool?)/(int?)/(int?) FleetSettings projection guard so a missing row -> null -> SKIP (opt-in asymmetry vs OfferTimeoutJob's 45s default) is correct.",
+    "f2_projection_and_timing": "PASS - CreatedAt and ScheduledAt added to scan projection (81-104); age check (CreatedAt.AddSeconds(AfterSeconds) <= now) and future-scheduled guard (ScheduledAt == null || ScheduledAt <= now) done IN MEMORY (111-118), no EF DateTimeOffset arithmetic. RunTick_FutureScheduledAt_OrderUntouched and RunTick_NotYetElapsed_OrderUntouched pin both.",
+    "exclusion_completeness": "PASS - Declined+Timeout OrderEvents loaded via ToListAsync FIRST (160-164), payloads parsed IN MEMORY (167-184) per the jsonb LINQ-projection trap; declinedDriverId/timedOutDriverId collected into HashSet. Complete because only Assigned->New paths (Decline, Timeout) write a driver id. RunTick_TimedOutDriverExcluded_NextNearestAssigned proves a timed-out driver is not re-offered (exhaustion assertion only transitive - see finding 2).",
+    "eligibility": "PASS - DriverCandidate projected from tenant-scoped IsActive Drivers (200-210); Free-only/fresh/in-radius/non-excluded predicate lives in the WI-1 pure selector; RunTick_OfflineAndStaleDrivers_OrderStaysNew and RunTick_DriverOutsideRadius_OrderStaysNew confirm exclusions.",
+    "tenant_isolation": "PASS - per-order scope sets CurrentTenant.FleetId = order.FleetId; driver/order_events/Assigned-driver reads run under the query filter (no IgnoreQueryFilters). RunTick_TenantIsolation_FleetBOrderUnaffected asserts fleet A assigned to its own driver, fleet B untouched.",
+    "logging": "PASS - LogInformation on assign (OrderId/DriverId/FleetId, event-style, no PII); LogDebug NoEligibleDriver with stable Reason; LogDebug benign skip with FailureKind Reason; LogWarning per-order exception; LogError unhandled tick. No per-tick spam.",
+    "test_coverage": "PASS - all 8 spec test cases present plus future-scheduled, within-tick double-assign, and concurrent-tick (13 total). Every test asserts real DB effects (Status/DriverId/Assigned-event count). Seeded-OrderEvent FK trap (FleetId/FromStatus/ToStatus/ActorRole non-nullable) handled in TimedOutDriverExcluded and ManualAssignWinsRace; documented in CLAUDE.md note (accurate).",
+    "scope_style_naming": "PASS - only WI-2's 3 code files (AutoDispatchJob.cs, JobsServiceExtensions.cs, AutoDispatchJobTests.cs) plus the CLAUDE.md note staged for this WI. internal sealed, primary ctor for DI, TimeProvider (no DateTime.UtcNow), guard clauses, async/ct forwarded, XML docs on public/internal members, file-scoped namespace, Method_State_Expected test names."
+  },
+  "notes": [
+    "The staged NearestDriverSelector.cs / DriverCandidate.cs / NearestDriverSelectorTests.cs are WI-1 files (reviewed under handoff-impl-reviewer-WI-1.json); their single-consumer Common/ placement is design-review F-3, documented and justified - not re-flagged here as it is out of WI-2 scope.",
+    "No .claude/schemas/impl-review.v1.json exists in this scaffold (CLAUDE.md known-gaps), so no schema validation was run; this handoff mirrors the de-facto shape of the staged handoff-impl-reviewer-WI-1.json which the conductor consumes.",
+    "Both findings are LOW and non-blocking; blocks_merge=false (CRITICAL+HIGH == 0)."
+  ],
+  "persisted_by": "impl-reviewer agent"
 }

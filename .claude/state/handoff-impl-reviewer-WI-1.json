@@ -1,0 +1,47 @@
+{
+  "kind": "impl",
+  "uc": "UC-017",
+  "wi": "WI-1",
+  "round": 1,
+  "commit_range": "staged",
+  "blocks_merge": false,
+  "findings": [
+    {
+      "severity": "LOW",
+      "rule": "rules/web-testing.md#red-green-refactor",
+      "file": "api/tests/Taxi.Api.Tests/Dispatch/NearestDriverSelectorTests.cs",
+      "line": "289-309",
+      "detail": "SelectNearest_EqualDistance_DeterministicTiebreak asserts only resultA.DriverId == resultB.DriverId (determinism across input order), never that the winner is id1 (the smaller GUID). Any deterministic tiebreak direction, including descending, passes this assertion, so it does not pin the documented ascending ThenBy(DriverId) direction. It also relies on the two haversine distances (PickupLng +/- 0.01) being bit-identical via FP odd-symmetry; if they ever diverge by 1 ULP, OrderBy(Distance) alone fixes the winner and ThenBy is never the deciding factor, so the tie-path stops being exercised."
+    },
+    {
+      "severity": "LOW",
+      "rule": "rules/csharp-style.md",
+      "file": "api/tests/Taxi.Api.Tests/Dispatch/NearestDriverSelectorTests.cs",
+      "line": "26-43",
+      "detail": "MakeCandidate declares lat and lng parameters that are dead: every caller relies on the driverLat/driverLng fallthrough and never passes lat/lng, and the null-position test bypasses the helper entirely by constructing DriverCandidate directly. Unused helper parameters."
+    }
+  ],
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2 },
+  "automated_checks": {
+    "build_warnaserror_exit": 0,
+    "build_warnings": 0,
+    "build_errors": 0,
+    "test_command": "dotnet test api --filter FullyQualifiedName~NearestDriverSelector",
+    "test_exit": 0,
+    "tests_passed": 15,
+    "tests_failed": 0,
+    "tests_skipped": 0,
+    "test_duration_ms": 56,
+    "docker_required": false
+  },
+  "verified": {
+    "purity": "PASS - internal static, no DbContext/TimeProvider/DI; now and staleThreshold are parameters; composes HaversineDistance.Meters; test file has zero [Collection]/Testcontainers/TaxiApiFactory/PostgresFixture references (the lone 'Collection' hit is the EmptyCollection substring); runs in 56 ms without Docker.",
+    "eligibility_predicate": "PASS - Free-only whitelist (Offline/EnRoute/Busy all excluded; whitelist is safe against future enum additions); non-null LastLat/LastLng/LastPositionAt required; freshness boundary LastPositionAt >= now - staleThreshold (inclusive, matches spec and StalePositionJob direction); radius meters conversion maxRadiusKm * 1000.0 correct with distance <= max; excludedDriverIds skipped; nearest by haversine with deterministic ThenBy(DriverId) ascending tiebreak; FirstOrDefault returns null when none eligible.",
+    "stale_threshold_parameter": "PASS - staleThreshold is a TimeSpan parameter, not hardcoded; mirrors StalePositionJob.StaleThreshold (5 min) documented as caller-supplied.",
+    "radius_type": "PASS - maxRadiusKm is int, matches FleetSettings.MaxOfferRadiusKm (int).",
+    "test_coverage": "PASS - covers single eligible, nearest-of-two, outside-radius (single->null and mixed), Offline/EnRoute/Busy each, stale position, exact-threshold-boundary eligible, null position, excluded-driver skip returns next-nearest, all-excluded->null, empty->null, all-ineligible->null, deterministic tiebreak. All 15 exercise real logic (not trivially passing).",
+    "f3_placement_note": "PASS - Common/Dispatch single-consumer exception documented in NearestDriverSelector <remarks> citing HaversineDistance/OrderStateMachine pure-helper precedent. Placement not re-flagged per instructions.",
+    "csharp_style_naming": "PASS - internal static class + public record (record is spec-mandated in WI-1 Deliverables so AutoDispatchJob can project into it; not a style violation); positional-record params documented on class-level doc block not above each param (CS1587-safe); XML docs on all public/internal members; DateTimeOffset not DateTime throughout; guard-style Where/OrderBy pipeline; expression-bodied IsEligible; test names follow Method_State_Expected; one type per file.",
+    "scope": "PASS - only 3 code files (DriverCandidate.cs, NearestDriverSelector.cs, NearestDriverSelectorTests.cs) plus the developer handoff. No job, no DI, no entity/OrderService changes."
+  }
+}
