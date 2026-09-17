@@ -1055,6 +1055,20 @@
       "statusActive": "Идёт",
       "priceUnknown": "—",
       "offline": "Вы не в сети — показываем последние известные данные."
+    },
+    "mapOrder": {
+      "searchPlaceholder": "Куда едем?",
+      "searchEmpty": "Нет предложений",
+      "pickupLabel": "Откуда вас забрать?",
+      "pickupAdjustHint": "Переместите карту, чтобы указать место посадки.",
+      "centerPinLabel": "Место посадки",
+      "priceSheetTitle": "Заказ",
+      "order": "Заказать",
+      "cancel": "Отменить",
+      "optionsToggle": "Параметры поездки",
+      "meterUnavailable": "Не удалось рассчитать цену, позвоните нам.",
+      "sheetLabel": "Заказ поездки",
+      "loginPrompt": "Пожалуйста, войдите, чтобы завершить заказ."
     }
   },
   "notifications": {

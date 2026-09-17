@@ -1055,6 +1055,20 @@
       "statusActive": "Триває",
       "priceUnknown": "—",
       "offline": "Ви офлайн – показуємо останні відомі дані."
+    },
+    "mapOrder": {
+      "searchPlaceholder": "Куди їдемо?",
+      "searchEmpty": "Немає пропозицій",
+      "pickupLabel": "Звідки вас забрати?",
+      "pickupAdjustHint": "Перемістіть карту, щоб указати місце посадки.",
+      "centerPinLabel": "Місце посадки",
+      "priceSheetTitle": "Замовлення",
+      "order": "Замовити",
+      "cancel": "Скасувати",
+      "optionsToggle": "Параметри поїздки",
+      "meterUnavailable": "Не вдалося розрахувати ціну, зателефонуйте нам.",
+      "sheetLabel": "Замовлення поїздки",
+      "loginPrompt": "Будь ласка, увійдіть, щоб завершити замовлення."
     }
   },
   "notifications": {

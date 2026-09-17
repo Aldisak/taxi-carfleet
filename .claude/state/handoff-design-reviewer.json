@@ -1,56 +1,47 @@
 {
-  "uc": "UC-014",
+  "uc": "UC-015",
   "round": 1,
   "blocks_merge": false,
   "findings": [
     {
       "id": "F1",
       "severity": "MEDIUM",
-      "wi": "WI-1",
-      "title": "geocode/reverse Guid.Empty short-circuit is load-bearing AND untestable with the current singleton FakeGeoService — the real production 500 can ship green",
-      "detail": "Only SuggestAsync has the Guid.Empty bypass (GeoService.cs:28-33). GeocodeAsync/ReverseAsync call geoCache.GetOrAddAsync(Guid.Empty,...) unconditionally; on cache miss + upstream Success, GeoCache.UpsertL2Async Adds a GeoCacheEntry{FleetId=Guid.Empty} + usageRecorder.RecordAsync(Guid.Empty) — both FK-constrained to fleets -> InvalidOperationException -> 500 via DontCatchExceptions(). AC#5 'never 500' therefore REQUIRES the endpoint-level short-circuit for geocode/reverse. Test-fidelity gap: FakeGeoService is a singleton whose ReverseAsync/GeocodeAsync IGNORE fleetId (FakeGeoService.cs:91-119), so the DegradesFoundFalse test passes with or without the short-circuit; defaults already yield found:false so the test cannot RED.",
-      "suggested_fix": "Make the test RED-able: set FakeGeoService.ReverseResult/GeocodeResult to a POSITIVE (Found=true) result and assert the endpoint STILL returns found:false with no resolvable fleet — fails unless the endpoint short-circuits on Guid.Empty before calling GeoService. State plainly that geocode/reverse have NO SuggestAsync-style bypass. Optionally one non-fake integration test pinning the real FK path."
+      "wi": "WI-4",
+      "title": "Router /customer collision resolved by declaration order + index removal, not sibling analogy",
+      "detail": "CustomerLayout is at '/customer' with an index child (CustomerHomePage) + t/:code + history. MapOrderPage must win the exact '/customer' match: (1) REMOVE the CustomerHomePage index child or it wins '/customer'; (2) declare MapOrderPage so it resolves at '/customer' while '/customer/t/:code' and '/customer/history' still resolve via CustomerLayout. The '/customer/login' sibling analogy is loose (login is a different path). Frame it as shared-path ranking + ordering, not 'like login'.",
+      "suggested_fix": "WI-4: remove the CustomerHomePage index child; place MapOrderPage as the '/customer' leaf; keep t/:code + history as CustomerLayout children. The rewritten e2e hits both '/customer' and '/customer/t/:code' so a mis-order fails CI empirically."
     },
     {
       "id": "F2",
       "severity": "MEDIUM",
-      "wi": "WI-3",
-      "title": "WI-3 AC depends on theme.zIndex which only WI-2 creates, but WI-3 has no depends_on — 'all four independently verifiable/concurrent' is false",
-      "detail": "theme.ts/theme.d.ts have touchTargets but NO zIndex today. WI-2 adds theme.zIndex; WI-3's BottomSheet AC requires it but does not touch theme.ts and declares no depends_on — WI-3's own 'tsc green' AC cannot pass before WI-2.",
-      "suggested_fix": "Add depends_on:[WI-2] to WI-3 (or one owner for the zIndex token); correct the concurrency claim in the work-items doc."
+      "wi": "WI-1",
+      "title": "buildOrderRequest Estimate mapping: set estimatedPriceCzk NULL (range is not a point value)",
+      "detail": "PriceQuoteView estimate variant has lowCzk/highCzk/distanceKm/durationMin — NO single point value. The proven CustomOrderPage.test.tsx contract sends estimatedPriceCzk: null for Estimate orders (server recomputes). buildOrderRequest.test.ts is dev-written, so a wrong expectation (midpoint/lowCzk as estimatedPriceCzk) passes its own test but diverges from the API contract.",
+      "suggested_fix": "For an Estimate view, buildOrderRequest sets estimatedPriceCzk: null (match existing contract). Only Fixed carries a concrete price (fixedPriceCzk + routeId). Pass distanceM/durationS from the quote if available (quote-once) but NOT a fabricated point price."
     },
     {
       "id": "F3",
-      "severity": "MEDIUM",
-      "wi": "WI-2",
-      "title": "WI-2/3/4 all edit the same six i18n locale JSONs — concurrent execution collides; only sequential is safe",
-      "detail": "files_touched for WI-2, WI-3, WI-4 each list all six locale files. Parity coverage is present, but three parallel WIs writing the same six JSONs conflict. The 'concurrent-safe' claim is false w.r.t. these files.",
-      "suggested_fix": "Sequence the web WIs; note in the work-items doc that the shared i18n files force sequential execution; each WI keeps its own key group."
+      "severity": "LOW",
+      "wi": "WI-4",
+      "title": "FixedPriceBadge orphaned after RouteOrderPage deletion, not on removal list",
+      "detail": "FixedPriceBadge.tsx is consumed ONLY by RouteOrderPage (deleted by WI-4) but is not on the removal list -> silent dead code (tsc stays green since nothing imports it).",
+      "suggested_fix": "Add FixedPriceBadge.tsx (+ test if present) to the WI-4 removal list, or explicitly retain it."
     },
     {
       "id": "F4",
       "severity": "LOW",
-      "wi": "WI-1",
-      "title": "Keep the rate-limit guard position identical when re-keying (400-before-429 ordering)",
-      "detail": "FE validation 400 (min 3 chars) runs before HandleAsync and is unaffected; the guard must stay first in HandleAsync with only the key source changed (sub -> else anon hash of ip|slug|'anon').",
-      "suggested_fix": "Re-key the guard in place; promote the anon-hash stability unit test (fixed IP -> stable Guid, differs from UUIDv7 space) from optional to required."
-    },
-    {
-      "id": "F5",
-      "severity": "LOW",
       "wi": "WI-3",
-      "title": "shared/ui placement is fine (shared list is non-exhaustive: shared/test, shared/perf already exist)",
-      "detail": "BottomSheet+SearchingLoader consumed by 2+ features (UC-015/016/019) — promotion rule satisfied.",
-      "suggested_fix": "No action."
-    },
-    {
-      "id": "F6",
-      "severity": "LOW",
-      "wi": "WI-2",
-      "title": "CustomerMapShell must remain a SIBLING of CustomerLayout (never nested) to avoid double ensureFleetSlug/silent-refresh",
-      "detail": "The shell re-implements the one-shot initializers; nesting under CustomerLayout in UC-015 would double-run them. No live risk in this UC (no router entry added).",
-      "suggested_fix": "Pin sibling-not-nested in WI-2 notes + shell doc comment; extend the enablesSilentRefresh once-assert to guard double-invoke."
+      "title": "Meter/unknown view -> Order disabled; buildOrderRequest only invoked for fixed/estimate",
+      "detail": "The 'unknown' PriceQuoteView kind (malformed/no-quote) is not explicitly mapped in buildOrderRequest's priceType spec. Ensure both 'meter' and 'unknown' disable Order (fallback message) so buildOrderRequest is not called on an unknown view.",
+      "suggested_fix": "WI-3: both meter and unknown disable Order. If buildOrderRequest must accept them, define priceType explicitly in WI-1 (likely Meter, no price fields)."
     }
   ],
-  "persisted_by": "conductor on behalf of design-reviewer agent ae73ff218b3233a48 (no Write tool); content verbatim, 2026-09-16"
+  "verified_not_findings": [
+    "Composition sanctioned: UC-014 CustomerMapBackground.cameraTarget + centerPin/useReverseGeocode were left consumer-less BY DESIGN (comments defer wiring to UC-015); WI-1 extending them is allowed, stays in lazy chunk.",
+    "CreateOrderRequest (client.ts) accepts priceType + fixedPriceCzk? + routeId? — Fixed path works.",
+    "useFleetHub only under features/customer/tracking -> customer holds no hub while ordering -> useOnlineStatus is the correct Order gate.",
+    "Removals: useMyActiveOrder/RouteCard/ActiveOrderBanner/homeContent/useCommonRoutes consumed only inside home/ (all deleted together); useSuggest + useMyActiveOrder kept, no orphans.",
+    "Order success -> existing /customer/t/:code; TrackingPage untouched (UC-016 replaces later)."
+  ],
+  "persisted_by": "conductor on behalf of design-reviewer agent adc0928a959ab5f4d (no Write tool); content verbatim, 2026-09-16"
 }

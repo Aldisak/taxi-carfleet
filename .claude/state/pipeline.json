@@ -1,42 +1,42 @@
 {
   "version": 1,
-  "uc_id": "UC-014",
-  "title": "Customer map-first shell & shared primitives (Uber/Bolt redesign 1/3)",
-  "stack": "mixed",
+  "uc_id": "UC-015",
+  "title": "Destination -> price -> place order (map-first order flow, Uber/Bolt redesign 2/3)",
+  "stack": "web",
   "complexity_tag": "moderate",
   "phase": "done",
-  "spec_final": "docs/specs/done/014_UC_014_customer-map-shell.md",
-  "gates_final": [
-    "A/B/C/D per gates_passed; E (autonomous 2026-09-16): backend build -warnaserror clean + 708/0/4; web lint 0 (incl check:geo) + tsc clean + 1587 unit + build + size 3/3 (app 196.64/260, analytics 94.79/115, admin 63.97/70) + e2e 16/16.",
-    "ship: no git remote -> commit on uc-014-customer-map-shell + ff-merge to main; commit EXCLUDES README.md + launchSettings.json (user's) + docs/specs/todo/015-019 (queued, kept untracked); INCLUDES CLAUDE.md (WI-2 trap notes) + docs/api.md (WI-1 regen)."
-  ],
-  "work_items_doc": "docs/specs/in-progress/014_UC_014_customer-map-shell-work-items.md",
-  "topo_order": "WI-1 (api,M, independent), WI-2 (web,M shell) -> WI-3 (web,M sheet+loader, dep WI-2 zIndex) -> WI-4 (web,M reverse-geocode+centerpin, dep WI-3 i18n-serialization). Run 1->2->3->4.",
-  "gate_c": "round-1 blocks_merge=false (3 MEDIUM: F1 geocode/reverse Guid.Empty short-circuit mandatory + RED-able test via positive fake result; F2 WI-3 depends_on WI-2 for theme.zIndex; F3 six-i18n-JSON collision -> sequential web chain; 3 LOW: F4 guard-position/anon-hash test required, F5 shared/ui ok, F6 shell sibling-never-nested). Designer round-2 amendments conductor-verified in handoff (RED-able tests present, depends_on chain, key-group ownership).",
-  "spec_path": "docs/specs/done/014_UC_014_customer-map-shell.md",
-  "assignment_path": "docs/specs/done/014_UC_014_customer-map-shell.md",
-  "branch": "uc-014-customer-map-shell (off main @ 352969d)",
+  "gate_c": "round-1 blocks_merge=false (2 MEDIUM: F1 router shared-path ordering/index-removal, F2 buildOrderRequest Estimate->estimatedPriceCzk NULL; 2 LOW: F3 FixedPriceBadge orphan removal, F4 meter/unknown disable Order). Conductor resolution: ACCEPT with all 4 findings folded directly into developer dispatches (F2/F4 -> WI-1/WI-3 prompts; F1/F3 -> WI-4 prompt). No designer round-2 (findings concrete + non-blocking).",
+  "work_items_doc": "docs/specs/in-progress/015_UC_015_customer-order-flow-work-items.md",
+  "topo_order": "WI-1 foundation (shell wiring + orderFlowState/orderCamera/buildOrderRequest + i18n) -> WI-2 search overlay, WI-3 price sheet+inline-login+create (both dep WI-1, ordered for i18n parity) -> WI-4 assembly+router+removals+e2e (dep WI-2,WI-3). Sequential 1->2->3->4.",
+  "spec_path": "docs/specs/done/015_UC_015_customer-order-flow.md",
+  "assignment_path": "docs/specs/done/015_UC_015_customer-order-flow.md",
+  "branch": "uc-015-customer-order-flow (off main @ 60513f8)",
   "gates_passed": [
-    "A (autonomous authority): user-authored assignment (scope confirmed interactively 2026-09-16: replace-entirely, auto-quote routes, center-pin+reverse-geocode pickup, 3-part split) + directive 2026-09-16 '/conductor continue autonomously on all UCs in /todo until done, keep UC numeric order' — spec approved as-is"
+    "A (autonomous authority): user-authored + interactively-scoped spec (replace old order screens, auto-quote, center-pin pickup) + directive 2026-09-16 '/conductor continue autonomously on all UCs in /todo, keep UC numeric order' — approved as-is",
+    "B/C (autonomous): designer 4 WIs; design-review round-1 blocks_merge=false, 4 findings folded into dev dispatches",
+    "D (autonomous): all 4 WIs implemented + impl-reviewed; WI-4 round-2 blocks_merge=false (HIGH useCallback + MEDIUM router-guard resolved)",
+    "E (autonomous): Phase-5 web quality gate PASS — lint 0, tsc 0, vitest 229 files/1608 tests/0 fail, build ok, size app 194.85/260+analytics 94.85/115+admin 63.91/70 kB, e2e 16/16 (15 full-run + AC2 confirmed green on re-run; env-only host-postgres:5432 conflict resolved by user stopping postgresql-x64-17 service)"
   ],
   "autonomous_mode": true,
-  "autonomous_mode_authority": "user directive 2026-09-16 ('continue autonomously on all UCs in /todo until you are done; parallel allowed for independent tasks; KEEP UC NUMERIC ORDER — next 014, then 015, 016, ...'): gates A-E pre-approved for ALL queued UCs; ship = local commit + ff-merge to main (UC-009..013 precedent, no git remote). Sequential per user order directive; within-UC WIs run sequentially (shared working tree precedent).",
+  "autonomous_mode_authority": "user directive 2026-09-16 (autonomous on all queued UCs, numeric order, parallel only if independent): gates A-E pre-approved; ship = commit + ff-merge to main (no remote). Sequential.",
   "multi_uc_queue": [
-    "UC-014 customer-map-shell (web + small api) - IN PROGRESS",
-    "UC-015 customer-order-flow (web, dep UC-014) - queued",
+    "UC-014 customer-map-shell - DONE (main @ 60513f8)",
+    "UC-015 customer-order-flow (web, dep UC-014) - DONE (ship: commit + ff-merge to main)",
     "UC-016 customer-live-tracking (web, dep UC-015) - queued",
     "UC-017 auto-dispatch (api) - queued",
     "UC-018 location-relevant-suggest (api+web) - queued",
     "UC-019 driver-map-first (web, dep UC-014) - queued"
   ],
-  "complexity_rationale": "New full-bleed map surface + BottomSheet primitive + camera controller + center-pin/reverse-geocode + one backend auth relaxation (anonymous-by-slug geo proxy + non-JWT rate-limit key). Every building block exists (MapyMap gestures, MapCenterController precedent, GeoRateLimiter, TenantResolutionMiddleware slug resolution) but composition is new. Moderate (not novel — no kit specialists, which are a scaffold gap anyway).",
-  "key_constraints": "Leaflet stays OUT of eager chunks (lazy map component only; verify in dist). MapyMap mounts only after useGeoConfig resolves (mount-time center/zoom). Mapy attribution/logo must stay reachable above overlays. ensureFleetSlug in useState initializer BEFORE any public query. Anonymous geo: AllowAnonymous + X-Fleet-Slug tenant resolution (middleware already resolves slug->FleetId); rate-limit anonymous by IP-or-slug key, authed stays per-sub 5 req/s; GeoRateLimiter is a SINGLETON (tests exhausting buckets need own TaxiApiFactory). Update suggest/geocode/reverse access tests that assert 401/403 anonymous. Drop hasToken gate in useSuggest. i18n new keys in ALL SIX locales (parity). Axe + 48px + focus/Escape on BottomSheet. Money cs-CZ, dates Europe/Prague. User-local dotnet SDK; Docker for api tests. OpenAPI allowlist unaffected (no route/verb changes) but docs/api.md may regenerate if summaries change — stage if so.",
+  "complexity_rationale": "Web-only. Composes UC-014 primitives (CustomerMapShell, BottomSheet, CameraController, center-pin, reverse-geocode) with existing order hooks (usePriceQuote, useCreateOrder, orderForm, PriceRangeBadge, PassengerStepper, WhenPicker, useCustomerLogin/CustomerLoginStep). Replaces CustomerHomePage/CustomOrderPage/RouteOrderPage. New search overlay + price sheet + router wiring; removal of old screens. Moderate.",
+  "key_constraints": "Wire CustomerMapShell as router SIBLING of CustomerLayout (never nested — double-initializer hazard, UC-014 F6). Reuse UC-014 BottomSheet/CameraController/useReverseGeocode/centerPin + existing usePriceQuote/useCreateOrder/orderForm/priceQuote/PriceRangeBadge/PassengerStepper/WhenPicker/whenRules/useCustomerLogin. Estimate shows a RANGE never exact. Inline login preserves order state (onAuthenticated continuation, laneB4a pattern). Suggest now anonymous (UC-014). Order gated on connection state (web-realtime offline-ux). Remove old pages + tests, no dangling imports; keep /customer/history + /customer/login. Update create-order e2e to new path. Leaflet stays lazy; size budget. i18n all 6 locales (customer-facing formal 'vy'). Money cs-CZ, dates Europe/Prague. No backend change.",
   "in_progress_wis": [],
   "completed_wis": [
-    "WI-1 anonymous-by-slug geo proxy: AllowAnonymous on suggest/geocode/reverse (route untouched); GeoRateLimiter.TryAcquire(string) + DeriveAnonBucketId (SHA-256, forced version-5 nibble -> structurally collision-free vs UUIDv7); F1 endpoint short-circuit on geocode/reverse (FleetId null -> Found=false pre-GeoService, RED-verified by temporary removal); guard stays first (400-before-429); 14 new tests (8 integration + 6 hash unit), 3 access-test files inverted, docs/api.md regenerated; geo 135/135, full 708/0/4, -warnaserror clean; impl-review blocks_merge=false (1 LOW: BuildAnonKey duplicated across 3 endpoints — candidate Common/Geo promotion, non-blocking)",
-    "WI-2 CustomerMapShell (opt-in sibling of CustomerLayout, doc-pinned; one-shot initializers with exactly-once tests) + lazy CustomerMapBackground (sole new MapyMap importer — leaflet stays lazy) + theme.zIndex scale (0<100<1000<2000 + d.ts augmentation) + safe-area overlay slots w/ pointer-events pass-through + pure mapCamera.ts + headless CameraController (MapCenterController pattern) + customer.shell.* keys x6 locales + 2 CLAUDE.md trap notes; no router change (existing pages untouched); 45 tests; suite 1561 pass, tsc/lint/build/size clean; impl-review blocks_merge=false (4 LOW incl. expected whole-UC staging note; reviewer re-ran 50 scoped + parity + tsc)"
+    "WI-1 foundation: shell wiring (CustomerMapBackground cameraTarget:LatLng[]/onCenterChange + MoveendController debounce + aria-hidden center-pin; leaflet stays lazy; exactly-once initializers intact) + pure orderFlowState/orderCamera/buildOrderRequest (F2: Estimate->estimatedPriceCzk null; F4: meter+unknown->Meter no price) + customer.mapOrder.* 13 keys x6 locales (formal vy); RED observed; full suite 1613, tsc/lint/build/size green; impl-review blocks_merge=false (1 nit: decorative pin data-testid ok)",
+    "WI-2 DestinationSearch: presentational 'Kam to bude?' topSlot combobox (useSuggest anonymous, aria-activedescendant keyboard model, IDREF hygiene when collapsed, SearchingLoader pending, no new i18n keys); RED observed; full suite 1621, tsc/lint/build/size green; impl-review blocks_merge=false",
+    "WI-3 PriceSheet: controlled surface (quote as prop, internal useCreateOrder+useOnlineStatus; F4 isOrderable guard meter/unknown->disabled+fallback; inline CustomerLoginStep continuation preserves order state; PriceRangeBadge range-never-exact; offline role=alert gate); RED observed; full suite 1633, tsc/lint/build/size green; impl-review round-1 blocks_merge=false (2 LOW accepted: test asserts only disabled-half of F4; #ffffff on-primary precedent)"
   ],
-  "predecessors": "UC-001..013 + fix/mapy-fleet-key all on main @ 352969d",
-  "pre_existing_worktree_note": "Uncommitted at run start (NOT part of any UC, never revert/commit): README.md (untracked, user's), api/src/Taxi.Api/Properties/launchSettings.json (modified, user's). docs/specs/todo/*.md = remaining queued specs (015-019), committed per-UC as each pipeline starts.",
-  "updated_at": "2026-09-16"
+  "wi4_status": "implemented (MapOrderPage assembly, router sibling-leaf /customer, 21 old files removed, HistoryRow retarget, e2e AC#1 rewritten map-first + onboarding AC4 reconciled, shell FleetName h1 + initial-center seed); dev-reported full suite 1605/tsc/lint/build/size green; e2e run in progress; impl-review pending",
+  "predecessors": "UC-001..014 all on main @ 60513f8",
+  "pre_existing_worktree_note": "Never revert/commit: README.md (untracked), api/src/Taxi.Api/Properties/launchSettings.json (modified). docs/specs/todo/016-019 = remaining queued specs (untracked, survive branch switches).",
+  "updated_at": "2026-09-17"
 }

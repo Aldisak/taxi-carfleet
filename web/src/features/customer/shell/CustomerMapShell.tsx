@@ -7,6 +7,7 @@ import { CallButton } from './CallButton'
 import { LanguageSelector } from '../../../shared/i18n/LanguageSelector'
 import { useFleetBranding } from './useFleetBranding'
 import { ensureFleetSlug } from './ensureFleetSlug'
+import type { LatLng } from './mapCamera'
 
 /**
  * SIBLING of CustomerLayout — never nest; both run ensureFleetSlug/enableSilentRefresh once
@@ -79,7 +80,32 @@ const TopSlot = styled.div`
 const Chrome = styled.div`
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: ${({ theme }) => theme.spacing.sm};
+`
+
+// The fleet name is the customer app's brand identity in the map-first shell (it replaces the
+// deleted CustomerHomePage <h1>). Rendered on a translucent surface pill so it stays legible over
+// the map. Truncates rather than wrapping so it never pushes the chrome controls off-screen.
+const FleetName = styled.h1`
+  margin: 0;
+  min-width: 0;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  background: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+  color: ${({ theme }) => theme.colors.text};
+`
+
+const ChromeControls = styled.div`
+  display: flex;
+  align-items: center;
   gap: ${({ theme }) => theme.spacing.sm};
 `
 
@@ -110,10 +136,17 @@ export interface CustomerMapShellProps {
   topSlot?: ReactNode
   /** Content for the bottom overlay slot (order / live-ride sheet). */
   bottomSlot?: ReactNode
+  /**
+   * Camera points the map background should frame (0 → no move, 1 → setView, ≥2 → fitBounds).
+   * Threaded straight to CustomerMapBackground; the in-map controller reads the live zoom.
+   */
+  cameraTarget?: LatLng[] | null
+  /** Called (debounced) with the settled map center on moveend — drives the pickup center-pin. */
+  onCenterChange?: (coords: LatLng) => void
 }
 
 /** The full-bleed map-first customer shell. See the file-level doc comment (SIBLING, not nested). */
-export function CustomerMapShell({ topSlot, bottomSlot }: CustomerMapShellProps) {
+export function CustomerMapShell({ topSlot, bottomSlot, cameraTarget, onCenterChange }: CustomerMapShellProps) {
   const { t } = useTranslation()
 
   // Persist the resolved slug synchronously, before useFleetBranding's query fetches
@@ -137,14 +170,17 @@ export function CustomerMapShell({ topSlot, bottomSlot }: CustomerMapShellProps)
       <Shell>
         <MapLayer>
           <Suspense fallback={null}>
-            <CustomerMapBackground />
+            <CustomerMapBackground cameraTarget={cameraTarget} onCenterChange={onCenterChange} />
           </Suspense>
         </MapLayer>
 
         <TopSlot role="region" aria-label={t('customer.shell.topSlotLabel')}>
           <Chrome aria-label={t('customer.shell.chromeLabel')} role="group">
-            <LanguageSelector />
-            <CallButton phone={fleet?.phone} />
+            {fleet?.name && <FleetName>{fleet.name}</FleetName>}
+            <ChromeControls>
+              <LanguageSelector />
+              <CallButton phone={fleet?.phone} />
+            </ChromeControls>
           </Chrome>
           {topSlot}
         </TopSlot>

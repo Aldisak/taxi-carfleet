@@ -1055,6 +1055,20 @@
       "statusActive": "Isinasagawa",
       "priceUnknown": "—",
       "offline": "Offline kayo – ipinapakita ang huling alam na datos."
+    },
+    "mapOrder": {
+      "searchPlaceholder": "Saan papunta?",
+      "searchEmpty": "Walang suhestiyon",
+      "pickupLabel": "Saan namin kayo susunduin?",
+      "pickupAdjustHint": "I-pan ang mapa para itakda ang pickup point.",
+      "centerPinLabel": "Pickup point",
+      "priceSheetTitle": "Order",
+      "order": "Mag-order",
+      "cancel": "Kanselahin",
+      "optionsToggle": "Mga opsyon sa biyahe",
+      "meterUnavailable": "Hindi namin makalkula ang presyo, tumawag lang po sa amin.",
+      "sheetLabel": "Order ng biyahe",
+      "loginPrompt": "Mag-sign in po para tapusin ang order."
     }
   },
   "notifications": {

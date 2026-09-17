@@ -100,9 +100,12 @@ interface HistoryRowProps {
 
 /**
  * One past-order row: tapping the row navigates to /customer/t/{code} (read-only tracking — the cold
- * authed load renders the by-code DTO read-only, laneB4d contract note). "Objednat znovu" copies
- * the addresses into a custom-order draft (reorder.ts) passed via router state and navigates to
- * /customer/order/new prefilled. Date in Europe/Prague, price in cs-CZ CZK.
+ * authed load renders the by-code DTO read-only, laneB4d contract note). "Objednat znovu" starts a
+ * new order on the map-first /customer surface (UC-015 replaced the separate /customer/order/new
+ * screen). The reorder draft (reorder.ts) is still passed via router state for forward-compat, but
+ * the destination-first map flow does not prefill from it (the draft carried addresses without
+ * coordinates, which never mapped to the map's coordinate-first selection). Date in Europe/Prague,
+ * price in cs-CZ CZK.
  */
 export function HistoryRow({ order }: HistoryRowProps) {
   const { t } = useTranslation()
@@ -112,7 +115,7 @@ export function HistoryRow({ order }: HistoryRowProps) {
   const route = [order.pickupAddress, order.dropoffAddress].filter(Boolean).join(' → ')
 
   function handleReorder() {
-    navigate('/customer/order/new', { state: { [REORDER_STATE_KEY]: buildReorderDraft(order) } })
+    navigate('/customer', { state: { [REORDER_STATE_KEY]: buildReorderDraft(order) } })
   }
 
   return (

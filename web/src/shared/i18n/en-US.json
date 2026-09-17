@@ -1055,6 +1055,20 @@
       "statusActive": "In progress",
       "priceUnknown": "—",
       "offline": "You are offline – showing the last known data."
+    },
+    "mapOrder": {
+      "searchPlaceholder": "Where to?",
+      "searchEmpty": "No suggestions",
+      "pickupLabel": "Where should we pick you up?",
+      "pickupAdjustHint": "Pan the map to set your pickup point.",
+      "centerPinLabel": "Pickup point",
+      "priceSheetTitle": "Order",
+      "order": "Order",
+      "cancel": "Cancel",
+      "optionsToggle": "Ride options",
+      "meterUnavailable": "We could not calculate the price, please call us.",
+      "sheetLabel": "Ride order",
+      "loginPrompt": "Please sign in to finish your order."
     }
   },
   "notifications": {

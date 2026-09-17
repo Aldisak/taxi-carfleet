@@ -1,35 +1,19 @@
 {
   "wi": "WI-2",
-  "uc": "UC-014",
+  "uc": "UC-015",
   "status": "complete",
   "hit_max_turns": false,
   "files_changed": [
-    "web/src/features/customer/shell/CustomerMapShell.tsx",
-    "web/src/features/customer/shell/CustomerMapShell.test.tsx",
-    "web/src/features/customer/shell/CustomerMapBackground.tsx",
-    "web/src/features/customer/shell/CustomerMapBackground.test.tsx",
-    "web/src/features/customer/shell/mapCamera.ts",
-    "web/src/features/customer/shell/mapCamera.test.ts",
-    "web/src/shared/theme/theme.ts",
-    "web/src/shared/theme/theme.d.ts",
-    "web/src/shared/i18n/cs-CZ.json",
-    "web/src/shared/i18n/en-US.json",
-    "web/src/shared/i18n/ru-RU.json",
-    "web/src/shared/i18n/uk-UA.json",
-    "web/src/shared/i18n/fil-PH.json",
-    "web/src/shared/i18n/de-DE.json",
+    "web/src/features/customer/order/DestinationSearch.tsx",
+    "web/src/features/customer/order/DestinationSearch.test.tsx",
     ".claude/state/handoff-frontend-developer-WI-2.json"
   ],
-  "tests_added": [
-    "web/src/features/customer/shell/mapCamera.test.ts (4 tests: setView clamp, setView keep-zoom, fitBounds bounds, empty->null)",
-    "web/src/features/customer/shell/CustomerMapBackground.test.tsx (3 tests: aria-label region, no MapContainer before config, axe clean)",
-    "web/src/features/customer/shell/CustomerMapShell.test.tsx (7 tests: slug persisted exactly once, silent refresh exactly once, LanguageSelector+CallButton in top slot, lazy map background renders, top-slot child, bottom-slot child in region, axe clean)"
-  ],
+  "tests_added": 8,
   "red_observed": true,
-  "full_suite": "pass (226 files, 1561 tests)",
+  "full_suite": "pass (235 files, 1621 tests)",
   "tsc": "pass",
   "lint": "pass (0 warnings; check:geo OK)",
-  "build": "pass (506 modules; leaflet only in lazy *Inner/map chunks + pre-existing eager index; CustomerMapShell/Background/mapCamera absent from dist because no router entry imports them yet)",
-  "size": "pass (app js 196.48/260 KB, analytics 94.79/115 KB, admin 63.97/70 KB — no regression, no budget or manualChunks change needed)",
-  "notes": "WI-2 = full-bleed customer map shell. CustomerMapShell.tsx is a NEW opt-in surface and a SIBLING of CustomerLayout (never nested — file-level doc comment pins the double-init hazard; enableSilentRefresh + ensureFleetSlug asserted exactly-once via toHaveBeenCalledTimes(1) to guard the UC-015 wiring). It re-implements CustomerLayout's one-shot initializers (ensureFleetSlug in a useState initializer, branded ThemeProvider via useFleetBranding, enableSilentRefresh('/customer/login') + scheduleProactiveRefresh on mount, LanguageSelector + CallButton in the top overlay chrome). NO router entry added (UC-015 wires it) so existing /customer routes + e2e untouched. Map is a React.lazy chunk (CustomerMapBackground.tsx) — the ONLY new importer of MapyMap/leaflet — keeping leaflet out of eager bundles; MapyMap still waits for useGeoConfig before mounting a MapContainer (existing behavior preserved). theme.zIndex scale (map<overlay<attribution<modal) added to theme.ts + theme.d.ts DefaultTheme augmentation (WI-2 owns this token; WI-3's BottomSheet will consume theme.zIndex.modal). Overlay slots (top+bottom) absolutely positioned with env(safe-area-inset-*) padding and pointer-events:none pass-through (controls re-enable); bottom slot avoids the bottom-left corner so the Mapy attribution logo (z-index attribution=1000 inside the map's stacking context) stays reachable per AC#4. Camera controller: pure decision in mapCamera.ts (cameraIntent -> setView single-point with Math.max(zoom,14) clamp / fitBounds >=2 points), imports nothing from react-leaflet so it stays eager-safe; the useMap() consumer (CameraController) lives inside the lazy CustomerMapBackground with a prev-target ref to avoid re-render storms. i18n: WI-2 owns ONLY the customer.shell.* group (mapLabel, chromeLabel, topSlotLabel, bottomSlotLabel) across all six locales; locales.parity green. Did NOT add WI-3 sheet/loader or WI-4 GPS keys. The mocked MapContainer stub needed role='application' to carry aria-label without an axe aria-prohibited-attr violation (same class of fix as the documented chartMock role='img' precedent). Only WI-2's own files staged (api/README/launchSettings/docs left untouched). Overwrote a stale UC-011-era handoff-frontend-developer-WI-2.json (WI numbers repeat across UCs — documented collision). LAYERING NOTE FOR UC-015/016: the Mapy logo's z-index:1000 lives INSIDE the map layer's own stacking context (MapLayer z-index:map=0), so relative to the Shell it paints BELOW the overlay slots (z-index:overlay=100), NOT above — the theme.zIndex.attribution token cannot lift the logo out of the map's stacking context. AC#4 holds now only because the bottom slot is empty and pointer-events:none (logo stays visible + reachable). When UC-015/016 place an OPAQUE bottom sheet in bottomSlot, the sheet MUST leave the bottom-left corner clear (inset/margin) so it does not occlude the logo — raising the token value will NOT fix it."
+  "build": "pass (vite build + PWA injectManifest)",
+  "size": "pass (app 197.32/260 kB, analytics 94.79/115 kB, admin 63.97/70 kB brotli)",
+  "notes": "DestinationSearch.tsx is the top 'Kam to bude?' overlay for the shell topSlot. Presentational only: onSelectDestination(place: SelectedPlace) callback; the page (WI-4) owns orderFlowState (component does NOT call selectDestination — imports SelectedPlace as a type only, per the handoff AC 'component only calls back'). Reuses useSuggest directly (anonymous-by-slug, works logged-out — AC#1, verified by a no-token test) and suggestionMeta for the label+municipality secondary line (AC#2, rendered as plain text so it is part of the option's accessible name). Pending state uses shared SearchingLoader (role=status, default customer.loader.searching key). ARIA combobox: keyboard lives on the INPUT (ArrowUp/Down move active option, Enter selects, Escape collapses); active option tracked via aria-activedescendant; focus never leaves the input (deliberate divergence from AddressAutocomplete's per-<li> tabIndex/onKeyDown). IDREF HYGIENE (advisor #2): aria-controls and aria-activedescendant are emitted ONLY while the list is open, so no dangling IDREF reaches the DOM when collapsed — guarded by a dedicated collapsed-state axe assertion in addition to the open-state one (both green). No new i18n keys: customer.mapOrder.searchPlaceholder does double duty (placeholder + aria-label on the input), searchEmpty for no-results, SearchingLoader's default for pending — parity stays trivially green (no locale files touched). Leaflet stays lazy (DestinationSearch imports no leaflet). Error path: empty-list (200-empty, or non-200 kept-last via useSuggest) shows the no-results message, never a raw code. Tests use real timers + findBy* (300ms useSuggest debounce resolves under polling); pending test mocks getGeoSuggest with a never-resolving promise. Scoped filter 'DestinationSearch' green (8/8). Only WI-2's two files + this handoff staged; WI-1 staged files and pre-existing/queued files untouched. NOTE: overwrote a stale UC-014-era handoff-frontend-developer-WI-2.json (WI numbers repeat across UCs — documented collision in CLAUDE.md); UC-014 WI-2 detail recoverable from git history if needed."
 }

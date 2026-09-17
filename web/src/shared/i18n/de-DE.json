@@ -1055,6 +1055,20 @@
       "statusActive": "Läuft",
       "priceUnknown": "—",
       "offline": "Sie sind offline – wir zeigen die zuletzt bekannten Daten an."
+    },
+    "mapOrder": {
+      "searchPlaceholder": "Wohin geht es?",
+      "searchEmpty": "Keine Vorschläge",
+      "pickupLabel": "Wo sollen wir Sie abholen?",
+      "pickupAdjustHint": "Verschieben Sie die Karte, um Ihren Abholpunkt festzulegen.",
+      "centerPinLabel": "Abholpunkt",
+      "priceSheetTitle": "Bestellung",
+      "order": "Bestellen",
+      "cancel": "Abbrechen",
+      "optionsToggle": "Fahrtoptionen",
+      "meterUnavailable": "Der Preis konnte nicht berechnet werden, bitte rufen Sie uns an.",
+      "sheetLabel": "Fahrtbestellung",
+      "loginPrompt": "Bitte melden Sie sich an, um Ihre Bestellung abzuschließen."
     }
   },
   "notifications": {

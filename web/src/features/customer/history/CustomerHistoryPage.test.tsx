@@ -30,13 +30,17 @@ function TrackingProbe() {
   return <div>tracking /customer/t/{code}</div>
 }
 
-/** Probe that renders the reorder draft passed via router state, proving the state shape. */
-function CustomOrderProbe() {
+/**
+ * Probe standing in for the map-first /customer order surface. "Objednat znovu" now navigates to
+ * /customer (UC-015 replaced /customer/order/new); the reorder draft is still passed via router
+ * state for forward-compat, so the probe echoes it to prove the navigation target + state shape.
+ */
+function MapOrderProbe() {
   const location = useLocation()
   const state = location.state as { reorder?: { pickupAddress: string; dropoffAddress: string | null } } | null
   return (
-    <div data-testid="custom-order">
-      custom pickup=[{state?.reorder?.pickupAddress ?? ''}] dropoff=[{state?.reorder?.dropoffAddress ?? ''}]
+    <div data-testid="map-order">
+      map order pickup=[{state?.reorder?.pickupAddress ?? ''}]
     </div>
   )
 }
@@ -72,7 +76,7 @@ function renderPage() {
             <Routes>
               <Route path="/customer/history" element={<CustomerHistoryPage />} />
               <Route path="/customer/t/:code" element={<TrackingProbe />} />
-              <Route path="/customer/order/new" element={<CustomOrderProbe />} />
+              <Route path="/customer" element={<MapOrderProbe />} />
             </Routes>
           </MemoryRouter>
         </I18nextProvider>
@@ -105,15 +109,16 @@ describe('CustomerHistoryPage', () => {
     await waitFor(() => expect(screen.getByText(/\/customer\/t\/ABC123/)).toBeInTheDocument())
   })
 
-  it('Objednat znovu navigates to the custom order screen prefilled', async () => {
+  it('Objednat znovu navigates to the map-first order surface (/customer)', async () => {
     mockHistory.mockResolvedValue(page)
     const user = userEvent.setup()
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: /Objednat znovu/ }))
-    const probe = await screen.findByTestId('custom-order')
+    // UC-015: reorder now starts a fresh order on /customer (the map surface). The draft is still
+    // carried in router state for forward-compat, so the probe can echo it.
+    const probe = await screen.findByTestId('map-order')
     expect(probe).toHaveTextContent('pickup=[Hlavní 1, Praha]')
-    expect(probe).toHaveTextContent('dropoff=[Náměstí 5]')
   })
 
   it('shows an empty state when there are no rides', async () => {

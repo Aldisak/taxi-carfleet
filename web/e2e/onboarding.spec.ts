@@ -240,19 +240,58 @@ test.describe.serial('Tenant onboarding + branding', () => {
   })
 
   test('AC4_RuntimeBranding — the second fleet customer app shows its own name + color with no rebuild', async ({ page }: { page: Page }) => {
+    // UC-015 RECONCILIATION: the customer surface is now the map-first MapOrderPage; the old
+    // CustomerHomePage (fleet-name h1 + welcome text + "Vlastní adresa" primary button) was
+    // removed. Runtime branding still proves the two substantive things AC4 asserts —
+    // (1) per-fleet NAME and (2) per-fleet primary COLOR applied with no rebuild:
+    //   - The fleet name now renders as the brand <h1> in the CustomerMapShell chrome.
+    //   - The primary color is asserted on the map surface's primary "Objednat" button (revealed
+    //     after selecting a destination). The welcome-text assertion is dropped — a free-text
+    //     welcome message has no place in the map-first design (the fleet-name h1 carries the
+    //     brand identity). This is a UC-015-driven change to a UC-013 AC, documented in the
+    //     UC-015 WI-4 handoff.
+    // Stub the keyed geo reads (the e2e harness is keyless — see customer.spec.ts geo note) so the
+    // destination pick + price sheet (which reveals the primary-colored Objednat button) are
+    // deterministic.
+    await page.route(/\/api\/v1\/geo\/suggest/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [{ label: 'Centrum, Kutná Hora', street: 'Palackého náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 }],
+        }),
+      }),
+    )
+    await page.route(/\/api\/v1\/pricing\/quote/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ type: 'Estimate', lowCzk: 140, highCzk: 180, distanceKm: 6, durationMin: 12, estimateMode: 'Exact' }),
+      }),
+    )
+    await page.route(/\/api\/v1\/geo\/reverse/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ found: true, label: 'Nádraží, Kutná Hora', street: 'Nádražní', municipality: 'Kutná Hora' }),
+      }),
+    )
+
     // Drive the second fleet via ?fleet= (no *.localhost DNS locally — see header + runbook).
     await page.goto(`/customer?fleet=${NEW_FLEET.slug}`)
 
-    // The fleet name from GET /public/fleet renders in the header (h1), not the base app name.
+    // (1) NAME: the fleet name from GET /public/fleet renders as the brand h1 in the shell chrome.
     await expect(page.getByRole('heading', { level: 1, name: NEW_FLEET.name })).toBeVisible({ timeout: 10_000 })
 
-    // The welcome text from the fleet renders on the home screen.
-    await expect(page.getByText(NEW_FLEET.welcomeText)).toBeVisible()
-
-    // The primary color is applied at runtime: the "Vlastní adresa" primary button uses
+    // (2) COLOR: select a destination → the price sheet's primary "Objednat" button uses
     // theme.colors.primary as its background. Assert the computed background matches the fleet color.
-    const primaryButton = page.getByRole('button', { name: 'Vlastní adresa' })
-    await expect(primaryButton).toBeVisible()
+    const search = page.getByRole('combobox', { name: /Kam to bude/ })
+    await expect(search).toBeVisible({ timeout: 10_000 })
+    await search.fill('Centrum')
+    await page.getByRole('option', { name: /Centrum, Kutná Hora/ }).click()
+
+    const primaryButton = page.getByRole('button', { name: /^Objednat$/ })
+    await expect(primaryButton).toBeVisible({ timeout: 10_000 })
     const bg = await primaryButton.evaluate((el) => getComputedStyle(el).backgroundColor)
     expect(bg).toBe(EXPECTED_RGB)
   })

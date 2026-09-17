@@ -48,17 +48,11 @@ const PlatformScreen = lazy(() =>
 const CustomerLayout = lazy(() =>
   import('../features/customer/shell/CustomerLayout').then(m => ({ default: m.CustomerLayout })),
 )
-const CustomerHomePage = lazy(() =>
-  import('../features/customer/home/CustomerHomePage').then(m => ({ default: m.CustomerHomePage })),
+const MapOrderPage = lazy(() =>
+  import('../features/customer/order/MapOrderPage').then(m => ({ default: m.MapOrderPage })),
 )
 const CustomerLoginPage = lazy(() =>
   import('../features/customer/login/CustomerLoginPage').then(m => ({ default: m.CustomerLoginPage })),
-)
-const RouteOrderPage = lazy(() =>
-  import('../features/customer/order/RouteOrderPage').then(m => ({ default: m.RouteOrderPage })),
-)
-const CustomOrderPage = lazy(() =>
-  import('../features/customer/order/CustomOrderPage').then(m => ({ default: m.CustomOrderPage })),
 )
 const TrackingPage = lazy(() =>
   import('../features/customer/tracking/TrackingPage').then(m => ({ default: m.TrackingPage })),
@@ -147,13 +141,19 @@ export const router = createBrowserRouter([
     path: '/customer/login',
     element: lazyCustomer(<CustomerLoginPage />),
   },
+  // The map-first order page is a SIBLING of the CustomerLayout group (mirroring /customer/login):
+  // it owns the full-viewport map shell and re-runs the one-shot slug/silent-refresh initializers
+  // itself, so it must NOT nest under CustomerLayout (which would double-invoke them). An exact
+  // '/customer' leaf route out-ranks the CustomerLayout branch's non-index children, so
+  // '/customer/history' and '/customer/t/:code' still resolve to CustomerLayout below.
+  {
+    path: '/customer',
+    element: lazyCustomer(<MapOrderPage />),
+  },
   {
     path: '/customer',
     element: lazyCustomer(<CustomerLayout />),
     children: [
-      { path: '', element: lazyCustomer(<CustomerHomePage />) },
-      { path: 'order/route/:routeId', element: lazyCustomer(<RouteOrderPage />) },
-      { path: 'order/new', element: lazyCustomer(<CustomOrderPage />) },
       // Tracking is nested under CustomerLayout so the shell CallButton + slug persistence apply.
       // The logged-out public link hits only AllowAnonymous endpoints (public/track → 410/404,
       // never 401), so CustomerLayout's silent-refresh-on-401 never redirects it to /customer/login.

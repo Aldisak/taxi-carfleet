@@ -6,9 +6,16 @@ import i18n from '../../../shared/i18n'
 import { theme } from '../../../shared/theme/theme'
 import { axe } from '../../../shared/test/axe'
 
-// The lazy leaflet chunk is stubbed — never mount a real MapContainer in jsdom.
+// The lazy leaflet chunk is stubbed — never mount a real MapContainer in jsdom. The stub
+// echoes the threaded props as data-attrs so the test can assert they reach the background.
 vi.mock('./CustomerMapBackground', () => ({
-  default: () => <div data-testid="map-background" />,
+  default: (props: { cameraTarget?: unknown; onCenterChange?: unknown }) => (
+    <div
+      data-testid="map-background"
+      data-camera-target={props.cameraTarget ? JSON.stringify(props.cameraTarget) : undefined}
+      data-has-center-change={props.onCenterChange ? 'yes' : undefined}
+    />
+  ),
 }))
 vi.mock('../../../shared/api/auth-storage', () => ({
   authStorage: {
@@ -68,6 +75,11 @@ describe('CustomerMapShell', () => {
     expect(enableSilentRefresh).toHaveBeenCalledWith('/customer/login')
   })
 
+  it('renders the fleet name as the brand heading (h1) in the chrome (onboarding AC4)', () => {
+    renderShell()
+    expect(screen.getByRole('heading', { level: 1, name: 'Demo Taxi' })).toBeInTheDocument()
+  })
+
   it('renders the LanguageSelector and the Zavolat CallButton in the top slot', () => {
     renderShell()
     expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
@@ -89,6 +101,15 @@ describe('CustomerMapShell', () => {
     renderShell({ bottomSlot: <div data-testid="bottom-child" /> })
     const bottom = screen.getByRole('region', { name: i18n.t('customer.shell.bottomSlotLabel') })
     expect(bottom).toContainElement(screen.getByTestId('bottom-child'))
+  })
+
+  it('threads cameraTarget and onCenterChange down to the lazy map background', async () => {
+    const onCenterChange = vi.fn()
+    const cameraTarget = [{ lat: 49.95, lng: 15.27 }]
+    renderShell({ cameraTarget, onCenterChange })
+    const bg = await screen.findByTestId('map-background')
+    expect(bg).toHaveAttribute('data-camera-target', JSON.stringify(cameraTarget))
+    expect(bg).toHaveAttribute('data-has-center-change', 'yes')
   })
 
   it('has no axe violations', async () => {

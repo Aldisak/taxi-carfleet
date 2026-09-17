@@ -1055,6 +1055,20 @@
       "statusActive": "Probíhá",
       "priceUnknown": "—",
       "offline": "Jste offline – zobrazujeme poslední známá data."
+    },
+    "mapOrder": {
+      "searchPlaceholder": "Kam to bude?",
+      "searchEmpty": "Žádné návrhy",
+      "pickupLabel": "Odkud vás vyzvedneme?",
+      "pickupAdjustHint": "Posuňte mapou a nastavte místo vyzvednutí.",
+      "centerPinLabel": "Místo vyzvednutí",
+      "priceSheetTitle": "Objednávka",
+      "order": "Objednat",
+      "cancel": "Zrušit",
+      "optionsToggle": "Možnosti jízdy",
+      "meterUnavailable": "Cenu nelze spočítat, zavolejte nám.",
+      "sheetLabel": "Objednávka jízdy",
+      "loginPrompt": "Pro dokončení objednávky se prosím přihlaste."
     }
   },
   "notifications": {

@@ -1,12 +1,39 @@
 {
-  "uc": "UC-014",
+  "$schema": ".claude/schemas/impl-review.v1.json",
+  "kind": "impl",
+  "uc": "UC-015",
   "wi": "WI-4",
-  "round": 1,
+  "round": 2,
+  "wi_id": "WI-4",
+  "commit_range": "staged",
   "blocks_merge": false,
-  "verification": {
-    "command": "npx vitest run src/features/customer/shell src/features/customer/order/useSuggest.test.ts src/shared/api/getGeoReverse.test.ts src/shared/i18n/locales.parity.test.ts",
-    "result": "15 files, 70 tests, all pass (centerPin 8, getGeoReverse 4, useReverseGeocode 3, useSuggest 5, parity 5)",
-    "exit_code": 0
-  },
-  "findings": []
+  "findings": [
+    {
+      "severity": "LOW",
+      "rule": "rules/web-react-style.md#i18n-czech-first",
+      "file": "web/src/features/customer/order/MapOrderPage.tsx",
+      "hunk": "@@ 62-74 @@",
+      "detail": "Observed (not blocking, carried from round 1): reverse-geocode failure in the search phase falls back to the generic t('customer.mapOrder.pickupLabel') rather than retaining a previously-resolved label. Pickup coordinates stay valid and each new map center legitimately warrants a new label, so this is acceptable per the WI-1 error-path intent; noted for completeness only."
+    }
+  ],
+  "summary": { "CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
+  "resolved_from_round_1": [
+    {
+      "severity": "HIGH",
+      "rule": "rules/web-performance.md#memoization-policy",
+      "file": "web/src/features/customer/order/MapOrderPage.tsx",
+      "detail": "RESOLVED: all four useCallback wrappers (handleCenterChange, handleSelectDestination, handleCancel, handleOrdered) removed and inlined as plain const arrow functions; the useCallback import is dropped (L1 imports only useEffect, useState). No React.memo added to children. Behavior unchanged; 8 MapOrderPage tests stay green."
+    },
+    {
+      "severity": "MEDIUM",
+      "rule": "rules/web-testing.md#colocation-and-naming",
+      "file": "web/src/app/customerRoutes.test.ts",
+      "detail": "RESOLVED: the bare-/customer test now asserts winner.children === undefined (L32-33) in addition to the retained length === 1 check. This structurally discriminates the childless MapOrderPage leaf from the CustomerLayout branch (which carries a children array) -- a future regression of CustomerLayout winning would make winner.children a defined array and fail the assertion. The test now verifies what its name claims."
+    }
+  ],
+  "automated_checks": {
+    "vitest": "PASS fresh re-run: MapOrderPage.test.tsx 8/8 + customerRoutes.test.ts 4/4 = 12/12 green",
+    "tsc": "PASS - npm run --prefix web tsc clean, 0 errors (confirms removed useCallback import leaves no dangling type)",
+    "note": "Round 2 re-review scoped to the two files fixed for the round-1 HIGH + MEDIUM findings. Full suite / e2e run by conductor separately."
+  }
 }

@@ -280,46 +280,79 @@ test.describe.serial('Customer PWA', () => {
     await expect(page.getByRole('heading', { name: /Hotovo/ })).toBeVisible({ timeout: 10_000 })
   })
 
-  // ── AC#1 ─────────────────────────────────────────────────────────────────────
-  // NOTE: placed LAST intentionally. It is currently BLOCKED by a web-client contract bug
-  // (see handoff blocked_on): GET routes/common returns { routes: [...] } (A-common-routes'
-  // ListCommonRoutesResponse.Routes) but client.ts's ListCommonRoutesResponse type +
-  // useCommonRoutes.ts read { items }, so the logged-out Home renders zero route cards. Running
-  // this test last means the describe.serial cascade does not skip AC#2/#3/#5/#7 (which build
-  // state via API + goto, not via the Home cards). Do NOT fix client.ts here — that belongs to
-  // B-home with a non-mocked regression test (the unit tests mock the client, which is exactly why
-  // this shipped). When B-home fixes the key, this test should pass unchanged.
-  test('Customer_ThreeTapCommonRoute_ToTracking', async ({ page }) => {
-    let tapsBeforePhone = 0
+  // ── AC#1 (map-first create-order) ────────────────────────────────────────────
+  // UC-015 rewrote the customer order flow: /customer is now the map-first MapOrderPage
+  // (search "Kam to bude?" → pick a suggestion → price bottom-sheet → Objednat → inline
+  // phone+code login → /customer/t/...). The old common-route Home + Confirm screens are gone.
+  //
+  // Placed LAST intentionally (describe.serial): the earlier AC#2/#3/#5/#7 tests build state via
+  // API + goto, not via this UI flow, so a failure here never skips them.
+  //
+  // GEO HARNESS NOTE: the e2e API harness (scripts/e2e-api.mjs, --no-launch-profile) does NOT
+  // inject Mapy__ServerKey, so the real /geo/suggest + /geo/route (→ /pricing/quote Estimate)
+  // upstream is keyless and non-deterministic. We therefore stub /geo/suggest and /pricing/quote
+  // at the network layer (page.route) so the destination pick + Fixed price sheet are
+  // deterministic — mirroring the AC#4 attribution test that route.fulfill's tiles. The REAL
+  // create-order + auth path (POST /orders, request-code/verify-code with the injected SMS hash)
+  // is exercised end-to-end; only the two keyed geo reads are stubbed.
+  test('Customer_MapFirstCreateOrder_ToTracking', async ({ page }) => {
+    // Stub the keyed geo reads with deterministic Kutná Hora coordinates + a Fixed quote so the
+    // price sheet enables Order without depending on the keyless upstream.
+    await page.route(/\/api\/v1\/geo\/suggest/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [
+            { label: 'Centrum, Kutná Hora', street: 'Palackého náměstí', municipality: 'Kutná Hora', lat: 49.948, lng: 15.268 },
+          ],
+        }),
+      }),
+    )
+    // An Estimate RANGE (not Fixed): Estimate maps to priceType=Estimate with routeId=null, so the
+    // REAL POST /orders has no route_id FK to satisfy (a fabricated Fixed routeId would fail the FK
+    // → 500). Estimate is orderable and the server recomputes the price.
+    await page.route(/\/api\/v1\/pricing\/quote/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ type: 'Estimate', lowCzk: 140, highCzk: 180, distanceKm: 6, durationMin: 12, estimateMode: 'Exact' }),
+      }),
+    )
+    // Reverse-geocode (pickup center-pin label) is also keyed — stub it so the pickup resolves.
+    await page.route(/\/api\/v1\/geo\/reverse/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ found: true, label: 'Nádraží, Kutná Hora', street: 'Nádražní', municipality: 'Kutná Hora' }),
+      }),
+    )
 
-    // Fresh/logged-out visit to the customer home (localhost → slug 'demo').
+    // Fresh/logged-out visit to the map-first customer surface (localhost → slug 'demo').
     await page.goto('/customer')
 
-    // The seeded station→centre PointToPoint common-route card (price 100, valid all week).
-    // Matched by a resilient pattern so a seed route-name tweak (UC-006 renamed it
-    // "Nádraží → Centrum" → "Nádraží Kutná Hora → Centrum") does not break this flow.
-    const routeCard = page.getByRole('button', { name: /Nádraží.*Centrum/ })
-    await expect(routeCard).toBeVisible({ timeout: 10_000 })
+    // MapOrderPage-specific proof: the "Kam to bude?" destination search is present (this
+    // discriminates the MapOrderPage leaf from an empty CustomerLayout Outlet at bare /customer).
+    const search = page.getByRole('combobox', { name: /Kam to bude/ })
+    await expect(search).toBeVisible({ timeout: 10_000 })
 
-    // TAP 1: the route card → navigates to the Confirm screen (/customer/order/route/:id) preselected.
-    await routeCard.click()
-    tapsBeforePhone += 1
-    await page.waitForURL(/\/customer\/order\/route\//)
+    // Type a destination → the stubbed suggestion appears → pick it.
+    await search.fill('Centrum')
+    const suggestion = page.getByRole('option', { name: /Centrum, Kutná Hora/ })
+    await expect(suggestion).toBeVisible({ timeout: 10_000 })
+    await suggestion.click()
 
-    // The Confirm screen shows the big fixed price + "Objednat".
-    const objednat = page.getByRole('button', { name: 'Objednat' })
-    await expect(objednat).toBeVisible()
+    // The price bottom-sheet shows the Estimate range and an enabled "Objednat".
+    const objednat = page.getByRole('button', { name: /^Objednat$/ })
+    await expect(objednat).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/140\s*Kč/)).toBeVisible()
 
-    // TAP 2: "Objednat" → logged-out, so the inline login step appears (form state preserved).
+    // Objednat → logged-out → inline login step appears (order state preserved on the sheet).
     await objednat.click()
-    tapsBeforePhone += 1
-
-    // The phone step is now showing. Assert the real tap count BEFORE the phone step.
     const phoneInput = page.getByLabel('Telefonní číslo')
-    await expect(phoneInput).toBeVisible()
-    expect(tapsBeforePhone).toBe(2) // implemented count; assignment's "3" reconciled in DEMO.md
+    await expect(phoneInput).toBeVisible({ timeout: 10_000 })
 
-    // Phone + dev code → auth → order created → Tracking.
+    // Phone + dev code → auth → REAL create order → Tracking.
     const phone = freshPhone()
     await phoneInput.fill(phone)
     await page.getByRole('button', { name: 'Odeslat kód' }).click()
@@ -327,7 +360,6 @@ test.describe.serial('Customer PWA', () => {
     // The code step renders after request-code resolves; inject the known code hash, then enter it.
     const codeInput = page.getByLabel('Ověřovací kód')
     await expect(codeInput).toBeVisible({ timeout: 10_000 })
-    // Inject the known code hash for the phone the UI just used (same normalization).
     injectForPhone(phone)
     await codeInput.fill(DEV_SMS_CODE) // auto-submits on the 6th digit → verify-code → create order
 

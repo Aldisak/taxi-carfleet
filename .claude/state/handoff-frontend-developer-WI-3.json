@@ -1,37 +1,18 @@
 {
   "wi": "WI-3",
-  "uc": "UC-014",
-  "status": "done",
+  "uc": "UC-015",
+  "status": "complete",
   "hit_max_turns": false,
   "files_changed": [
-    "web/src/shared/ui/BottomSheet.tsx",
-    "web/src/shared/ui/BottomSheet.test.tsx",
-    "web/src/shared/ui/SearchingLoader.tsx",
-    "web/src/shared/ui/SearchingLoader.test.tsx",
-    "web/src/shared/i18n/cs-CZ.json",
-    "web/src/shared/i18n/en-US.json",
-    "web/src/shared/i18n/ru-RU.json",
-    "web/src/shared/i18n/uk-UA.json",
-    "web/src/shared/i18n/fil-PH.json",
-    "web/src/shared/i18n/de-DE.json"
+    "web/src/features/customer/order/PriceSheet.tsx",
+    "web/src/features/customer/order/PriceSheet.test.tsx"
   ],
-  "tests_added": [
-    "BottomSheet_open_movesFocusIntoSheet",
-    "BottomSheet_escape_collapsesOrCloses_restoresFocusToTrigger",
-    "BottomSheet_escape_firesOnClose",
-    "BottomSheet_hasDialogRoleAndAriaLabel",
-    "BottomSheet_scrollableContent_rendersChildren",
-    "BottomSheet_doesNotRenderWhenClosed",
-    "BottomSheet_hasNoAxeViolations",
-    "SearchingLoader_hasStatusRoleAndDefaultLabel",
-    "SearchingLoader_rendersCustomLabelKey",
-    "SearchingLoader_hasNoAxeViolations"
-  ],
+  "tests_added": 14,
   "red_observed": true,
-  "full_suite": "228 files / 1571 tests passed (includes locales.parity.test.ts)",
-  "tsc": "pass",
-  "lint": "pass (0 warnings, check:geo + eslint --max-warnings 0)",
+  "full_suite": "236 files, 1633 tests passed (includes i18n parity + formatStaysCs)",
+  "tsc": "pass (0 errors)",
+  "lint": "pass (0 warnings; check:geo OK)",
   "build": "pass (vite build + PWA injectManifest)",
-  "size": "pass — app js 196.8 kB / 260 kB; analytics 94.79/115; admin 63.97/70. shared/ui is eager but footprint stayed well within budget.",
-  "notes": "BottomSheet is a NON-MODAL sheet (advisor-confirmed): no focus trap by design, so the Mapy attribution logo (theme.zIndex.attribution) above the sheet (theme.zIndex.overlay) stays keyboard-reachable per WI-2 AC. Focus capture/restore driven off the open false<->true transition via a wasOpen ref + useEffect (captures document.activeElement as trigger on open, restores on close); tests use a stateful Harness so onClose actually flips open (static open+vi.fn() would not exercise restore). Sheet container gets tabIndex={-1} and receives focus on open (children may have nothing focusable). Escape handler stopPropagation + onClose. SearchingLoader spin uses styled keyframes with a @media (prefers-reduced-motion: reduce) { animation: none } block — no matchMedia mock needed in jsdom; label rendered as visible text inside role=status (mirrors MapyMap LoadingState). i18n: added ONLY customer.sheet.label + customer.loader.searching to all six locales (genuine per-locale translations, no Czech placeholders); did NOT touch WI-2's customer.shell.* or WI-4's GPS keys. The six JSONs were already staged by WI-2 — re-staged to capture the add-only 6-line insertion each (verified via git diff: exactly the sheet/loader block, existing content untouched). No useMemo/useCallback added (web-performance memoization policy). Theme tokens only; COLLAPSED/EXPANDED heights in dvh keep the map+logo visible behind the sheet. Reduced-motion is IMPLEMENTED (SearchingLoader Spinner @media (prefers-reduced-motion: reduce) { animation: none }) but has NO dedicated test by design: jsdom does not evaluate media queries against computed style, so any such test would assert nothing real or brittly scrape injected <style> text — and the authoritative designer test_cases require only role=status + label + axe for the loader (which are covered). This is not an oversight. This UC-014 WI-3 handoff overwrote a stale same-named WI-3 handoff from a prior UC (WI numbers repeat across UCs — CLAUDE.md filename-collision note)."
+  "size": "pass — app js 197.32/260 kB, analytics 94.79/115 kB, admin 63.97/70 kB (brotli)",
+  "notes": "PriceSheet is a CONTROLLED surface per the designer props contract: quote is a PROP (UsePriceQuoteResult from the page's usePriceQuote({allowAnonymous:true}) in WI-4), NOT an internal usePriceQuote call — avoids WI-4 double-quoting. It DOES call useCreateOrder() + useOnlineStatus() internally; useOnlineStatus is the correct customer Order gate (no SignalR hub while ordering; web-realtime.md#offline-ux — never queue). Renders inside the UC-014 BottomSheet (open, expanded drives the collapsed/expanded options area, ariaLabelKey customer.mapOrder.sheetLabel, Escape via onClose which collapses options if open else onCancel). F4 enforced: isOrderable() type-guard narrows view to fixed|estimate BEFORE buildOrderRequest is invoked; meter/unknown/null-view/errorKey all disable Order and show the customer.mapOrder.meterUnavailable fallback. PriceRangeBadge reused unchanged: Fixed = exact price, Estimate = RANGE (low-high, never single), error via errorKey. Order-click continuation mirrors CustomOrderPage.handleSubmitClick->submit verbatim: offline -> visible role=alert offlineBlocked reason rendered persistently whenever offline (so the reason is visible without a click) + Order disabled; logged-out -> inline CustomerLoginStep in-place with all order state preserved (submit useCallback deps include passengers/whenMode/scheduledAtLocal/note/quote.view/pickup/destination so the post-login create uses current state) + auto-resume on onAuthenticated; logged-in -> buildOrderRequest + createOrder.mutateAsync -> onOrdered(publicCode) with NO navigation baked in (page owns it; WI-4 navigates to /customer/t/:code). Scheduled tooSoon/tooLate/invalid reuse validateScheduledAt; create failure -> customer.order.errorCreateFailed and stays on the sheet. Options area reuses PassengerStepper + WhenPicker (min/max via whenRules) + note input. ZERO i18n changes: all keys already landed in WI-1 (customer.mapOrder.* priceSheetTitle/order/cancel/optionsToggle/meterUnavailable/sheetLabel/loginPrompt + customer.order.* offlineBlocked/errorCreateFailed/submitting/passengersLabel/noteLabel/notePlaceholder/error*). Primary Order button min-height theme.touchTargets.primary (64px >= 48). Axe clean. Scope respected exactly: only the 2 files_touched; locale JSONs untouched (WI-1's, already staged). RED observed: import-resolution failure of ./PriceSheet before implementation, confirmed in output. Overwrote a stale UC-014 same-named WI-3 handoff (WI numbers repeat across UCs — CLAUDE.md filename-collision note)."
 }
