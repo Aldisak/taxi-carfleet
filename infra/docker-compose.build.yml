@@ -1,0 +1,22 @@
+# Build override for docker-compose.prod.yml.
+#
+# The prod compose pulls prebuilt images from a registry (GHCR) by default. This override adds the
+# local `build:` contexts for the web + API images so you can build the whole stack ON the server
+# from a copy of the repo — no registry / GHCR account needed. (caddy + backup already define
+# `build:` in the prod file; postgres is a public image.)
+#
+# Usage (from the repo root on the server, with /opt/taxi/.env present):
+#   docker compose -f infra/docker-compose.prod.yml -f infra/docker-compose.build.yml --env-file .env build
+#   docker compose -f infra/docker-compose.prod.yml -f infra/docker-compose.build.yml --env-file .env run --rm api migrate
+#   docker compose -f infra/docker-compose.prod.yml -f infra/docker-compose.build.yml --env-file .env up -d
+#
+# The build context is `..` (repo root) because the Dockerfiles COPY from api/ and web/.
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile

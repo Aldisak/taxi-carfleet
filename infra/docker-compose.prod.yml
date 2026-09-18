@@ -95,6 +95,12 @@ services:
       Push__Vapid__PrivateKey: ${VAPID_PRIVATE_KEY}
       Tracking__HmacKey: ${TRACKING_HMAC_KEY}
       Ops__FleetSlug: ${OPS_FLEET_SLUG:-ops}
+      # Global Mapy.com key fallback (optional). Per-fleet keys set via the SuperAdmin settings
+      # editor (encrypted in DB) take precedence; these env values are the fallback used for the
+      # fleetless/anonymous customer path (suggest/route/reverse) and the browser tile key when a
+      # fleet has none configured. Leave blank to rely purely on per-fleet keys.
+      Mapy__ServerKey: ${MAPY_SERVER_KEY:-}
+      Mapy__BrowserKey: ${MAPY_BROWSER_KEY:-}
       # DataProtection key-ring directory (UC-010 WI-03/WI-18). MUST point at the
       # persistent dp_keys volume below. The WI-03 fail-fast guard refuses to boot in
       # Production if this dir is missing/unset — without a persisted ring, every stored
