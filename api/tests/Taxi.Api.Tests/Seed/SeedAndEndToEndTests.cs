@@ -422,6 +422,7 @@ public sealed class SeedAndEndToEndTests(PostgresFixture fixture)
             "GET /api/v1/drivers/me",
             "GET /api/v1/drivers/me/summary",
             "GET /api/v1/drivers/me/orders",
+            "GET /api/v1/drivers/me/vehicles",
             "POST /api/v1/drivers/me/online",
             "POST /api/v1/drivers/me/offline",
             "POST /api/v1/drivers/{id}/status",

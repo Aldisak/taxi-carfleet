@@ -1129,6 +1129,24 @@ export function getDriverMe(): Promise<GetDriverMeResponse> {
   return apiRequest<GetDriverMeResponse>('/drivers/me')
 }
 
+/** A vehicle the driver can select when going online (GET /drivers/me/vehicles). */
+export interface DriverVehicleDto {
+  id: string
+  plate: string
+  make: string
+  model: string
+}
+
+/** Response DTO for GET /drivers/me/vehicles. */
+export interface ListMyVehiclesResponse {
+  items: DriverVehicleDto[]
+}
+
+/** GET /drivers/me/vehicles — active vehicles in the driver's fleet, for the go-online picker. */
+export function getDriverVehicles(): Promise<ListMyVehiclesResponse> {
+  return apiRequest<ListMyVehiclesResponse>('/drivers/me/vehicles')
+}
+
 /** POST /drivers/me/online — go online with a vehicle. Returns 204 No Content. */
 export function postGoOnline(vehicleId: string): Promise<void> {
   return apiRequest<void>('/drivers/me/online', {

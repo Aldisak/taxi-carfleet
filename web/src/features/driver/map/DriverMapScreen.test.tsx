@@ -41,6 +41,12 @@ vi.mock('../home/useGoOffline', () => ({
   useGoOffline: () => ({ isPending: false, error: null, goOffline: goOfflineMock }),
 }))
 
+// ── available vehicles for the go-online picker ──────────────────────────────
+let vehiclesData: { items: { id: string; plate: string; make: string; model: string }[] } | undefined
+vi.mock('../home/useDriverVehicles', () => ({
+  useDriverVehicles: () => ({ data: vehiclesData }),
+}))
+
 // ── own live position (atomic zustand selector) ──────────────────────────────
 let ownPosition: { lat: number; lng: number } | null = { lat: 50.0, lng: 15.0 }
 vi.mock('../position/useOwnPositionStore', () => ({
@@ -159,6 +165,7 @@ describe('DriverMapScreen', () => {
     ownPosition = { lat: 50.0, lng: 15.0 }
     activeOrder = null
     noShowState = { noShowEnabled: false, noShowCountdownSeconds: null }
+    vehiclesData = { items: [] }
     routeGeometryResult = {
       geometry: [[50, 15], [49.95, 15.27]],
       durationSeconds: 420,
@@ -183,6 +190,17 @@ describe('DriverMapScreen', () => {
     renderScreen()
     await user.click(screen.getByRole('button', { name: i18n.t('driver.home.status.startShift') }))
     expect(goOnlineMock).toHaveBeenCalledWith('v1')
+  })
+
+  it('Offline new driver (no current vehicle): lists fetched fleet vehicles and can start a shift', async () => {
+    const user = userEvent.setup()
+    meData = { driverId: 'd1', status: 'Offline' } // brand-new driver — no currentVehicleId
+    vehiclesData = { items: [{ id: 'veh-9', plate: '9XY9999', make: 'Skoda', model: 'Fabia' }] }
+    renderScreen()
+    const select = screen.getByLabelText(i18n.t('driver.home.vehicle.label'))
+    await user.selectOptions(select, 'veh-9')
+    await user.click(screen.getByRole('button', { name: i18n.t('driver.home.status.startShift') }))
+    expect(goOnlineMock).toHaveBeenCalledWith('veh-9')
   })
 
   it('Free: shows the waiting indicator (role=status) + end-shift button', async () => {

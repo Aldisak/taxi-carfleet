@@ -416,6 +416,57 @@ public sealed class DriverVehicleTests(PostgresFixture fixture)
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    // ── ListMyVehicles (driver go-online picker) tests ────────────────────────
+
+    /// <summary>A driver can list the active vehicles in their own fleet for the go-online picker;
+    /// inactive vehicles and other fleets' vehicles are excluded.</summary>
+    [Fact]
+    public async Task ListMyVehicles_Driver_ReturnsActiveFleetVehiclesOnly()
+    {
+        var fleet = BuildFleet("myvehicles-happy");
+        var otherFleet = BuildFleet("myvehicles-other");
+        var driverUser = BuildDriverUser(fleet.Id, "013001");
+        var driver = BuildDriver(fleet.Id, driverUser.Id);
+        var active = BuildVehicle(fleet.Id, "ACT0001");
+        var inactive = BuildVehicle(fleet.Id, "INA0001", isActive: false);
+        var otherFleetVehicle = BuildVehicle(otherFleet.Id, "OTH0001");
+        await SeedAsync(fleet, otherFleet, driverUser, driver, active, inactive, otherFleetVehicle);
+
+        var client = fixture.Factory.CreateClient();
+        client.AsDriver(fleet.Id, driverUser.Id);
+
+        var response = await client.GetAsync(
+            "api/v1/drivers/me/vehicles",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(
+            JsonOptions, TestContext.Current.CancellationToken);
+        var ids = body.GetProperty("items").EnumerateArray()
+            .Select(e => e.GetProperty("id").GetGuid()).ToList();
+        ids.Should().Contain(active.Id);
+        ids.Should().NotContain(inactive.Id);
+        ids.Should().NotContain(otherFleetVehicle.Id);
+    }
+
+    /// <summary>A FleetAdmin (non-driver) calling the driver vehicle picker gets 403 (DriverOnly).</summary>
+    [Fact]
+    public async Task ListMyVehicles_FleetAdmin_Returns403()
+    {
+        var fleet = BuildFleet("myvehicles-403");
+        var adminUser = BuildFleetAdminUser(fleet.Id, "013002");
+        await SeedAsync(fleet, adminUser);
+
+        var client = fixture.Factory.CreateClient();
+        client.AsFleetAdmin(fleet.Id, adminUser.Id);
+
+        var response = await client.GetAsync(
+            "api/v1/drivers/me/vehicles",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     // ── Vehicle CRUD tests ────────────────────────────────────────────────────
 
     /// <summary>FleetAdmin can list vehicles.</summary>

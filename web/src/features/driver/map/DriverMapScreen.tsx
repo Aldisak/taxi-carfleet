@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom'
 import { useDriverMe } from '../home/useDriverMe'
 import { useGoOnline } from '../home/useGoOnline'
 import { useGoOffline } from '../home/useGoOffline'
+import { useDriverVehicles } from '../home/useDriverVehicles'
 import { useOwnStatusSync } from '../home/useOwnStatusSync'
 import { useRouteToast } from '../home/useRouteToast'
-import { VehicleSelector } from '../home/VehicleSelector'
+import { VehicleSelector, type VehicleOption } from '../home/VehicleSelector'
 import { usePushSubscription } from '../../../shared/push/usePushSubscription'
 import { useOwnPositionStore } from '../position/useOwnPositionStore'
 import { useWakeLock } from '../position/useWakeLock'
@@ -206,6 +207,8 @@ export function DriverMapScreen() {
   const [hasLocation, setHasLocation] = useState(true) // optimistic until Permissions API says denied
   const { isPending: goOnlinePending, error: goOnlineError, goOnline } = useGoOnline()
   const { isPending: goOfflinePending, goOffline } = useGoOffline()
+  // Fetch the fleet's active vehicles for the go-online picker (only while Offline).
+  const { data: vehiclesData } = useDriverVehicles((meData?.status ?? 'Offline') === 'Offline')
 
   // Pre-populate the vehicle selector when meData arrives (loads after mount).
   useEffect(() => {
@@ -263,14 +266,26 @@ export function DriverMapScreen() {
   const status = meData?.status ?? 'Offline'
   const hasVehicle = !!selectedVehicleId
 
-  const vehicles = meData?.currentVehicleId
-    ? [{
-        id: meData.currentVehicleId,
-        plate: meData.currentVehiclePlate ?? meData.currentVehicleId.slice(0, 8),
-        make: '',
-        model: '',
-      }]
-    : []
+  // The picker lists the fleet's active vehicles (fetched). Keep the driver's own current vehicle
+  // present even if it isn't in the active list (e.g. just deactivated) so the preselect still shows.
+  const fetchedVehicles: VehicleOption[] = (vehiclesData?.items ?? []).map(v => ({
+    id: v.id,
+    plate: v.plate,
+    make: v.make,
+    model: v.model,
+  }))
+  const vehicles: VehicleOption[] =
+    meData?.currentVehicleId && !fetchedVehicles.some(v => v.id === meData.currentVehicleId)
+      ? [
+          {
+            id: meData.currentVehicleId,
+            plate: meData.currentVehiclePlate ?? meData.currentVehicleId.slice(0, 8),
+            make: '',
+            model: '',
+          },
+          ...fetchedVehicles,
+        ]
+      : fetchedVehicles
 
   function handleGoOnline() {
     if (selectedVehicleId) void goOnline(selectedVehicleId)
