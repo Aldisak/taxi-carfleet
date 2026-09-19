@@ -35,10 +35,19 @@ RUN dotnet publish "Taxi.Api.csproj" -c Release -o /app/publish --no-restore /p:
 # runs on the base image's musl runtime; Npgsql is fully managed, so musl is safe. Alpine
 # ships no curl — install it (has a shell, unlike chiseled) for the HEALTHCHECK.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
-RUN apk add --no-cache curl
+# curl → HEALTHCHECK; tzdata → the app resolves IANA zones (WeeklyDigestJob et al. use
+# TimeZoneInfo.FindSystemTimeZoneById("Europe/Prague") — Alpine ships no zoneinfo db, so
+# without tzdata that throws TimeZoneNotFoundException and StopHost crash-loops the API).
+RUN apk add --no-cache curl tzdata
 
 WORKDIR /app
 COPY --from=build /app/publish .
+
+# Pre-create the mounted-volume dirs owned by the non-root app user. Docker copies an image
+# dir's ownership onto a freshly-created named volume, so an empty dp_keys/fleet_data volume
+# mounted here inherits uid 1654 — without this the volume is root-owned and DataProtection
+# cannot write its key-ring (/keys) nor the API save fleet logos (/data/fleets).
+RUN mkdir -p /keys /data/fleets && chown -R $APP_UID:$APP_UID /keys /data/fleets
 
 # Kestrel listens on 8080 (non-privileged, so the non-root user can bind it).
 ENV ASPNETCORE_URLS=http://+:8080 \
