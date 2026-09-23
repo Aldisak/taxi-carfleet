@@ -4,7 +4,7 @@
   "title": "Customer app UI redesign (design handoff v1 2026-09-23) — screens onto the new shared/ui kit",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "ship",
+  "phase": "done",
   "spec_path": ".claude/state/customer-app-design-handoff.md",
   "branch": "redesign/customer-app (off main @ 6100953)",
   "autonomous_mode": true,
@@ -78,5 +78,6 @@
   "topo_order": "WI-1 (conductor inline) -> WI-2 || WI-3 || WI-4 || WI-5 (parallel, folder-disjoint) -> impl-review each -> Phase 5 web quality gate -> commit",
   "key_constraints": "PRESENTATIONAL ONLY: keep every hook/pure-logic module/data flow; restyle onto web/src/shared/ui kit (CSS vars). Agents NEVER edit i18n JSONs (conductor pre-adds keys; missing key => reuse existing or report). Preserve: onAuthenticated-continuation login contract + skipAuthRedirect, headlineRules status->phase mapping (copy only), e2e contracts (.tracking-car-icon, center-pin testid, cs-CZ visible strings in web/e2e/customer.spec.ts — check before renaming any visible string), leaflet-lazy discipline, atomic zustand selectors, axe on changed interactive components, >=48px targets, Czech-first formal 'vy'. Parity test fails suite on any locale key drift. Pre-existing acceptHydration 3-test failure is NOT ours — ignore, do not fix, do not mask.",
   "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD (missing QueryClient wrapper) — excluded from our gate. git add: explicit paths only.",
-  "updated_at": "2026-09-23"
+  "updated_at": "2026-09-23",
+  "ship": "ff-merged redesign/customer-app into main (local, no remote push per authority). main @ 9f3833e. 3 commits: 6294ad9 foundation + 2283e73 frame + 9f3833e screens."
 }
