@@ -22,9 +22,11 @@ function renderDialog(props: Partial<React.ComponentProps<typeof CancelDialog>> 
 }
 
 describe('CancelDialog', () => {
-  it('renders a dialog with exactly two buttons', () => {
+  it('renders a bottom-sheet dialog named "Zrušit objednávku?" with exactly two buttons', () => {
     renderDialog()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // The shared BottomSheet exposes the aria-label from customer.tracking.cancelDialogTitle —
+    // the load-bearing dialog name that the e2e locates must survive the modal→sheet restyle.
+    expect(screen.getByRole('dialog', { name: 'Zrušit objednávku?' })).toBeInTheDocument()
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(2)
   })

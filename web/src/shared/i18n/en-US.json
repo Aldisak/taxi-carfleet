@@ -956,7 +956,11 @@
       "errorTooLate": "Pickup can be scheduled at most 7 days ahead.",
       "errorScheduledInvalid": "Please enter a valid date and time.",
       "errorCreateFailed": "The order could not be created. Please try again.",
-      "routeNotFound": "The route could not be loaded."
+      "routeNotFound": "The route could not be loaded.",
+      "optionsDone": "Done",
+      "whenCaption": "At least 20 minutes from now, up to 7 days ahead.",
+      "chipNote": "Note",
+      "passengersChip": "{{count}} passengers"
     },
     "custom": {
       "title": "Custom order",
@@ -1031,7 +1035,12 @@
       "sheetLabel": "Ride status",
       "pushPromptTitle": "Want a notification when the driver arrives?",
       "pushAllow": "Enable notifications",
-      "pushDismiss": "Not now"
+      "pushDismiss": "Not now",
+      "searchingHint": "This usually takes under 2 minutes.",
+      "pillArrived": "Arrived",
+      "pillInProgress": "In progress",
+      "watchFor": "Look for {{vehicle}}, plate {{plate}}.",
+      "paymentNote": "Price {{price}}, paid to the driver."
     },
     "login": {
       "title": "Sign in",
@@ -1050,7 +1059,9 @@
       "codeMismatch": "The code is incorrect, please try again.",
       "tooManyRequests": "Please wait a moment and try again.",
       "networkError": "Cannot connect to the server. Check your connection.",
-      "unknownError": "An unexpected error occurred. Please try again."
+      "unknownError": "An unexpected error occurred. Please try again.",
+      "privacyCaption": "We only use your number to confirm the order.",
+      "confirmCode": "Confirm"
     },
     "rating": {
       "title": "Rate your ride",
@@ -1088,7 +1099,10 @@
       "optionsToggle": "Ride options",
       "meterUnavailable": "We could not calculate the price, please call us.",
       "sheetLabel": "Ride order",
-      "loginPrompt": "Please sign in to finish your order."
+      "loginPrompt": "Please sign in to finish your order.",
+      "pickupHere": "Pickup here",
+      "pickupChange": "Change",
+      "pickOnMap": "Pick destination on the map"
     },
     "menu": {
       "title": "Menu",

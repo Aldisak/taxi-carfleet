@@ -3,30 +3,32 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { MyOrderHistoryItemDto } from '../../../shared/api/client'
 import { formatCzk } from '../../../shared/format/money'
-import { historyRowPriceCzk, historyStatusKey, historyRowTimestamp } from './historyRules'
+import { Pill, RouteSummary, Button } from '../../../shared/ui'
+import { historyRowPriceCzk, historyStatusKey } from './historyRules'
+import { historyStatusTone } from './dayGrouping'
 import { buildReorderDraft, REORDER_STATE_KEY } from './reorder'
 
 const Card = styled.article`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  background: ${({ theme }) => theme.colors.surface};
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 `
 
 const RowLink = styled(Link)`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
-  min-height: ${({ theme }) => theme.touchTargets.min};
+  gap: 12px;
+  min-height: 48px;
   text-decoration: none;
   color: inherit;
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  border-radius: var(--r-md);
 
   &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.primary};
+    outline: 3px solid var(--accent);
     outline-offset: 2px;
   }
 `
@@ -34,85 +36,39 @@ const RowLink = styled(Link)`
 const TopLine = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: ${({ theme }) => theme.spacing.md};
-`
-
-const DateText = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const Pill = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const Route = styled.p`
-  margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.text};
+  align-items: center;
+  gap: 12px;
 `
 
 const Price = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-body-lg);
+  font-weight: var(--fw-extra);
+  color: var(--ink);
 `
 
-const ReorderButton = styled.button`
-  align-self: flex-start;
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  padding: 0 ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  color: ${({ theme }) => theme.colors.primary};
-  border: 1px solid ${({ theme }) => theme.colors.primary};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 2px;
-  }
+const Actions = styled.div`
+  display: flex;
 `
-
-const pragueDate = new Intl.DateTimeFormat('cs-CZ', {
-  timeZone: 'Europe/Prague',
-  day: 'numeric',
-  month: 'numeric',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-function formatPrague(iso: string): string {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : pragueDate.format(d)
-}
 
 interface HistoryRowProps {
   order: MyOrderHistoryItemDto
 }
 
 /**
- * One past-order row: tapping the row navigates to /customer/t/{code} (read-only tracking — the cold
- * authed load renders the by-code DTO read-only, laneB4d contract note). "Objednat znovu" starts a
- * new order on the map-first /customer surface (UC-015 replaced the separate /customer/order/new
- * screen). The reorder draft (reorder.ts) is still passed via router state for forward-compat, but
- * the destination-first map flow does not prefill from it (the draft carried addresses without
- * coordinates, which never mapped to the map's coordinate-first selection). Date in Europe/Prague,
- * price in cs-CZ CZK.
+ * One past-order card (UC-020 WI-5 restyle onto the shared UI kit). Tapping the card navigates to
+ * /customer/t/{code} (read-only tracking — the cold authed load renders the by-code DTO read-only,
+ * laneB4d contract note). The status Pill tone comes from historyStatusTone; the pickup→dropoff
+ * route uses the shared RouteSummary. "Objednat znovu" (a small secondary Button, a SIBLING of the
+ * card link so it never nests interactive elements) starts a new order on the map-first /customer
+ * surface (UC-015 replaced /customer/order/new). The reorder draft (reorder.ts) is still passed via
+ * router state for forward-compat. The per-ride date lives in the day header now (design handoff §3
+ * lists no per-ride time). Price in cs-CZ CZK.
  */
 export function HistoryRow({ order }: HistoryRowProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
   const price = historyRowPriceCzk(order)
-  const route = [order.pickupAddress, order.dropoffAddress].filter(Boolean).join(' → ')
 
   function handleReorder() {
     navigate('/customer', { state: { [REORDER_STATE_KEY]: buildReorderDraft(order) } })
@@ -120,17 +76,21 @@ export function HistoryRow({ order }: HistoryRowProps) {
 
   return (
     <Card>
-      <RowLink to={`/customer/t/${encodeURIComponent(order.publicCode)}`} aria-label={t('customer.history.openAria', { code: order.publicCode })}>
+      <RowLink
+        to={`/customer/t/${encodeURIComponent(order.publicCode)}`}
+        aria-label={t('customer.history.openAria', { code: order.publicCode })}
+      >
         <TopLine>
-          <DateText>{formatPrague(historyRowTimestamp(order))}</DateText>
-          <Pill>{t(historyStatusKey(order.status))}</Pill>
+          <Pill tone={historyStatusTone(order.status)}>{t(historyStatusKey(order.status))}</Pill>
+          <Price>{price != null ? formatCzk(price) : t('customer.history.priceUnknown')}</Price>
         </TopLine>
-        <Route>{route}</Route>
-        <Price>{price != null ? formatCzk(price) : t('customer.history.priceUnknown')}</Price>
+        <RouteSummary pickup={order.pickupAddress} dropoff={order.dropoffAddress ?? undefined} />
       </RowLink>
-      <ReorderButton type="button" onClick={handleReorder}>
-        {t('customer.history.reorder')}
-      </ReorderButton>
+      <Actions>
+        <Button type="button" variant="secondary" size="sm" onClick={handleReorder}>
+          {t('customer.history.reorder')}
+        </Button>
+      </Actions>
     </Card>
   )
 }

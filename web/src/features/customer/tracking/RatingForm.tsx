@@ -1,69 +1,68 @@
 import { useState } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { StarPicker } from '../../../shared/ui/StarPicker'
+import { Button } from '../../../shared/ui/Button'
 import { useOnlineStatus } from '../shell/useOnlineStatus'
 import { useRateOrder } from './useRateOrder'
 import { canSubmitRating, MAX_RATING_COMMENT_LENGTH } from './ratingRules'
-import { StarPicker } from './StarPicker'
 
 const Wrapper = styled.section`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-  margin-top: ${({ theme }) => theme.spacing.sm};
+  gap: 12px;
+  margin-top: 8px;
 `
 
 const Title = styled.h3`
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-headline);
+  font-weight: var(--fw-extra);
+  color: var(--ink);
 `
 
 const CommentLabel = styled.label`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  gap: 6px;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
 `
 
 const CommentInput = styled.textarea`
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: var(--fs-body-lg);
   font-family: inherit;
   resize: vertical;
-`
 
-const SubmitButton = styled.button`
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  cursor: pointer;
+  &::placeholder {
+    color: var(--ink-3);
+  }
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  &:focus {
+    outline: none;
+    background: var(--surface);
+    border: 2px solid var(--ink);
   }
 `
 
 const Thanks = styled.p`
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-body);
+  color: var(--ink);
 `
 
 const Message = styled.p`
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.error};
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--danger);
 `
 
 interface RatingFormProps {
@@ -73,10 +72,11 @@ interface RatingFormProps {
 
 /**
  * Rating control dropped into the TrackingSheet ratingSlot on the Completed tracking view
- * (B-rating). 1..5 stars + optional comment → POST orders/{id}/rating, once. Already-rated
- * orders (from history) and a 409 both render the read-only "Děkujeme" state (useRateOrder).
- * Offline disables submit with a message. Authed-only: TrackingPage passes this slot only in
- * authed mode (the POST is CustomerOnly and needs the resolved order id).
+ * (B-rating; restyled onto the shared UI kit in UC-020 WI-4 — the LOCAL StarPicker is replaced by
+ * the shared kit StarPicker with 48px SVG-star targets). 1..5 stars + optional comment → POST
+ * orders/{id}/rating, once. Already-rated orders (from history) and a 409 both render the read-only
+ * "Děkujeme" state (useRateOrder). Offline disables submit with a message. Authed-only: TrackingPage
+ * passes this slot only in authed mode (the POST is CustomerOnly and needs the resolved order id).
  */
 export function RatingForm({ publicCode }: RatingFormProps) {
   const { t } = useTranslation()
@@ -90,7 +90,9 @@ export function RatingForm({ publicCode }: RatingFormProps) {
     return (
       <Wrapper aria-live="polite">
         <Thanks>{t('customer.rating.thanks')}</Thanks>
-        {view.stars != null && <StarPicker value={view.stars} onChange={() => {}} readOnly />}
+        {view.stars != null && (
+          <Thanks>{t('customer.rating.yourRating', { stars: view.stars })}</Thanks>
+        )}
       </Wrapper>
     )
   }
@@ -104,7 +106,12 @@ export function RatingForm({ publicCode }: RatingFormProps) {
     <Wrapper>
       <Title>{t('customer.rating.title')}</Title>
 
-      <StarPicker value={stars} onChange={setStars} disabled={isPending} />
+      <StarPicker
+        value={stars}
+        onChange={setStars}
+        legend={t('customer.rating.starsLegend')}
+        starLabel={(n) => t('customer.rating.starLabel', { stars: n })}
+      />
 
       <CommentLabel>
         {t('customer.rating.commentLabel')}
@@ -119,9 +126,16 @@ export function RatingForm({ publicCode }: RatingFormProps) {
       {!online && <Message role="alert">{t('customer.rating.offline')}</Message>}
       {errorKey && <Message role="alert">{t(errorKey)}</Message>}
 
-      <SubmitButton type="button" disabled={!canSubmit} onClick={() => void submit(stars, comment)}>
-        {isPending ? t('customer.rating.submitting') : t('customer.rating.submit')}
-      </SubmitButton>
+      <Button
+        variant="primary"
+        fullWidth
+        disabled={!canSubmit}
+        loading={isPending}
+        loadingLabel={t('customer.rating.submitting')}
+        onClick={() => void submit(stars, comment)}
+      >
+        {t('customer.rating.submit')}
+      </Button>
     </Wrapper>
   )
 }

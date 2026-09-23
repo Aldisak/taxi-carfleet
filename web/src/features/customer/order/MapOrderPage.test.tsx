@@ -319,6 +319,16 @@ describe('MapOrderPage', () => {
     expect(screen.getByText(i18n.t('customer.shell.gpsUnavailable'))).toBeInTheDocument()
   })
 
+  it('shows the reverse-geocoded pickup address and the "Vyzvednutí zde" label', () => {
+    mockReverse.mockReturnValue({ data: { found: true, label: 'Nádraží, Kutná Hora', street: null, municipality: null } })
+    renderPage()
+    act(() => lastOnCenterChange?.({ lat: 50.031, lng: 15.191 }))
+    // The pickup address (previously invisible) is now shown in the top slot.
+    expect(screen.getByText('Nádraží, Kutná Hora')).toBeInTheDocument()
+    // The center-pin caption is present.
+    expect(screen.getByText(i18n.t('customer.mapOrder.pickupHere'))).toBeInTheDocument()
+  })
+
   it('has no axe violations', async () => {
     const { container } = renderPage()
     expect(await axe(container)).toHaveNoViolations()

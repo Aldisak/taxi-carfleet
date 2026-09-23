@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
@@ -41,10 +41,37 @@ function renderStep(onAuthenticated = vi.fn()) {
   return { onAuthenticated }
 }
 
+/** Advance to the code step by requesting a code for a valid phone. */
+async function reachCodeStep(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/telefonní číslo/i), '123456789')
+  await user.click(screen.getByRole('button', { name: 'Odeslat kód' }))
+  return screen.findByRole('group', { name: /ověřovací kód/i })
+}
+
+/** Fill all six boxes at once by pasting into the first (drives the kit paste-distribute path). */
+async function pasteCode(
+  user: ReturnType<typeof userEvent.setup>,
+  group: HTMLElement,
+  code: string,
+) {
+  const boxes = within(group).getAllByRole('textbox')
+  await user.click(boxes[0])
+  await user.paste(code)
+}
+
 describe('CustomerLoginStep', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuthStorage.getFleetSlug.mockReturnValue('demo')
+  })
+
+  it('shows the +420 prefix and privacy caption on the phone step', () => {
+    renderStep()
+
+    expect(screen.getByText('+420')).toBeInTheDocument()
+    expect(
+      screen.getByText('Vaše číslo použijeme pouze k potvrzení objednávky.'),
+    ).toBeInTheDocument()
   })
 
   it('sends a code then shows the code field', async () => {
@@ -53,23 +80,20 @@ describe('CustomerLoginStep', () => {
     renderStep()
 
     await user.type(screen.getByLabelText(/telefonní číslo/i), '123456789')
-    await user.click(screen.getByRole('button', { name: /odeslat kód/i }))
+    await user.click(screen.getByRole('button', { name: 'Odeslat kód' }))
 
     expect(mockRequest).toHaveBeenCalledWith('+420123456789')
-    expect(await screen.findByLabelText(/ověřovací kód/i)).toBeInTheDocument()
+    expect(await screen.findByRole('group', { name: /ověřovací kód/i })).toBeInTheDocument()
   })
 
-  it('auto-submits a 6-digit code and shows the Czech error on a wrong code', async () => {
+  it('auto-submits on the 6th digit and shows the Czech error on a wrong code', async () => {
     const user = userEvent.setup()
     mockRequest.mockResolvedValue(undefined)
     mockVerify.mockRejectedValue({ status: 401 })
     const { onAuthenticated } = renderStep()
 
-    await user.type(screen.getByLabelText(/telefonní číslo/i), '123456789')
-    await user.click(screen.getByRole('button', { name: /odeslat kód/i }))
-
-    const codeField = await screen.findByLabelText(/ověřovací kód/i)
-    await user.type(codeField, '000000')
+    const group = await reachCodeStep(user)
+    await pasteCode(user, group, '000000')
 
     expect(mockVerify).toHaveBeenCalledWith('+420123456789', '000000')
     expect(await screen.findByText('Kód nesouhlasí, zkuste to znovu.')).toBeInTheDocument()
@@ -85,13 +109,23 @@ describe('CustomerLoginStep', () => {
     })
     const { onAuthenticated } = renderStep()
 
-    await user.type(screen.getByLabelText(/telefonní číslo/i), '123456789')
-    await user.click(screen.getByRole('button', { name: /odeslat kód/i }))
-    const codeField = await screen.findByLabelText(/ověřovací kód/i)
-    await user.type(codeField, '654321')
+    const group = await reachCodeStep(user)
+    await pasteCode(user, group, '654321')
 
+    expect(mockVerify).toHaveBeenCalledWith('+420123456789', '654321')
     expect(mockAuthStorage.setTokens).toHaveBeenCalledWith('at', 'rt', 'demo', 'Customer')
     expect(onAuthenticated).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns to the phone step via "Změnit číslo"', async () => {
+    const user = userEvent.setup()
+    mockRequest.mockResolvedValue(undefined)
+    renderStep()
+
+    await reachCodeStep(user)
+    await user.click(screen.getByRole('button', { name: /změnit číslo/i }))
+
+    expect(screen.getByLabelText(/telefonní číslo/i)).toBeInTheDocument()
   })
 
   it('has no axe violations on the phone step', async () => {
@@ -102,6 +136,23 @@ describe('CustomerLoginStep', () => {
         </I18nextProvider>
       </ThemeProvider>,
     )
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it('has no axe violations on the code step', async () => {
+    const user = userEvent.setup()
+    mockRequest.mockResolvedValue(undefined)
+    const { container } = render(
+      <ThemeProvider theme={theme}>
+        <I18nextProvider i18n={i18n}>
+          <CustomerLoginStep onAuthenticated={vi.fn()} />
+        </I18nextProvider>
+      </ThemeProvider>,
+    )
+    await user.type(screen.getByLabelText(/telefonní číslo/i), '123456789')
+    await user.click(screen.getByRole('button', { name: 'Odeslat kód' }))
+    await screen.findByRole('group', { name: /ověřovací kód/i })
+
     expect(await axe(container)).toHaveNoViolations()
   })
 })

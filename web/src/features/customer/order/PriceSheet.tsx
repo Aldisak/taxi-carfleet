@@ -5,131 +5,45 @@ import { authStorage } from '../../../shared/api/auth-storage'
 import { CustomerLoginStep } from '../login/CustomerLoginStep'
 import { useOnlineStatus } from '../shell/useOnlineStatus'
 import { BottomSheet } from '../../../shared/ui/BottomSheet'
+import { Button } from '../../../shared/ui/Button'
+import { Chip } from '../../../shared/ui/Chip'
+import { Callout } from '../../../shared/ui/Callout'
+import { RouteSummary } from '../../../shared/ui/RouteSummary'
+import { Icon } from '../../../shared/ui/icons/Icon'
+import { formatCzk } from '../../../shared/format/money'
 import { buildOrderRequest } from './buildOrderRequest'
 import { useCreateOrder } from './useCreateOrder'
 import { PriceRangeBadge } from './PriceRangeBadge'
-import { PassengerStepper } from './PassengerStepper'
-import { WhenPicker, type WhenMode } from './WhenPicker'
-import { validateScheduledAt, minScheduledAt, maxScheduledAt } from './whenRules'
+import { OptionsSheet } from './OptionsSheet'
+import { type WhenMode } from './WhenPicker'
+import { validateScheduledAt } from './whenRules'
 import type { UsePriceQuoteResult } from './usePriceQuote'
 import type { PriceQuoteView } from './priceQuote'
 import type { SelectedPlace } from './orderFlowState'
 
-const Header = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-`
-
 const Title = styled.h2`
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-headline);
+  font-weight: var(--fw-extra);
+  color: var(--ink);
 `
 
-const Fallback = styled.p`
+const ChipRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`
+
+const LoginPrompt = styled.p`
   margin: 0;
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  text-align: center;
-`
-
-const OptionsToggle = styled.button<{ $expanded: boolean }>`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  padding: 0 ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 2px;
-  }
-`
-
-const Options = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
-`
-
-const Field = styled.label`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const NoteInput = styled.input`
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  padding: 0 ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  font-size: var(--fs-body-lg);
+  color: var(--ink);
 `
 
 const Actions = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-`
-
-const OrderButton = styled.button`
-  width: 100%;
-  min-height: ${({ theme }) => theme.touchTargets.primary};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`
-
-const CancelButton = styled.button`
-  width: 100%;
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  background: none;
-  border: none;
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  cursor: pointer;
-  text-decoration: underline;
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 2px;
-  }
-`
-
-const Message = styled.p`
-  margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.error};
-`
-
-const LoginPrompt = styled.p`
-  margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
+  gap: 8px;
 `
 
 /** Props for PriceSheet — a controlled surface; the page owns the source-of-truth state. */
@@ -152,25 +66,29 @@ function isOrderable(view: PriceQuoteView | null): view is Extract<PriceQuoteVie
 }
 
 /**
- * The map-first customer price bottom-sheet (UC-015 WI-3). Rendered in the shell bottomSlot
- * once a destination is set. Shows the interpreted price (PriceRangeBadge: Fixed exact,
- * Estimate RANGE, Meter, or error) and the Order / Cancel actions. The ride options
- * (passengers, when, note) live in a collapsed-by-default area that drives BottomSheet.expanded.
+ * The map-first customer price bottom-sheet (UC-015 WI-3, restyled onto the UI kit in UC-020 WI-2).
+ * Rendered in the shell bottomSlot once a destination is set. Shows the RouteSummary (pickup→dropoff
+ * with a "Změnit" action returning to search), the interpreted price on a PriceCard (PriceRangeBadge:
+ * Fixed exact, Estimate RANGE, Meter, or error), the ride-option chips (Hned/Na čas · N cestující ·
+ * Poznámka — each opens the OptionsSheet), and the Order / Cancel actions.
  *
- * Order gating (F4): Order is enabled only for a fixed/estimate view while online with a
- * resolved pickup; meter/unknown/error/null show the fallback message and disable Order, so
- * buildOrderRequest is never invoked on a non-priceable view. Order click mirrors the proven
- * CustomOrderPage continuation: offline → visible blocked reason (never queued —
- * rules/web-realtime.md#offline-ux); logged-out → inline CustomerLoginStep in-place with all
- * order state preserved, auto-resuming the create on onAuthenticated; logged-in → build the
- * request and create, then onOrdered(publicCode).
+ * Order gating (F4): Order is enabled only for a fixed/estimate view while online with a resolved
+ * pickup; meter/unknown/error/null disable Order so buildOrderRequest is never invoked on a
+ * non-priceable view. Order click mirrors the proven continuation: offline → visible blocked reason
+ * (never queued — rules/web-realtime.md#offline-ux); logged-out → inline CustomerLoginStep in-place
+ * with all order state preserved, auto-resuming the create on onAuthenticated; logged-in → build the
+ * request and create, then onOrdered(publicCode). The inline-login seam is behaviourally unchanged.
+ *
+ * The Order button's price slot carries the FIXED price only (aria-hidden so the accessible name
+ * stays exactly "Objednat"); for an Estimate the range lives solely in the PriceCard so the price
+ * text appears once (the e2e binds getByText(/140 Kč/) strictly).
  */
 export function PriceSheet({ pickup, destination, quote, onCancel, onOrdered }: PriceSheetProps) {
   const { t } = useTranslation()
   const online = useOnlineStatus()
   const createOrder = useCreateOrder()
 
-  const [expanded, setExpanded] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const [passengers, setPassengers] = useState(1)
   const [whenMode, setWhenMode] = useState<WhenMode>('now')
   const [scheduledAtLocal, setScheduledAtLocal] = useState('')
@@ -179,6 +97,7 @@ export function PriceSheet({ pickup, destination, quote, onCancel, onOrdered }: 
   const [formError, setFormError] = useState<string | null>(null)
 
   const orderable = isOrderable(quote.view)
+  const fixedPrice = quote.view?.kind === 'fixed' ? quote.view.priceCzk : null
 
   const toIso = useCallback((local: string): string | null => {
     if (!local) return null
@@ -237,85 +156,95 @@ export function PriceSheet({ pickup, destination, quote, onCancel, onOrdered }: 
   }
 
   function handleClose() {
-    // Escape collapses the options area if it is open; otherwise it clears the destination.
-    if (expanded) {
-      setExpanded(false)
-      return
-    }
+    // The OptionsSheet owns its own Escape (it stops propagation), so when this sheet receives
+    // Escape the options are closed → clear the destination.
     onCancel()
   }
 
   const canOrder = online && orderable && pickup !== null && !createOrder.isPending
+  const whenChipLabel = whenMode === 'now' ? t('customer.order.whenNow') : t('customer.order.whenScheduled')
 
   return (
-    <BottomSheet open expanded={expanded} ariaLabelKey="customer.mapOrder.sheetLabel" onClose={handleClose}>
-      <Header>
+    <>
+      <BottomSheet open expanded={false} ariaLabelKey="customer.mapOrder.sheetLabel" onClose={handleClose}>
         <Title>{t('customer.mapOrder.priceSheetTitle')}</Title>
+
+        <RouteSummary
+          pickup={pickup?.label ?? t('customer.mapOrder.pickupLabel')}
+          dropoff={destination?.label}
+          action={
+            <Button variant="ghost" size="sm" onClick={onCancel}>
+              {t('customer.mapOrder.pickupChange')}
+            </Button>
+          }
+        />
+
         <PriceRangeBadge view={quote.view} errorKey={quote.errorKey} />
-        {!orderable && !quote.errorKey && <Fallback>{t('customer.mapOrder.meterUnavailable')}</Fallback>}
-      </Header>
+        {!orderable && !quote.errorKey && (
+          <Callout tone="neutral">{t('customer.mapOrder.meterUnavailable')}</Callout>
+        )}
 
-      <OptionsToggle
-        type="button"
-        $expanded={expanded}
-        aria-expanded={expanded}
-        onClick={() => setExpanded((v) => !v)}
-      >
-        {t('customer.mapOrder.optionsToggle')}
-        <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-      </OptionsToggle>
+        <ChipRow>
+          <Chip selected={whenMode === 'scheduled'} onClick={() => setOptionsOpen(true)}>
+            {whenChipLabel}
+          </Chip>
+          <Chip selected={passengers > 1} onClick={() => setOptionsOpen(true)}>
+            {t('customer.order.passengersChip', { count: passengers })}
+          </Chip>
+          <Chip selected={note.trim() !== ''} onClick={() => setOptionsOpen(true)}>
+            {t('customer.order.chipNote')}
+          </Chip>
+        </ChipRow>
 
-      {expanded && (
-        <Options>
-          <WhenPicker
-            mode={whenMode}
-            onModeChange={setWhenMode}
-            scheduledAt={scheduledAtLocal}
-            onScheduledAtChange={setScheduledAtLocal}
-            min={toLocalInput(minScheduledAt())}
-            max={toLocalInput(maxScheduledAt())}
-          />
+        {!online && (
+          <Callout tone="warning" role="alert" icon={<Icon name="wifi-off" />}>
+            {t('customer.order.offlineBlocked')}
+          </Callout>
+        )}
+        {online && formError && (
+          <Callout tone="danger" role="alert" icon={<Icon name="close" />}>
+            {t(formError)}
+          </Callout>
+        )}
 
-          <Field as="div">
-            {t('customer.order.passengersLabel')}
-            <PassengerStepper value={passengers} onChange={setPassengers} />
-          </Field>
+        {showLogin ? (
+          <>
+            <LoginPrompt>{t('customer.mapOrder.loginPrompt')}</LoginPrompt>
+            <CustomerLoginStep onAuthenticated={() => { setShowLogin(false); void submit() }} />
+          </>
+        ) : (
+          <Actions>
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              disabled={!canOrder}
+              loading={createOrder.isPending}
+              loadingLabel={t('customer.order.submitting')}
+              price={fixedPrice !== null ? <span aria-hidden="true">{formatCzk(fixedPrice)}</span> : undefined}
+              onClick={handleOrderClick}
+            >
+              {t('customer.mapOrder.order')}
+            </Button>
+            <Button variant="ghost" size="sm" fullWidth onClick={onCancel}>
+              {t('customer.mapOrder.cancel')}
+            </Button>
+          </Actions>
+        )}
+      </BottomSheet>
 
-          <Field>
-            {t('customer.order.noteLabel')}
-            <NoteInput
-              value={note}
-              placeholder={t('customer.order.notePlaceholder')}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </Field>
-        </Options>
-      )}
-
-      {!online && <Message role="alert">{t('customer.order.offlineBlocked')}</Message>}
-      {online && formError && <Message role="alert">{t(formError)}</Message>}
-
-      {showLogin ? (
-        <>
-          <LoginPrompt>{t('customer.mapOrder.loginPrompt')}</LoginPrompt>
-          <CustomerLoginStep onAuthenticated={() => { setShowLogin(false); void submit() }} />
-        </>
-      ) : (
-        <Actions>
-          <OrderButton type="button" onClick={handleOrderClick} disabled={!canOrder}>
-            {createOrder.isPending ? t('customer.order.submitting') : t('customer.mapOrder.order')}
-          </OrderButton>
-          <CancelButton type="button" onClick={onCancel}>
-            {t('customer.mapOrder.cancel')}
-          </CancelButton>
-        </Actions>
-      )}
-    </BottomSheet>
+      <OptionsSheet
+        open={optionsOpen}
+        whenMode={whenMode}
+        onWhenModeChange={setWhenMode}
+        scheduledAt={scheduledAtLocal}
+        onScheduledAtChange={setScheduledAtLocal}
+        passengers={passengers}
+        onPassengersChange={setPassengers}
+        note={note}
+        onNoteChange={setNote}
+        onDone={() => setOptionsOpen(false)}
+      />
+    </>
   )
-}
-
-/** Converts a Date to a datetime-local input value (local time, no seconds). */
-function toLocalInput(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

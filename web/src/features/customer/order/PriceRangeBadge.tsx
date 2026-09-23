@@ -1,30 +1,9 @@
-import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { Callout } from '../../../shared/ui/Callout'
+import { PriceCard } from '../../../shared/ui/PriceCard'
+import { Icon } from '../../../shared/ui/icons/Icon'
 import { formatCzk } from '../../../shared/format/money'
 import type { PriceQuoteView } from './priceQuote'
-
-const Badge = styled.p<{ $fixed: boolean }>`
-  margin: 0;
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-  background: ${({ theme, $fixed }) => ($fixed ? theme.colors.primary : theme.colors.surface)};
-  color: ${({ theme, $fixed }) => ($fixed ? '#ffffff' : theme.colors.text)};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeXl};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  text-align: center;
-`
-
-const Error = styled.p`
-  margin: 0;
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  color: ${({ theme }) => theme.colors.error};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  text-align: center;
-`
 
 /** Props for PriceRangeBadge. */
 export interface PriceRangeBadgeProps {
@@ -35,17 +14,30 @@ export interface PriceRangeBadgeProps {
 }
 
 /**
- * Renders the custom-order price preview. A Fixed quote shows "Cena {n} Kč – pevná"; an
- * Estimate shows a RANGE "Odhad {low} Kč – {high} Kč" (AC #4 — never a single exact
- * estimate); a Meter quote shows "Podle taximetru" (A6 fallback — no dropoff). A quote
- * failure (502) shows "Cenu nelze spočítat, zavolejte nám". The Czech label is composed via
- * useTranslation (the pure priceQuote.ts stays structured).
+ * Renders the customer price preview on the UI-kit PriceCard (UC-020 WI-2 restyle).
+ *
+ * - Fixed   → the exact price at display size + the existing "Cena {price} – pevná" label as the
+ *             card note (the "pevná" wording is preserved for AT parity; there is no standalone
+ *             "pevná cena" i18n key — see the WI-2 reported gaps).
+ * - Estimate→ a RANGE "low Kč – high Kč" (AC #4, never a single exact value) at display size, with
+ *             the existing "Odhad …"/"Orientační odhad …" label as the note; degraded estimates get
+ *             the warning tone.
+ * - Meter   → a neutral non-orderable card ("Podle taximetru").
+ * - Error   → a danger Callout.
+ *
+ * role="status" is preserved so the pre-restyle live-region announcement is unchanged, and the
+ * numeric price text is untouched so existing content assertions + the e2e price-visibility check
+ * survive. The pure priceQuote.ts stays structured; all Czech labels are composed here.
  */
 export function PriceRangeBadge({ view, errorKey = null }: PriceRangeBadgeProps) {
   const { t } = useTranslation()
 
   if (errorKey) {
-    return <Error role="status">{t(errorKey)}</Error>
+    return (
+      <Callout tone="danger" role="status" icon={<Icon name="close" />}>
+        {t(errorKey)}
+      </Callout>
+    )
   }
 
   if (!view || view.kind === 'unknown') {
@@ -53,20 +45,33 @@ export function PriceRangeBadge({ view, errorKey = null }: PriceRangeBadgeProps)
   }
 
   if (view.kind === 'fixed') {
-    return <Badge $fixed role="status">{t('customer.custom.quoteFixed', { price: formatCzk(view.priceCzk) })}</Badge>
+    // The whole label goes in the display line (a single node) so the price number appears exactly
+    // once — the Kit has no numberless "Pevná cena" Pill key (see WI-2 reported gaps).
+    return (
+      <div role="status">
+        <PriceCard price={t('customer.custom.quoteFixed', { price: formatCzk(view.priceCzk) })} />
+      </div>
+    )
   }
 
   if (view.kind === 'meter') {
-    return <Badge $fixed={false} role="status">{t('customer.custom.quoteMeter')}</Badge>
+    return (
+      <div role="status">
+        <PriceCard price={t('customer.custom.quoteMeter')} />
+      </div>
+    )
   }
 
   // A degraded (haversine-fallback) estimate shows the WIDER band under an "orientační odhad"
-  // label (UC-010 AC#5); an exact estimate keeps the plain "Odhad" label.
-  const estimateKey = view.degraded ? 'customer.custom.quoteEstimateOrientacni' : 'customer.custom.quoteEstimate'
+  // label in a warning-toned card (UC-010 AC#5); an exact estimate keeps the neutral "Odhad" label.
+  // The whole label (incl. the range) is one display node so each number appears exactly once.
+  const low = formatCzk(view.lowCzk)
+  const high = formatCzk(view.highCzk)
+  const labelKey = view.degraded ? 'customer.custom.quoteEstimateOrientacni' : 'customer.custom.quoteEstimate'
 
   return (
-    <Badge $fixed={false} role="status">
-      {t(estimateKey, { low: formatCzk(view.lowCzk), high: formatCzk(view.highCzk) })}
-    </Badge>
+    <div role="status">
+      <PriceCard price={t(labelKey, { low, high })} tone={view.degraded ? 'warning' : 'neutral'} />
+    </div>
   )
 }

@@ -125,4 +125,11 @@ describe('RatingForm', () => {
     await screen.findByRole('radio', { name: /4/ })
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it('has no axe violations in the read-only thanks (already-rated) state', async () => {
+    mockHistory.mockResolvedValue(historyWith(3))
+    const { container } = renderForm()
+    await waitFor(() => expect(screen.getByText(/Děkujeme za hodnocení/)).toBeInTheDocument())
+    expect(await axe(container)).toHaveNoViolations()
+  })
 })

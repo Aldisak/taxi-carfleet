@@ -391,10 +391,14 @@ test.describe.serial('Customer PWA', () => {
     await page.getByRole('button', { name: 'Odeslat kód' }).click()
 
     // The code step renders after request-code resolves; inject the known code hash, then enter it.
-    const codeInput = page.getByLabel('Ověřovací kód')
-    await expect(codeInput).toBeVisible({ timeout: 10_000 })
+    // UC-020: the code entry is the kit CodeInput — a role=group of 6 single-digit boxes
+    // ("Ověřovací kód 1"…"Ověřovací kód 6"). Focus the first box and type; each keystroke
+    // fills a box and auto-advances, and the 6th digit auto-submits → verify-code → create order.
+    const codeGroup = page.getByRole('group', { name: 'Ověřovací kód' })
+    await expect(codeGroup).toBeVisible({ timeout: 10_000 })
     injectForPhone(phone)
-    await codeInput.fill(DEV_SMS_CODE) // auto-submits on the 6th digit → verify-code → create order
+    await codeGroup.getByLabel('Ověřovací kód 1').focus()
+    await page.keyboard.type(DEV_SMS_CODE)
 
     // Lands on Tracking showing "Hledáme řidiče…".
     await page.waitForURL(/\/customer\/t\//, { timeout: 15_000 })

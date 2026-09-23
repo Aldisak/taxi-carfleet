@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
@@ -153,6 +153,39 @@ describe('DestinationSearch', () => {
     await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
 
     await vi.waitFor(() => expect(mockSuggest).toHaveBeenCalledWith('Nádr', near))
+  })
+
+  it('bolds the matched substring inside the suggestion label', async () => {
+    const user = userEvent.setup()
+    mockSuggest.mockResolvedValue({
+      items: [{ name: 'Nádražní 1, Kutná Hora', label: 'Adresa', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
+    })
+    renderSearch()
+
+    await user.type(screen.getByRole('combobox', { name: /kam to bude/i }), 'Nádr')
+    const option = await screen.findByRole('option', { name: /nádražní 1, kutná hora/i })
+    // The matched query substring is wrapped in a <strong> — presentational only, full label intact.
+    const strong = within(option).getByText(/nádr/i, { selector: 'strong' })
+    expect(strong).toBeInTheDocument()
+    expect(option).toHaveTextContent('Nádražní 1, Kutná Hora')
+  })
+
+  it('offers a "Vybrat cíl na mapě" row that collapses the search back to the map', async () => {
+    const user = userEvent.setup()
+    mockSuggest.mockResolvedValue({
+      items: [{ name: 'Nádražní 1, Kutná Hora', label: 'Adresa', street: 'Nádražní', municipality: 'Kutná Hora', lat: 49.95, lng: 15.27 }],
+    })
+    renderSearch()
+
+    const input = screen.getByRole('combobox', { name: /kam to bude/i })
+    await user.type(input, 'Nádr')
+    await screen.findByRole('option', { name: /nádražní/i })
+
+    const pickOnMap = screen.getByRole('button', { name: /vybrat cíl na mapě/i })
+    await user.click(pickOnMap)
+    // The list collapses (back to the map) without selecting a destination.
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('has no axe violations when collapsed', async () => {

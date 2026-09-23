@@ -1,0 +1,14 @@
+{
+  "uc": "UC-020",
+  "blocks_merge": false,
+  "reviewer": "impl-reviewer (order+login, clean) + conductor-completed (history+tracking after the reviewer came to rest mid-run without emitting JSON)",
+  "findings": [
+    { "id": "F-1", "wi": "WI-3", "severity": "LOW", "file": "web/e2e/customer.spec.ts", "finding": "6-box CodeInput broke the single-input .fill() at lines 393-397", "suggested_fix": "RESOLVED by conductor: role=group + focus box 1 + keyboard.type" },
+    { "id": "F-2", "wi": "WI-3", "severity": "LOW", "file": "web/src/features/customer/login/CustomerLoginStep.tsx", "finding": "reused dispatcher board.actions.confirm key", "suggested_fix": "RESOLVED by conductor: new customer.login.confirmCode x6" }
+  ],
+  "verified": {
+    "vitest": "src/features/customer 401 tests / 53 files green (order 142, tracking 113, login 40, history 28)",
+    "tsc": "npm run tsc exit 0",
+    "contracts": "no eager leaflet import (MapOrderPage match is a comment only); no cross-feature imports; cancel dialog name customer.tracking.cancelDialogTitle + confirm/dismiss preserved; combobox 'Kam to bude?' + submit 'Objednat' kept; i18n diff = conductor keys only"
+  }
+}

@@ -1,45 +1,43 @@
-import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import styled from 'styled-components'
+import { Segmented } from '../../../shared/ui/Segmented'
 
 const Group = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-`
-
-const Toggle = styled.div`
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
-`
-
-const ToggleButton = styled.button<{ $active: boolean }>`
-  flex: 1;
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  background: ${({ theme, $active }) => ($active ? theme.colors.primary : theme.colors.surface)};
-  color: ${({ theme, $active }) => ($active ? '#ffffff' : theme.colors.text)};
-  border: 1px solid ${({ theme, $active }) => ($active ? theme.colors.primary : theme.colors.border)};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 2px;
-  }
-`
-
-const DateInput = styled.input`
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  padding: 0 ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
+  gap: 8px;
 `
 
 const Label = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+`
+
+const Caption = styled.span`
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+`
+
+// A datetime-local control styled to match the Kit's Field (the shared Field does not accept
+// native min/max, and the +20 min … +7 day bounds are a real affordance here, so this stays a
+// bespoke kit-styled input rather than the Field primitive). Real bound enforcement lives in the
+// pure whenRules.ts — these attributes are the UX hint only.
+const DateInput = styled.input`
+  min-height: 56px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: var(--fs-body-lg);
+  color: var(--ink);
+
+  &:focus-visible {
+    outline: none;
+    background: var(--surface);
+    border: 2px solid var(--ink);
+  }
 `
 
 /** "Hned" vs "Na čas" selection. */
@@ -59,24 +57,28 @@ export interface WhenPickerProps {
 }
 
 /**
- * "Kdy" picker: Hned (default) or Na čas with a datetime-local input bounded to
- * +20 min … +7 days (spec §2). Bounds are enforced by the pure whenRules.ts module;
- * the input min/max are a UX affordance, not the source of truth.
+ * "Kdy" picker: Hned (default) or Na čas with a datetime-local Field bounded to
+ * +20 min … +7 days (spec §2). Restyled onto the UI kit (UC-020 WI-2): the Hned/Na čas toggle
+ * is the shared Segmented control and the datetime input is the shared Field. Bounds are enforced
+ * by the pure whenRules.ts module; the input min/max are a UX affordance, not the source of truth.
+ * The pure rules and the accessible labels (aria-pressed toggle, "Datum a čas vyzvednutí") are
+ * unchanged so the wiring in PriceSheet/OptionsSheet is untouched.
  */
 export function WhenPicker({ mode, onModeChange, scheduledAt, onScheduledAtChange, min, max }: WhenPickerProps) {
   const { t } = useTranslation()
 
   return (
     <Group>
-      <Label as="label" id="when-label">{t('customer.order.whenLabel')}</Label>
-      <Toggle role="group" aria-labelledby="when-label">
-        <ToggleButton type="button" $active={mode === 'now'} aria-pressed={mode === 'now'} onClick={() => onModeChange('now')}>
-          {t('customer.order.whenNow')}
-        </ToggleButton>
-        <ToggleButton type="button" $active={mode === 'scheduled'} aria-pressed={mode === 'scheduled'} onClick={() => onModeChange('scheduled')}>
-          {t('customer.order.whenScheduled')}
-        </ToggleButton>
-      </Toggle>
+      <Label>{t('customer.order.whenLabel')}</Label>
+      <Segmented
+        ariaLabel={t('customer.order.whenLabel')}
+        value={mode}
+        onChange={(v) => onModeChange(v as WhenMode)}
+        options={[
+          { value: 'now', label: t('customer.order.whenNow') },
+          { value: 'scheduled', label: t('customer.order.whenScheduled') },
+        ]}
+      />
       {mode === 'scheduled' && (
         <DateInput
           type="datetime-local"
@@ -84,9 +86,10 @@ export function WhenPicker({ mode, onModeChange, scheduledAt, onScheduledAtChang
           value={scheduledAt}
           min={min}
           max={max}
-          onChange={e => onScheduledAtChange(e.target.value)}
+          onChange={(e) => onScheduledAtChange(e.target.value)}
         />
       )}
+      <Caption>{t('customer.order.whenCaption')}</Caption>
     </Group>
   )
 }

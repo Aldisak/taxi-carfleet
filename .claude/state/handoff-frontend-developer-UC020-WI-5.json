@@ -1,0 +1,18 @@
+{
+  "wi_id": "UC020-WI-5",
+  "status": "done",
+  "files_touched": [
+    "web/src/features/customer/history/CustomerHistoryPage.tsx",
+    "web/src/features/customer/history/HistoryRow.tsx",
+    "web/src/features/customer/history/dayGrouping.ts",
+    "web/src/features/customer/history/dayGrouping.test.ts",
+    "web/src/features/customer/history/CustomerHistoryPage.test.tsx"
+  ],
+  "tests": { "files": 5, "passed": 28 },
+  "notes": "Presentational restyle of the customer history screen onto the shared UI kit. Pure logic untouched: historyRules.ts, useMyOrderHistory.ts, reorder.ts are unchanged. New colocated pure helper dayGrouping.ts (groupByPragueDay + historyStatusTone) with 8 unit tests (RED-first): buckets rides into Europe/Prague day groups keyed off historyRowTimestamp (completedAt ?? createdAt), preserves server input order (insertion-ordered Map, no sort), and correctly rolls a late-UTC timestamp into the next Prague day (CEST +2 edge asserted). HistoryRow is now a surface card (--surface, --r-lg, --shadow-card): status Pill (Completed->success, Cancelled->danger, else->info via historyStatusTone), shared RouteSummary(pickup->dropoff), price (--fs-body-lg --fw-extra, formatCzk cs-CZ Kč). The whole card stays a single Link carrying openAria; the 'Objednat znovu' Button (variant secondary, size sm) is a SIBLING outside the Link so no interactive element nests inside the anchor (axe-clean). Reorder navigation/state and read-only tracking navigation preserved exactly. Page groups rides under h2 Prague-day headings (--fs-label --fw-bold --ink-2) under the h1 title; offline is now a Callout tone=warning role=status; empty state centered --ink-2. Existing behavioral tests (row content, tracking nav, reorder nav, empty, axe) stay green; added a day-heading test (RED-first). tsc --noEmit exit 0; eslint --max-warnings 0 on the folder exit 0. Czech formal 'vy' via existing i18n keys only; no i18n files touched.",
+  "reported_gaps": [
+    "Reorder control uses the kit Button size='sm' (44px min-height) per the explicit WI instruction, which is under the general 48px touch-target rule. The whole-card Link is the >=48px primary target (min-height:48px). jsdom/axe cannot measure pixel targets so this is unverifiable mechanically; flagged per constraint.",
+    "The design handoff mentions an optional leading icon for the offline callout, but the shared Icon set has no wifi/offline glyph and the UI kit is out of scope for this WI. The Callout is rendered without a leading icon (text only). No i18n change; keep customer.history.offline as-is.",
+    "The per-ride timestamp shown by the old row was removed: the date now lives in the Prague-day group header (design handoff §3 lists no per-ride time). Time-of-day is not displayed. If a per-ride time is later desired, RouteSummary's meta slot is the intended place."
+  ]
+}

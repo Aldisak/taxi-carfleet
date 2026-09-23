@@ -1,44 +1,82 @@
 {
   "version": 1,
-  "uc_id": "UC-019",
-  "title": "Driver PWA map-first redesign (offer box + on-accept navigation route)",
+  "uc_id": "UC-020",
+  "title": "Customer app UI redesign (design handoff v1 2026-09-23) — screens onto the new shared/ui kit",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "done",
-  "work_items_doc": "docs/specs/done/019_UC_019_driver-map-first-work-items.md",
-  "topo_order": "WI-1 foundation (pure routeLeg/offerCardState/driverMapView + mapCamera->shared re-export shim + i18n 6 locales driver 'ty') -> WI-2 OfferCard | WI-3 DriverMapInner(lazy Polyline) | WI-4 RideSheet (parallel, disjoint files, all dep WI-1) -> WI-5 DriverMapScreen assembly+DriverLayout+router+removals+re-homed session hooks (dep WI-2,3,4) -> WI-6 driver e2e (dep WI-5). Run WI-2/3/4 parallel; sequential otherwise.",
-  "gate_c": "round-1 blocks_merge=false. Both HIGH-risk greps clean (leaflet-lazy sound V-1; mapCamera shim zero-dangle V-2; no stray /driver/ride navigator in kept files V-4; removal list complete V-5; session-hooks re-homed V-3). 2 MEDIUM: F-1 WI-3 COPY icon svgs into DriverMapInner (don't import from removed RideMapInner else dangle/dead-leaflet); F-2 WI-5 add mount-assertion test for re-homed useRideRestore/useLiveClear/useWakeLock (tsc won't catch a dropped call -> AC#6/F-04 regression). 1 LOW: F-3 WI-1 manually verify ru/uk/de informal 'ty' register (parity test only checks key symmetry). Conductor resolution: ACCEPT, findings folded into dev dispatches (F-1->WI-3, F-2->WI-5, F-3->WI-1); no designer round-2.",
-  "spec_path": "docs/specs/done/019_UC_019_driver-map-first.md",
-  "assignment_path": "docs/specs/done/019_UC_019_driver-map-first.md",
-  "branch": "uc-019-driver-map-first (off main @ c8c952d)",
-  "gates_passed": [
-    "A (autonomous authority): pre-authored spec docs/specs/019 (map-first driver screen replacing DriverHomePage+DriverRidePage; top Accept/Decline offer box; on-accept route polyline from POST /geo/route drawn on the full-bleed map; ride BottomSheet; Navigate external-app handoff; reuse all driver hooks) + directive 2026-09-16 'continue autonomously on all UCs in /todo, numeric order' — approved as-is",
-    "B (autonomous): designer 6 web WIs (WI-1 foundation -> WI-2||WI-3||WI-4 -> WI-5 assembly -> WI-6 e2e), acyclic; pre-addressed leaflet-lazy/mapCamera-shim/session-hook-rehome/no-navigate-on-accept/BottomNav-overlap/atomic-selectors",
-    "C (autonomous): design-review round-1 blocks_merge=false (both HIGH-risk greps clean); 3 findings folded (F-1->WI-3 copy icons, F-2->WI-5 mount-test session hooks, F-3->WI-1 informal-ty review); no designer round-2",
-    "D (autonomous): all 6 WIs implemented + impl-reviewed. WI-1/WI-3/WI-5 blocks_merge=false zero findings; WI-2 round-2 (HIGH useCallback + MEDIUM padding + LOW handleExpired fixed); WI-4 3 LOW accepted; WI-6 e2e SURFACED a real HIGH upstream defect (accept never hydrated useActiveOrderStore -> ride view never rendered) -> WI-5-fix (OfferCard accept-success fires reconcileActiveRide->setOrder before onDismiss; new non-mocked acceptHydration test; RED observed, tsc/lint/351 tests green). Pipeline caught a bug the mocked unit tests missed.",
-    "E (autonomous): Phase-5 web quality gate PASS — lint 0, tsc 0, vitest 238 files/1725 tests/0 fail, build ok, size app 195.85/260+analytics 94.9/115+admin 63.9/70 kB (leaflet stayed lazy), e2e 16/16 (driver map-first full flow offer->accept->route->arrive->start->complete green; no cross-flow regression). Host postgresql-x64-17 kept stopped."
-  ],
+  "phase": "ship",
+  "spec_path": ".claude/state/customer-app-design-handoff.md",
+  "branch": "redesign/customer-app (off main @ 6100953)",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "user directive 2026-09-16 (autonomous on all queued UCs, numeric order, parallel only if independent): gates A-E pre-approved; ship = commit + ff-merge to main (no remote). Sequential.",
-  "multi_uc_queue": [
-    "UC-014 customer-map-shell - DONE (main @ 60513f8)",
-    "UC-015 customer-order-flow (web) - DONE (main @ a1af1e2)",
-    "UC-016 customer-live-tracking (web) - DONE (main @ 76ac2bf)",
-    "UC-017 auto-dispatch (api) - DONE (main @ 0dda455)",
-    "UC-018 location-relevant-suggest (api+web) - DONE (main @ c8c952d)",
-    "UC-019 driver-map-first (web, dep UC-014) - DONE (ship: commit + ff-merge to main) — LAST queued UC; /todo now EMPTY, autonomous run COMPLETE"
+  "autonomous_mode_authority": "user directive 2026-09-23 (/conductor 'continue autonomously with Phase 4: restyle customer screens and so on'): gates pre-approved; commits at green milestones per session precedent (user: 'Commit this foundation, then start Phase 4').",
+  "gates_passed": [
+    "A (session): spec = .claude/state/customer-app-design-handoff.md; scope FRONTEND-ONLY confirmed via AskUserQuestion (no Places endpoint, no admin contrast validation); plan approved in plan mode",
+    "B (session): work items = approved plan phases; foundation (tokens/kit/markers/accent+dark) + app frame (top bar + CustomerMenu) already implemented",
+    "C (session): design-review folded into plan-mode Plan-agent review; coexistence-layer architecture (additive theme + CSS-var kit) validated",
+    "D (partial): foundation committed 6294ad9 (tsc/lint/build/size green, kit 96 tests); frame committed 2283e73 (customer+i18n 402 tests green)",
+    "D (autonomous): WI-2/3/4/5 implemented + impl-reviewed blocks_merge=false. WI-2 agent crashed post-work (no handoff) -> conductor verified 142 order tests + tsc/lint/contracts and staged. Reviewer cleared order+login; conductor completed history+tracking review. 2 LOW fixed (e2e code-input 6-box; board.actions.confirm->customer.login.confirmCode).",
+    "E (autonomous): Phase-5 web gate PASS — lint 0 + geo guard, tsc 0, vitest 1896 pass (only pre-existing driver acceptHydration 3-fail excluded, fails on clean HEAD), build ok, size app 205.7/260 + analytics 95.1/115 + admin 63.9/70 kB (leaflet lazy), customer e2e 5/5 (order->login 6-box code->create->tracking; cancel-as-sheet). Stray postgis:5432 container conflict resolved by user; taxi_db bound cleanly."
   ],
-  "complexity_rationale": "Web-only, large surface but reuse-heavy and well-precedented by UC-016's map-first tracking redesign. Composes UC-014 shell (MapyMap full-bleed, BottomSheet, camera controller) + ALL existing driver hooks (useOfferStore/useOfferListener/useOfferAccept/useOfferDecline/useOfferRoute, CountdownRing, DeclineReasons, useRideTransition/useRideRestore/useLiveClear/useActiveOrderStore, rideButtonState/RideButton, useOwnPositionStore/DriverPositionReporter, useGoOnline/useGoOffline/useDriverMe, buildNavUrl/NavHandoff, DriverQueueBar, useFleetHub). NEW: top offer box (redesign OfferTakeover), on-accept route POLYLINE rendering (new DriverMapInner with react-leaflet Polyline in a lazy chunk) from POST /geo/route geometry, pure route-leg-selection module. Replaces DriverHomePage/DriverRidePage/OfferTakeover/RideMapStrip. No new architecture, no backend change. Moderate; no kit specialists.",
-  "key_constraints": "NO backend change (all endpoints/events exist; POST /geo/route already returns car_fast polyline+ETA — just draw it). Reuse ALL driver hooks + UC-014 shell; only presentation changes. Leaflet stays LAZY (new DriverMapInner/route Polyline in a lazy chunk, verify in dist; size budget) — the documented leaflet-lazy discipline. Pure tested modules: route-leg selection (status->which leg: Accepted->driver->pickup, InProgress->pickup->destination skip if no dropoff), offer-card view state, marker/camera selection. Top offer box replaces full-screen OfferTakeover; preserve double-tap guards, stale 404/409->toast, offline handling, sound/vibration, CountdownRing expiry auto-dismiss+toast. Accept/arrive/start are BODYLESS POSTs (no Content-Type — UC-010 WI-19 e2e note). Ride controls in BottomSheet via rideButtonState/RideButton/useRideTransition (offline queue+reconcile+mid-ride reassignment intact). Navigate handoff via buildNavUrl+settings nav-app pref. Keep active-ride restore (useRideRestore/reconcileActiveRide) + F-04 mid-ride reassignment (useLiveClear). Remove DriverHomePage/DriverRidePage/OfferTakeover/RideMapStrip + colocated tests, no dangling refs (tsc). Router: /driver renders map-first screen; keep /driver/history,/settings,/ride/complete,/login + DriverLayout session mounts (useFleetHub/useOfferListener/DriverPositionReporter/DriverQueueBar/BottomNav). i18n 6 locales, DRIVER-FACING INFORMAL 'ty' for ru/uk/de (contrast with customer formal 'vy'). Money cs-CZ/Kc, dates Europe/Prague. Axe on new interactive components; >=48px; focus/Escape on sheet; role=status/alert. Update driver e2e (offer->accept->route->arrive->start->complete, apiDriver helper, cs-CZ). zustand atomic one-field selectors (laneB3c loop trap). Leaflet must NOT enter eager /driver chunk (laneB3c note).",
-  "in_progress_wis": [],
-  "wi6_status": "WI-6 driver e2e retargeted to map-first UI (offer role=region 'Nová objednávka'; Accept stays on /driver asserting RideSheet 'Jsem na místě' not /driver/ride nav; ride controls in sheet; chips assertion removed->Hotovo toast+server state; hub-wait re-anchored to websocket event since ConnectionDot gone). Spec edits complete+lint-clean+staged. e2e RED — surfaced a REAL upstream WI-5 defect (NOT an e2e bug): after Accept the map-first /driver never renders the ride view because useActiveOrderStore is never hydrated on accept (useRideRestore is mount-only deps[myDriverId]; old navigate('/driver/ride') was the re-hydration trigger, removed by WI-5; useOfferAccept only POSTs). WI-5 unit tests mocked useActiveOrder->order so missed it. Conductor routing a WI-5 accept-hydration fix + a non-mocked test; then re-run full e2e.",
-  "wi5_final": "WI-5 assembly DONE + impl-review blocks_merge=false ZERO findings. DriverMapScreen (/driver index child, state-driven Offline/Free/EnRoute, lazy DriverMapInner sole import, atomic selectors, re-homed session hooks w/ non-vacuous F-2 mount test), DriverLayout (OfferCard session-wide, Content position:relative, BottomNav gated on active order), router (/driver->DriverMapScreen, /driver/ride deleted, history/settings/ride-complete/login kept). Removed DriverHomePage/DriverRidePage/OfferTakeover/RideMapStrip/RideMapInner (+tests), tsc 0 no-dangle. Leaflet-lazy verified (distinct DriverMapInner chunk; eager leaflet-container is pre-existing dispatcher BoardPage). build ok, size within budget, driver+app vitest 348 green.",
-  "wi234_final": "WI-2 OfferCard round-2 clean (HIGH useCallback removed + unused import dropped, MEDIUM MetaChip padding tokenized, LOW handleExpired unwrapped; 12 tests, tsc/lint clean). WI-3 DriverMapInner clean zero findings (leaflet-lazy verified, F-1 icons copied no RideMapInner import, Polyline null-guarded, useRouteGeometry primitive-keyed; 19 tests). WI-4 RideSheet clean, 3 LOW accepted (2px margin no-token, vacuous-Escape assertion, onNoShow uncovered; 8 tests). All component WIs blocks_merge=false.",
-  "wi234_status": "All 3 component WIs implemented (disjoint files). WI-2 OfferCard: top region card (not full-screen dialog) replacing OfferTakeover; no-navigate-on-accept (useNavigate spy 0 calls); reuses CountdownRing/PriceBadge/DeclineReasons/useOfferAccept/Decline/Route/Sound + offerActionOutcome; 12 tests. WI-3 DriverMapInner: lazy sole-leaflet-importer, codebase-first Polyline (>=2 pts), F-1 icons copied verbatim (ride-own/pickup/dropoff-icon classNames) so RideMapInner deletable; +useRouteGeometry eager hook primitive-keyed refetch; 19 tests. WI-4 RideSheet: presentational BottomSheet host, RideButton/deriveRideButtons + Navigate handoff (duplicate-Navigate lock), prop-driven (WI-5 wires useRideTransition); 8 tests. Each tsc/lint clean on own files; impl-reviews pending.",
   "completed_wis": [
-    "WI-1 foundation: 3 pure modules (routeLeg selectRouteLeg/legEndpoint, offerCardState offerActionOutcome, driverMapView selectDriverMapCamera) + tests; mapCamera promoted to shared/map via re-export shim (customer/shell/mapCamera.ts = export * from ../../../shared/map/mapCamera; zero import churn, tsc clean, CustomerMapBackground 15 tests green); 12 new driver.* i18n keys x6 locales (ru/uk/de informal 'ty' per F-3 verified genuine, cs-CZ formal matching existing driver strings). RED observed; scoped vitest 50-309 green, tsc/lint clean; impl-review blocks_merge=false ZERO findings."
+    "FOUNDATION (6294ad9): GlobalStyle CSS-var tokens light+dark, Manrope 500/700/800 self-hosted, shared/ui kit 20 components + 26-glyph Icon set, BottomSheet restyle + full snap, map markers on CSS vars, accent.ts/themeMode.ts/useThemeMode wired into both customer shells",
+    "FRAME (2283e73): top bar menu-IconButton/FleetChip/accent-call-IconButton, CustomerMenu sheet (history/call/privacy/appearance-dark-toggle/language/logout), customer.menu i18n x6 locales"
   ],
-  "predecessors": "UC-001..018 all on main @ c8c952d",
-  "pre_existing_worktree_note": "Never revert/commit: README.md (untracked), api/src/Taxi.Api/Properties/launchSettings.json (modified). docs/specs/todo now EMPTY (UC-019 is the last queued UC). Web-lane UC WITH e2e (driver flow) -> host postgresql-x64-17 MUST stay STOPPED for the e2e run (else 28P01 5432 conflict — memory e2e-host-postgres-port-conflict); user stopped it during UC-015, confirm still stopped before Phase-5 e2e. git add: EXPLICIT file paths only (advisor UC-017 lesson).",
-  "updated_at": "2026-09-17"
+  "work_items": [
+    {
+      "id": "WI-1",
+      "lane": "web",
+      "title": "i18n keys for remaining screens x6 locales",
+      "status": "done",
+      "owner": "conductor-inline",
+      "note": "DONE conductor-inline: +13 keys x6 locales (mapOrder.pickupHere/pickupChange/pickOnMap, order.optionsDone/whenCaption/chipNote/passengersChip, login.privacyCaption, tracking.searchingHint/pillArrived/pillInProgress/watchFor/paymentNote); parity green"
+    },
+    {
+      "id": "WI-2",
+      "lane": "web",
+      "title": "Order flow restyle: Home (MapOrderPage) + Search (DestinationSearch) + Price/Options (PriceSheet, WhenPicker, PassengerStepper, PriceRangeBadge)",
+      "status": "done",
+      "depends_on": [
+        "WI-1"
+      ],
+      "files_scope": "web/src/features/customer/order/**",
+      "note": "Agent crashed (stream timeout, 120 tool calls) AFTER completing the work but BEFORE staging/handoff. Conductor recovery: verified 142/142 order tests green + tsc clean + lint clean + combobox/Objednat e2e contracts intact + i18n untouched by agent; conductor staged the files. No handoff file exists for WI-2 — impl-review covers it from the staged diff."
+    },
+    {
+      "id": "WI-3",
+      "lane": "web",
+      "title": "Login/Code restyle onto Field/CodeInput (CustomerLoginStep, PhoneInput, CodeInput, CustomerLoginPage)",
+      "status": "done",
+      "depends_on": [
+        "WI-1"
+      ],
+      "files_scope": "web/src/features/customer/login/**",
+      "note": "done: 35 tests green; kit Field+CodeInput, auto-submit, privacy caption; local PhoneInput/CodeInput deleted. Conductor fixed the board.actions.confirm leak -> new customer.login.confirmCode x6. GAP: e2e customer.spec.ts:394-397 needs getByRole(group)+per-box fill for the 6-box CodeInput (conductor owns before Phase-5 e2e)."
+    },
+    {
+      "id": "WI-4",
+      "lane": "web",
+      "title": "Tracking states restyle (TrackingSheet, TrackingPage sheet content, CancelDialog -> bottom action sheet, RatingForm -> shared StarPicker, PushPrompt card)",
+      "status": "done",
+      "depends_on": [
+        "WI-1"
+      ],
+      "files_scope": "web/src/features/customer/tracking/**",
+      "note": "done: 113 tests green; Cancel->BottomSheet keeps dialog name contract; shared StarPicker (local deleted); watchFor vehicle/plate bug fixed during dev."
+    },
+    {
+      "id": "WI-5",
+      "lane": "web",
+      "title": "History restyle (CustomerHistoryPage, HistoryRow: day groups, Pill, RouteSummary, sm reorder Button, offline Callout)",
+      "status": "done",
+      "depends_on": [
+        "WI-1"
+      ],
+      "files_scope": "web/src/features/customer/history/**",
+      "note": "done: 28 tests green; dayGrouping.ts pure helper (Europe/Prague buckets); Pill/RouteSummary/sm-reorder cards."
+    }
+  ],
+  "topo_order": "WI-1 (conductor inline) -> WI-2 || WI-3 || WI-4 || WI-5 (parallel, folder-disjoint) -> impl-review each -> Phase 5 web quality gate -> commit",
+  "key_constraints": "PRESENTATIONAL ONLY: keep every hook/pure-logic module/data flow; restyle onto web/src/shared/ui kit (CSS vars). Agents NEVER edit i18n JSONs (conductor pre-adds keys; missing key => reuse existing or report). Preserve: onAuthenticated-continuation login contract + skipAuthRedirect, headlineRules status->phase mapping (copy only), e2e contracts (.tracking-car-icon, center-pin testid, cs-CZ visible strings in web/e2e/customer.spec.ts — check before renaming any visible string), leaflet-lazy discipline, atomic zustand selectors, axe on changed interactive components, >=48px targets, Czech-first formal 'vy'. Parity test fails suite on any locale key drift. Pre-existing acceptHydration 3-test failure is NOT ours — ignore, do not fix, do not mask.",
+  "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD (missing QueryClient wrapper) — excluded from our gate. git add: explicit paths only.",
+  "updated_at": "2026-09-23"
 }

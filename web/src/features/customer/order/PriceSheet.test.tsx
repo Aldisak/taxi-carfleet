@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import 'fake-indexeddb/auto'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
@@ -86,7 +86,25 @@ describe('PriceSheet', () => {
 
   it('shows a Fixed exact price', () => {
     renderSheet({ quote: quoteResult({ kind: 'fixed', priceCzk: 250, routeId: 'r1' }) })
-    expect(screen.getByText(/250\s*Kč/)).toBeInTheDocument()
+    // Fixed shows the price in the PriceCard AND the Order button price slot — both are legitimate,
+    // so at least one "250 Kč" is present (getAllByText avoids the strict single-match throw).
+    expect(screen.getAllByText(/250\s*Kč/).length).toBeGreaterThan(0)
+  })
+
+  it('the Order button accessible name stays exactly "Objednat" even with a price slot', () => {
+    renderSheet({ quote: quoteResult({ kind: 'fixed', priceCzk: 250, routeId: 'r1' }) })
+    // The price is aria-hidden in the slot so the accessible name is not "Objednat 250 Kč"
+    // (the e2e binds getByRole('button', { name: /^Objednat$/ })).
+    expect(screen.getByRole('button', { name: /^objednat$/i })).toBeInTheDocument()
+  })
+
+  it('an Estimate shows the range ONCE (button carries no price slot for estimate)', () => {
+    renderSheet({
+      quote: quoteResult({ kind: 'estimate', lowCzk: 140, highCzk: 180, distanceKm: 6, durationMin: 12, degraded: false }),
+    })
+    // The binding e2e assertion: exactly one "140 Kč" on the sheet (PriceCard only, not the button).
+    expect(screen.getAllByText(/140\s*Kč/)).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /^objednat$/i })).toBeInTheDocument()
   })
 
   it('shows an Estimate RANGE (low–high, never a single value)', () => {
@@ -123,13 +141,40 @@ describe('PriceSheet', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('expands the ride options area on toggle', async () => {
+  it('opens the options sheet when the when chip is tapped', async () => {
     const user = userEvent.setup()
     renderSheet()
-    expect(screen.queryByLabelText(/kdy/i)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /možnosti jízdy/i }))
-    expect(screen.getByText(/možnosti jízdy/i)).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /hned/i }).length).toBeGreaterThan(0)
+    // The options sheet (the "Kdy vás vyzvednout" section) is not present until a chip is tapped.
+    expect(screen.queryByText(/kdy vás vyzvednout/i)).not.toBeInTheDocument()
+    // The "Hned" chip on the price sheet (the options sheet is not yet mounted).
+    await user.click(screen.getByRole('button', { name: /^hned$/i }))
+    expect(screen.getByText(/kdy vás vyzvednout/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^hotovo$/i })).toBeInTheDocument()
+  })
+
+  it('the note chip also opens the options sheet', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+    await user.click(screen.getByRole('button', { name: /^poznámka$/i }))
+    expect(screen.getByText(/kdy vás vyzvednout/i)).toBeInTheDocument()
+  })
+
+  it('the passengers chip reflects the current count and opens the options sheet', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+    expect(screen.getByRole('button', { name: /1 cestující/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /1 cestující/i }))
+    expect(screen.getByText(/kdy vás vyzvednout/i)).toBeInTheDocument()
+  })
+
+  it('Hotovo closes the options sheet, back to the price sheet', async () => {
+    const user = userEvent.setup()
+    renderSheet()
+    await user.click(screen.getByRole('button', { name: /^poznámka$/i }))
+    await user.click(screen.getByRole('button', { name: /^hotovo$/i }))
+    expect(screen.queryByText(/kdy vás vyzvednout/i)).not.toBeInTheDocument()
+    // The price sheet is still shown (its Order button is present).
+    expect(screen.getByRole('button', { name: /^objednat$/i })).toBeInTheDocument()
   })
 
   it('blocks Order while offline with a visible reason and does not create', async () => {
@@ -177,7 +222,12 @@ describe('PriceSheet', () => {
 
     await user.type(screen.getByLabelText(/telefonní číslo/i), '777111222')
     await user.click(screen.getByRole('button', { name: /odeslat kód/i }))
-    await user.type(await screen.findByLabelText(/ověřovací kód/i), '123456')
+    // The kit CodeInput is a group of six single-digit boxes; paste into the first to distribute
+    // the 6-digit code (mirrors CustomerLoginStep.test's pasteCode helper). Auto-submits on the
+    // 6th digit → verify-code → create order.
+    const codeGroup = await screen.findByRole('group', { name: /ověřovací kód/i })
+    await user.click(within(codeGroup).getAllByRole('textbox')[0])
+    await user.paste('123456')
 
     await waitFor(() => expect(onOrdered).toHaveBeenCalledWith('Z9Z9Z9'))
     expect(mockCreate.mock.calls[0][0].priceType).toBe('Fixed')
@@ -198,13 +248,13 @@ describe('PriceSheet', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('Escape collapses the options area first when expanded, without closing', async () => {
+  it('Escape closes the options sheet first when it is open, without cancelling the order', async () => {
     const user = userEvent.setup()
     const { onCancel } = renderSheet()
-    await user.click(screen.getByRole('button', { name: /možnosti jízdy/i }))
-    expect(screen.getByText(/kdy/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^poznámka$/i }))
+    expect(screen.getByText(/kdy vás vyzvednout/i)).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    expect(screen.queryByText(/kdy/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/kdy vás vyzvednout/i)).not.toBeInTheDocument()
     expect(onCancel).not.toHaveBeenCalled()
   })
 

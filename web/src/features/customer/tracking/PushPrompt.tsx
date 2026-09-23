@@ -1,50 +1,54 @@
 import { useState } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { Button } from '../../../shared/ui/Button'
+import { Icon } from '../../../shared/ui/icons/Icon'
 import { usePushSubscription } from '../../../shared/push/usePushSubscription'
 
+/**
+ * Floating surface card pinned under the top bar (UC-020 WI-4 restyle — was an inline bordered
+ * aside). Sits above the map/sheet, respecting the safe area; the map's bottom-left attribution
+ * stays clear because the card is top-anchored.
+ */
 const Prompt = styled.aside`
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: 16px;
+  right: 16px;
+  z-index: ${({ theme }) => theme.zIndex.overlay};
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-  margin: ${({ theme }) => theme.spacing.md};
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.background};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  gap: 12px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-float);
+`
+
+const Head = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
 `
 
 const Text = styled.p`
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-body);
+  color: var(--ink);
 `
 
 const Buttons = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: 8px;
 `
 
-const AllowButton = styled.button`
+const Grow = styled.div`
   flex: 1;
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  cursor: pointer;
-`
-
-const DismissButton = styled.button`
-  flex: 1;
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  background: ${({ theme }) => theme.colors.surface};
-  color: ${({ theme }) => theme.colors.text};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  cursor: pointer;
 `
 
 /** Feature-detect the Web Push prerequisites (jsdom-safe — no bare global references). */
@@ -82,14 +86,21 @@ export function PushPrompt() {
 
   return (
     <Prompt aria-label={t('customer.tracking.pushPromptTitle')}>
-      <Text>{t('customer.tracking.pushPromptTitle')}</Text>
+      <Head>
+        <Icon name="bell" aria-hidden />
+        <Text>{t('customer.tracking.pushPromptTitle')}</Text>
+      </Head>
       <Buttons>
-        <AllowButton type="button" onClick={() => void requestPermission()}>
-          {t('customer.tracking.pushAllow')}
-        </AllowButton>
-        <DismissButton type="button" onClick={() => setDismissed(true)}>
-          {t('customer.tracking.pushDismiss')}
-        </DismissButton>
+        <Grow>
+          <Button variant="primary" size="sm" fullWidth onClick={() => void requestPermission()}>
+            {t('customer.tracking.pushAllow')}
+          </Button>
+        </Grow>
+        <Grow>
+          <Button variant="secondary" size="sm" fullWidth onClick={() => setDismissed(true)}>
+            {t('customer.tracking.pushDismiss')}
+          </Button>
+        </Grow>
       </Buttons>
     </Prompt>
   )

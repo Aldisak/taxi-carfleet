@@ -169,6 +169,7 @@ export function TrackingPage(): ReactNode {
             vm={vm}
             descriptor={descriptor}
             orderId={orderId}
+            code={code}
             cancel={cancel}
             ratingSlot={ratingSlot}
           />

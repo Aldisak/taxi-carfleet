@@ -956,7 +956,11 @@
       "errorTooLate": "Die Abholung kann höchstens 7 Tage im Voraus geplant werden.",
       "errorScheduledInvalid": "Bitte geben Sie ein gültiges Datum und eine gültige Uhrzeit ein.",
       "errorCreateFailed": "Die Bestellung konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
-      "routeNotFound": "Die Route konnte nicht geladen werden."
+      "routeNotFound": "Die Route konnte nicht geladen werden.",
+      "optionsDone": "Fertig",
+      "whenCaption": "Frühestens in 20 Minuten, spätestens 7 Tage im Voraus.",
+      "chipNote": "Hinweis",
+      "passengersChip": "{{count}} Fahrgäste"
     },
     "custom": {
       "title": "Eigene Bestellung",
@@ -1031,7 +1035,12 @@
       "sheetLabel": "Fahrtstatus",
       "pushPromptTitle": "Möchten Sie benachrichtigt werden, sobald der Fahrer eintrifft?",
       "pushAllow": "Benachrichtigungen aktivieren",
-      "pushDismiss": "Jetzt nicht"
+      "pushDismiss": "Jetzt nicht",
+      "searchingHint": "Das dauert in der Regel unter 2 Minuten.",
+      "pillArrived": "Vor Ort",
+      "pillInProgress": "Läuft",
+      "watchFor": "Achten Sie auf {{vehicle}}, Kennzeichen {{plate}}.",
+      "paymentNote": "Preis {{price}}, zahlbar an den Fahrer."
     },
     "login": {
       "title": "Anmeldung",
@@ -1050,7 +1059,9 @@
       "codeMismatch": "Der Code stimmt nicht, bitte versuchen Sie es erneut.",
       "tooManyRequests": "Bitte warten Sie einen Moment und versuchen Sie es erneut.",
       "networkError": "Verbindung zum Server nicht möglich. Bitte prüfen Sie Ihre Verbindung.",
-      "unknownError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+      "unknownError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+      "privacyCaption": "Wir verwenden Ihre Nummer nur zur Bestätigung der Bestellung.",
+      "confirmCode": "Bestätigen"
     },
     "rating": {
       "title": "Bewerten Sie Ihre Fahrt",
@@ -1088,7 +1099,10 @@
       "optionsToggle": "Fahrtoptionen",
       "meterUnavailable": "Der Preis konnte nicht berechnet werden, bitte rufen Sie uns an.",
       "sheetLabel": "Fahrtbestellung",
-      "loginPrompt": "Bitte melden Sie sich an, um Ihre Bestellung abzuschließen."
+      "loginPrompt": "Bitte melden Sie sich an, um Ihre Bestellung abzuschließen.",
+      "pickupHere": "Abholung hier",
+      "pickupChange": "Ändern",
+      "pickOnMap": "Ziel auf der Karte wählen"
     },
     "menu": {
       "title": "Menü",

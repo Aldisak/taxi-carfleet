@@ -28,6 +28,7 @@ function noopCancel(overrides: Partial<UseCancelOrderResult> = {}): UseCancelOrd
 interface RenderArgs {
   vm?: Partial<TrackVm>
   orderId?: string | null
+  code?: string
   cancel?: UseCancelOrderResult
   ratingSlot?: React.ReactNode
 }
@@ -44,6 +45,7 @@ function renderSheet(args: RenderArgs = {}) {
             vm={vm}
             descriptor={descriptor}
             orderId={args.orderId === undefined ? 'o1' : args.orderId}
+            code={args.code ?? 'ABC123'}
             cancel={cancel}
             ratingSlot={args.ratingSlot}
           />
@@ -73,10 +75,17 @@ describe('TrackingSheet', () => {
       renderSheet({ vm: { status: 'Assigned' } })
       expect(screen.getByRole('heading', { name: 'Hledáme řidiče…' })).toBeInTheDocument()
     })
+
+    it('shows the searchingHint caption and an order-code pill', () => {
+      renderSheet({ vm: { status: 'New' }, code: 'XY9' })
+      expect(screen.getByText('Obvykle to trvá do 2 minut.')).toBeInTheDocument()
+      // The order code appears alongside its label.
+      expect(screen.getByText(/XY9/)).toBeInTheDocument()
+    })
   })
 
   describe('assigned phase (Accepted)', () => {
-    it('renders the e2e headline (no-ETA variant), driver + vehicle, and Cancel', () => {
+    it('renders the e2e headline (no-ETA variant), the DriverCard (name + vehicle + plate), and Cancel', () => {
       renderSheet({
         vm: {
           status: 'Accepted',
@@ -87,8 +96,10 @@ describe('TrackingSheet', () => {
         },
       })
       expect(screen.getByRole('heading', { name: /Řidič.*je na cestě/ })).toBeInTheDocument()
-      expect(screen.getByText(/1AB 2345/)).toBeInTheDocument()
-      expect(screen.getByText(/černá/)).toBeInTheDocument()
+      expect(screen.getByText('Petr')).toBeInTheDocument()
+      // The plate + vehicle-colour appear (DriverCard + the watchFor callout both surface them).
+      expect(screen.getAllByText(/1AB 2345/).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/černá/).length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: 'Zrušit objednávku' })).toBeInTheDocument()
     })
 
@@ -96,20 +107,57 @@ describe('TrackingSheet', () => {
       renderSheet({ vm: { status: 'Accepted', driverFirstName: 'Petr', etaMinutes: 5 } })
       expect(screen.getByRole('heading', { name: /přijede za ~5 min/ })).toBeInTheDocument()
     })
+
+    it('composes the watchFor + paymentNote callout with the colour (not the plate) in the vehicle slot', () => {
+      renderSheet({
+        vm: {
+          status: 'Accepted',
+          driverFirstName: 'Petr',
+          etaMinutes: null,
+          vehiclePlate: '1AB 2345',
+          vehicleColor: 'černá',
+          priceCzk: 100,
+        },
+      })
+      // watchFor: {{vehicle}} is the car descriptor (colour), {{plate}} is the SPZ — the plate must
+      // appear exactly ONCE in the callout (in the SPZ slot), never doubled into the vehicle slot.
+      expect(
+        screen.getByText('Sledujte vozidlo černá, SPZ 1AB 2345. Cena 100 Kč, platíte řidiči.'),
+      ).toBeInTheDocument()
+    })
+
+    it('omits the watchFor line when the vehicle colour is unknown (only the plate is known)', () => {
+      renderSheet({
+        vm: {
+          status: 'Accepted',
+          driverFirstName: 'Petr',
+          etaMinutes: null,
+          vehiclePlate: '1AB 2345',
+          vehicleColor: null,
+          priceCzk: 100,
+        },
+      })
+      // "only when vehicle+plate exist" — a plate without a colour must NOT emit "SPZ 1AB 2345".
+      expect(screen.queryByText(/Sledujte vozidlo/)).not.toBeInTheDocument()
+      // The payment note still shows (price is known).
+      expect(screen.getByText(/platíte řidiči/)).toBeInTheDocument()
+    })
   })
 
   describe('arrived phase', () => {
-    it('renders the arrived heading and the vehicle', () => {
+    it('renders the arrived heading, the "Na místě" pill, and the plate prominently', () => {
       renderSheet({ vm: { status: 'Arrived', vehiclePlate: '1AB 2345', vehicleColor: 'černá' } })
       expect(screen.getByRole('heading', { name: 'Řidič je na místě' })).toBeInTheDocument()
-      expect(screen.getByText(/1AB 2345/)).toBeInTheDocument()
+      expect(screen.getByText('Na místě')).toBeInTheDocument()
+      expect(screen.getByText('1AB 2345')).toBeInTheDocument()
     })
   })
 
   describe('inProgress phase', () => {
-    it('renders the "Jedete" heading and the destination', () => {
+    it('renders the "Jedete" heading, the "Probíhá" pill, and the destination', () => {
       renderSheet({ vm: { status: 'InProgress', dropoffAddress: 'Náměstí 5, Praha' } })
       expect(screen.getByRole('heading', { name: 'Jedete' })).toBeInTheDocument()
+      expect(screen.getByText('Probíhá')).toBeInTheDocument()
       expect(screen.getByText(/Náměstí 5, Praha/)).toBeInTheDocument()
     })
   })
@@ -215,8 +263,26 @@ describe('TrackingSheet', () => {
 
     it('has no axe violations in the assigned phase', async () => {
       const { container } = renderSheet({
-        vm: { status: 'Accepted', driverFirstName: 'Petr', etaMinutes: 5, vehiclePlate: '1AB 2345', vehicleColor: 'černá' },
+        vm: { status: 'Accepted', driverFirstName: 'Petr', etaMinutes: 5, vehiclePlate: '1AB 2345', vehicleColor: 'černá', priceCzk: 100 },
       })
+      expect(await axe(container)).toHaveNoViolations()
+    })
+
+    it('has no axe violations in the arrived phase (plate lg)', async () => {
+      const { container } = renderSheet({ vm: { status: 'Arrived', vehiclePlate: '1AB 2345' } })
+      expect(await axe(container)).toHaveNoViolations()
+    })
+
+    it('has no axe violations in the completed phase', async () => {
+      const { container } = renderSheet({ vm: { status: 'Completed', priceCzk: 1200 } })
+      expect(await axe(container)).toHaveNoViolations()
+    })
+
+    it('has no axe violations with the cancel sheet open', async () => {
+      const user = userEvent.setup()
+      const { container } = renderSheet({ vm: { status: 'Accepted', driverFirstName: 'Petr', etaMinutes: null } })
+      await user.click(screen.getByRole('button', { name: 'Zrušit objednávku' }))
+      expect(screen.getByRole('dialog', { name: 'Zrušit objednávku?' })).toBeInTheDocument()
       expect(await axe(container)).toHaveNoViolations()
     })
   })

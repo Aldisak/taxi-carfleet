@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
+import { Button } from '../../../shared/ui/Button'
 import { CustomerMapShell } from '../shell/CustomerMapShell'
 import { useReverseGeocode } from '../shell/useReverseGeocode'
 import { useCustomerLocation } from '../shell/useCustomerLocation'
@@ -22,46 +23,64 @@ import {
 } from './orderFlowState'
 import { orderCameraPoints } from './orderCamera'
 
-// The "Use my location" pill lives in the top search slot (its container re-enables pointer events).
-// ≥48 px tall for the touch-target rule (rules/web-accessibility.md#touch-targets).
+// The top search slot: a pickup row + the destination search + the GPS controls.
 const LocationControls = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 8px;
 `
 
-const UseMyLocationButton = styled.button`
-  align-self: flex-start;
-  min-height: 48px;
-  display: inline-flex;
+// The pickup row (handoff §3 Home): accent dot · reverse-geocoded pickup address · "Změnit".
+const PickupRow = styled.div`
+  display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  color: ${({ theme }) => theme.colors.text};
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  cursor: pointer;
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.7;
-  }
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
 `
 
-// A translucent status pill for the GPS denied/unavailable/locating messages, legible over the map.
+const PickupDot = styled.span`
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+`
+
+const PickupText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+`
+
+const PickupCaption = styled.span`
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+`
+
+const PickupAddress = styled.span`
+  font-size: var(--fs-body-lg);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`
+
+// A status pill for the GPS denied/unavailable/locating messages, legible over the map.
 const LocationStatus = styled.p`
   margin: 0;
   align-self: flex-start;
   max-width: 100%;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  background: ${({ theme }) => theme.colors.surface};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  padding: 6px 12px;
+  background: var(--surface);
+  color: var(--ink-2);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+  font-size: var(--fs-caption);
 `
 
 /**
@@ -214,14 +233,30 @@ export function MapOrderPage() {
       routeGeometry={route.geometry}
       topSlot={
         <LocationControls>
+          <PickupRow>
+            <PickupDot aria-hidden="true" />
+            <PickupText>
+              <PickupCaption>{t('customer.mapOrder.pickupHere')}</PickupCaption>
+              <PickupAddress>{flow.pickup?.label ?? t('customer.mapOrder.pickupLabel')}</PickupAddress>
+            </PickupText>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleUseMyLocation}
+              disabled={location.status === 'unavailable'}
+            >
+              {t('customer.mapOrder.pickupChange')}
+            </Button>
+          </PickupRow>
           <DestinationSearch onSelectDestination={handleSelectDestination} near={suggestNear} />
-          <UseMyLocationButton
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handleUseMyLocation}
             disabled={location.status === 'unavailable'}
           >
             {t('customer.custom.useMyLocation')}
-          </UseMyLocationButton>
+          </Button>
           {locationStatusMessage && (
             <LocationStatus role="status">{locationStatusMessage}</LocationStatus>
           )}

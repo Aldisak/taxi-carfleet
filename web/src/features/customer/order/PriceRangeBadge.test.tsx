@@ -64,6 +64,16 @@ describe('PriceRangeBadge', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
+  it('shows the estimate range as a single visible band (both bounds present, one card)', () => {
+    renderBadge({ view: { kind: 'estimate', lowCzk: 140, highCzk: 180, distanceKm: 6, durationMin: 12, degraded: false } })
+    // The binding e2e case: only ONE "140 Kč" occurrence so Playwright strict text match passes.
+    expect(screen.getAllByText(/140\s*Kč/)).toHaveLength(1)
+    // Both bounds are still shown as a range.
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent(/140\s*Kč/)
+    expect(status).toHaveTextContent(/180\s*Kč/)
+  })
+
   it('has no axe violations', async () => {
     const { container } = renderBadge({ view: { kind: 'estimate', lowCzk: 180, highCzk: 220, distanceKm: 12.4, durationMin: 18, degraded: false } })
     expect(await axe(container)).toHaveNoViolations()

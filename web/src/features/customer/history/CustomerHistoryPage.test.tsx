@@ -20,6 +20,11 @@ vi.mock('../../../shared/api/auth-storage', () => ({
   authStorage: { getAccessToken: vi.fn(() => 'tok') },
 }))
 
+vi.mock('../shell/useOnlineStatus', () => ({ useOnlineStatus: vi.fn(() => true) }))
+
+import { useOnlineStatus } from '../shell/useOnlineStatus'
+const mockOnline = vi.mocked(useOnlineStatus)
+
 import { getMyOrderHistory, type MyOrderHistoryResponse } from '../../../shared/api/client'
 import { CustomerHistoryPage } from './CustomerHistoryPage'
 
@@ -88,6 +93,7 @@ function renderPage() {
 describe('CustomerHistoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOnline.mockReturnValue(true)
   })
 
   it('renders a row with the route, price and status', async () => {
@@ -98,6 +104,16 @@ describe('CustomerHistoryPage', () => {
     expect(screen.getByText(/Náměstí 5/)).toBeInTheDocument()
     expect(screen.getByText(/200 Kč/)).toBeInTheDocument()
     expect(screen.getByText(/Dokončeno/)).toBeInTheDocument()
+  })
+
+  it('groups rides under a Prague-day heading', async () => {
+    mockHistory.mockResolvedValue(page)
+    renderPage()
+
+    await screen.findByText(/Hlavní 1, Praha/)
+    // completedAt 2026-09-10T08:20:00Z → Prague day header "10. 9. 2026".
+    const heading = screen.getByRole('heading', { level: 2, name: /10\. 9\. 2026/ })
+    expect(heading).toBeInTheDocument()
   })
 
   it('navigates to read-only tracking when a row is tapped', async () => {
@@ -119,6 +135,15 @@ describe('CustomerHistoryPage', () => {
     // carried in router state for forward-compat, so the probe can echo it.
     const probe = await screen.findByTestId('map-order')
     expect(probe).toHaveTextContent('pickup=[Hlavní 1, Praha]')
+  })
+
+  it('shows an offline callout when offline', async () => {
+    mockOnline.mockReturnValue(false)
+    mockHistory.mockResolvedValue(page)
+    renderPage()
+
+    const callout = await screen.findByRole('status')
+    expect(callout).toHaveTextContent(/Jste offline/)
   })
 
   it('shows an empty state when there are no rides', async () => {
