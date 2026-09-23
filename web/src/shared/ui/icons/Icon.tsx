@@ -33,6 +33,11 @@ export type IconName =
   | 'plus'
   | 'minus'
   | 'calendar'
+  | 'arrow-up'
+  | 'arrow-down'
+  | 'sun'
+  | 'moon'
+  | 'download'
 
 /** SVG inner markup per glyph (paths only — the <svg> wrapper is shared). */
 const PATHS: Record<IconName, JSX.Element> = {
@@ -156,6 +161,21 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <rect x="4" y="5" width="16" height="16" rx="2" />
       <path d="M4 9h16M8 3v4M16 3v4" />
+    </>
+  ),
+  'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
+  'arrow-down': <path d="M12 5v14M6 13l6 6 6-6" />,
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+    </>
+  ),
+  moon: <path d="M20 14a8 8 0 0 1-10-10 8 8 0 1 0 10 10z" />,
+  download: (
+    <>
+      <path d="M12 3v12M8 11l4 4 4-4" />
+      <path d="M4 19h16" />
     </>
   ),
 }

@@ -247,7 +247,12 @@
       "cancel": "Kanselahin",
       "detail": "Detalye",
       "confirm": "Kumpirmahin",
-      "close": "Isara"
+      "close": "Isara",
+      "accept": "Tanggapin",
+      "arrive": "Nasa lugar",
+      "start": "Simulan ang biyahe",
+      "complete": "Kumpletuhin",
+      "decline": "Tanggihan"
     },
     "cancelReasons": {
       "title": "Dahilan ng pagkansela",
@@ -1593,5 +1598,16 @@
         "noShowShareLabel": "Bahagi ng mga no-show na pagkansela"
       }
     }
+  },
+  "appLayout": {
+    "connected": "Nakakonekta",
+    "connecting": "Kumokonekta…",
+    "reconnecting": "Muling kumokonekta…",
+    "disconnected": "Nadiskonekta",
+    "themeLight": "Maliwanag",
+    "themeDark": "Madilim",
+    "themeSystem": "Sistema",
+    "themeToggle": "Palitan ang tema",
+    "languageToggle": "Baguhin ang wika"
   }
 }

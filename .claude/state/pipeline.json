@@ -1,83 +1,35 @@
 {
   "version": 1,
-  "uc_id": "UC-020",
-  "title": "Customer app UI redesign (design handoff v1 2026-09-23) — screens onto the new shared/ui kit",
+  "uc_id": "UC-021",
+  "title": "Dispatcher + SuperAdmin(/admin) UI redesign — screens onto the shared desk kit (design handoff v1 2026-09-24)",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "done",
-  "spec_path": ".claude/state/customer-app-design-handoff.md",
-  "branch": "redesign/customer-app (off main @ 6100953)",
+  "phase": "implement",
+  "spec_path": ".claude/state/dispatcher-app-design-handoff.md",
+  "spec_path_admin": ".claude/state/admin-app-design-handoff.md",
+  "branch": "redesign/dispatcher-app (off main @ d4a7db3; handoffs committed 9a9a6d3)",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "user directive 2026-09-23 (/conductor 'continue autonomously with Phase 4: restyle customer screens and so on'): gates pre-approved; commits at green milestones per session precedent (user: 'Commit this foundation, then start Phase 4').",
+  "autonomous_mode_authority": "user directive 2026-09-24 (/conductor 'continue autonomously according to assignment for redesign in customer, dispatcher, admin'): gates pre-approved; follows the UC-020 customer-pass precedent (additive coexistence layer, commit at green milestones, conductor pre-adds i18n keys, ff-merge to main local no push).",
   "gates_passed": [
-    "A (session): spec = .claude/state/customer-app-design-handoff.md; scope FRONTEND-ONLY confirmed via AskUserQuestion (no Places endpoint, no admin contrast validation); plan approved in plan mode",
-    "B (session): work items = approved plan phases; foundation (tokens/kit/markers/accent+dark) + app frame (top bar + CustomerMenu) already implemented",
-    "C (session): design-review folded into plan-mode Plan-agent review; coexistence-layer architecture (additive theme + CSS-var kit) validated",
-    "D (partial): foundation committed 6294ad9 (tsc/lint/build/size green, kit 96 tests); frame committed 2283e73 (customer+i18n 402 tests green)",
-    "D (autonomous): WI-2/3/4/5 implemented + impl-reviewed blocks_merge=false. WI-2 agent crashed post-work (no handoff) -> conductor verified 142 order tests + tsc/lint/contracts and staged. Reviewer cleared order+login; conductor completed history+tracking review. 2 LOW fixed (e2e code-input 6-box; board.actions.confirm->customer.login.confirmCode).",
-    "E (autonomous): Phase-5 web gate PASS — lint 0 + geo guard, tsc 0, vitest 1896 pass (only pre-existing driver acceptHydration 3-fail excluded, fails on clean HEAD), build ok, size app 205.7/260 + analytics 95.1/115 + admin 63.9/70 kB (leaflet lazy), customer e2e 5/5 (order->login 6-box code->create->tracking; cancel-as-sheet). Stray postgis:5432 container conflict resolved by user; taxi_db bound cleanly."
+    "A (session): specs = dispatcher-app-design-handoff.md + admin-app-design-handoff.md; scope FRONTEND-ONLY (restyle onto desk kit, no new backend endpoints); autonomous authority carries from UC-020.",
+    "B (session): work items = the two handoffs' migration-order lists, decomposed to WI-1..WI-9 below and validated by advisor 2026-09-24.",
+    "C (session): advisor design-review folded in — additive coexistence confirmed (do NOT big-bang migrate board off theme object); WI-2 split kit/header; WI-3/4/5 flagged non-presentational (need new tests + e2e re-check); WI-4 e2e chip-name contract change identified."
   ],
-  "completed_wis": [
-    "FOUNDATION (6294ad9): GlobalStyle CSS-var tokens light+dark, Manrope 500/700/800 self-hosted, shared/ui kit 20 components + 26-glyph Icon set, BottomSheet restyle + full snap, map markers on CSS vars, accent.ts/themeMode.ts/useThemeMode wired into both customer shells",
-    "FRAME (2283e73): top bar menu-IconButton/FleetChip/accent-call-IconButton, CustomerMenu sheet (history/call/privacy/appearance-dark-toggle/language/logout), customer.menu i18n x6 locales"
-  ],
+  "key_constraints": "ADDITIVE COEXISTENCE like UC-020: build web/src/shared/ui/desk/ on CSS vars; board/orders/admin components adopt the desk kit WI-by-WI; the legacy styled-components `theme` object stays alive for anything not yet touched — do NOT big-bang migrate. Agents NEVER edit i18n JSONs (conductor pre-adds stable keys in WI-1; per-screen missing keys => agent reports, conductor adds). Parity test fails suite on any locale key drift across the 6 locales (cs-CZ/en-US/ru-RU/uk-UA/fil-PH/de-DE). Preserve every hook + pure-logic module + data flow EXCEPT the three intended changes: (1) WI-3 driverMarker status hexes -> --success/--info/--warning/--danger CSS vars; (2) WI-4 quick chips from fleet Places (usePlaces) not quickChips.ts, with fallback; (3) WI-5 transitionButtons.ts hardcoded labels -> board.actions.* i18n. E2E CONTRACT CHANGE (WI-4): dispatcher.spec.ts clicks chip 'Vlakové nádraží Kolín' (hardcoded); seeded demo fleet Place #0 is 'Nádraží Kolín' — update the e2e to the real seeded Place name. Preserve dispatcher.spec.ts section aria-labels ('Nové','Přiřazené / Čekají na přijetí','Probíhající'), OfflineBanner text 'Offline – zobrazuji poslední známý stav', driver-picker role=listbox name 'Vyberte řidiče'. Admin header: unbranded prop gates OFF hub/connection-status/sound-mute (admin has no fleet hub). Leaflet-lazy discipline (MapyMap only in lazy chunks), atomic zustand selectors, axe on changed interactive components, focus rings (desktop: 48px touch rule waived per handoff §6, focus rings mandatory), Czech-first (dispatcher informal is N/A — dispatcher/admin are staff tools, keep existing tone). Pre-existing RED to ignore: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — not ours.",
   "work_items": [
-    {
-      "id": "WI-1",
-      "lane": "web",
-      "title": "i18n keys for remaining screens x6 locales",
-      "status": "done",
-      "owner": "conductor-inline",
-      "note": "DONE conductor-inline: +13 keys x6 locales (mapOrder.pickupHere/pickupChange/pickOnMap, order.optionsDone/whenCaption/chipNote/passengersChip, login.privacyCaption, tracking.searchingHint/pillArrived/pillInProgress/watchFor/paymentNote); parity green"
-    },
-    {
-      "id": "WI-2",
-      "lane": "web",
-      "title": "Order flow restyle: Home (MapOrderPage) + Search (DestinationSearch) + Price/Options (PriceSheet, WhenPicker, PassengerStepper, PriceRangeBadge)",
-      "status": "done",
-      "depends_on": [
-        "WI-1"
-      ],
-      "files_scope": "web/src/features/customer/order/**",
-      "note": "Agent crashed (stream timeout, 120 tool calls) AFTER completing the work but BEFORE staging/handoff. Conductor recovery: verified 142/142 order tests green + tsc clean + lint clean + combobox/Objednat e2e contracts intact + i18n untouched by agent; conductor staged the files. No handoff file exists for WI-2 — impl-review covers it from the staged diff."
-    },
-    {
-      "id": "WI-3",
-      "lane": "web",
-      "title": "Login/Code restyle onto Field/CodeInput (CustomerLoginStep, PhoneInput, CodeInput, CustomerLoginPage)",
-      "status": "done",
-      "depends_on": [
-        "WI-1"
-      ],
-      "files_scope": "web/src/features/customer/login/**",
-      "note": "done: 35 tests green; kit Field+CodeInput, auto-submit, privacy caption; local PhoneInput/CodeInput deleted. Conductor fixed the board.actions.confirm leak -> new customer.login.confirmCode x6. GAP: e2e customer.spec.ts:394-397 needs getByRole(group)+per-box fill for the 6-box CodeInput (conductor owns before Phase-5 e2e)."
-    },
-    {
-      "id": "WI-4",
-      "lane": "web",
-      "title": "Tracking states restyle (TrackingSheet, TrackingPage sheet content, CancelDialog -> bottom action sheet, RatingForm -> shared StarPicker, PushPrompt card)",
-      "status": "done",
-      "depends_on": [
-        "WI-1"
-      ],
-      "files_scope": "web/src/features/customer/tracking/**",
-      "note": "done: 113 tests green; Cancel->BottomSheet keeps dialog name contract; shared StarPicker (local deleted); watchFor vehicle/plate bug fixed during dev."
-    },
-    {
-      "id": "WI-5",
-      "lane": "web",
-      "title": "History restyle (CustomerHistoryPage, HistoryRow: day groups, Pill, RouteSummary, sm reorder Button, offline Callout)",
-      "status": "done",
-      "depends_on": [
-        "WI-1"
-      ],
-      "files_scope": "web/src/features/customer/history/**",
-      "note": "done: 28 tests green; dayGrouping.ts pure helper (Europe/Prague buckets); Pill/RouteSummary/sm-reorder cards."
-    }
+    { "id": "WI-1", "lane": "web", "title": "i18n keys (stable shared: nav/appLayout/actions/status/admin) x6 locales + transitionButtons->i18n", "status": "todo", "owner": "conductor-inline", "depends_on": [] },
+    { "id": "WI-2a", "lane": "web", "title": "Desktop kit web/src/shared/ui/desk/ (Panel/PanelHeader/Ctrl/Button/Table/Stat/Pill/Chip/Segmented/Tabs/Timeline/Drawer)", "status": "todo", "depends_on": ["WI-1"], "files_scope": "web/src/shared/ui/desk/**" },
+    { "id": "WI-2b", "lane": "web", "title": "AppLayout header restyle onto desk kit + unbranded admin seam (gates hub/connection/mute)", "status": "todo", "depends_on": ["WI-2a"], "files_scope": "web/src/app/AppLayout.tsx + shared/ui/desk" },
+    { "id": "WI-3", "lane": "web", "title": "Board OrderCard + OrdersColumn sections + DriverPicker popover + DriversColumn + map marker status tokens", "status": "todo", "depends_on": ["WI-2b"], "files_scope": "web/src/features/board/**", "non_presentational": true },
+    { "id": "WI-4", "lane": "web", "title": "OrderForm restyle + Places-driven chips + price preview card (e2e chip-name contract change)", "status": "todo", "depends_on": ["WI-2b"], "files_scope": "web/src/features/board/OrderForm* + web/e2e/dispatcher.spec.ts", "non_presentational": true },
+    { "id": "WI-5", "lane": "web", "title": "OrderDrawer: Zákazník/Cena Stat cards, Historie/Notifikace tabs, i18n transition labels, conflict callout", "status": "todo", "depends_on": ["WI-2b"], "files_scope": "web/src/features/orders/**", "non_presentational": true },
+    { "id": "WI-6", "lane": "web", "title": "SearchPage filters + table + dispatcher LoginPage", "status": "todo", "depends_on": ["WI-2b"], "files_scope": "web/src/features/orders/SearchPage* + web/src/features/auth/LoginPage*" },
+    { "id": "WI-7", "lane": "web", "title": "Admin shell (unbranded header) + AdminLoginPage + AdminFleetsPage (table/sparkline/create+one-time-password)", "status": "todo", "depends_on": ["WI-2b"], "files_scope": "web/src/features/admin/** + AdminGuard" },
+    { "id": "WI-8", "lane": "web", "title": "AdminTenantSettings 4 panels one-save sticky footer + AdminPlatform Stat grid + 12-week table", "status": "todo", "depends_on": ["WI-7"], "files_scope": "web/src/features/admin/**" },
+    { "id": "WI-9", "lane": "web", "title": "Dark theme pass (map --map-* vars + drawer) + Phase 5 web quality gate + commits", "status": "todo", "depends_on": ["WI-3","WI-4","WI-5","WI-6","WI-7","WI-8"] }
   ],
-  "topo_order": "WI-1 (conductor inline) -> WI-2 || WI-3 || WI-4 || WI-5 (parallel, folder-disjoint) -> impl-review each -> Phase 5 web quality gate -> commit",
-  "key_constraints": "PRESENTATIONAL ONLY: keep every hook/pure-logic module/data flow; restyle onto web/src/shared/ui kit (CSS vars). Agents NEVER edit i18n JSONs (conductor pre-adds keys; missing key => reuse existing or report). Preserve: onAuthenticated-continuation login contract + skipAuthRedirect, headlineRules status->phase mapping (copy only), e2e contracts (.tracking-car-icon, center-pin testid, cs-CZ visible strings in web/e2e/customer.spec.ts — check before renaming any visible string), leaflet-lazy discipline, atomic zustand selectors, axe on changed interactive components, >=48px targets, Czech-first formal 'vy'. Parity test fails suite on any locale key drift. Pre-existing acceptHydration 3-test failure is NOT ours — ignore, do not fix, do not mask.",
-  "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD (missing QueryClient wrapper) — excluded from our gate. git add: explicit paths only.",
-  "updated_at": "2026-09-23",
-  "ship": "ff-merged redesign/customer-app into main (local, no remote push per authority). main @ 9f3833e. 3 commits: 6294ad9 foundation + 2283e73 frame + 9f3833e screens."
+  "topo_order": "WI-1 (conductor inline) -> WI-2a -> WI-2b -> {WI-3 || WI-4 || WI-5 || WI-6 || WI-7 (folder-disjoint, parallel)} -> WI-8 (after WI-7) -> impl-review each -> WI-9 dark pass + Phase 5 gate -> commit + ff-merge",
+  "task_tracker_ids": "TaskCreate #1=WI-1, #2=WI-2a, #10=WI-2b, #3=WI-3, #4=WI-4, #5=WI-5, #6=WI-6, #7=WI-7, #8=WI-8, #9=WI-9",
+  "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — excluded from our gate. git add: explicit paths only.",
+  "updated_at": "2026-09-24"
 }

@@ -1,28 +1,24 @@
 {
-  "$schema": ".claude/schemas/impl-review.v1.json",
   "kind": "impl",
-  "uc": "UC-016",
-  "wi": "WI-1",
-  "round": 1,
-  "wi_id": "WI-1",
+  "wi_id": "WI-2a",
   "commit_range": "staged",
   "blocks_merge": false,
-  "findings": [],
-  "summary": {
-    "CRITICAL": 0,
-    "HIGH": 0,
-    "MEDIUM": 0,
-    "LOW": 0
-  },
-  "automated_checks": {
-    "eslint": "PASS - fresh npm run lint (check:geo + eslint --max-warnings 0) clean, 0 warnings, exit 0.",
-    "tsc": "PASS - fresh npx tsc --noEmit clean, 0 errors, exit 0.",
-    "vitest": "PASS fresh re-run scoped to WI-1: headlineRules.test.ts + markerInterpolation.test.ts + locales.parity.test.ts + formatStaysCs.test.ts = 30/30 green (exit 0). Broader tracking+parity run 89/89 green (15 files).",
-    "scope": "EXACT: only the 10 WI-1 files_touched staged (headlineRules.ts/.test.ts, markerInterpolation.ts/.test.ts, 6 locale JSONs). No out-of-scope changes.",
-    "purity_check": "markerInterpolation.ts imports ONLY `type { LatLng }` from ./trackingMarker (a plain interface, no runtime deps); nothing from leaflet/react/DOM. Eager-safe as required.",
-    "f3_verification": "design-reviewer F3 (LOW, 'customer.tracking.reorder already exists at cs-CZ.json:1051, do not re-declare') is FACTUALLY WRONG and correctly rebutted by the developer. Verified against git HEAD: pre-change cs-CZ had customer.history.reorder='Objednat znovu' (the line-1051 match) but customer.tracking.reorder was absent (None) and customer.tracking.sheetLabel absent (None). Both new keys are genuinely new. Not flagged.",
-    "headline_behavior": "Confirmed load-bearing change: backend status New AND Assigned both -> phase 'searching' + key 'customer.tracking.headline.new' (Assigned no longer emits assignedNoEta); Accepted -> phase 'assigned' keeping assignedEta/assignedNoEta; unknown -> safe 'searching' + cancel blocked. Existing flags/TrackVm/HeadlineDescriptor extended (phase added), not rewritten. Existing test updated in-place (not a stale-test break); RED was observed per developer handoff.",
-    "i18n_parity": "All 6 locales receive the SAME two new keys (reorder, sheetLabel) as minimal 2-line insertions; formal 'vy' tone; no whole-file reformat; no re-declared existing keys; money cs-CZ/Kc and Europe/Prague dates untouched. German 'Fahrtstatus'/'Erneut bestellen' carry no umlaut so no diacritic-scan interaction (and per CLAUDE.md German ä/ö/ü/ß would be legitimate anyway).",
-    "note": "The tree e2e (customer.spec.ts Assigned-heading) is intentionally left RED pending WI-4 per by-design sequencing -- NOT a WI-1 defect, not flagged. The act(...) warning in the broader tracking run originates from TrackingPage.test.tsx (a WI-4 file, untouched by WI-1) and is pre-existing noise."
+  "summary": { "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
+  "findings": [
+    {
+      "severity": "LOW",
+      "file": "web/src/shared/ui/desk/{Ctrl,Panel,Table,Stat,Timeline}.tsx",
+      "line": "Ctrl.tsx:44, Panel.tsx:45, Table.tsx:45, Stat.tsx:37/53, Timeline.tsx:62",
+      "description": "Typography-size literals `font-size: 12px` (label/th/count/stat-label) and `font-size: 13px` (timeline title) have exact matching tokens `--fs-caption` (12px) and `--fs-label` (13px) that ARE defined in GlobalStyle and ARE used elsewhere in the very same files (e.g. Ctrl ErrorText uses var(--fs-caption), Table body uses tokens). Consistency nit only — these are typography SIZES, not colors/radii, so they fall outside the WI-2a coexistence flag list, and the components still render entirely from CSS custom properties. No functional or theming impact (both light/dark inherit correctly). Prefer var(--fs-caption)/var(--fs-label) for uniformity. Stat value 26px and DeskSegmented inner 6px radius have NO matching token in the ramp/radii set and are legitimate layout literals."
+    }
+  ],
+  "notes": {
+    "coexistence": "PASS. Zero hardcoded hex colors, zero rgba(), zero import of shared/theme/theme.ts across the entire desk kit. All color/radius/shadow/scrim/motion values read GlobalStyle CSS custom properties.",
+    "styled_components": "PASS. Every style prop is transient ($variant/$size/$selected/$accent/$hasError/$disabled/$tone/$active/$on/$num/$direction) — no non-DOM attribute leak. One exported component per file, PascalCase.tsx, JSDoc on every exported interface + component.",
+    "a11y": "PASS. All 11 components carry a vitest-axe assertion via '../../test/axe' (= @/shared/test/axe helper). Semantics: Table uses table/th/td with $num right-align; Tabs uses role=tablist/tab + aria-selected + roving tabIndex + ArrowLeft/Right + focus-follows-selection; FilterChip + DeskSegmented use real <button> + aria-pressed; Drawer uses role=dialog + aria-modal + focus trap (Tab/Shift+Tab wrap) + Escape + focus restore to trigger + --scrim + token focus ring; uppercase is CSS-only (text-transform), DOM text preserved; icons decorative aria-hidden or role=img+title.",
+    "i18n": "PASS. No hardcoded user-facing strings in kit components — all text arrives via props (title/label/children); accessible names via required label props (Drawer.closeLabel, Tabs.ariaLabel, DeskSegmented.ariaLabel).",
+    "typescript": "PASS. No `any`, no `as any`. Explicit JSX.Element / JSX.Element|null return types on all exported components; typed unions for variants/tones/directions.",
+    "icons": "PASS. Purely additive — 5 new glyphs (arrow-up, arrow-down, sun, moon, download) added to BOTH the IconName union AND the PATHS record; existing glyphs byte-untouched; Icon.test.tsx covers all 5 new names via it.each plus the decorative/labelled/size/axe cases.",
+    "checks": "tsc --noEmit, eslint, and scoped vitest (88 tests) all green per background run. Pre-existing unrelated acceptHydration.test.tsx failure explicitly out of scope."
   }
 }

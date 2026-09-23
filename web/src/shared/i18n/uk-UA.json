@@ -247,7 +247,12 @@
       "cancel": "Скасувати",
       "detail": "Деталі",
       "confirm": "Підтвердити",
-      "close": "Закрити"
+      "close": "Закрити",
+      "accept": "Прийняти",
+      "arrive": "На місці",
+      "start": "Почати поїздку",
+      "complete": "Завершити",
+      "decline": "Відхилити"
     },
     "cancelReasons": {
       "title": "Причина скасування",
@@ -1593,5 +1598,16 @@
         "noShowShareLabel": "Частка no-show скасувань"
       }
     }
+  },
+  "appLayout": {
+    "connected": "Підключено",
+    "connecting": "Підключення…",
+    "reconnecting": "Перепідключення…",
+    "disconnected": "Відключено",
+    "themeLight": "Світла",
+    "themeDark": "Темна",
+    "themeSystem": "Система",
+    "themeToggle": "Перемкнути тему",
+    "languageToggle": "Змінити мову"
   }
 }

@@ -247,7 +247,12 @@
       "cancel": "Отменить",
       "detail": "Подробнее",
       "confirm": "Подтвердить",
-      "close": "Закрыть"
+      "close": "Закрыть",
+      "accept": "Принять",
+      "arrive": "На месте",
+      "start": "Начать поездку",
+      "complete": "Завершить",
+      "decline": "Отклонить"
     },
     "cancelReasons": {
       "title": "Причина отмены",
@@ -1593,5 +1598,16 @@
         "noShowShareLabel": "Доля отмен no-show"
       }
     }
+  },
+  "appLayout": {
+    "connected": "Подключено",
+    "connecting": "Подключение…",
+    "reconnecting": "Переподключение…",
+    "disconnected": "Отключено",
+    "themeLight": "Светлая",
+    "themeDark": "Тёмная",
+    "themeSystem": "Система",
+    "themeToggle": "Переключить тему",
+    "languageToggle": "Сменить язык"
   }
 }

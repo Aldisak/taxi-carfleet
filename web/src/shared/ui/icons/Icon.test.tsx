@@ -28,4 +28,14 @@ describe('Icon', () => {
     const { container } = render(<Icon name="star" title="Hodnocení" />)
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it.each(['arrow-up', 'arrow-down', 'sun', 'moon', 'download'] as const)(
+    'renders the new desktop glyph %s',
+    (name) => {
+      const { container } = render(<Icon name={name} />)
+      const svg = container.querySelector('svg')!
+      expect(svg).toBeInTheDocument()
+      expect(svg.querySelector('path, circle')).not.toBeNull()
+    },
+  )
 })

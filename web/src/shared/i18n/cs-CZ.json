@@ -247,7 +247,12 @@
       "cancel": "Zrušit",
       "detail": "Detail",
       "confirm": "Potvrdit",
-      "close": "Zavřít"
+      "close": "Zavřít",
+      "accept": "Přijmout",
+      "arrive": "Na místě",
+      "start": "Zahájit jízdu",
+      "complete": "Dokončit",
+      "decline": "Odmítnout"
     },
     "cancelReasons": {
       "title": "Důvod zrušení",
@@ -1593,5 +1598,16 @@
         "noShowShareLabel": "Podíl no-show storní"
       }
     }
+  },
+  "appLayout": {
+    "connected": "Připojeno",
+    "connecting": "Připojování…",
+    "reconnecting": "Obnovuji spojení…",
+    "disconnected": "Odpojeno",
+    "themeLight": "Světlý",
+    "themeDark": "Tmavý",
+    "themeSystem": "Systém",
+    "themeToggle": "Přepnout vzhled",
+    "languageToggle": "Změnit jazyk"
   }
 }

@@ -247,7 +247,12 @@
       "cancel": "Cancel",
       "detail": "Detail",
       "confirm": "Confirm",
-      "close": "Close"
+      "close": "Close",
+      "accept": "Accept",
+      "arrive": "Arrived",
+      "start": "Start ride",
+      "complete": "Complete",
+      "decline": "Decline"
     },
     "cancelReasons": {
       "title": "Cancellation reason",
@@ -1593,5 +1598,16 @@
         "noShowShareLabel": "No-show share"
       }
     }
+  },
+  "appLayout": {
+    "connected": "Connected",
+    "connecting": "Connecting…",
+    "reconnecting": "Reconnecting…",
+    "disconnected": "Disconnected",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "themeToggle": "Toggle theme",
+    "languageToggle": "Change language"
   }
 }

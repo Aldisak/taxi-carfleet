@@ -247,7 +247,12 @@
       "cancel": "Stornieren",
       "detail": "Details",
       "confirm": "Bestätigen",
-      "close": "Schließen"
+      "close": "Schließen",
+      "accept": "Annehmen",
+      "arrive": "Vor Ort",
+      "start": "Fahrt starten",
+      "complete": "Abschließen",
+      "decline": "Ablehnen"
     },
     "cancelReasons": {
       "title": "Stornogrund",
@@ -1593,5 +1598,16 @@
         "noShowShareLabel": "Anteil der No-show-Stornos"
       }
     }
+  },
+  "appLayout": {
+    "connected": "Verbunden",
+    "connecting": "Verbindung…",
+    "reconnecting": "Neu verbinden…",
+    "disconnected": "Getrennt",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel",
+    "themeSystem": "System",
+    "themeToggle": "Design umschalten",
+    "languageToggle": "Sprache ändern"
   }
 }
