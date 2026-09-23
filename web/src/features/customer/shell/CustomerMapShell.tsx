@@ -7,6 +7,8 @@ import { CallButton } from './CallButton'
 import { LanguageSelector } from '../../../shared/i18n/LanguageSelector'
 import { useFleetBranding } from './useFleetBranding'
 import { ensureFleetSlug } from './ensureFleetSlug'
+import { useThemeMode } from '../../../shared/theme/useThemeMode'
+import { accentCssVars } from '../../../shared/theme/accent'
 import type { LatLng } from './mapCamera'
 
 /**
@@ -39,7 +41,9 @@ const Shell = styled.div`
   height: 100dvh;
   width: 100%;
   overflow: hidden;
-  background: ${({ theme }) => theme.colors.background};
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
 `
 
 // The map fills the whole viewport as the background stacking layer.
@@ -174,6 +178,10 @@ export function CustomerMapShell({
   useState(ensureFleetSlug)
 
   const { theme: brandedTheme, fleet } = useFleetBranding()
+  // Apply the customer theme mode (system default + Menu override) to the document root, and
+  // expose the tenant accent as CSS vars on this surface so the kit + map markers pick it up.
+  const { resolved } = useThemeMode()
+  const brandVars = accentCssVars(fleet?.primaryColorHex, resolved === 'dark')
 
   useEffect(() => {
     enableSilentRefresh('/customer/login')
@@ -187,7 +195,7 @@ export function CustomerMapShell({
 
   return (
     <ThemeProvider theme={brandedTheme}>
-      <Shell>
+      <Shell style={brandVars}>
         <MapLayer>
           <Suspense fallback={null}>
             <CustomerMapBackground

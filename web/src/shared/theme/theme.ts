@@ -47,7 +47,7 @@ export const theme: DefaultTheme = {
     xxl: '48px',
   },
   typography: {
-    fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+    fontFamily: "'Manrope', 'Segoe UI', system-ui, sans-serif",
     fontSizeXs: '11px',
     fontSizeSm: '13px',
     fontSizeMd: '15px',

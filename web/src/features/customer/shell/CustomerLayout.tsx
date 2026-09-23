@@ -8,13 +8,17 @@ import { CallButton } from './CallButton'
 import { LanguageSelector } from '../../../shared/i18n/LanguageSelector'
 import { useFleetBranding } from './useFleetBranding'
 import { ensureFleetSlug } from './ensureFleetSlug'
+import { useThemeMode } from '../../../shared/theme/useThemeMode'
+import { accentCssVars } from '../../../shared/theme/accent'
 
 const Shell = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
   min-width: 320px;
-  background: ${({ theme }) => theme.colors.background};
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
   overflow-x: hidden;
 `
 
@@ -24,8 +28,8 @@ const Header = styled.header`
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.md};
   padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 `
 
 const Brand = styled.div`
@@ -43,9 +47,9 @@ const Logo = styled.img`
 
 const FleetName = styled.h1`
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-headline);
+  font-weight: var(--fw-extra);
+  color: var(--ink);
 `
 
 const HeaderActions = styled.div`
@@ -64,15 +68,15 @@ const Content = styled.main`
 const Footer = styled.footer`
   padding: ${({ theme }) => theme.spacing.md};
   text-align: center;
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
+  border-top: 1px solid var(--line);
 `
 
 const FooterLink = styled.a`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-label);
+  color: var(--accent-text);
 
   &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline: 3px solid var(--accent);
     outline-offset: 2px;
   }
 `
@@ -99,6 +103,8 @@ export function CustomerLayout() {
   useState(ensureFleetSlug)
 
   const { theme: brandedTheme, fleet } = useFleetBranding()
+  const { resolved } = useThemeMode()
+  const brandVars = accentCssVars(fleet?.primaryColorHex, resolved === 'dark')
 
   useEffect(() => {
     enableSilentRefresh('/customer/login')
@@ -112,7 +118,7 @@ export function CustomerLayout() {
 
   return (
     <ThemeProvider theme={brandedTheme}>
-      <Shell>
+      <Shell style={brandVars}>
         <Header>
           <Brand>
             {fleet?.logoUrl && (

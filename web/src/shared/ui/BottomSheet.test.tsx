@@ -132,4 +132,30 @@ describe('BottomSheet', () => {
 
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it('renders in the full snap position (immersive search surface)', () => {
+    render(
+      wrap(
+        <BottomSheet open snap="full" ariaLabelKey="customer.sheet.label" onClose={vi.fn()}>
+          <p>vyhledávání</p>
+        </BottomSheet>,
+      ),
+    )
+
+    // The dialog still renders its content — `full` is a height change, not a structural one.
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('vyhledávání')).toBeInTheDocument()
+  })
+
+  it('renders without the legacy `expanded` prop (snap-only usage)', () => {
+    render(
+      wrap(
+        <BottomSheet open snap="collapsed" ariaLabelKey="customer.sheet.label" onClose={vi.fn()}>
+          <p>peek</p>
+        </BottomSheet>,
+      ),
+    )
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
 })

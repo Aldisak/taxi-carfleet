@@ -3,14 +3,21 @@ import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 
 /**
- * Sheet heights. Collapsed shows a peek; expanded takes a larger share of the viewport.
- * Both stay well below the full height so the map behind and its bottom-left attribution
- * logo remain visible (rules/web-accessibility.md#semantics, CLAUDE.md map-inset note).
+ * Sheet snap positions. `collapsed` shows a peek; `expanded` takes a larger share;
+ * `full` covers the viewport for immersive surfaces (Search). Collapsed/expanded stay
+ * below full height so the map behind and its bottom-left attribution logo remain visible
+ * (rules/web-accessibility.md#semantics, CLAUDE.md map-inset note).
  */
-const COLLAPSED_HEIGHT = '30dvh'
-const EXPANDED_HEIGHT = '70dvh'
+export type SheetSnap = 'collapsed' | 'expanded' | 'full'
 
-const Sheet = styled.div<{ $expanded: boolean }>`
+const SNAP_HEIGHT: Record<SheetSnap, string> = {
+  collapsed: '30dvh',
+  expanded: '70dvh',
+  // Leave the notch/status bar clear so the sheet never fights the OS chrome.
+  full: 'calc(100dvh - env(safe-area-inset-top) - 12px)',
+}
+
+const Sheet = styled.div<{ $snap: SheetSnap }>`
   position: fixed;
   left: 0;
   right: 0;
@@ -18,45 +25,52 @@ const Sheet = styled.div<{ $expanded: boolean }>`
   z-index: ${({ theme }) => theme.zIndex.overlay};
   display: flex;
   flex-direction: column;
-  height: ${({ $expanded }) => ($expanded ? EXPANDED_HEIGHT : COLLAPSED_HEIGHT)};
-  background: ${({ theme }) => theme.colors.surface};
-  border-top-left-radius: ${({ theme }) => theme.borderRadius.lg};
-  border-top-right-radius: ${({ theme }) => theme.borderRadius.lg};
-  box-shadow: ${({ theme }) => theme.shadows.lg};
+  height: ${({ $snap }) => SNAP_HEIGHT[$snap]};
+  background: var(--surface);
+  border-top-left-radius: var(--r-lg);
+  border-top-right-radius: var(--r-lg);
+  box-shadow: var(--shadow-sheet);
+  transition: height var(--dur-sheet) var(--ease-sheet);
   /* Safe-area bottom padding for notched/home-indicator phones. */
   padding-bottom: env(safe-area-inset-bottom);
 
   &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: -2px;
+    outline: 3px solid var(--accent);
+    outline-offset: -3px;
   }
 `
 
-// A small non-interactive grab handle (decorative — hidden from AT).
+// A small non-interactive grab handle (decorative — hidden from AT). 40×5 per the design.
 const GrabHandle = styled.div`
   flex: 0 0 auto;
-  width: ${({ theme }) => theme.spacing.xl};
-  height: ${({ theme }) => theme.spacing.xs};
-  margin: ${({ theme }) => theme.spacing.sm} auto ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  background: ${({ theme }) => theme.colors.border};
+  width: 40px;
+  height: 5px;
+  margin: 10px auto 4px;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
 `
 
 const Content = styled.div`
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: ${({ theme }) => theme.spacing.md};
+  padding: 16px;
+  padding-bottom: 28px;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
+  gap: 16px;
 `
 
-/** Props for the shared BottomSheet primitive. Controlled: the parent owns open/expanded. */
+/** Props for the shared BottomSheet primitive. Controlled: the parent owns open/snap. */
 export interface BottomSheetProps {
   /** Whether the sheet is rendered. When false the sheet is unmounted. */
   open: boolean
-  /** Collapsed (peek) vs expanded height. */
-  expanded: boolean
+  /**
+   * Collapsed (peek) vs expanded height. Kept for backward compatibility; when `snap` is
+   * provided it takes precedence. `expanded` maps to snap `'expanded'`, otherwise `'collapsed'`.
+   */
+  expanded?: boolean
+  /** Explicit snap position (`collapsed | expanded | full`). Overrides `expanded` when set. */
+  snap?: SheetSnap
   /** i18n key for the sheet's accessible name (role=dialog aria-label). */
   ariaLabelKey: string
   /** Called on Escape (parent decides collapse vs close). */
@@ -77,12 +91,14 @@ export interface BottomSheetProps {
  */
 export function BottomSheet({
   open,
-  expanded,
+  expanded = false,
+  snap,
   ariaLabelKey,
   onClose,
   children,
 }: BottomSheetProps) {
   const { t } = useTranslation()
+  const effectiveSnap: SheetSnap = snap ?? (expanded ? 'expanded' : 'collapsed')
   const sheetRef = useRef<HTMLDivElement>(null)
   // The element focused before the sheet opened, to restore on close.
   const triggerRef = useRef<HTMLElement | null>(null)
@@ -106,7 +122,7 @@ export function BottomSheet({
   return (
     <Sheet
       ref={sheetRef}
-      $expanded={expanded}
+      $snap={effectiveSnap}
       role="dialog"
       aria-label={t(ariaLabelKey)}
       tabIndex={-1}

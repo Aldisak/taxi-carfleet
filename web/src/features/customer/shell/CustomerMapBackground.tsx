@@ -115,8 +115,8 @@ const CenterPin = styled.div`
     border-radius: 50% 50% 50% 0;
     transform-origin: center;
     rotate: 45deg;
-    background: ${({ theme }) => theme.colors.primary};
-    box-shadow: ${({ theme }) => theme.shadows.md};
+    background: var(--accent);
+    box-shadow: var(--shadow-float);
   }
 `
 
@@ -128,10 +128,15 @@ export const MARKER_ANIMATION_MS = 3000
 // Migrated verbatim from tracking/TrackingMapInner (removed in WI-4). The '.tracking-car-icon'
 // className is a load-bearing e2e contract (web/e2e/customer.spec.ts locates it) — do not rename.
 // Module-level consts so each divIcon is created once (rules/web-performance.md — no useMemo needed).
+// Marker colours come from the design CSS custom properties so the tenant accent and dark
+// mode flip for free. SVG presentation attributes do not accept var(), so the CSS `fill`/
+// `stroke` PROPERTIES are set via inline `style` (which does resolve custom properties). The
+// markers render inside the customer shell subtree where `--accent`/`--ink`/`--surface`
+// cascade, so a branded fleet colour reaches the pin without re-creating the divIcon.
 const PICKUP_ICON = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
-    <path d="M12 0C5.373 0 0 5.373 0 12c0 8.4 12 20 12 20s12-11.6 12-20C24 5.373 18.627 0 12 0z" fill="#188038" stroke="white" stroke-width="1.5"/>
-    <circle cx="12" cy="12" r="5" fill="white"/></svg>`,
+    <path d="M12 0C5.373 0 0 5.373 0 12c0 8.4 12 20 12 20s12-11.6 12-20C24 5.373 18.627 0 12 0z" style="fill:var(--accent);stroke:var(--surface)" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="5" style="fill:var(--surface)"/></svg>`,
   className: 'tracking-pickup-icon',
   iconSize: [24, 32],
   iconAnchor: [12, 32],
@@ -139,8 +144,8 @@ const PICKUP_ICON = L.divIcon({
 
 const CAR_ICON = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-    <circle cx="14" cy="14" r="12" fill="#1a73e8" stroke="white" stroke-width="2"/>
-    <path d="M8 16v-3l1.5-3.5h9L20 13v3h-2v-1.5H10V16z" fill="white"/></svg>`,
+    <rect x="2" y="2" width="24" height="24" rx="7" style="fill:var(--surface);stroke:var(--ink)" stroke-width="2"/>
+    <path d="M8 16v-3l1.5-3.5h9L20 13v3h-2v-1.5H10V16z" style="fill:var(--ink)"/></svg>`,
   className: 'tracking-car-icon',
   iconSize: [28, 28],
   iconAnchor: [14, 14],
