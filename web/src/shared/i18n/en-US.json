@@ -1089,6 +1089,22 @@
       "meterUnavailable": "We could not calculate the price, please call us.",
       "sheetLabel": "Ride order",
       "loginPrompt": "Please sign in to finish your order."
+    },
+    "menu": {
+      "title": "Menu",
+      "openAria": "Open menu",
+      "closeAria": "Close menu",
+      "sheetLabel": "Menu",
+      "signedInAs": "Signed in as {{phone}}",
+      "history": "Ride history",
+      "call": "Call the dispatcher",
+      "language": "Language",
+      "privacy": "Privacy policy",
+      "logout": "Sign out",
+      "appearance": "Appearance",
+      "themeSystem": "System",
+      "themeLight": "Light",
+      "themeDark": "Dark"
     }
   },
   "notifications": {

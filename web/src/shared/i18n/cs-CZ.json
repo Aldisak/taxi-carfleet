@@ -1089,6 +1089,22 @@
       "meterUnavailable": "Cenu nelze spočítat, zavolejte nám.",
       "sheetLabel": "Objednávka jízdy",
       "loginPrompt": "Pro dokončení objednávky se prosím přihlaste."
+    },
+    "menu": {
+      "title": "Menu",
+      "openAria": "Otevřít menu",
+      "closeAria": "Zavřít menu",
+      "sheetLabel": "Nabídka",
+      "signedInAs": "Přihlášeno jako {{phone}}",
+      "history": "Historie jízd",
+      "call": "Zavolat dispečink",
+      "language": "Jazyk",
+      "privacy": "Ochrana osobních údajů",
+      "logout": "Odhlásit se",
+      "appearance": "Vzhled",
+      "themeSystem": "Systém",
+      "themeLight": "Světlý",
+      "themeDark": "Tmavý"
     }
   },
   "notifications": {

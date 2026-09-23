@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { authStorage } from '../../../shared/api/auth-storage'
 import { enableSilentRefresh, scheduleProactiveRefresh } from '../../../shared/api/refresh'
 import { CallButton } from './CallButton'
-import { LanguageSelector } from '../../../shared/i18n/LanguageSelector'
+import { CustomerMenu } from './CustomerMenu'
 import { useFleetBranding } from './useFleetBranding'
 import { ensureFleetSlug } from './ensureFleetSlug'
 import { useThemeMode } from '../../../shared/theme/useThemeMode'
 import { accentCssVars } from '../../../shared/theme/accent'
+import { IconButton, FleetChip, Icon } from '../../../shared/ui'
 import type { LatLng } from './mapCamera'
 
 /**
@@ -88,31 +89,6 @@ const Chrome = styled.div`
   gap: ${({ theme }) => theme.spacing.sm};
 `
 
-// The fleet name is the customer app's brand identity in the map-first shell (it replaces the
-// deleted CustomerHomePage <h1>). Rendered on a translucent surface pill so it stays legible over
-// the map. Truncates rather than wrapping so it never pushes the chrome controls off-screen.
-const FleetName = styled.h1`
-  margin: 0;
-  min-width: 0;
-  max-width: 55%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  background: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
-`
-
-const ChromeControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-`
-
 // Bottom overlay slot: the live-ride / order sheet host (empty here, filled by UC-015/016).
 // It spans the width but leaves the bottom-left Mapy logo reachable (the logo sits at
 // z-index attribution=1000 inside the map's own stacking context; this slot sits at
@@ -182,6 +158,7 @@ export function CustomerMapShell({
   // expose the tenant accent as CSS vars on this surface so the kit + map markers pick it up.
   const { resolved } = useThemeMode()
   const brandVars = accentCssVars(fleet?.primaryColorHex, resolved === 'dark')
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     enableSilentRefresh('/customer/login')
@@ -210,14 +187,18 @@ export function CustomerMapShell({
 
         <TopSlot role="region" aria-label={t('customer.shell.topSlotLabel')}>
           <Chrome aria-label={t('customer.shell.chromeLabel')} role="group">
-            {fleet?.name && <FleetName>{fleet.name}</FleetName>}
-            <ChromeControls>
-              <LanguageSelector />
-              <CallButton phone={fleet?.phone} />
-            </ChromeControls>
+            <IconButton
+              icon={<Icon name="menu" />}
+              label={t('customer.menu.openAria')}
+              onClick={() => setMenuOpen(true)}
+            />
+            <FleetChip name={fleet?.name ?? t('customer.appName')} logoUrl={fleet?.logoUrl} />
+            <CallButton phone={fleet?.phone} iconOnly />
           </Chrome>
           {topSlot}
         </TopSlot>
+
+        <CustomerMenu open={menuOpen} onClose={() => setMenuOpen(false)} fleet={fleet} />
 
         <BottomSlot role="region" aria-label={t('customer.shell.bottomSlotLabel')}>
           {bottomSlot}

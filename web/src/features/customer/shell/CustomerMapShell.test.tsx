@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '../../../shared/i18n'
@@ -84,16 +85,25 @@ describe('CustomerMapShell', () => {
     expect(enableSilentRefresh).toHaveBeenCalledWith('/customer/login')
   })
 
-  it('renders the fleet name as the brand heading (h1) in the chrome (onboarding AC4)', () => {
+  it('renders the fleet identity (FleetChip) in the chrome (onboarding AC4)', () => {
     renderShell()
-    expect(screen.getByRole('heading', { level: 1, name: 'Demo Taxi' })).toBeInTheDocument()
+    // The brand identity is now the centered FleetChip (name visible), not an <h1>.
+    expect(screen.getByText('Demo Taxi')).toBeInTheDocument()
   })
 
-  it('renders the LanguageSelector and the Zavolat CallButton in the top slot', () => {
+  it('renders the accent call IconButton (tel link) in the top slot', () => {
     renderShell()
-    expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
     const call = screen.getByRole('link', { name: /zavolat/i })
     expect(call).toHaveAttribute('href', 'tel:+420123456789')
+  })
+
+  it('opens the menu (with the language selector) from the top-bar menu button', async () => {
+    const user = userEvent.setup()
+    renderShell()
+    // The LanguageSelector now lives inside the menu, reached via the menu IconButton.
+    expect(screen.queryByRole('combobox', { name: 'Jazyk' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: i18n.t('customer.menu.openAria') }))
+    expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
   })
 
   it('renders the lazy map background', async () => {

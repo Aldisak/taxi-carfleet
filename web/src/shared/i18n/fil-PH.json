@@ -1089,6 +1089,22 @@
       "meterUnavailable": "Hindi namin makalkula ang presyo, tumawag lang po sa amin.",
       "sheetLabel": "Order ng biyahe",
       "loginPrompt": "Mag-sign in po para tapusin ang order."
+    },
+    "menu": {
+      "title": "Menu",
+      "openAria": "Buksan ang menu",
+      "closeAria": "Isara ang menu",
+      "sheetLabel": "Menu",
+      "signedInAs": "Naka-sign in bilang {{phone}}",
+      "history": "Kasaysayan ng biyahe",
+      "call": "Tawagan ang dispatcher",
+      "language": "Wika",
+      "privacy": "Patakaran sa privacy",
+      "logout": "Mag-sign out",
+      "appearance": "Hitsura",
+      "themeSystem": "System",
+      "themeLight": "Maliwanag",
+      "themeDark": "Madilim"
     }
   },
   "notifications": {

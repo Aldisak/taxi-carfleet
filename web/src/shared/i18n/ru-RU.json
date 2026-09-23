@@ -1089,6 +1089,22 @@
       "meterUnavailable": "Не удалось рассчитать цену, позвоните нам.",
       "sheetLabel": "Заказ поездки",
       "loginPrompt": "Пожалуйста, войдите, чтобы завершить заказ."
+    },
+    "menu": {
+      "title": "Меню",
+      "openAria": "Открыть меню",
+      "closeAria": "Закрыть меню",
+      "sheetLabel": "Меню",
+      "signedInAs": "Вы вошли как {{phone}}",
+      "history": "История поездок",
+      "call": "Позвонить диспетчеру",
+      "language": "Язык",
+      "privacy": "Конфиденциальность",
+      "logout": "Выйти",
+      "appearance": "Оформление",
+      "themeSystem": "Системная",
+      "themeLight": "Светлая",
+      "themeDark": "Тёмная"
     }
   },
   "notifications": {

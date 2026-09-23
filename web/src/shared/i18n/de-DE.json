@@ -1089,6 +1089,22 @@
       "meterUnavailable": "Der Preis konnte nicht berechnet werden, bitte rufen Sie uns an.",
       "sheetLabel": "Fahrtbestellung",
       "loginPrompt": "Bitte melden Sie sich an, um Ihre Bestellung abzuschließen."
+    },
+    "menu": {
+      "title": "Menü",
+      "openAria": "Menü öffnen",
+      "closeAria": "Menü schließen",
+      "sheetLabel": "Menü",
+      "signedInAs": "Angemeldet als {{phone}}",
+      "history": "Fahrtenverlauf",
+      "call": "Zentrale anrufen",
+      "language": "Sprache",
+      "privacy": "Datenschutz",
+      "logout": "Abmelden",
+      "appearance": "Darstellung",
+      "themeSystem": "System",
+      "themeLight": "Hell",
+      "themeDark": "Dunkel"
     }
   },
   "notifications": {

@@ -1089,6 +1089,22 @@
       "meterUnavailable": "Не вдалося розрахувати ціну, зателефонуйте нам.",
       "sheetLabel": "Замовлення поїздки",
       "loginPrompt": "Будь ласка, увійдіть, щоб завершити замовлення."
+    },
+    "menu": {
+      "title": "Меню",
+      "openAria": "Відкрити меню",
+      "closeAria": "Закрити меню",
+      "sheetLabel": "Меню",
+      "signedInAs": "Ви увійшли як {{phone}}",
+      "history": "Історія поїздок",
+      "call": "Зателефонувати диспетчеру",
+      "language": "Мова",
+      "privacy": "Конфіденційність",
+      "logout": "Вийти",
+      "appearance": "Оформлення",
+      "themeSystem": "Системна",
+      "themeLight": "Світла",
+      "themeDark": "Темна"
     }
   },
   "notifications": {
