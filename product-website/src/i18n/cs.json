@@ -20,6 +20,8 @@
   "mock.edit": "Upravit",
   "mock.pickup": "Vyzvednutí",
   "mock.dest": "Cíl",
+  "mock.pickupPlace": "Kolín, nádraží",
+  "mock.destPlace": "Masarykovo náměstí 12",
   "mock.note": "Cena je konečná. Platíte řidiči na konci jízdy.",
   "mock.fixed": "Pevná cena",
   "mock.now": "Hned",

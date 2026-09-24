@@ -64,8 +64,8 @@ export interface MiniMockupCopy {
   driver: {
     /** i18n key — mock.offer. */
     offerKey: string
-    /** Literal pickup place (identical in both locales per the borderline rule). */
-    pickup: string
+    /** i18n key — mock.pickupPlace (shared with the phone mockup; "nádraží"→"station"). */
+    pickupKey: string
     /** i18n key — mock.driverDest (whole-string composite). */
     destKey: string
     /** Literal countdown timer. */
@@ -121,7 +121,7 @@ export const miniMockupCopy: MiniMockupCopy = {
   },
   driver: {
     offerKey: 'mock.offer',
-    pickup: 'Kolín, nádraží',
+    pickupKey: 'mock.pickupPlace',
     destKey: 'mock.driverDest',
     timer: '22 s',
     fixedKey: 'mock.fixed',

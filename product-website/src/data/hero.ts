@@ -13,12 +13,12 @@ export interface PhoneMockupCopy {
   rideKey: string
   /** i18n key — mock.edit. */
   editKey: string
-  /** Literal pickup place proper noun. */
-  pickupPlace: string
+  /** i18n key — mock.pickupPlace (town proper noun stays, "nádraží"→"station"). */
+  pickupPlaceKey: string
   /** i18n key — mock.pickup. */
   pickupKey: string
-  /** Literal destination place proper noun. */
-  destPlace: string
+  /** i18n key — mock.destPlace ("Masarykovo náměstí"→"Masaryk Sq."). */
+  destPlaceKey: string
   /** i18n key — mock.dest. */
   destKey: string
   /** Literal price (money stays cs-CZ). */
@@ -56,9 +56,9 @@ export const phoneMockup: PhoneMockupCopy = {
   fleet: 'Taxi Kolín',
   rideKey: 'mock.ride',
   editKey: 'mock.edit',
-  pickupPlace: 'Kolín, nádraží',
+  pickupPlaceKey: 'mock.pickupPlace',
   pickupKey: 'mock.pickup',
-  destPlace: 'Masarykovo náměstí 12',
+  destPlaceKey: 'mock.destPlace',
   destKey: 'mock.dest',
   price: '100 Kč',
   noteKey: 'mock.note',
