@@ -1,42 +1,59 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
-import { getDriverStatusInfo } from './statusPill'
+import { getDriverStatusInfo, getDriverStatusTone } from './statusPill'
 import { formatPositionAge } from './positionAge'
 import { useOverrideStatus } from './useOverrideStatus'
 import { useDriverFocusStore } from './useDriverFocusStore'
+import { DeskPill } from '../../shared/ui/desk'
+import { Icon } from '../../shared/ui/icons/Icon'
 import { useHubConnectionState, isServerActionBlocked } from '../../shared/realtime/useFleetHub'
 import type { DriverSummaryDto } from '../../shared/api/client'
 import type { OverrideStatus } from './useOverrideStatus'
 
 // ---------------------------------------------------------------------------
-// Styled components
+// Styled components — desk kit tokens (CSS custom properties)
 // ---------------------------------------------------------------------------
 
 const Row = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  gap: 3px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
   cursor: pointer;
 
   &:hover {
-    background: ${({ theme }) => theme.colors.background};
+    background: var(--surface-2);
   }
 `
 
 const RowTop = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 6px;
   flex-wrap: wrap;
 `
 
+const StatusDot = styled.span<{ $tone: string }>`
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  flex-shrink: 0;
+  background: ${({ $tone }) => {
+    switch ($tone) {
+      case 'success': return 'var(--success)'
+      case 'info': return 'var(--info)'
+      case 'warning': return 'var(--warning)'
+      default: return 'var(--ink-3)'
+    }
+  }};
+`
+
 const DriverName = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -45,37 +62,48 @@ const DriverName = styled.span`
 `
 
 const Plate = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-family: monospace;
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+  font-family: 'Manrope', monospace;
 `
 
 const RowMeta = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  gap: 8px;
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
 const OrderCode = styled.span`
-  font-family: monospace;
+  font-family: 'Manrope', monospace;
+  color: var(--ink);
 `
 
-const OverrideBtn = styled.button`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 1px ${({ theme }) => theme.spacing.xs};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: transparent;
-  color: ${({ theme }) => theme.colors.textSecondary};
-  cursor: pointer;
+const MenuBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   margin-left: auto;
+  padding: 0;
+  font-size: var(--fs-label);
+  line-height: 1;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
 
   &:hover {
-    background: ${({ theme }) => theme.colors.primary};
-    color: #fff;
-    border-color: ${({ theme }) => theme.colors.primary};
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 `
 
@@ -84,37 +112,49 @@ const Popover = styled.div`
   right: 0;
   top: 100%;
   z-index: 100;
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  box-shadow: ${({ theme }) => theme.shadows.md};
-  min-width: 120px;
+  min-width: 140px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-float);
   overflow: hidden;
+`
+
+const PopoverTitle = styled.div`
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: var(--fw-extra);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
 `
 
 const PopoverItem = styled.button`
   display: block;
   width: 100%;
   text-align: left;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  padding: 8px 12px;
+  font-size: var(--fs-label);
+  font-family: inherit;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: ${({ theme }) => theme.colors.text};
+  color: var(--ink);
 
   &:hover {
-    background: ${({ theme }) => theme.colors.background};
+    background: var(--surface-2);
   }
 `
 
 const PopoverWrapper = styled.div`
   position: relative;
+  margin-left: auto;
 `
 
 const ErrorMsg = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.error};
+  font-size: var(--fs-caption);
+  color: var(--danger);
   display: block;
 `
 
@@ -137,8 +177,7 @@ export function DriverRow({ driver, currentOrderCode }: DriverRowProps) {
   const blocked = isServerActionBlocked(useHubConnectionState())
 
   const statusInfo = getDriverStatusInfo(driver.status as never)
-  // Since theme colors are not accessible here we need to use inline styles or pass via prop
-  // We'll render the color by matching the colorKey in the component
+  const statusTone = getDriverStatusTone(driver.status)
 
   // Live ticking position age — updates every second
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -152,7 +191,7 @@ export function DriverRow({ driver, currentOrderCode }: DriverRowProps) {
     setFocusedDriverId(driver.driverId)
   }
 
-  function handleOverrideClick(e: React.MouseEvent) {
+  function handleMenuClick(e: React.MouseEvent) {
     e.stopPropagation()
     setShowPopover(p => !p)
   }
@@ -175,28 +214,32 @@ export function DriverRow({ driver, currentOrderCode }: DriverRowProps) {
     <Row
       onClick={handleRowClick}
       aria-label={`driver-row-${driver.driverId}`}
-      role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') handleRowClick() }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleRowClick() }}
     >
       <RowTop>
+        <StatusDot $tone={statusTone} aria-hidden="true" />
         <DriverName>{driver.displayName}</DriverName>
         {driver.currentVehiclePlate && (
           <Plate aria-label="vehicle-plate">{driver.currentVehiclePlate}</Plate>
         )}
-        <DriverStatusPill status={driver.status} label={t(statusInfo.labelKey)} />
+        <span aria-label={`driver-status-${driver.status}`}>
+          <DeskPill tone={statusTone}>{t(statusInfo.labelKey)}</DeskPill>
+        </span>
         <PopoverWrapper>
-          <OverrideBtn
+          <MenuBtn
             type="button"
-            aria-label={t('drivers.overrideTitle')}
-            onClick={handleOverrideClick}
+            aria-label={t('drivers.menuLabel')}
+            onClick={handleMenuClick}
             aria-expanded={showPopover}
+            aria-haspopup="menu"
             disabled={blocked}
           >
-            {t('drivers.overrideTitle')}
-          </OverrideBtn>
+            <Icon name="menu" size={16} />
+          </MenuBtn>
           {showPopover && (
             <Popover role="menu" aria-label="status-override-menu">
+              <PopoverTitle>{t('drivers.overrideTitle')}</PopoverTitle>
               <PopoverItem
                 role="menuitem"
                 onClick={(e) => { e.stopPropagation(); handleSelectStatus('Free') }}
@@ -232,44 +275,3 @@ export function DriverRow({ driver, currentOrderCode }: DriverRowProps) {
     </Row>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Internal: StatusPill using styled-component with inline color
-// ---------------------------------------------------------------------------
-
-interface StatusPillProps {
-  status: string
-  label: string
-}
-
-function DriverStatusPill({ status, label }: StatusPillProps) {
-  return (
-    <StatusPillByStatus $status={status} aria-label={`driver-status-${status}`}>
-      {label}
-    </StatusPillByStatus>
-  )
-}
-
-const StatusPillByStatus = styled.span<{ $status: string }>`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 1px ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  background: ${({ $status, theme }) => {
-    switch ($status) {
-      case 'Free': return theme.colors.statusFree
-      case 'EnRoute': return theme.colors.statusEnRoute
-      case 'Busy': return theme.colors.statusBusy
-      default: return theme.colors.statusOffline
-    }
-  }};
-  color: ${({ $status, theme }) => {
-    switch ($status) {
-      case 'Free': return theme.colors.statusFreeText
-      case 'EnRoute': return theme.colors.statusEnRouteText
-      case 'Busy': return theme.colors.statusBusyText
-      default: return theme.colors.statusOfflineText
-    }
-  }};
-  white-space: nowrap;
-`

@@ -10,6 +10,7 @@ import { I18nextProvider } from 'react-i18next'
 import { theme } from '../../shared/theme/theme'
 import i18n from '../../shared/i18n'
 import { OrderCard } from './OrderCard'
+import { useMapHighlightStore } from './useMapHighlight'
 import type { OrderSummaryDto } from '../../shared/api/client'
 
 // Mock the hub connection state so action buttons are not blocked in tests
@@ -146,7 +147,9 @@ describe('OrderCard — card renders fields', () => {
 
   it('renders phone and customer name', () => {
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper: makeWrapper() })
-    expect(screen.getByText('+420777123456 · Jan Novák')).toBeInTheDocument()
+    // Phone is bold in its own span; the name follows in the same line (redesign line 2)
+    expect(screen.getByText('+420777123456')).toBeInTheDocument()
+    expect(screen.getByText(/Jan Novák/)).toBeInTheDocument()
   })
 
   it('shows a "bez souřadnic" warning when the order was created without coordinates (AC#2)', () => {
@@ -170,9 +173,10 @@ describe('OrderCard — card renders fields', () => {
     expect(screen.getByLabelText('pickup-address')).toHaveTextContent('Nádraží Kolín')
   })
 
-  it('renders dropoff address with arrow', () => {
+  it('renders dropoff address in the route block', () => {
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper: makeWrapper() })
-    expect(screen.getByLabelText('dropoff-address')).toHaveTextContent('→ Nemocnice Kolín')
+    // Redesign: pickup accent dot / dropoff ink square instead of the "→" text prefix
+    expect(screen.getByLabelText('dropoff-address')).toHaveTextContent('Nemocnice Kolín')
   })
 
   it('renders fixed price badge for Fixed priceType', () => {
@@ -460,7 +464,7 @@ describe('OrderCard — failed-SMS red icon (UC-005 B2)', () => {
       ],
     })
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper })
-    expect(screen.getByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+    expect(screen.getByText(/SMS selhala/i)).toBeInTheDocument()
   })
 
   it('does not show the icon when the cached detail has only a sent SMS', () => {
@@ -472,19 +476,19 @@ describe('OrderCard — failed-SMS red icon (UC-005 B2)', () => {
       ],
     })
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper })
-    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SMS selhala/i)).not.toBeInTheDocument()
   })
 
   it('does not show the icon when the detail is not cached', () => {
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper: makeWrapper() })
-    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SMS selhala/i)).not.toBeInTheDocument()
   })
 
   it('reacts when a failed SMS lands in the detail cache AFTER mount', async () => {
     const { queryClient, wrapper } = makeWrapperWithClient()
     render(createElement(OrderCard, { order: makeOrder() }), { wrapper })
     // Initially no cached detail → no icon.
-    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SMS selhala/i)).not.toBeInTheDocument()
     // Detail lands later (e.g. drawer/assign-picker populates it) → the card must re-render.
     queryClient.setQueryData(['orders', 'detail', 'order-1'], {
       ...MOCK_ORDER_DETAIL,
@@ -492,7 +496,7 @@ describe('OrderCard — failed-SMS red icon (UC-005 B2)', () => {
         { event: 'DriverArrived', channel: 'Sms', recipient: '+420777123456', status: 'Failed', createdAt: '2026-09-13T09:00:00Z' },
       ],
     })
-    expect(await screen.findByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+    expect(await screen.findByText(/SMS selhala/i)).toBeInTheDocument()
   })
 })
 
@@ -506,14 +510,14 @@ describe('OrderCard — at-a-glance failed-SMS red icon (list flag, laneB5b)', (
     render(createElement(OrderCard, { order: makeOrder({ hasFailedSms: true }) }), {
       wrapper: makeWrapper(),
     })
-    expect(screen.getByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+    expect(screen.getByText(/SMS selhala/i)).toBeInTheDocument()
   })
 
   it('does not show the icon when the list item hasFailedSms=false (no detail cached)', () => {
     render(createElement(OrderCard, { order: makeOrder({ hasFailedSms: false }) }), {
       wrapper: makeWrapper(),
     })
-    expect(screen.queryByLabelText(/SMS se nepodařila odeslat/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SMS selhala/i)).not.toBeInTheDocument()
   })
 
   it('still shows the icon from the detail cache even when the list flag is false (detail is authoritative when present)', () => {
@@ -525,7 +529,33 @@ describe('OrderCard — at-a-glance failed-SMS red icon (list flag, laneB5b)', (
       ],
     })
     render(createElement(OrderCard, { order: makeOrder({ hasFailedSms: false }) }), { wrapper })
-    expect(screen.getByLabelText(/SMS se nepodařila odeslat/i)).toBeInTheDocument()
+    expect(screen.getByText(/SMS selhala/i)).toBeInTheDocument()
+  })
+})
+
+describe('OrderCard — map-highlight hot state (WI-3 §3)', () => {
+  beforeEach(() => {
+    vi.mocked(client.getDrivers).mockResolvedValue({ items: [] })
+    vi.mocked(client.getOrder).mockResolvedValue(MOCK_ORDER_DETAIL)
+    useMapHighlightStore.setState({ highlightedOrderId: null })
+  })
+
+  it('applies the accent halo when this order is the map-highlighted card', () => {
+    useMapHighlightStore.setState({ highlightedOrderId: 'order-1' })
+    render(createElement(OrderCard, { order: makeOrder({ id: 'order-1' }) }), {
+      wrapper: makeWrapper(),
+    })
+    const card = screen.getByLabelText('order-card-ABC123')
+    expect(card).toHaveStyle('box-shadow: 0 0 0 2px var(--accent)')
+  })
+
+  it('does NOT apply the halo when a different order is map-highlighted', () => {
+    useMapHighlightStore.setState({ highlightedOrderId: 'some-other-order' })
+    render(createElement(OrderCard, { order: makeOrder({ id: 'order-1' }) }), {
+      wrapper: makeWrapper(),
+    })
+    const card = screen.getByLabelText('order-card-ABC123')
+    expect(card).not.toHaveStyle('box-shadow: 0 0 0 2px var(--accent)')
   })
 })
 

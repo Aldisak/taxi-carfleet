@@ -6,6 +6,7 @@ import { getOrders, getDrivers } from '../../shared/api/client'
 import type { OrderSummaryDto } from '../../shared/api/client'
 import { groupOrdersBySection, OrderSection } from './sectionBucketing'
 import { OrderCard } from './OrderCard'
+import { Icon } from '../../shared/ui/icons/Icon'
 
 // ---------------------------------------------------------------------------
 // Styled components
@@ -24,51 +25,68 @@ const Section = styled.section`
 
 const SectionHeader = styled.button`
   width: 100%;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  padding: 8px 12px;
   border: none;
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.background};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-extra);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   cursor: pointer;
   text-align: left;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
 
   &:hover {
-    background: ${({ theme }) => theme.colors.border};
+    background: var(--surface-3);
   }
 `
 
+const Chevron = styled.span<{ $expanded: boolean }>`
+  display: inline-flex;
+  color: var(--ink-3);
+  transform: rotate(${({ $expanded }) => ($expanded ? '90deg' : '0deg')});
+  transition: transform var(--dur-press);
+`
+
+const SectionLabel = styled.span`
+  flex: 1;
+`
+
 const SectionBadge = styled.span`
-  background: ${({ theme }) => theme.colors.primary};
-  color: #fff;
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 1px 6px;
-  margin-left: ${({ theme }) => theme.spacing.xs};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: var(--fw-extra);
 `
 
 const SectionContent = styled.div`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  padding: 4px 12px 8px;
 `
 
 const EmptySection = styled.p`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
   text-align: center;
-  padding: ${({ theme }) => theme.spacing.sm};
+  padding: 8px;
 `
 
 const LoadingMsg = styled.p`
   text-align: center;
-  padding: ${({ theme }) => theme.spacing.md};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  padding: 16px;
+  color: var(--ink-2);
+  font-size: var(--fs-label);
 `
 
 // ---------------------------------------------------------------------------
@@ -146,11 +164,11 @@ export function OrdersColumn() {
               onClick={() => toggleSection(section)}
               aria-expanded={!isCollapsed}
             >
-              <span>
-                {t(labelKey)}
-                {orders.length > 0 && <SectionBadge>{orders.length}</SectionBadge>}
-              </span>
-              <span aria-hidden="true">{isCollapsed ? '▸' : '▾'}</span>
+              <Chevron $expanded={!isCollapsed}>
+                <Icon name="chevron" size={14} />
+              </Chevron>
+              <SectionLabel>{t(labelKey)}</SectionLabel>
+              {orders.length > 0 && <SectionBadge>{orders.length}</SectionBadge>}
             </SectionHeader>
 
             {!isCollapsed && (

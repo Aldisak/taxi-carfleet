@@ -1,31 +1,73 @@
 {
-  "wi": "WI-3",
   "wi_id": "WI-3",
-  "uc": "UC-019",
-  "status": "complete",
-  "lane": "web",
-  "files_changed": [
-    "web/src/features/driver/map/DriverMapInner.tsx",
-    "web/src/features/driver/map/DriverMapInner.test.tsx",
-    "web/src/features/driver/map/useRouteGeometry.ts",
-    "web/src/features/driver/map/useRouteGeometry.test.ts"
-  ],
-  "tests_added": [
-    "web/src/features/driver/map/useRouteGeometry.test.ts (5 tests: fetch toPickup->geometry+duration, skip-when-leg-null, skip-when-own-null, degrade-on-throw, refetch toPickup->toDropoff with new endpoint)",
-    "web/src/features/driver/map/DriverMapInner.test.tsx (10 tests: default aria-label, Polyline present >=2 / absent null / absent 1-point, 3-marker/1-marker/no-dropoff-marker cases, fitBounds 2-pt / setView 1-pt camera, axe)"
-  ],
-  "tests_passing": true,
-  "red_observed": true,
-  "red_details": [
-    "useRouteGeometry: RED observed - 'Failed to resolve import ./useRouteGeometry' (0 tests collected) before impl; GREEN 5/5 after.",
-    "DriverMapInner: RED observed - import of ./DriverMapInner failed transform (0 tests collected) before impl; GREEN 10/10 after."
-  ],
-  "coverage_delta": "2 new modules fully covered: useRouteGeometry (fetch/skip/degrade/refetch paths) + DriverMapInner (Polyline threshold, marker matrix, camera intents, axe). No existing coverage changed.",
-  "tsc": "pass for all WI-3 files (0 errors). Whole-project tsc reports exactly ONE error and it is NOT mine: src/features/driver/offer/OfferCard.test.tsx(1,48) TS6133 unused 'afterEach' import — an untracked WI-2 file (git '??'), outside WI-3 files_touched; must not edit per scope. `tsc | grep -v OfferCard.test.tsx | grep -c 'error TS'` == 0 confirms zero WI-3 errors.",
-  "lint": "pass (0 warnings) — scoped eslint over the 4 WI-3 files with --max-warnings 0 produced no output.",
-  "verification": { "tool": "vitest", "filter": "features/driver/map", "exit_code": 0, "result": "3 files / 19 tests passed" },
-  "verification_output": "npm run --prefix web test -- \"features/driver/map\" => 3 files (driverMapView.test.ts 4, useRouteGeometry.test.ts 5, DriverMapInner.test.tsx 10) / 19 tests passed, exit 0 (re-run fresh). Scoped eslint over the 4 WI-3 files => 0 warnings. tsc: 0 WI-3 errors (only the pre-existing untracked WI-2 OfferCard.test.tsx TS6133 remains, out of scope).",
+  "uc": "UC-021",
+  "status": "done",
   "hit_max_turns": false,
-  "new_i18n_keys": [],
-  "notes": "TWO deliverables via RED->GREEN->REFACTOR (RED = import-resolution failure, observed per module before each impl). (1) DriverMapInner.tsx — presentational DEFAULT-EXPORT (props only, never a fetch): props {own,pickup,dropoff,routeGeometry,cameraTarget,ariaLabel?}. Renders <MapyMap ariaLabel={ariaLabel ?? t('driver.map.label')}> with, as CHILDREN: a react-leaflet <Polyline positions={routeGeometry as [number,number][]}> drawn ONLY when routeGeometry != null && length >= 2 (the codebase's FIRST Polyline); own/pickup/dropoff <Marker>s (each null-guarded); and a headless CameraController. DESIGN-REVIEW F-1 HONORED: OWN_ICON/PICKUP_ICON/DROPOFF_ICON L.divIcon consts are COPIED VERBATIM (module-level, no useMemo) from RideMapInner INTO DriverMapInner.tsx — NOT imported — so RideMapInner has zero new importers and WI-5 can delete it without a dangling tsc break. classNames preserved (ride-own-icon / ride-pickup-icon / ride-dropoff-icon). Marker labels use t('driver.map.ownLabel'|'pickupLabel'|'dropoffLabel') as the `title` prop (NOT aria-label — aria-label on a Marker re-triggers the aria-prohibited-attr axe trap; the region's aria-label carries a11y). CameraController is COPIED (not shared) from CustomerMapBackground — react-leaflet-coupled (useMap + prev-key ref), must live in the lazy chunk; only the pure cameraIntent it calls comes from '../../../shared/map/mapCamera' (the WI-1 promoted module, never the customer ./mapCamera shim, never cross-feature). DriverMapInner is purely presentational: it does NOT call selectDriverMapCamera/legEndpoint — cameraTarget is fed in ready; WI-5 wires selectRouteLeg+legEndpoint+selectDriverMapCamera. (2) useRouteGeometry.ts — EAGER hook, NO leaflet import: given {leg,own,order} it resolves end=legEndpoint(leg,order) (WI-1) and calls getGeoRoute(own->end), returning {geometry:number[][]|null, durationSeconds:number|null, isLoading}. Skips the fetch (geometry null, isLoading false, getGeoRoute NOT called) when leg===null || own==null || end==null. DEGRADES SILENTLY on getGeoRoute throw (502 Geo.RouteUnavailable) -> geometry null, no throw to caller (map still shows markers) — mirrors useOfferRoute's cancelled-flag + try/catch. CRITICAL (advisor): the effect keys on the PRIMITIVE coords [leg, shouldFetch, ownLat, ownLng, endLat, endLng], NOT object identity [own, order] — changing the leg toPickup->toDropoff changes end coords -> effect reruns -> refetch (test #5); depending on objects would let WI-5's fresh `own` each render storm the API. LEAFLET-LAZY CONFIRMED: DriverMapInner is the ONLY module under features/driver/ importing MapyMap/react-leaflet/leaflet; useRouteGeometry imports NEITHER; DriverMapInner is not statically imported anywhere eager (grep-clean) — it will be React.lazy-loaded by WI-5, whose npm-build is the dist gate (WI-3 cannot verify the chunk until WI-5 wires the import, per AC). TEST HARNESS: cloned CustomerMapBackground.test.tsx pattern — mocks react-leaflet (MapContainer stub carries role='application' + forwards aria-label per CLAUDE.md UC-014 WI-2; Marker/TileLayer/useMap stubs; NEW Polyline stub exposing data-positions), mocks '../../../shared/map/leafletSetup'->{} and '../../../shared/map/useGeoConfig' (returns data:CONFIG so MapyMap mounts MapContainer instead of its loading state), and renders the REAL MapyMap — NEVER mounts a real MapContainer in jsdom (CLAUDE.md UC-010 WI-15). Scope respected: only DriverMapInner.tsx (+test) and useRouteGeometry.ts (+test); did NOT edit RideMapInner (WI-5 removes it), OfferCard/RideSheet/DriverMapScreen, router, DriverLayout, or locale JSONs (keys came from WI-1). CROSS-WI NOTE: OfferCard.test.tsx (untracked WI-2 file) has a pre-existing TS6133 unused-import; it is outside WI-3 scope and was left untouched — flag for the WI-2 owner/impl-reviewer. This handoff filename previously held a stale UC-016 WI-3 result (documented filename-collision trap — WI numbers repeat across UCs); overwritten with UC-019 WI-3."
+  "files_changed": [
+    "web/src/features/board/OrderCard.tsx",
+    "web/src/features/board/OrderCard.test.tsx",
+    "web/src/features/board/OrdersColumn.tsx",
+    "web/src/features/board/DriverPicker.tsx",
+    "web/src/features/board/DriverPicker.test.tsx",
+    "web/src/features/board/DriversColumn.tsx",
+    "web/src/features/board/DriverRow.tsx",
+    "web/src/features/board/DriverRow.test.tsx",
+    "web/src/features/board/MapPanel.tsx",
+    "web/src/features/board/driverMarker.ts",
+    "web/src/features/board/driverMarker.test.ts",
+    "web/src/features/board/statusPill.ts",
+    "web/src/features/board/statusPill.test.ts",
+    "web/src/features/board/disconnectDisable.test.tsx"
+  ],
+  "files_touched": [
+    "web/src/features/board/OrderCard.tsx",
+    "web/src/features/board/OrderCard.test.tsx",
+    "web/src/features/board/OrdersColumn.tsx",
+    "web/src/features/board/DriverPicker.tsx",
+    "web/src/features/board/DriverPicker.test.tsx",
+    "web/src/features/board/DriversColumn.tsx",
+    "web/src/features/board/DriverRow.tsx",
+    "web/src/features/board/DriverRow.test.tsx",
+    "web/src/features/board/MapPanel.tsx",
+    "web/src/features/board/driverMarker.ts",
+    "web/src/features/board/driverMarker.test.ts",
+    "web/src/features/board/statusPill.ts",
+    "web/src/features/board/statusPill.test.ts",
+    "web/src/features/board/disconnectDisable.test.tsx"
+  ],
+  "marker_token_mapping": {
+    "green (Free) #22c55e": "var(--success)",
+    "blue (EnRoute) #3b82f6": "var(--info)",
+    "orange (Busy) #f97316": "var(--warning)",
+    "gray (Offline) #9ca3af": "var(--ink-3)",
+    "order pin #ef4444": "var(--danger)"
+  },
+  "tests_added": 22,
+  "tests_passing": 211,
+  "coverage_delta": "+22 new tests: getMarkerColorToken (5), getOrderStatusTone + getDriverStatusTone (11), DriverPicker subtitle/busy/axe (3), DriverRow axe (1), OrderCard map-highlight hot-state (2, RED-confirmed by reverting the wiring). +existing assertions retargeted to WI-mandated markup (OrderCard failed-SMS 4, phone/dropoff 2, DriverRow+disconnect trigger label).",
+  "i18n_requests": [],
+  "tests": { "files": 21, "passed": 211 },
+  "verification_output": {
+    "vitest": "npx vitest run src/features/board -> Test Files 21 passed (21), Tests 211 passed (211), exit 0",
+    "npm-tsc": "npx tsc --noEmit -> exit 0",
+    "npm-lint": "npx eslint src/features/board --max-warnings 0 -> exit 0"
+  },
+  "deviations": [
+    "Marker Offline colour uses var(--ink-3) per the WI's explicit token-table instruction (spec §2 nominally lists --success/--info/--warning/--danger for status colours; Offline/gray has no danger meaning so --ink-3 is the correct neutral ink token). The order pickup pin (#ef4444) was also converted to var(--danger) to keep the touched file hex-free — matches spec §2 'order pin = danger drop pin'.",
+    "WI-mandated accessible-name changes (spec §3): failed-SMS glyph is now a DANGER DeskPill with visible text 'SMS selhala' (board.order.smsFailed) instead of the aria-labeled '✉︎⚠' glyph (notifications.failedSmsIcon); tests switched from getByLabelText(/SMS se nepodařilo…/) to getByText(/SMS selhala/). DriverRow override trigger is now a '⋯' icon button labeled 'Možnosti řidiče' (drivers.menuLabel) instead of 'Nastavit stav'; the popover keeps the 'status-override-menu' name and set-status-Free/Busy/Offline items unchanged. Per advisor, the new visible-text pills carry no redundant aria-label (axe aria-prohibited-attr safe).",
+    "Status pills switched from theme.ts colour keys to DeskPill tones via new additive pure mappers getOrderStatusTone/getDriverStatusTone in statusPill.ts; getDriverStatusInfo signature is UNTOUCHED (still returns theme colorKey/textColorKey) per the 'do not change existing pure-module signatures' rule.",
+    "OrderCard line-2 now splits the phone into a bold span, and the route block uses an accent-dot (pickup) / ink-square (dropoff) instead of the literal '→' prefix; the two OrderCard tests that encoded the old markup were updated to the new structure (still assert the same visible data).",
+    "DriverRow row is no longer role=button (it contained a nested interactive '⋯' menu button → axe nested-interactive). It stays keyboard-focusable (tabIndex 0; Enter/Space focuses the driver on the map) as a plain focusable container; the status pill keeps its driver-status-<status> aria-label wrapper so existing DriverRow tests are preserved.",
+    "DriverPicker <ul> carries role=presentation so the labelled role=listbox container's role=option children satisfy aria-required-children/parent (surfaced by the new axe test). e2e listbox name 'Vyberte řidiče' + option driver names + 'Načítám řidiče...' loading all preserved.",
+    "DriversColumn gained a header ('Řidiči' + drivers.onlineSummary) and footer (drivers.mapHint) that did not exist before — online = drivers with status != Offline. OrdersColumn section headers restyled to chevron + count pill; Dokončené dnes stays collapsed by default; section <section aria-label> region names board.sections.* preserved for the e2e contract.",
+    "HOT-HIGHLIGHT completeness (advisor catch): the WI names TWO $highlighted triggers — useNewOrderHighlight AND useMapHighlight (card whose pin is hovered). OrderCard now reads useMapHighlightStore(s => s.highlightedOrderId) via an ATOMIC selector (zustand object-selector loop trap) and sets isHighlighted = isNewHighlight || mapHighlightedId === order.id. The one-shot flash keyframe still plays for the newest order; the accent border + 2px accent halo also PERSIST while the card is the map-highlighted one (a 'selected card' look) — intended per §3. Pinned by 2 RED-first tests (halo present when this order is highlighted / absent when a different order is).",
+    "ICON SET (advisor catch): the shared stroke-SVG Icon set (src/shared/ui/icons/Icon.tsx) has 'car', 'menu', 'chevron' and its header comment bans emoji app-wide. Replaced the interim literal glyphs with <Icon>: driver-line 🚗 -> <Icon name=\"car\">, DriverRow ⋯ overflow -> <Icon name=\"menu\"> (the set has no ellipsis glyph; 'menu' is the closest overflow affordance), OrdersColumn ▸/▾ -> <Icon name=\"chevron\"> rotated 90deg when expanded. All decorative (no title => aria-hidden), monochrome currentColor so they read correctly in the desk kit and dark mode. No literal emoji remain in any rendered board UI."
+  ],
+  "e2e_contracts_preserved": [
+    "Order sections remain <section aria-label> => role=region named Nové / Přiřazené / Čekají na přijetí / Probíhající (board.sections.*)",
+    "Driver picker role=listbox name 'Vyberte řidiče', rows role=option with driver name, loading text 'Načítám řidiče...' preserved",
+    "Assign/Reassign/Cancel/Detail DeskButtons keep aria-label + visible text (board.actions.*)",
+    "web/e2e/** untouched (WI-4 owns the e2e change)"
+  ],
+  "notes": "Restyled the dispatcher board (OrderCard, OrdersColumn, DriverPicker, DriversColumn, DriverRow) onto @/shared/ui/desk (DeskPill/DeskButton) reading GlobalStyle CSS custom properties; no new hardcoded hex in any touched file (the only remaining hex is in OrderForm.tsx, out of scope — migration step 3). The non-presentational change (driver-marker status colours) was driven pure-logic-first: getMarkerColorToken in driverMarker.ts (RED-first, 5 tests asserting var(--…) not hex), then wired into MapPanel.createDriverIcon replacing the COLOR_HEX map; leaflet stays lazy (no static leaflet import added), jsdom tests don't mount a real MapContainer. All hooks/data-flow/pure modules preserved unchanged (useMapHighlight, useDriverFocusStore, useNewOrderHighlight, useAssignOrder, useReassignOrder, useCancelOrder, useOverrideStatus, sectionBucketing, elapsedTimer, positionAge, driverColumnSort, orderCoords, cancelReasons, driverDistanceSort). No performance regression: no new useMemo/useCallback/React.memo. No i18n JSON edited (all needed keys pre-existed). This file previously held a stale UC-019 WI-3 handoff (WI numbers collide across UCs); overwritten with the UC-021 WI-3 result."
 }

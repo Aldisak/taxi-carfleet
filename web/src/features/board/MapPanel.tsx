@@ -10,7 +10,7 @@ import { MapyMap } from '../../shared/map/MapyMap'
 import { usePositionStore } from '../../shared/realtime/usePositionStore'
 import { useDriverFocusStore } from './useDriverFocusStore'
 import { createMarkerThrottle } from './markerThrottle'
-import { getDriverMarkerProps } from './driverMarker'
+import { getDriverMarkerProps, getMarkerColorToken } from './driverMarker'
 import { derivePinSet } from './mapPinSet'
 import { useNewOrderHighlightStore } from './useCreateOrder'
 import { useMapHighlightStore } from './useMapHighlight'
@@ -35,20 +35,17 @@ const MapWrapper = styled.div`
 // Icon creation helpers
 // ---------------------------------------------------------------------------
 
-const COLOR_HEX: Record<MarkerColor, string> = {
-  green: '#22c55e',
-  blue: '#3b82f6',
-  orange: '#f97316',
-  gray: '#9ca3af',
-}
-
 /**
  * Creates a Leaflet divIcon for a driver marker with the given color.
  * When hasHeading is true the icon includes a direction arrow rotated to `rotation` degrees.
  * When hasHeading is false a neutral circle is shown.
+ *
+ * The fill is a semantic CSS custom property (`var(--success)` …) rather than a hardcoded hex —
+ * the divIcon is a real DOM node so the token resolves and recolours with the theme (dispatcher
+ * redesign §2). See `getMarkerColorToken` in `driverMarker.ts`.
  */
 function createDriverIcon(color: MarkerColor, rotation: number, hasHeading: boolean): L.DivIcon {
-  const fill = COLOR_HEX[color]
+  const fill = getMarkerColorToken(color)
 
   const svg = hasHeading
     ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="transform:rotate(${rotation}deg)">
@@ -70,7 +67,7 @@ function createDriverIcon(color: MarkerColor, rotation: number, hasHeading: bool
 
 const ORDER_PIN_ICON = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="28" viewBox="0 0 20 28">
-    <path d="M10 0C4.477 0 0 4.477 0 10c0 7 10 18 10 18s10-11 10-18C20 4.477 15.523 0 10 0z" fill="#ef4444" stroke="white" stroke-width="1.5"/>
+    <path d="M10 0C4.477 0 0 4.477 0 10c0 7 10 18 10 18s10-11 10-18C20 4.477 15.523 0 10 0z" fill="var(--danger)" stroke="white" stroke-width="1.5"/>
     <circle cx="10" cy="10" r="4" fill="white"/>
   </svg>`,
   className: 'order-pin-icon',

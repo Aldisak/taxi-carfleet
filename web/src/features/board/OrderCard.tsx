@@ -6,11 +6,14 @@ import { useNewOrderHighlight } from './useNewOrderHighlight'
 import { orderHasNoCoords } from './orderCoords'
 import { useMapHighlightStore } from './useMapHighlight'
 import { getElapsedSeconds, isElapsedRed } from './elapsedTimer'
+import { getOrderStatusTone } from './statusPill'
 import { useAssignOrder } from './useAssignOrder'
 import { useReassignOrder } from './useReassignOrder'
 import { useCancelOrder } from './useCancelOrder'
 import { CANCEL_REASON_CODES, buildCancelReason, reasonRequiresFreeText } from './cancelReasons'
 import { DriverPicker } from './DriverPicker'
+import { DeskButton, DeskPill } from '../../shared/ui/desk'
+import { Icon } from '../../shared/ui/icons/Icon'
 import { useQuery } from '@tanstack/react-query'
 import { ApiResponseError, getOrder } from '../../shared/api/client'
 import { useHubConnectionState, isServerActionBlocked } from '../../shared/realtime/useFleetHub'
@@ -19,143 +22,139 @@ import type { OrderSummaryDto, OrderDetailDto } from '../../shared/api/client'
 import type { CancelReasonCode } from './cancelReasons'
 
 // ---------------------------------------------------------------------------
-// Styled components
+// Styled components — desk kit tokens (CSS custom properties)
 // ---------------------------------------------------------------------------
 
 const highlightFlash = keyframes`
-  0%   { background-color: #fef9c3; }
+  0%   { background-color: var(--warning-bg); }
   100% { background-color: transparent; }
 `
 
 const Card = styled.article<{ $highlighted: boolean }>`
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  padding: ${({ theme }) => theme.spacing.sm};
-  margin: ${({ theme }) => theme.spacing.xs} 0;
   position: relative;
-
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid ${({ $highlighted }) => ($highlighted ? 'var(--accent)' : 'var(--line)')};
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  margin: 8px 0;
+  cursor: pointer;
   ${({ $highlighted }) =>
     $highlighted &&
     css`
+      box-shadow: 0 0 0 2px var(--accent);
       animation: ${highlightFlash} 3s ease-out forwards;
     `}
 `
 
-const CardRow = styled.div`
+const Line1 = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 6px;
   flex-wrap: wrap;
 `
 
 const PublicCode = styled.span`
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-family: monospace;
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-label);
+  font-weight: var(--fw-extra);
+  font-family: 'Manrope', monospace;
+  color: var(--ink);
 `
 
 const TimeLabel = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
-const FixedBadge = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  padding: 1px ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #fff;
+const Price = styled.span`
+  margin-left: auto;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
 `
 
-const EstimateLabel = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const StatusPill = styled.span<{ $status: string }>`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 1px ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  background: ${({ $status, theme }) => {
-    switch ($status) {
-      case 'New': return theme.colors.orderNew
-      case 'Assigned': return theme.colors.orderAssigned
-      case 'Accepted':
-      case 'Arrived':
-      case 'InProgress': return theme.colors.orderInProgress
-      case 'Completed': return theme.colors.orderCompleted
-      case 'Cancelled': return theme.colors.orderCancelled
-      default: return theme.colors.border
-    }
-  }};
-  color: ${({ $status, theme }) => {
-    switch ($status) {
-      case 'New': return theme.colors.orderNewText
-      case 'Assigned': return theme.colors.orderAssignedText
-      case 'Accepted':
-      case 'Arrived':
-      case 'InProgress': return theme.colors.orderInProgressText
-      case 'Completed': return theme.colors.orderCompletedText
-      case 'Cancelled': return theme.colors.orderCancelledText
-      default: return theme.colors.text
-    }
-  }};
-`
-
-const AddressLine = styled.p`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  margin: 2px 0;
+const ElapsedPill = styled.span<{ $red: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: var(--fw-extra);
+  letter-spacing: 0.02em;
+  background: ${({ $red }) => ($red ? 'var(--danger-bg)' : 'var(--surface-2)')};
+  color: ${({ $red }) => ($red ? 'var(--danger)' : 'var(--ink-2)')};
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 `
 
 const PhoneName = styled.p`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  margin: 2px 0;
-  color: ${({ theme }) => theme.colors.text};
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--ink);
 `
 
-const ElapsedBadge = styled.span<{ $red: boolean }>`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ $red, theme }) => ($red ? theme.colors.error : theme.colors.textSecondary)};
-  font-weight: ${({ $red, theme }) => ($red ? theme.typography.fontWeightBold : theme.typography.fontWeightNormal)};
-  margin-left: auto;
+const Phone = styled.span`
+  font-weight: var(--fw-bold);
 `
 
-const ActionsRow = styled.div`
+const Route = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.xs};
-  flex-wrap: wrap;
-  margin-top: ${({ theme }) => theme.spacing.xs};
+  flex-direction: column;
+  gap: 3px;
 `
 
-const ActionBtn = styled.button`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 2px ${({ theme }) => theme.spacing.xs};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: transparent;
-  color: ${({ theme }) => theme.colors.text};
-  cursor: pointer;
+const RouteRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+  min-width: 0;
+`
 
-  &:hover {
-    background: ${({ theme }) => theme.colors.primary};
-    color: #fff;
-    border-color: ${({ theme }) => theme.colors.primary};
-  }
+const RouteAddress = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`
+
+const PickupDot = styled.span`
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  flex-shrink: 0;
+`
+
+const DropoffSquare = styled.span`
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ink);
+  flex-shrink: 0;
+`
+
+const DriverLine = styled.p`
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
+`
+
+const CarIcon = styled.span`
+  display: inline-flex;
+  color: var(--ink-3);
 `
 
 const ConflictMsg = styled.p`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.error};
-  margin: 2px 0;
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--danger);
 `
 
 const PickerWrapper = styled.div`
@@ -163,46 +162,51 @@ const PickerWrapper = styled.div`
   display: inline-block;
 `
 
+const ActionsRow = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+`
+
 const CancelForm = styled.div`
-  margin-top: ${({ theme }) => theme.spacing.xs};
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 6px;
 `
 
 const ReasonSelect = styled.select`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 2px ${({ theme }) => theme.spacing.xs};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  height: 32px;
+  padding: 0 8px;
+  font-size: var(--fs-caption);
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
 `
 
 const FreeTextInput = styled.input`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 2px ${({ theme }) => theme.spacing.xs};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  height: 32px;
+  padding: 0 8px;
+  font-size: var(--fs-caption);
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+`
+
+const CancelLabel = styled.label`
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
 `
 
 const ErrorMsg = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.error};
-`
-
-const FailedSmsIcon = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.error};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  line-height: 1;
-`
-
-const NoCoordsBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.warning};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
+  font-size: var(--fs-caption);
+  color: var(--danger);
 `
 
 // ---------------------------------------------------------------------------
@@ -218,8 +222,13 @@ export interface OrderCardProps {
 export function OrderCard({ order, driverName }: OrderCardProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const isHighlighted = useNewOrderHighlight(order.id)
+  const isNewHighlight = useNewOrderHighlight(order.id)
   const highlightOrder = useMapHighlightStore(s => s.highlightOrder)
+  // Card whose pin is hovered/selected on the map (card←→pin). Atomic selector — an object
+  // selector here would re-render-loop (documented zustand trap). The hot state is the OR of
+  // the newest-order flash and the map-highlighted card (WI-3 §3 hot highlight).
+  const mapHighlightedId = useMapHighlightStore(s => s.highlightedOrderId)
+  const isHighlighted = isNewHighlight || mapHighlightedId === order.id
 
   // Elapsed time for New orders
   const [now, setNow] = useState(() => new Date())
@@ -262,14 +271,12 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
   const cancelOrder = useCancelOrder()
   const blocked = isServerActionBlocked(useHubConnectionState())
 
-  // Failed-SMS red icon (UC-005 §5). PRIMARY source is the LIST DTO flag `order.hasFailedSms`
+  // Failed-SMS danger pill (UC-005 §5). PRIMARY source is the LIST DTO flag `order.hasFailedSms`
   // (laneA5b/laneB5b) — it shows AT A GLANCE across the whole board WITHOUT any detail fetch.
   // As a reactive fallback we also subscribe to the order-detail cache entry WITHOUT fetching
-  // (enabled: false — no N-query refetch storm, rules/web-performance.md#query-keys). Using
-  // useQuery (not getQueryData) re-renders the card when detail lands in cache later (e.g. the
-  // drawer or assign-picker populates it). Either source reporting a failed SMS shows the icon
-  // (OR): a failed SMS is a latch — once flagged it never clears — so detail can only ADD the
-  // icon (when the list row has not caught up yet), never turn it off.
+  // (enabled: false — no N-query refetch storm, rules/web-performance.md#query-keys). Either
+  // source reporting a failed SMS shows the pill (OR): a failed SMS is a latch — once flagged it
+  // never clears — so detail can only ADD the pill, never turn it off.
   const { data: cachedDetail } = useQuery<OrderDetailDto>({
     queryKey: ['orders', 'detail', order.id],
     queryFn: () => getOrder(order.id),
@@ -359,50 +366,61 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
       aria-label={`order-card-${order.publicCode}`}
       onClick={() => highlightOrder(order.id)}
     >
-      <CardRow>
+      <Line1>
         <PublicCode>{order.publicCode}</PublicCode>
         <TimeLabel>{timeLabel}</TimeLabel>
-        <StatusPill $status={order.status} aria-label={`status-${order.status}`}>
-          {t(`status.order.${order.status}`, order.status)}
-        </StatusPill>
+        <span aria-label={`status-${order.status}`}>
+          <DeskPill tone={getOrderStatusTone(order.status)}>
+            {t(`status.order.${order.status}`, order.status)}
+          </DeskPill>
+        </span>
         {order.status === 'New' && (
-          <ElapsedBadge $red={isRed} aria-label="elapsed-time">
+          <ElapsedPill $red={isRed} aria-label="elapsed-time">
             {elapsedSec < 60
               ? t('board.order.elapsedTime', { sec: elapsedSec })
               : t('board.order.elapsedTimeMin', { min: Math.floor(elapsedSec / 60) })}
-          </ElapsedBadge>
+          </ElapsedPill>
         )}
-        {priceDisplay && (
-          priceDisplay.type === 'fixed'
-            ? <FixedBadge>{t('board.order.fixedPriceBadge', { price: priceDisplay.value })}</FixedBadge>
-            : <EstimateLabel>{t('board.order.estimatedPrice', { price: priceDisplay.value })}</EstimateLabel>
+        {noCoords && (
+          <DeskPill tone="warning">{t('board.order.noCoords')}</DeskPill>
         )}
         {showFailedSms && (
-          <FailedSmsIcon role="img" aria-label={t('notifications.failedSmsIcon')}>
-            ✉︎⚠
-          </FailedSmsIcon>
+          <DeskPill tone="danger">{t('board.order.smsFailed')}</DeskPill>
         )}
-      </CardRow>
+        {priceDisplay && (
+          <Price>
+            {priceDisplay.type === 'fixed'
+              ? t('board.order.fixedPriceBadge', { price: priceDisplay.value })
+              : t('board.order.estimatedPrice', { price: priceDisplay.value })}
+          </Price>
+        )}
+      </Line1>
 
       <PhoneName>
-        {order.customerPhone}
+        <Phone>{order.customerPhone}</Phone>
         {order.customerName && ` · ${order.customerName}`}
       </PhoneName>
 
-      <AddressLine aria-label="pickup-address">{order.pickupAddress}</AddressLine>
-      {noCoords && (
-        <NoCoordsBadge>
-          <span aria-hidden="true">⚠</span> {t('map.noCoords')}
-        </NoCoordsBadge>
-      )}
-      {order.dropoffAddress && (
-        <AddressLine aria-label="dropoff-address">→ {order.dropoffAddress}</AddressLine>
-      )}
+      <Route>
+        <RouteRow>
+          <PickupDot aria-hidden="true" />
+          <RouteAddress aria-label="pickup-address">{order.pickupAddress}</RouteAddress>
+        </RouteRow>
+        {order.dropoffAddress && (
+          <RouteRow>
+            <DropoffSquare aria-hidden="true" />
+            <RouteAddress aria-label="dropoff-address">{order.dropoffAddress}</RouteAddress>
+          </RouteRow>
+        )}
+      </Route>
 
       {driverName && (
-        <AddressLine aria-label="driver-name">
-          {driverName}
-        </AddressLine>
+        <DriverLine aria-label="driver-name">
+          <CarIcon>
+            <Icon name="car" size={14} />
+          </CarIcon>
+          <span>{driverName}</span>
+        </DriverLine>
       )}
 
       {conflictMsg && (
@@ -413,8 +431,9 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
       <ActionsRow>
         {order.status === 'New' && (
           <PickerWrapper>
-            <ActionBtn
-              type="button"
+            <DeskButton
+              variant="primary"
+              size="xs"
               aria-label={t('board.actions.assign')}
               disabled={blocked}
               onClick={() => {
@@ -424,7 +443,7 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
               }}
             >
               {t('board.actions.assign')}
-            </ActionBtn>
+            </DeskButton>
             {showAssignPicker && (
               <DriverPicker
                 pickupLat={pickupLat}
@@ -438,8 +457,9 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
 
         {(order.status === 'Assigned' || order.status === 'Accepted' || order.status === 'Arrived') && (
           <PickerWrapper>
-            <ActionBtn
-              type="button"
+            <DeskButton
+              variant="primary"
+              size="xs"
               aria-label={t('board.actions.reassign')}
               disabled={blocked}
               onClick={() => {
@@ -449,7 +469,7 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
               }}
             >
               {t('board.actions.reassign')}
-            </ActionBtn>
+            </DeskButton>
             {showReassignPicker && (
               <DriverPicker
                 pickupLat={pickupLat}
@@ -462,31 +482,33 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
         )}
 
         {order.status !== 'Completed' && order.status !== 'Cancelled' && (
-          <ActionBtn
-            type="button"
+          <DeskButton
+            variant="danger"
+            size="xs"
             aria-label={t('board.actions.cancel')}
             disabled={blocked}
             onClick={() => { if (!blocked) setShowCancelForm(p => !p) }}
           >
             {t('board.actions.cancel')}
-          </ActionBtn>
+          </DeskButton>
         )}
 
-        <ActionBtn
-          type="button"
+        <DeskButton
+          variant="outline"
+          size="xs"
           aria-label={t('board.actions.detail')}
           onClick={() => navigate(`/dispatcher/orders/${order.id}`)}
         >
           {t('board.actions.detail')}
-        </ActionBtn>
+        </DeskButton>
       </ActionsRow>
 
       {/* Cancel form — inline, no modal */}
       {showCancelForm && (
         <CancelForm aria-label="cancel-form">
-          <label htmlFor={`cancel-reason-${order.id}`}>
+          <CancelLabel htmlFor={`cancel-reason-${order.id}`}>
             {t('board.cancelReasons.title')}
-          </label>
+          </CancelLabel>
           <ReasonSelect
             id={`cancel-reason-${order.id}`}
             value={cancelReasonCode}
@@ -518,17 +540,19 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
             />
           )}
 
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <ActionBtn
-              type="button"
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <DeskButton
+              variant="primary"
+              size="xs"
               onClick={handleCancelSubmit}
               disabled={cancelOrder.isPending || blocked}
               aria-label={t('board.actions.confirm')}
             >
               {t('board.actions.confirm')}
-            </ActionBtn>
-            <ActionBtn
-              type="button"
+            </DeskButton>
+            <DeskButton
+              variant="secondary"
+              size="xs"
               onClick={() => {
                 setShowCancelForm(false)
                 setCancelReasonCode('')
@@ -538,7 +562,7 @@ export function OrderCard({ order, driverName }: OrderCardProps) {
               aria-label={t('board.actions.close')}
             >
               {t('board.actions.close')}
-            </ActionBtn>
+            </DeskButton>
           </div>
         </CancelForm>
       )}

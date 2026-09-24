@@ -9,6 +9,7 @@ vi.mock('../../shared/realtime/useFleetHub', async (importOriginal) => {
   }
 })
 import { render, screen, waitFor } from '@testing-library/react'
+import { axe } from '../../shared/test/axe'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'styled-components'
@@ -87,7 +88,7 @@ describe('DriverRow — override status', () => {
   it('shows override popover when "Nastavit stav" is clicked', async () => {
     renderRow()
     const user = userEvent.setup()
-    const btn = screen.getByLabelText('Nastavit stav')
+    const btn = screen.getByLabelText('Možnosti řidiče')
     await user.click(btn)
     expect(screen.getByRole('menu', { name: 'status-override-menu' })).toBeInTheDocument()
   })
@@ -97,7 +98,7 @@ describe('DriverRow — override status', () => {
     renderRow()
     const user = userEvent.setup()
 
-    await user.click(screen.getByLabelText('Nastavit stav'))
+    await user.click(screen.getByLabelText('Možnosti řidiče'))
     await user.click(screen.getByLabelText('set-status-Free'))
 
     await waitFor(() => {
@@ -110,7 +111,7 @@ describe('DriverRow — override status', () => {
     renderRow()
     const user = userEvent.setup()
 
-    await user.click(screen.getByLabelText('Nastavit stav'))
+    await user.click(screen.getByLabelText('Možnosti řidiče'))
     await user.click(screen.getByLabelText('set-status-Busy'))
 
     await waitFor(() => {
@@ -123,11 +124,18 @@ describe('DriverRow — override status', () => {
     renderRow()
     const user = userEvent.setup()
 
-    await user.click(screen.getByLabelText('Nastavit stav'))
+    await user.click(screen.getByLabelText('Možnosti řidiče'))
     await user.click(screen.getByLabelText('set-status-Offline'))
 
     await waitFor(() => {
       expect(spy).toHaveBeenCalledWith('driver-1', { status: 'Offline' })
     })
+  })
+})
+
+describe('DriverRow — accessibility', () => {
+  it('has no axe violations', async () => {
+    const { container } = renderRow()
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

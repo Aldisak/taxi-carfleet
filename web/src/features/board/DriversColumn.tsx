@@ -9,15 +9,54 @@ import { DriverRow } from './DriverRow'
 // Styled components
 // ---------------------------------------------------------------------------
 
+const Column = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+`
+
+const Header = styled.header`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+`
+
+const HeaderTitle = styled.h2`
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-extra);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+`
+
+const OnlineSummary = styled.span`
+  margin-left: auto;
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
+`
+
 const ColumnContent = styled.div`
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
+`
+
+const Footer = styled.p`
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-3);
 `
 
 const LoadingMsg = styled.div`
-  padding: ${({ theme }) => theme.spacing.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  padding: 16px;
+  font-size: var(--fs-label);
+  color: var(--ink-2);
 `
 
 // ---------------------------------------------------------------------------
@@ -64,16 +103,25 @@ export function DriversColumn() {
   }
 
   const sorted = sortDriversForColumn(driversData.items)
+  const total = driversData.items.length
+  const online = driversData.items.filter(d => d.status !== 'Offline').length
 
   return (
-    <ColumnContent>
-      {sorted.map((driver) => (
-        <DriverRow
-          key={driver.driverId}
-          driver={driver}
-          currentOrderCode={activeOrderCodeByDriver.get(driver.driverId) ?? null}
-        />
-      ))}
-    </ColumnContent>
+    <Column>
+      <Header>
+        <HeaderTitle>{t('board.columns.drivers')}</HeaderTitle>
+        <OnlineSummary>{t('drivers.onlineSummary', { online, total })}</OnlineSummary>
+      </Header>
+      <ColumnContent>
+        {sorted.map((driver) => (
+          <DriverRow
+            key={driver.driverId}
+            driver={driver}
+            currentOrderCode={activeOrderCodeByDriver.get(driver.driverId) ?? null}
+          />
+        ))}
+      </ColumnContent>
+      <Footer>{t('drivers.mapHint')}</Footer>
+    </Column>
   )
 }

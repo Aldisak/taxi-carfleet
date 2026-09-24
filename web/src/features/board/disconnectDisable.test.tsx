@@ -189,24 +189,24 @@ describe('DriverRow — override button disabled when server is blocked', () => 
 
   it('override button is enabled when connected', () => {
     render(createElement(DriverRow, { driver: makeDriver() }), { wrapper: makeWrapper() })
-    expect(screen.getByLabelText('Nastavit stav')).not.toBeDisabled()
+    expect(screen.getByLabelText('Možnosti řidiče')).not.toBeDisabled()
   })
 
   it('override button is disabled when disconnected', () => {
     vi.mocked(fleetHub.useHubConnectionState).mockReturnValue('disconnected')
     render(createElement(DriverRow, { driver: makeDriver() }), { wrapper: makeWrapper() })
-    expect(screen.getByLabelText('Nastavit stav')).toBeDisabled()
+    expect(screen.getByLabelText('Možnosti řidiče')).toBeDisabled()
   })
 
   it('override button is disabled when reconnecting', () => {
     vi.mocked(fleetHub.useHubConnectionState).mockReturnValue('reconnecting')
     render(createElement(DriverRow, { driver: makeDriver() }), { wrapper: makeWrapper() })
-    expect(screen.getByLabelText('Nastavit stav')).toBeDisabled()
+    expect(screen.getByLabelText('Možnosti řidiče')).toBeDisabled()
   })
 
   it('override button is enabled when connecting (initial boot)', () => {
     vi.mocked(fleetHub.useHubConnectionState).mockReturnValue('connecting')
     render(createElement(DriverRow, { driver: makeDriver() }), { wrapper: makeWrapper() })
-    expect(screen.getByLabelText('Nastavit stav')).not.toBeDisabled()
+    expect(screen.getByLabelText('Možnosti řidiče')).not.toBeDisabled()
   })
 })

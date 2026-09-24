@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDriverStatusInfo } from './statusPill'
+import { getDriverStatusInfo, getOrderStatusTone, getDriverStatusTone } from './statusPill'
 
 describe('getDriverStatusInfo', () => {
   it('returns i18n key status.driver.Free + green for Free', () => {
@@ -34,5 +34,55 @@ describe('getDriverStatusInfo', () => {
     const info = getDriverStatusInfo('Unknown' as never)
     expect(info.labelKey).toBe('status.driver.Offline')
     expect(info.colorKey).toBe('statusOffline')
+  })
+})
+
+describe('getOrderStatusTone — order status → DeskPill tone (desk redesign §3)', () => {
+  it('New is info', () => {
+    expect(getOrderStatusTone('New')).toBe('info')
+  })
+
+  it('Assigned is warning (waiting on acceptance)', () => {
+    expect(getOrderStatusTone('Assigned')).toBe('warning')
+  })
+
+  it('in-progress statuses are accent', () => {
+    expect(getOrderStatusTone('Accepted')).toBe('accent')
+    expect(getOrderStatusTone('Arrived')).toBe('accent')
+    expect(getOrderStatusTone('InProgress')).toBe('accent')
+  })
+
+  it('Completed is success', () => {
+    expect(getOrderStatusTone('Completed')).toBe('success')
+  })
+
+  it('Cancelled is danger', () => {
+    expect(getOrderStatusTone('Cancelled')).toBe('danger')
+  })
+
+  it('unknown status falls back to neutral', () => {
+    expect(getOrderStatusTone('Whatever')).toBe('neutral')
+  })
+})
+
+describe('getDriverStatusTone — driver status → DeskPill tone (desk redesign §3)', () => {
+  it('Free is success', () => {
+    expect(getDriverStatusTone('Free')).toBe('success')
+  })
+
+  it('EnRoute is info', () => {
+    expect(getDriverStatusTone('EnRoute')).toBe('info')
+  })
+
+  it('Busy is warning', () => {
+    expect(getDriverStatusTone('Busy')).toBe('warning')
+  })
+
+  it('Offline is neutral', () => {
+    expect(getDriverStatusTone('Offline')).toBe('neutral')
+  })
+
+  it('unknown status falls back to neutral', () => {
+    expect(getDriverStatusTone('Unknown')).toBe('neutral')
   })
 })

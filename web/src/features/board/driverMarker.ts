@@ -32,3 +32,22 @@ export function getDriverMarkerProps(status: string, heading: number | null): Dr
 
   return { color, rotation, hasHeading }
 }
+
+/**
+ * Maps an abstract {@link MarkerColor} to its semantic CSS custom property, so the
+ * Leaflet divIcon SVG fill/stroke reads a theme token (light/dark aware) rather than a
+ * hardcoded Tailwind hex (dispatcher redesign §2). Free→success, EnRoute→info, Busy→warning,
+ * Offline/gray→ink-3 (the neutral ink token, matching the desk token table). Leaflet divIcons
+ * are real DOM nodes, so `var(--…)` resolves in the injected SVG.
+ */
+const MARKER_COLOR_TOKEN: Record<MarkerColor, string> = {
+  green: 'var(--success)',
+  blue: 'var(--info)',
+  orange: 'var(--warning)',
+  gray: 'var(--ink-3)',
+}
+
+/** Returns the semantic CSS-var token string for a marker colour. */
+export function getMarkerColorToken(color: MarkerColor): string {
+  return MARKER_COLOR_TOKEN[color]
+}

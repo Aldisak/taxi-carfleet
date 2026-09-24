@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getDriverMarkerProps } from './driverMarker'
+import { getDriverMarkerProps, getMarkerColorToken } from './driverMarker'
 
 describe('driverMarker — icon selection by status and heading', () => {
   it('Free driver gets green color', () => {
@@ -43,5 +43,31 @@ describe('driverMarker — icon selection by status and heading', () => {
     const props = getDriverMarkerProps('EnRoute', 0)
     expect(props.rotation).toBe(0)
     expect(props.hasHeading).toBe(true)
+  })
+})
+
+describe('getMarkerColorToken — semantic CSS-var mapping (dispatcher redesign §2)', () => {
+  it('green (Free) maps to var(--success)', () => {
+    expect(getMarkerColorToken('green')).toBe('var(--success)')
+  })
+
+  it('blue (EnRoute) maps to var(--info)', () => {
+    expect(getMarkerColorToken('blue')).toBe('var(--info)')
+  })
+
+  it('orange (Busy) maps to var(--warning)', () => {
+    expect(getMarkerColorToken('orange')).toBe('var(--warning)')
+  })
+
+  it('gray (Offline) maps to var(--ink-3)', () => {
+    expect(getMarkerColorToken('gray')).toBe('var(--ink-3)')
+  })
+
+  it('never returns a hardcoded hex colour', () => {
+    const tokens = (['green', 'blue', 'orange', 'gray'] as const).map(getMarkerColorToken)
+    for (const token of tokens) {
+      expect(token).not.toMatch(/#[0-9a-f]/i)
+      expect(token).toMatch(/^var\(--[a-z0-9-]+\)$/)
+    }
   })
 })

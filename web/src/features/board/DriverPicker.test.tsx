@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { axe } from '../../shared/test/axe'
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -118,5 +119,47 @@ describe('DriverPicker — keyboard navigation', () => {
     const listbox = screen.getByRole('listbox')
     fireEvent.keyDown(listbox, { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+describe('DriverPicker — desk redesign chrome', () => {
+  const onSelect = vi.fn()
+  const onClose = vi.fn()
+
+  beforeEach(() => {
+    onSelect.mockReset()
+    onClose.mockReset()
+    vi.mocked(client.getDrivers).mockResolvedValue({ items: [DRIVER_A, DRIVER_B] })
+  })
+
+  it('shows the "podle vzdálenosti" subtitle', async () => {
+    render(
+      createElement(DriverPicker, { pickupLat: 0, pickupLng: 0, onSelect, onClose }),
+      { wrapper: makeWrapper() },
+    )
+    expect(await screen.findByText('podle vzdálenosti')).toBeInTheDocument()
+  })
+
+  it('marks a busy driver with "obsazen"', async () => {
+    render(
+      createElement(DriverPicker, { pickupLat: 0, pickupLng: 0, onSelect, onClose }),
+      { wrapper: makeWrapper() },
+    )
+    // DRIVER_B has status 'Busy'
+    await waitFor(() => {
+      expect(screen.getByText('Barbora Dvořák')).toBeInTheDocument()
+    })
+    expect(screen.getByText('obsazen')).toBeInTheDocument()
+  })
+
+  it('has no axe violations', async () => {
+    const { container } = render(
+      createElement(DriverPicker, { pickupLat: 0, pickupLng: 0, onSelect, onClose }),
+      { wrapper: makeWrapper() },
+    )
+    await waitFor(() => {
+      expect(screen.getByText('Adam Novák')).toBeInTheDocument()
+    })
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
