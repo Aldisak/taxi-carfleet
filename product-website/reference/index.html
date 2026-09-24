@@ -23,7 +23,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
  {"@type":"Organization","name":"Taxi Fleet","url":"https://{{domain}}/","telephone":"+420123456789","email":"info@example.cz","address":{"@type":"PostalAddress","addressLocality":"Kolín","addressCountry":"CZ"}},
- {"@type":"SoftwareApplication","name":"Taxi Fleet","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android, iOS (PWA)","description":"Objednávací aplikace pro zákazníky, aplikace pro řidiče a dispečink pro malé taxislužby.","offers":{"@type":"Offer","priceCurrency":"CZK","description":"Měsíční cena podle velikosti flotily, zákaznická aplikace v ceně."},"inLanguage":["cs","en","de","ru","uk","fil"]},
+ {"@type":"SoftwareApplication","name":"Taxi Fleet","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android, iOS (PWA)","description":"Objednávací aplikace pro zákazníky, aplikace pro řidiče a dispečink pro malé taxislužby.","offers":[{"@type":"Offer","name":"Malá flotila (do 3 aut)","price":"1490","priceCurrency":"CZK","description":"měsíčně bez DPH"},{"@type":"Offer","name":"Střední flotila (4–6 aut)","price":"2490","priceCurrency":"CZK","description":"měsíčně bez DPH"},{"@type":"Offer","name":"Velká flotila (7–10 aut)","price":"3490","priceCurrency":"CZK","description":"měsíčně bez DPH"}],"inLanguage":["cs","en","de","ru","uk","fil"]},
  {"@type":"FAQPage","mainEntity":[
   {"@type":"Question","name":"Proč ne Bolt nebo Liftago?","acceptedAnswer":{"@type":"Answer","text":"Zprostředkovatel vlastní zákazníka, určuje cenu a bere si provizi. Vaše aplikace vlastní vás: cenu i zákazníka. Jezdit pro ně můžete dál, vedle toho."}},
   {"@type":"Question","name":"Není to v App Storu. Nevadí to?","acceptedAnswer":{"@type":"Answer","text":"Zákazník otevře odkaz a přidá si ikonu na plochu – dvě ťuknutí. Nečekáte na schválení, aktualizace jsou okamžité a aplikace je pod vaším jménem, ne pod účtem dodavatele."}},
@@ -249,14 +249,38 @@ section{padding-block:72px}
 @media (max-width:860px){.steps{grid-template-columns:1fr}}
 
 /* pricing */
-.price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:40px}
-.price ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
-.price li{display:flex;gap:10px;align-items:flex-start;font-weight:600;color:var(--ink-2)}
-.price li svg{width:20px;height:20px;color:var(--accent-text);flex:none;margin-top:2px}
-.price-copy{display:flex;flex-direction:column;gap:16px}
+.calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:28px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;margin-bottom:20px;align-items:center}
+.calc-ctl{display:flex;flex-direction:column;gap:12px}
+.calc-label{font-size:17px;font-weight:700}
+.calc-row{display:flex;align-items:center;gap:14px}
+.stepbtn{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--line-strong);background:var(--surface);font-size:22px;font-weight:700;cursor:pointer;display:grid;place-items:center}
+.stepbtn:hover{background:var(--surface-2)}
+.calc-val{font-size:34px;font-weight:800;letter-spacing:-.02em;min-width:5.5ch;text-align:center;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);height:32px;margin:0}
+.calc-ticks{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--ink-3);padding:0 4px}
+.calc-res{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.calc-yours,.calc-cmp{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:18px;border-radius:var(--r-md)}
+.calc-yours{background:var(--accent-soft)}
+.calc-cmp{background:var(--surface-2)}
+.calc-price{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.calc-cmp-price{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1;color:var(--ink-2);font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:6px}
+.calc-per{font-size:14px;font-weight:700;color:var(--ink-2);letter-spacing:0}
+.tiers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px}
+.tier{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r-lg);padding:22px;display:flex;flex-direction:column;gap:10px;align-items:flex-start;transition:border-color .15s ease,box-shadow .15s ease}
+.tier .btn{margin-top:auto;align-self:stretch}
+.tier-price{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05;font-variant-numeric:tabular-nums}
+.tier.is-active{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tier[data-tier="medium"]{border-color:var(--line-strong)}
+.price-foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px}
+.incl{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.incl li{display:flex;gap:10px;align-items:flex-start;font-weight:600;color:var(--ink-2)}
+.incl li svg{width:20px;height:20px;color:var(--accent-text);flex:none;margin-top:2px}
+.price-terms{display:flex;flex-direction:column;gap:12px}
 .terms{display:flex;flex-wrap:wrap;gap:8px}
 .pill{max-width:100%;white-space:normal;height:auto;min-height:26px;padding-block:4px;line-height:1.2}
-@media (max-width:860px){.price{grid-template-columns:1fr;padding:26px}}
+@media (max-width:1000px){.tiers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:860px){.calc,.price-foot{grid-template-columns:1fr;padding:22px}.calc-res{grid-template-columns:1fr}}
+@media (max-width:520px){.tiers{grid-template-columns:1fr}}
 
 /* origin */
 .origin{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:center}
@@ -534,26 +558,92 @@ footer a{color:var(--ink-2)}
 
 <section id="pricing">
   <div class="wrap">
-    <div class="price">
-      <div class="price-copy">
-        <span class="eyebrow" data-i18n="price.eyebrow">Cena</span>
-        <h2 class="h-section" data-i18n="price.title">Cena podle velikosti flotily</h2>
-        <p class="lead" data-i18n="price.body">Jedna měsíční částka za celou taxislužbu. Zákaznická aplikace je v ceně. Neplatíte za každého řidiče, neplatíte provizi z jízd.</p>
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="price.eyebrow">Cena</span>
+      <h2 class="h-section" data-i18n="price.title">Jedna částka za celou flotilu</h2>
+      <p class="lead" data-i18n="price.body">Cena se řídí počtem aut, ne řidičů. Zákaznická aplikace je v ceně. Neplatíte provizi z jízd.</p>
+    </div>
+
+    <div class="calc">
+      <div class="calc-ctl">
+        <label for="calc-cars" class="calc-label" data-i18n="calc.label">Kolik aut máte?</label>
+        <div class="calc-row">
+          <button type="button" class="stepbtn" id="calc-minus" aria-label="Ubrat auto">−</button>
+          <output id="calc-cars-out" for="calc-cars" class="calc-val" aria-live="off">3 auta</output>
+          <button type="button" class="stepbtn" id="calc-plus" aria-label="Přidat auto">+</button>
+        </div>
+        <input type="range" id="calc-cars" min="1" max="15" value="3" step="1" aria-valuetext="3 auta">
+        <div class="calc-ticks" aria-hidden="true"><span>1</span><span>5</span><span>10</span><span>15</span></div>
+      </div>
+      <div class="calc-res" aria-live="polite">
+        <div class="calc-yours">
+          <span class="caption" data-i18n="calc.yours">Vaše cena</span>
+          <div class="calc-price"><span id="calc-price">1&nbsp;490&nbsp;Kč</span><span class="calc-per" id="calc-per" data-i18n="calc.perMonth">/ měsíc</span></div>
+          <span class="pill pill-accent" id="calc-tier">Malá flotila · do 3 aut</span>
+          <p class="caption" id="calc-custom" hidden data-i18n="calc.custom">Pro 11 a více aut vám cenu řekneme po telefonu.</p>
+        </div>
+        <div class="calc-cmp" id="calc-cmp">
+          <span class="caption" data-i18n="calc.compareLabel">Typický ceník s licencí za řidiče</span>
+          <div class="calc-cmp-price"><s id="calc-cmp-price">3&nbsp;297&nbsp;Kč</s><span class="calc-per" data-i18n="calc.perMonth2">/ měsíc</span></div>
+          <p class="caption" data-i18n="calc.compareNote">599 Kč za řidiče + 1 500 Kč za zákaznickou aplikaci, běžný model na českém trhu</p>
+          <span class="pill pill-success" id="calc-saving">Ušetříte 1&nbsp;807&nbsp;Kč měsíčně</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tiers">
+      <article class="tier" data-tier="small">
+        <span class="pill pill-neutral" data-i18n="tier.smallCars">do 3 aut</span>
+        <h3 class="h-card" data-i18n="tier.small">Malá flotila</h3>
+        <div class="tier-price">1&nbsp;490&nbsp;Kč</div>
+        <span class="caption" data-i18n="tier.perMonth">za měsíc bez DPH</span>
+        <a class="btn btn-secondary btn-sm" href="#contact" data-i18n="tier.cta">Zavolat</a>
+      </article>
+      <article class="tier" data-tier="medium">
+        <span class="pill pill-accent" data-i18n="tier.popular">Nejčastější volba</span>
+        <h3 class="h-card" data-i18n="tier.medium">Střední flotila</h3>
+        <div class="tier-price">2&nbsp;490&nbsp;Kč</div>
+        <span class="caption"><span data-i18n="tier.mediumCars">4–6 aut</span> · <span data-i18n="tier.perMonth2">za měsíc bez DPH</span></span>
+        <a class="btn btn-primary btn-sm" href="#contact" data-i18n="tier.cta2">Zavolat</a>
+      </article>
+      <article class="tier" data-tier="large">
+        <span class="pill pill-neutral" data-i18n="tier.largeCars">7–10 aut</span>
+        <h3 class="h-card" data-i18n="tier.large">Velká flotila</h3>
+        <div class="tier-price">3&nbsp;490&nbsp;Kč</div>
+        <span class="caption"><span data-i18n="tier.perMonth3">za měsíc bez DPH</span> · <span data-i18n="tier.largeExtra">+ analytika s týdenním přehledem a audit</span></span>
+        <a class="btn btn-secondary btn-sm" href="#contact" data-i18n="tier.cta3">Zavolat</a>
+      </article>
+      <article class="tier" data-tier="custom">
+        <span class="pill pill-neutral" data-i18n="tier.customCars">11 a více aut</span>
+        <h3 class="h-card" data-i18n="tier.custom">Větší flotily</h3>
+        <div class="tier-price" data-i18n="tier.customPrice">individuálně</div>
+        <span class="caption" data-i18n="tier.customNote">Cenu vám řekneme po telefonu.</span>
+        <a class="btn btn-secondary btn-sm" href="#contact" data-i18n="tier.cta4">Zavolat</a>
+      </article>
+    </div>
+
+    <div class="price-foot">
+      <div>
+        <h3 class="h-card" data-i18n="price.inclTitle">V každé ceně</h3>
+        <ul class="incl">
+          <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l1">Zákaznická, řidičská i dispečerská aplikace</span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l2">Vaše značka: barva, logo, jméno, telefon</span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l3">Pevné trasy a zóny</span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l4">Reporty a export do CSV</span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l5">Aktualizace a podpora</span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l6">Zavedení a nastavení flotily</span></li>
+        </ul>
+      </div>
+      <div class="price-terms">
         <div class="terms">
           <span class="pill pill-neutral" data-i18n="price.t1">První měsíc zdarma</span>
           <span class="pill pill-neutral" data-i18n="price.t2">Bez smlouvy na dobu určitou</span>
           <span class="pill pill-neutral" data-i18n="price.t3">Bez poplatku za zavedení</span>
         </div>
-        <div><a class="btn btn-primary" href="#contact" data-i18n="price.cta">Zavolejte nám a řekneme vám cenu pro vaši flotilu</a></div>
+        <p class="muted" data-i18n="price.sms">SMS účtujeme za skutečnou cenu, zhruba 1 Kč za zprávu. Měsíční limit si nastavíte sami, nad něj nic neposíláme.</p>
+        <p class="muted" data-i18n="price.switch">Přecházíte od jiného dispečinku? První dva měsíce jsou zdarma.</p>
+        <p class="caption" data-i18n="price.note">Ceny bez DPH. Do tarifu se počítají aktivní vozidla v nastavení flotily.</p>
       </div>
-      <ul>
-        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l1">Zákaznická, řidičská i dispečerská aplikace</span></li>
-        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l2">Vaše značka a barvy</span></li>
-        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l3">Pevné trasy a zóny</span></li>
-        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l4">Reporty a analytika</span></li>
-        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l5">Aktualizace a podpora</span></li>
-        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l6">SMS a mapy za skutečnou cenu, s měsíčním limitem, který si nastavíte</span></li>
-      </ul>
     </div>
   </div>
 </section>
@@ -593,6 +683,8 @@ footer a{color:var(--ink-2)}
       <details><summary><span data-i18n="faq.q5">Jak dlouho trvá zavedení?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a5">Obvykle do týdne od telefonátu. Nastavíme barvu, logo, telefon, pevné trasy a řidiče; vy rozdáte odkaz.</p></details>
       <details><summary><span data-i18n="faq.q6">Kde jsou data?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a6">Na serverech v EU, každá taxislužba odděleně. Objednávky, zákazníky i reporty si kdykoli stáhnete v CSV.</p></details>
       <details><summary><span data-i18n="faq.q7">Můžu odejít?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a7">Ano, kdykoli. Bez smlouvy na dobu určitou, data si odnesete.</p></details>
+      <details><summary><span data-i18n="faq.q8">Co když přidám auto?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a8">Nic se nemění, dokud nepřekročíte hranici tarifu. Když ji překročíte na celý měsíc, přejdete od dalšího měsíce na vyšší tarif. Zpět můžete kdykoli.</p></details>
+      <details><summary><span data-i18n="faq.q9">Platím za řidiče?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a9">Ne. Řidičů můžete mít, kolik chcete. Počítají se auta.</p></details>
     </div>
   </div>
 </section>
@@ -662,9 +754,15 @@ footer a{color:var(--ink-2)}
     "brand.eyebrow":"Your brand","brand.title":"Your colour, your logo, your number","brand.body":"The app carries your fleet's name, not ours. Customers open it from a link or a home-screen icon – no app store, no waiting for approval. Light and dark mode.",
     "how.eyebrow":"Setup","how.title":"How it works","how.s1t":"You call us.","how.s1b":"We go through how you work today: how many cars, what prices, where.",
     "how.s2t":"We set up your fleet.","how.s2b":"Colour, logo, phone, fixed routes, drivers. Usually within a week.","how.s3t":"Customers order themselves.","how.s3b":"Put the link on your website, business cards, SMS. You keep your phone number – it just rings less.",
-    "price.eyebrow":"Pricing","price.title":"Priced by fleet size","price.body":"One monthly amount for the whole fleet. The customer app is included. No per-driver licence, no commission on rides.",
-    "price.t1":"First month free","price.t2":"No fixed-term contract","price.t3":"No setup fee","price.cta":"Call us and we'll tell you the price for your fleet",
-    "price.l1":"Customer, driver and dispatch apps","price.l2":"Your brand and colours","price.l3":"Fixed routes and zones","price.l4":"Reports and analytics","price.l5":"Updates and support","price.l6":"SMS and maps at cost, with a monthly cap you set",
+    "price.eyebrow":"Pricing","price.title":"One price for the whole fleet","price.body":"The price follows the number of cars, not drivers. The customer app is included. No commission on rides.",
+    "calc.label":"How many cars do you run?","calc.yours":"Your price","calc.perMonth":"/ month","calc.perMonth2":"/ month","calc.custom":"For 11 cars and more we'll quote by phone.",
+    "calc.compareLabel":"Typical per-driver licence pricing","calc.compareNote":"599 Kč per driver + 1 500 Kč for the customer app, the usual model on the Czech market",
+    "tier.small":"Small fleet","tier.smallCars":"up to 3 cars","tier.medium":"Medium fleet","tier.mediumCars":"4–6 cars","tier.popular":"Most common choice","tier.large":"Large fleet","tier.largeCars":"7–10 cars","tier.largeExtra":"+ analytics with a weekly digest and audit log",
+    "tier.custom":"Larger fleets","tier.customCars":"11 cars and more","tier.customPrice":"individually","tier.customNote":"We'll quote by phone.",
+    "tier.perMonth":"per month ex VAT","tier.perMonth2":"per month ex VAT","tier.perMonth3":"per month ex VAT","tier.cta":"Call","tier.cta2":"Call","tier.cta3":"Call","tier.cta4":"Call",
+    "price.inclTitle":"In every plan","price.l1":"Customer, driver and dispatch apps","price.l2":"Your brand: colour, logo, name, phone","price.l3":"Fixed routes and zones","price.l4":"Reports and CSV export","price.l5":"Updates and support","price.l6":"Setup and fleet onboarding",
+    "price.t1":"First month free","price.t2":"No fixed-term contract","price.t3":"No setup fee",
+    "price.sms":"SMS is billed at cost, about 1 Kč a message. You set a monthly cap; nothing is sent above it.","price.switch":"Switching from another dispatch system? The first two months are free.","price.note":"Prices ex VAT. The plan counts active vehicles in your fleet settings.",
     "origin.eyebrow":"Where we come from","origin.title":"Built for three cars in Kolín","origin.body":"The system was built for Taxi Kolín, a family taxi service with three cars in Kolín and Kutná Hora that used to take every order by phone. We built it for ourselves first, then for others. That is why there is nothing in it a small fleet does not need.",
     "origin.caption":"Rides, ratings and operating numbers will follow as we collect them.","origin.routes":"Fixed routes the fleet set once","origin.anywhereKH":"Anywhere in Kutná Hora",
     "faq.eyebrow":"FAQ","faq.title":"What owners ask",
@@ -675,6 +773,8 @@ footer a{color:var(--ink-2)}
     "faq.q5":"How long does setup take?","faq.a5":"Usually within a week of the call. We set colour, logo, phone, fixed routes and drivers; you hand out the link.",
     "faq.q6":"Where is the data?","faq.a6":"On servers in the EU, each fleet separated. You can download orders, customers and reports as CSV at any time.",
     "faq.q7":"Can I leave?","faq.a7":"Yes, any time. No fixed-term contract, and you take your data with you.",
+    "faq.q8":"What if I add a car?","faq.a8":"Nothing changes until you cross the plan's limit. If you stay above it for a whole month, the next month moves to the higher plan. You can move back any time.",
+    "faq.q9":"Do I pay per driver?","faq.a9":"No. Have as many drivers as you like. We count cars.",
     "contact.eyebrow":"Contact","contact.title":"Call us. In a week your customers order themselves.","contact.copy":"Copy number","contact.hours":"Mon–Fri 8–18, or leave a message and we'll get back to you.",
     "contact.formTitle":"Or send us a message","contact.name":"Name","contact.phone":"Phone","contact.fleet":"Taxi service and town","contact.cars":"Number of cars","contact.note":"What you'd like to know (optional)","contact.send":"Send","contact.privacy":"We only use your details to get back to you.",
     "skip":"Skip to content","contact.required":"* required",
@@ -704,6 +804,33 @@ footer a{color:var(--ink-2)}
   else { try{ var s = localStorage.getItem("tf-lang"); if (s==="en"||s==="cs") initial = s; }catch(e){} }
   document.documentElement.lang = "cs";
   if (initial !== "cs") apply(initial);
+
+
+  // ---- pricing calculator ----
+  var TIERS=[{code:"small",max:3,price:1490},{code:"medium",max:6,price:2490},{code:"large",max:10,price:3490},{code:"custom",max:99,price:null}];
+  var LIC=599, APPFEE=1500;
+  var CT={cs:{tier:{small:"Malá flotila · do 3 aut",medium:"Střední flotila · 4–6 aut",large:"Velká flotila · 7–10 aut",custom:"Větší flotily · 11 a více aut"},cars:function(n){return n+" "+(n===1?"auto":n<5?"auta":"aut");},saving:function(a){return "Ušetříte "+a+" Kč měsíčně";},minus:"Ubrat auto",plus:"Přidat auto",indiv:"individuálně"},
+            en:{tier:{small:"Small fleet · up to 3 cars",medium:"Medium fleet · 4–6 cars",large:"Large fleet · 7–10 cars",custom:"Larger fleets · 11 cars and more"},cars:function(n){return n+(n===1?" car":" cars");},saving:function(a){return "You save "+a+" Kč a month";},minus:"Remove a car",plus:"Add a car",indiv:"individually"}};
+  function kc(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+"\u00a0Kč"; }
+  var range=document.getElementById("calc-cars"), out=document.getElementById("calc-cars-out");
+  function calc(){
+    var n=parseInt(range.value,10), t=TIERS.filter(function(x){return n<=x.max;})[0], L=CT[lang];
+    out.textContent=L.cars(n); range.setAttribute("aria-valuetext",L.cars(n));
+    document.getElementById("calc-minus").setAttribute("aria-label",L.minus); document.getElementById("calc-plus").setAttribute("aria-label",L.plus);
+    document.getElementById("calc-tier").textContent=L.tier[t.code];
+    var custom=t.price===null, cmp=LIC*n+APPFEE;
+    document.getElementById("calc-price").textContent=custom?L.indiv:kc(t.price);
+    document.getElementById("calc-per").hidden=custom;
+    document.getElementById("calc-custom").hidden=!custom;
+    document.getElementById("calc-cmp").hidden=custom;
+    if(!custom){ document.getElementById("calc-cmp-price").textContent=kc(cmp); document.getElementById("calc-saving").textContent=L.saving(kc(cmp-t.price).replace("\u00a0Kč","")); }
+    document.querySelectorAll(".tier").forEach(function(el){ el.classList.toggle("is-active", el.getAttribute("data-tier")===t.code); });
+  }
+  range.addEventListener("input",calc);
+  document.getElementById("calc-minus").addEventListener("click",function(){ range.value=Math.max(1,parseInt(range.value,10)-1); calc(); });
+  document.getElementById("calc-plus").addEventListener("click",function(){ range.value=Math.min(15,parseInt(range.value,10)+1); calc(); });
+  document.getElementById("lang-cs").addEventListener("click",calc); document.getElementById("lang-en").addEventListener("click",calc);
+  calc();
 
   function toast(t){ var el=document.createElement("div"); el.className="toast"; el.textContent=t; el.setAttribute("role","status"); document.body.appendChild(el); setTimeout(function(){ el.remove(); }, 2200); }
   document.getElementById("copy-phone").addEventListener("click", function(){

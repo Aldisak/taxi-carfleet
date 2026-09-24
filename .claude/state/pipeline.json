@@ -1,115 +1,55 @@
 {
   "version": 1,
-  "uc_id": "UC-022",
-  "title": "Product website -> Astro app (Assignment 10: decompose product-website/index.html into a component-based Astro SSG site, CS+EN)",
+  "uc_id": "UC-023",
+  "title": "Product website: pricing overhaul (calculator + tiers) + full mockup i18n (Assignment 11)",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "done",
-  "spec_path": ".claude/state/10-product-website-astro.md",
-  "branch": "feat/product-website-astro (off main; assignment + reference index.html committed as first commit)",
+  "phase": "implement",
+  "spec_path": ".claude/state/11-product-website-pricing-and-i18n.md",
+  "branch": "feat/website-pricing-i18n (off main; assignment + updated reference/index.html committed as first commit)",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "user directive 2026-09-24 (/conductor 'continue autonomously with 10-product-website-astro'): gates pre-approved per UC-020/021 precedent; commits at green milestones; local branch, no remote push. Spec authored in plan mode THIS session and approved by the user via ExitPlanMode (deliverable/location/languages/form decisions answered via AskUserQuestion).",
+  "autonomous_mode_authority": "user directive 2026-09-24 (/conductor 'continue autonomously .claude/state/11-product-website-pricing-and-i18n.md'): gates pre-approved per UC-020/021/022 precedent; commits at green milestones; local branch, no remote push. The assignment (incl. the localize-vs-literal Gate A defaults table) was authored THIS session, summarized to the user — including the explicit flag that borderline items default as tabled — and the user responded by launching the autonomous run.",
   "gates_passed": [
-    "A (session): spec = .claude/state/10-product-website-astro.md — authored from a full decomposition of product-website/index.html; user answered 4 scoping questions (Astro rooted at product-website/ with index.html preserved at reference/; CS+EN only; contact form stays client stub) and approved the plan.",
-    "B (session): work items = the assignment's WI-1..WI-7 table (topo: WI-1 -> WI-2 -> WI-3 -> {WI-4 || WI-5} -> WI-6 -> WI-7).",
-    "C (session): design folded into the approved assignment (component map derived from the actual HTML; i18n routing over client toggle documented with rationale).",
-    "E (autonomous): site gate PASS — clean build emits dist/index.html (cs)+dist/en/index.html (en); astro check 0 errors (33 files); i18n parity 148 keys; 9 sections + landmarks(header/nav/main#top/footer)+skip link+5 labelled fields; JSON-LD + cs/en hreflang; dark tokens in built CSS (--accent #AD4F09/#B8540B); contact stub + 'public/leads' comment preserved; reference/index.html immutable. Residual manual check: pixel/Lighthouse visual diff needs a browser (not runnable headlessly) — port reuses reference CSS/markup verbatim so parity is structurally assured."
+    "A (session): spec = .claude/state/11-product-website-pricing-and-i18n.md — authored from a diff of the new reference/index.html vs HEAD + a full audit of the existing Astro site's i18n wiring; localize-vs-literal defaults accepted by launching autonomously after they were flagged.",
+    "B (session): work items = the assignment's WI-1..WI-4 table (topo: WI-1 -> {WI-2 || WI-3} -> WI-4; executed sequentially because WI-2 and WI-3 both touch src/i18n/*.json and HomeSections.astro — per UC-022 precedent, one agent per phase of the same npm project).",
+    "C (session): design folded into the approved assignment (pricing component map + calculator port strategy with per-locale script; key inventory built mechanically from the reference EN object and existing dead mock.* keys)."
   ],
-  "key_constraints": "FAITHFUL PORT, not a redesign — visual/behavioral parity with product-website/reference/index.html in both themes and at breakpoints 900/860/700/480/420. Reuse the app's design-token NAMES exactly (tokens.css from the reference :root + dark blocks; do not fork/rename the palette; site-only --map/--map-road/--map-road-2 stay). No CSS framework (Tailwind banned repo-wide). No backend work: contact form stays the demo setTimeout stub with the 'wire to POST /api/v1/public/leads' comment. CS default + EN via Astro built-in i18n routing (/ = cs, /en/ = en, prefixDefaultLocale:false). No hardcoded user-facing copy in components/pages — all through t() + src/i18n/cs.json+en.json (keys keep the reference dot notation; hero.title contains <br> -> set:html for HTML-bearing keys only). Parity check cs<->en key sets. TypeScript strict; Node >=20. Scaffold non-interactively (avoid interactive prompts). git mv product-website/index.html product-website/reference/index.html in WI-1 and NEVER edit it after. a11y: skip link, landmarks, focus rings, >=48px touch, labelled fields. This folder is OUTSIDE web/ — web/'s eslint/vitest/size gates do NOT apply; the site's gate is npm run build + astro check + the parity check + visual/a11y verification. Never commit README.md (untracked, root).",
+  "key_constraints": "Source of truth = the NEW product-website/reference/index.html (committed on this branch; immutable thereafter). #pricing is a deliberate REDESIGN (supersedes UC-022's no-visual-regression for that section only); everything else stays a faithful port. All localizable copy through t() + cs.json/en.json; money '... Kc' and proper nouns (Taxi Fleet, fleet/driver/place names, plates, Skoda Octavia) stay literal per rules/web-react-style.md#dates-and-money. Calculator JS must NOT be ported verbatim (reference couples to the deleted lang-cs/lang-en client toggle) — per-locale <script> fed page-locale strings incl. Czech auto/auta/aut pluralization. Existing mock.* keys in BOTH dicts are dead — wire them, thread strings as props from HomeSections (not t() inside mockups). Parity check (npm run check:i18n) is NECESSARY NOT SUFFICIENT — AC#3 requires a rendered-/en/-is-English assertion. JSON-LD: offers -> 3-offer array; FAQPage + visible #faq gain q8/q9. a11y: labelled range + aria-valuetext, polite live region, localized +/- aria-labels, >=48px targets. Site gate = npm run build + npm run check + npm run check:i18n (web/'s eslint/vitest gates do NOT apply to product-website/). git add: explicit paths only. Never commit taxi-fleet-pricing-model.xlsx (user's own file) or README.md.",
   "work_items": [
     {
-      "id": "WI-1",
+      "id": "UC023-WI-1",
       "lane": "web",
-      "title": "Scaffold Astro at product-website/ (mv index.html -> reference/, astro.config i18n, TS strict, favicon) + tokens.css/global.css",
-      "status": "done",
+      "title": "Wire mockup components to t() + extend mock.* (phone/board/mini/brand) so /en/ renders English; add missing keys to both locales; drop the 'kept literal' comment",
+      "status": "todo",
       "depends_on": [],
-      "files_scope": "product-website/**",
-      "note": "DONE committed: Astro 5.18.2 scaffolded by hand at product-website/; i18n cs+en (prefixDefaultLocale:false); TS strict; reference/index.html R100 immutable; tokens.css byte-identical to reference :root+dark; global.css reset+type-ramp+.skip/.toast/.muted; favicon.svg. build 0 + astro check 0 (pinned @astrojs/check 0.8.3 + override @astrojs/language-server 2.15.4 for Node 20.0.0 ERR_REQUIRE_ESM — documented in CLAUDE.md)."
+      "files_scope": "product-website/src/components/{PhoneMockup,DispatchBoard,MiniMockup,TinyPhone,HomeSections}.astro, src/data/{hero,features,brand}.ts, src/i18n/{cs,en}.json"
     },
     {
-      "id": "WI-2",
+      "id": "UC023-WI-2",
       "lane": "web",
-      "title": "Base.astro (head/SEO/OG/JSON-LD/hreflang/fonts/skip-link) + Navigation (locale-link toggle) + Footer",
-      "status": "done",
-      "depends_on": [
-        "WI-1"
-      ],
-      "files_scope": "product-website/src/layouts/**, src/components/Navigation.astro, Footer.astro",
-      "note": "DONE committed: Base.astro (head/SEO/OG/JSON-LD/hreflang cs->/ en->/en/, favicon, Manrope, skip-link, slot-based header/main/footer); Navigation (CS/EN as locale links + aria-current); Footer. Presentational, text via props."
+      "title": "Pricing overhaul: PricingCalculator.astro (localized client script + pluralization) + tier cards + price-foot; replace PricingList; src/data/pricing.ts model; scoped CSS + new breakpoints; new calc.*/tier.*/price.* keys",
+      "status": "todo",
+      "depends_on": ["UC023-WI-1"],
+      "files_scope": "product-website/src/components/PricingCalculator.astro (new), PricingList.astro, HomeSections.astro, src/data/pricing.ts, src/i18n/{cs,en}.json"
     },
     {
-      "id": "WI-3",
+      "id": "UC023-WI-3",
       "lane": "web",
-      "title": "Primitives: Button, Pill, SectionHead, Icon, FormField",
-      "status": "done",
-      "depends_on": [
-        "WI-1"
-      ],
-      "files_scope": "product-website/src/components/**",
-      "note": "DONE committed: primitives Button/Pill/SectionHead/Icon(8 glyphs)/FormField, reference CSS ported to scoped styles; Astro scoping handled via <Icon> for .icon + :global for descendant sizing (advisor-verified)."
+      "title": "Head/JSON-LD: SoftwareApplication.offers array + FAQPage q8/q9; add faq.q8/a8/q9/a9 to dicts + src/data/faq.ts",
+      "status": "todo",
+      "depends_on": ["UC023-WI-1"],
+      "files_scope": "product-website/src/layouts/Base.astro, src/data/faq.ts, src/i18n/{cs,en}.json"
     },
     {
-      "id": "WI-4",
+      "id": "UC023-WI-4",
       "lane": "web",
-      "title": "Hero + PhoneMockup + DispatchBoard",
-      "status": "done",
-      "depends_on": [
-        "WI-2",
-        "WI-3"
-      ],
-      "files_scope": "product-website/src/components/Hero.astro, PhoneMockup.astro, DispatchBoard.astro",
-      "note": "DONE committed: Hero + bespoke PhoneMockup + DispatchBoard (markup+CSS ported verbatim, single scope each)."
-    },
-    {
-      "id": "WI-5",
-      "lane": "web",
-      "title": "Data-driven sections (Card/Why, Pillar+MiniMockup, TinyPhone/Brand, Step/How, PricingList, Origin, FaqItem, ContactForm stub) + src/data/*.ts",
-      "status": "done",
-      "depends_on": [
-        "WI-2",
-        "WI-3"
-      ],
-      "files_scope": "product-website/src/components/**, src/data/**",
-      "note": "DONE committed: Card/Pillar+MiniMockup/TinyPhone/Step/PricingList/Origin/FaqItem/ContactForm + src/data/*.ts (Czech copy inline for WI-6 extract). Pillar odd/even flip, check-icons via li :global(svg), nbsp prices byte-verified. ContactForm: is:inline define:vars messages, demo setTimeout stub + 'wire to POST /api/v1/public/leads' comment preserved, lang-toggle dropped. Page composes all 9 sections in order."
-    },
-    {
-      "id": "WI-6a",
-      "lane": "web",
-      "title": "i18n data layer: cs.json + en.json (identical keys) + t.ts helper + check-i18n-parity.mjs",
-      "status": "done",
-      "depends_on": [
-        "WI-4",
-        "WI-5"
-      ],
-      "files_scope": "product-website/src/i18n/**, scripts/**, package.json",
-      "note": "WI-6 was split after the single run idled on too-large output. 6a = dictionaries + helper + parity only (no component/page refactor). DONE committed: 143 keys, parity OK, astro check 0, HTML_KEYS=[hero.title], no EN gaps."
-    },
-    {
-      "id": "WI-6b",
-      "lane": "web",
-      "title": "Refactor data->keys + HomeSections + cs/en pages + define:vars wiring",
-      "status": "done",
-      "depends_on": [
-        "WI-6a"
-      ],
-      "files_scope": "product-website/src/data/**, src/components/**, src/pages/**",
-      "note": "DONE committed (conductor-inline after 2 subagent idle-timeouts): +5 meta/aria keys (148 total, parity OK); data files->keys; HomeSections locale-parameterized composition resolving t(); thin cs `/` + en `/en/` pages. Mockup illustrations + proper nouns stay literal Czech both locales (documented). build both locales + astro check 0; correct language per page; real <br>."
-    },
-    {
-      "id": "WI-7",
-      "lane": "web",
-      "title": "Verify: build + astro check + parity + visual diff vs reference + a11y; conductor-run",
-      "status": "done",
-      "depends_on": [
-        "WI-6"
-      ],
+      "title": "Verify: build + check + check:i18n; /en/-is-English assertion + no-literal scan; behavioral diff of #pricing vs new reference; conductor-run",
+      "status": "todo",
+      "depends_on": ["UC023-WI-1", "UC023-WI-2", "UC023-WI-3"],
       "owner": "conductor",
-      "files_scope": "-",
-      "note": "DONE (conductor verification): clean build both locales, astro check 0, parity 148, structural+a11y+head parity vs reference, dark tokens in CSS, stub preserved, reference immutable."
+      "files_scope": "product-website/**"
     }
   ],
-  "topo_order": "WI-1 -> {WI-2 + WI-3 (one agent run, same new tree)} -> {WI-4 + WI-5 (one agent run)} -> WI-6 -> WI-7 (conductor). Dispatch grouping keeps one agent per phase of the same npm project — no parallel-tree contention, fewer handoffs.",
-  "pre_existing_worktree_note": "Never commit README.md (untracked, root). product-website/reference/index.html is immutable after WI-1. git add: explicit paths only.",
-  "updated_at": "2026-09-24",
-  "ship": "DONE: ff-merged feat/product-website-astro -> main (local, no push). main @ 6594f24. 7 commits: assignment+reference 574316c, scaffold+tokens cc16382, layout+primitives e6c779c, hero+sections 185ffe7, i18n dicts 74fc834, i18n wiring+pages 2b82c55, verify 6594f24."
+  "topo_order": "UC023-WI-1 -> UC023-WI-2 -> UC023-WI-3 -> UC023-WI-4 (conductor). WI-2/WI-3 are logically parallel but run sequentially: both touch src/i18n/*.json + HomeSections.astro in one working tree.",
+  "updated_at": "2026-09-24"
 }
