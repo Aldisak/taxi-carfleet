@@ -1,0 +1,54 @@
+{
+  "wi_id": "UC022-WI-1",
+  "lane": "web",
+  "files_created": [
+    "product-website/reference/index.html (git mv from product-website/index.html — immutable henceforth)",
+    "product-website/.gitignore",
+    "product-website/package.json",
+    "product-website/package-lock.json",
+    "product-website/astro.config.mjs",
+    "product-website/tsconfig.json",
+    "product-website/public/favicon.svg",
+    "product-website/src/styles/tokens.css",
+    "product-website/src/styles/global.css",
+    "product-website/src/pages/index.astro"
+  ],
+  "files_changed": [
+    "product-website/reference/index.html",
+    "product-website/.gitignore",
+    "product-website/package.json",
+    "product-website/package-lock.json",
+    "product-website/astro.config.mjs",
+    "product-website/tsconfig.json",
+    "product-website/public/favicon.svg",
+    "product-website/src/styles/tokens.css",
+    "product-website/src/styles/global.css",
+    "product-website/src/pages/index.astro"
+  ],
+  "astro_version_installed": "5.18.2",
+  "tests_added": 0,
+  "tests_passing": true,
+  "coverage_delta": "n/a (scaffold WI — no Vitest suite in product-website/; verification is astro build + astro check per assignment 10 AC#1)",
+  "hit_max_turns": false,
+  "verification": {
+    "build": {
+      "command": "npm run build (astro build)",
+      "exit_code": 0,
+      "output": "output static; 1 page(s) built; dist/index.html emitted; Complete!"
+    },
+    "check": {
+      "command": "npx astro check",
+      "exit_code": 0,
+      "output": "Result (2 files): 0 errors - 0 warnings - 0 hints"
+    }
+  },
+  "verification_output": "npm run build -> exit 0, emitted dist/index.html. npx astro check -> exit 0, 0 errors / 0 warnings / 0 hints. Astro 5.18.2 installed.",
+  "deviations": [
+    "Node 20.0.0 trap: the exact repo Node pin (v20.0.0) is below the >=20.19.0 floor where Node supports require() of an ESM module. The latest @astrojs/language-server (2.17.1, pulled by any @astrojs/check ^0.9/^0.8 range) does a CommonJS require('@astrojs/astro2tsx') where astro2tsx is ESM-only -> `astro check` crashed with ERR_REQUIRE_ESM (exit 1). Fix (dependency selection, NOT an engine/.npmrc hack, NOT a Node-pin change): pinned @astrojs/check to 0.8.3 and added a package.json overrides entry forcing @astrojs/language-server to 2.15.4 (pre-split: bundles the tsx transform internally, no external ESM require). With that override, astro check exits 0 and npm run build stays 0 on Node 20.0.0. The npm engines field stays >=20.0.0 as required; EBADENGINE warnings during install are advisory only and do not affect build/check.",
+    "package.json overrides block was NOT in the task's literal scaffold spec — added solely to make AC#1 (astro check clean) achievable on the pinned Node 20.0.0. @astrojs/check pinned to 0.8.3 (task left the version open).",
+    "global.css includes .muted (reference line 95, mid type-ramp cluster) in addition to the task-enumerated helpers — it is global chrome later sections use; omitting it risks a WI-5/6 regression. Faithful-port helper, not a defensive add.",
+    "favicon.svg authored from scratch (repo had none): the reference brand-dot car path (viewBox 0 0 24 24: M5 17h14M6 17l1.5-6h9L18 17M8 11l1-3h6l1 3 + two wheel circles) rendered white on a #AD4F09 rounded square (literal hex — SVG cannot read CSS vars), matching .brand-dot's border-radius:9px / --accent / --on-accent."
+  ],
+  "byte_faithfulness": "tokens.css verified byte-identical to reference/index.html lines 44-81 via diff (exit 0). global.css reset trio (line 38) + base body/type-ramp (lines 82-96) + .skip (114-115) + .toast (300) copied verbatim.",
+  "notes": "WI-1 scaffold only. Reference HTML moved via git mv (staged as a pure rename R -> byte-identical, immutable from here). No components/pages beyond a trivial placeholder index.astro proving the toolchain (importing tokens.css + global.css, lang=cs, <main class=wrap><h1 class=h-title>). i18n routing config in place (defaultLocale cs, locales [cs,en], prefixDefaultLocale:false). All 10 paths staged with explicit git add; nothing committed; nothing touched outside product-website/. .gitignore created before any add so node_modules/dist/.astro stay untracked."
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Taxi Fleet">
+  <rect width="32" height="32" rx="9" fill="#AD4F09"/>
+  <g transform="translate(4 4)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 17h14M6 17l1.5-6h9L18 17M8 11l1-3h6l1 3"/>
+    <circle cx="7.5" cy="17" r="1.5"/>
+    <circle cx="16.5" cy="17" r="1.5"/>
+  </g>
+</svg>

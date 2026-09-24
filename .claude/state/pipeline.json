@@ -1,141 +1,96 @@
 {
   "version": 1,
-  "uc_id": "UC-021",
-  "title": "Dispatcher + SuperAdmin(/admin) UI redesign — screens onto the shared desk kit (design handoff v1 2026-09-24)",
+  "uc_id": "UC-022",
+  "title": "Product website -> Astro app (Assignment 10: decompose product-website/index.html into a component-based Astro SSG site, CS+EN)",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "done",
-  "spec_path": ".claude/state/dispatcher-app-design-handoff.md",
-  "spec_path_admin": ".claude/state/admin-app-design-handoff.md",
-  "branch": "redesign/dispatcher-app (off main @ d4a7db3; handoffs committed 9a9a6d3)",
+  "phase": "implement",
+  "spec_path": ".claude/state/10-product-website-astro.md",
+  "branch": "feat/product-website-astro (off main; assignment + reference index.html committed as first commit)",
   "autonomous_mode": true,
-  "autonomous_mode_authority": "user directive 2026-09-24 (/conductor 'continue autonomously according to assignment for redesign in customer, dispatcher, admin'): gates pre-approved; follows the UC-020 customer-pass precedent (additive coexistence layer, commit at green milestones, conductor pre-adds i18n keys, ff-merge to main local no push).",
+  "autonomous_mode_authority": "user directive 2026-09-24 (/conductor 'continue autonomously with 10-product-website-astro'): gates pre-approved per UC-020/021 precedent; commits at green milestones; local branch, no remote push. Spec authored in plan mode THIS session and approved by the user via ExitPlanMode (deliverable/location/languages/form decisions answered via AskUserQuestion).",
   "gates_passed": [
-    "A (session): specs = dispatcher-app-design-handoff.md + admin-app-design-handoff.md; scope FRONTEND-ONLY (restyle onto desk kit, no new backend endpoints); autonomous authority carries from UC-020.",
-    "B (session): work items = the two handoffs' migration-order lists, decomposed to WI-1..WI-9 below and validated by advisor 2026-09-24.",
-    "C (session): advisor design-review folded in — additive coexistence confirmed (do NOT big-bang migrate board off theme object); WI-2 split kit/header; WI-3/4/5 flagged non-presentational (need new tests + e2e re-check); WI-4 e2e chip-name contract change identified.",
-    "E (autonomous): Phase-5 web gate PASS — tsc 0, lint 0 (+geo guard), vitest sequential 2091 pass / only pre-existing acceptHydration 3-fail (full-parallel admin/RoutesTab were load flakes, green isolated+sequential), build ok, size app 203.87/260 + analytics 95.09/115 + admin 72.19/76 (budget 70->76 w/ decisions.md 2026-09-24), e2e dispatcher+onboarding+analytics all green after 2 stale-assertion fixes (AC1 chip: dispatcher gets QUICK_CHIPS fallback since /places is FleetAdminOnly -> click unique 'Vlakové nádraží Kolín'; AC4: UC-020 customer frame moved brand h1->FleetChip, assert visible name)."
+    "A (session): spec = .claude/state/10-product-website-astro.md — authored from a full decomposition of product-website/index.html; user answered 4 scoping questions (Astro rooted at product-website/ with index.html preserved at reference/; CS+EN only; contact form stays client stub) and approved the plan.",
+    "B (session): work items = the assignment's WI-1..WI-7 table (topo: WI-1 -> WI-2 -> WI-3 -> {WI-4 || WI-5} -> WI-6 -> WI-7).",
+    "C (session): design folded into the approved assignment (component map derived from the actual HTML; i18n routing over client toggle documented with rationale)."
   ],
-  "key_constraints": "ADDITIVE COEXISTENCE like UC-020: build web/src/shared/ui/desk/ on CSS vars; board/orders/admin components adopt the desk kit WI-by-WI; the legacy styled-components `theme` object stays alive for anything not yet touched — do NOT big-bang migrate. Agents NEVER edit i18n JSONs (conductor pre-adds stable keys in WI-1; per-screen missing keys => agent reports, conductor adds). Parity test fails suite on any locale key drift across the 6 locales (cs-CZ/en-US/ru-RU/uk-UA/fil-PH/de-DE). Preserve every hook + pure-logic module + data flow EXCEPT the three intended changes: (1) WI-3 driverMarker status hexes -> --success/--info/--warning/--danger CSS vars; (2) WI-4 quick chips from fleet Places (usePlaces) not quickChips.ts, with fallback; (3) WI-5 transitionButtons.ts hardcoded labels -> board.actions.* i18n. E2E CONTRACT CHANGE (WI-4): dispatcher.spec.ts clicks chip 'Vlakové nádraží Kolín' (hardcoded); seeded demo fleet Place #0 is 'Nádraží Kolín' — update the e2e to the real seeded Place name. Preserve dispatcher.spec.ts section aria-labels ('Nové','Přiřazené / Čekají na přijetí','Probíhající'), OfflineBanner text 'Offline – zobrazuji poslední známý stav', driver-picker role=listbox name 'Vyberte řidiče'. Admin header: unbranded prop gates OFF hub/connection-status/sound-mute (admin has no fleet hub). Leaflet-lazy discipline (MapyMap only in lazy chunks), atomic zustand selectors, axe on changed interactive components, focus rings (desktop: 48px touch rule waived per handoff §6, focus rings mandatory), Czech-first (dispatcher informal is N/A — dispatcher/admin are staff tools, keep existing tone). Pre-existing RED to ignore: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — not ours.",
+  "key_constraints": "FAITHFUL PORT, not a redesign — visual/behavioral parity with product-website/reference/index.html in both themes and at breakpoints 900/860/700/480/420. Reuse the app's design-token NAMES exactly (tokens.css from the reference :root + dark blocks; do not fork/rename the palette; site-only --map/--map-road/--map-road-2 stay). No CSS framework (Tailwind banned repo-wide). No backend work: contact form stays the demo setTimeout stub with the 'wire to POST /api/v1/public/leads' comment. CS default + EN via Astro built-in i18n routing (/ = cs, /en/ = en, prefixDefaultLocale:false). No hardcoded user-facing copy in components/pages — all through t() + src/i18n/cs.json+en.json (keys keep the reference dot notation; hero.title contains <br> -> set:html for HTML-bearing keys only). Parity check cs<->en key sets. TypeScript strict; Node >=20. Scaffold non-interactively (avoid interactive prompts). git mv product-website/index.html product-website/reference/index.html in WI-1 and NEVER edit it after. a11y: skip link, landmarks, focus rings, >=48px touch, labelled fields. This folder is OUTSIDE web/ — web/'s eslint/vitest/size gates do NOT apply; the site's gate is npm run build + astro check + the parity check + visual/a11y verification. Never commit README.md (untracked, root).",
   "work_items": [
     {
       "id": "WI-1",
       "lane": "web",
-      "title": "i18n keys (stable shared: nav/appLayout/actions/status/admin) x6 locales + transitionButtons->i18n",
-      "status": "todo",
-      "owner": "conductor-inline",
-      "depends_on": []
+      "title": "Scaffold Astro at product-website/ (mv index.html -> reference/, astro.config i18n, TS strict, favicon) + tokens.css/global.css",
+      "status": "done",
+      "depends_on": [],
+      "files_scope": "product-website/**",
+      "note": "DONE committed: Astro 5.18.2 scaffolded by hand at product-website/; i18n cs+en (prefixDefaultLocale:false); TS strict; reference/index.html R100 immutable; tokens.css byte-identical to reference :root+dark; global.css reset+type-ramp+.skip/.toast/.muted; favicon.svg. build 0 + astro check 0 (pinned @astrojs/check 0.8.3 + override @astrojs/language-server 2.15.4 for Node 20.0.0 ERR_REQUIRE_ESM — documented in CLAUDE.md)."
     },
     {
-      "id": "WI-2a",
+      "id": "WI-2",
       "lane": "web",
-      "title": "Desktop kit web/src/shared/ui/desk/ (Panel/PanelHeader/Ctrl/Button/Table/Stat/Pill/Chip/Segmented/Tabs/Timeline/Drawer)",
-      "status": "done",
+      "title": "Base.astro (head/SEO/OG/JSON-LD/hreflang/fonts/skip-link) + Navigation (locale-link toggle) + Footer",
+      "status": "todo",
       "depends_on": [
         "WI-1"
       ],
-      "files_scope": "web/src/shared/ui/desk/**",
-      "note": "DONE committed <foundation>: 11 desk components + 5 icons; 79 desk tests + Icon coverage; impl-review blocks_merge=false (1 LOW token nit fixed by conductor)."
-    },
-    {
-      "id": "WI-2b",
-      "lane": "web",
-      "title": "AppLayout header restyle onto desk kit + unbranded admin seam (gates hub/connection/mute)",
-      "status": "done",
-      "depends_on": [
-        "WI-2a"
-      ],
-      "files_scope": "web/src/app/AppLayout.tsx + AppHeader.tsx + useFleetHeader.ts",
-      "note": "DONE: AppHeader extracted (presentational, prop-drilled unbranded+brand+navItems seam for WI-7); 32 src/app tests + axe; conductor added appLayout.role* i18n x6 + wired role label in AppLayout. DisconnectBanner untouched (e2e text preserved)."
+      "files_scope": "product-website/src/layouts/**, src/components/Navigation.astro, Footer.astro"
     },
     {
       "id": "WI-3",
       "lane": "web",
-      "title": "Board OrderCard + OrdersColumn sections + DriverPicker popover + DriversColumn + map marker status tokens",
-      "status": "done",
+      "title": "Primitives: Button, Pill, SectionHead, Icon, FormField",
+      "status": "todo",
       "depends_on": [
-        "WI-2b"
+        "WI-1"
       ],
-      "files_scope": "web/src/features/board/**",
-      "non_presentational": true,
-      "note": "DONE committed: 211 board tests green; marker hex->CSS-var tokens (Free var(--success)/EnRoute var(--info)/Busy var(--warning)/Offline var(--ink-3)/pin var(--danger)) test-first; hot highlight wired to useNewOrderHighlight OR useMapHighlight; emoji->Icon set; e2e contracts preserved."
+      "files_scope": "product-website/src/components/**"
     },
     {
       "id": "WI-4",
       "lane": "web",
-      "title": "OrderForm restyle + Places-driven chips + price preview card (e2e chip-name contract change)",
-      "status": "done",
+      "title": "Hero + PhoneMockup + DispatchBoard",
+      "status": "todo",
       "depends_on": [
-        "WI-2b"
+        "WI-2",
+        "WI-3"
       ],
-      "files_scope": "web/src/features/board/OrderForm* + web/e2e/dispatcher.spec.ts",
-      "non_presentational": true,
-      "note": "DONE committed: order form on desk kit; chips from fleet Places (useOrderFormPlaces, queryKey ['places']) with QUICK_CHIPS fallback; e2e chip 'Vlakové nádraží Kolín'->'Nádraží Kolín'; address inputs now comboboxes; 36 tests + axe. Conductor removed BoardPage double-title ColumnHeader."
+      "files_scope": "product-website/src/components/Hero.astro, PhoneMockup.astro, DispatchBoard.astro"
     },
     {
       "id": "WI-5",
       "lane": "web",
-      "title": "OrderDrawer: Zákazník/Cena Stat cards, Historie/Notifikace tabs, i18n transition labels, conflict callout",
-      "status": "done",
+      "title": "Data-driven sections (Card/Why, Pillar+MiniMockup, TinyPhone/Brand, Step/How, PricingList, Origin, FaqItem, ContactForm stub) + src/data/*.ts",
+      "status": "todo",
       "depends_on": [
-        "WI-2b"
+        "WI-2",
+        "WI-3"
       ],
-      "files_scope": "web/src/features/orders/**",
-      "non_presentational": true,
-      "note": "DONE committed: OrderDrawer on desk kit — Zákazník/Cena Stat cards, Historie/Notifikace desk Tabs, note Callout, conflict danger Callout+Načíst znovu. transitionButtons dropped hardcoded label -> t('orders.actions.'+action) (sole consumer OrderDrawer). New orderStatusTone.ts (duplicated from board statusPill, no cross-feature import). 52 tests+axe. Gaps (API-lane): DTO has no actor/matchedRoute/source fields; orders.source.* i18n deferred."
+      "files_scope": "product-website/src/components/**, src/data/**"
     },
     {
       "id": "WI-6",
       "lane": "web",
-      "title": "SearchPage filters + table + dispatcher LoginPage",
-      "status": "done",
+      "title": "i18n cs.json/en.json + MSG + t() + parity check; pages index.astro (cs) + en/index.astro",
+      "status": "todo",
       "depends_on": [
-        "WI-2b"
+        "WI-4",
+        "WI-5"
       ],
-      "files_scope": "web/src/features/orders/SearchPage* + web/src/features/auth/LoginPage*",
-      "note": "DONE committed: SearchPage on desk Panel/Table (status DeskPill, tabular price, CSV in header, pagination), SearchFilters status FilterChip buckets (Probíhá folds Assigned/Accepted/Arrived), LoginPage 420px desk card (#fleetSlug/#email/#password preserved, danger Callout). 26 tests+axe."
+      "files_scope": "product-website/src/i18n/**, src/pages/**"
     },
     {
       "id": "WI-7",
       "lane": "web",
-      "title": "Admin shell (unbranded header) + AdminLoginPage + AdminFleetsPage (table/sparkline/create+one-time-password)",
-      "status": "done",
+      "title": "Verify: build + astro check + parity + visual diff vs reference + a11y; conductor-run",
+      "status": "todo",
       "depends_on": [
-        "WI-2b"
+        "WI-6"
       ],
-      "files_scope": "web/src/features/admin/** + AdminGuard",
-      "note": "DONE committed: AdminGuard renders unbranded AppHeader; AdminLoginPage desk card (#admin-email/#admin-password preserved); AdminFleetsPage two-Panel (desk Table + sparkline/healthBand pills + create form + copy one-time password). 21 scoped + 102 admin tests + axe. Deviations: fleet dot ink (AdminFleetDto has no primaryColorHex — API dep logged); settings=styled Link; pre-create warning carried by success callout."
-    },
-    {
-      "id": "WI-8",
-      "lane": "web",
-      "title": "AdminTenantSettings 4 panels one-save sticky footer + AdminPlatform Stat grid + 12-week table",
-      "status": "done",
-      "depends_on": [
-        "WI-7"
-      ],
-      "files_scope": "web/src/features/admin/**",
-      "note": "DONE committed: AdminTenantSettings desk (title row + Aktivní pill + 4 Panels + one Uložit vše + Deaktivovat sticky footer; live contrast rule min(vsWhite,vsBlack)<3 in adminTenantSettingsForm + colorContrast i18n x6). PlatformScreen desk (period FilterChips, 4x2 KPI Stat grid inside region 'Souhrn platformy', 12-week Table sparklines+Trend pills+legend, privacy Callout). AC9 e2e preserved (region + columnheader Flotila). 29 scoped + 115 admin tests + axe."
-    },
-    {
-      "id": "WI-9",
-      "lane": "web",
-      "title": "Dark theme pass (map --map-* vars + drawer) + Phase 5 web quality gate + commits",
-      "status": "done",
-      "depends_on": [
-        "WI-3",
-        "WI-4",
-        "WI-5",
-        "WI-6",
-        "WI-7",
-        "WI-8"
-      ],
-      "note": "Dark pass: board/app container backgrounds (BoardPage/AppLayout/DisconnectBanner) moved legacy theme.colors -> CSS vars so the whole board/drawer/admin flip coherently in dark (desk kit already var-based; no --map-* vars exist in codebase, tiles not dark-treated per customer-app precedent). Phase 5 gate: tsc 0, lint 0 (+geo), vitest sequential 2091 pass / only pre-existing acceptHydration 3-fail (full-parallel run had load-flakes in admin/RoutesTab that pass isolated+sequential), build ok, size app 203.87/260 + analytics 95.09/115 + admin 72.19/76 (budget 70->76, decisions.md 2026-09-24). e2e pending. | E2E green. KNOWN API-lane dep: GET /places is FleetAdminOnly so board Places-chips fall back to QUICK_CHIPS for Dispatchers (graceful; open /places to Dispatcher in a backend follow-up to fully deliver the feature)."
+      "owner": "conductor",
+      "files_scope": "-"
     }
   ],
-  "topo_order": "WI-1 (conductor inline) -> WI-2a -> WI-2b -> {WI-3 || WI-4 || WI-5 || WI-6 || WI-7 (folder-disjoint, parallel)} -> WI-8 (after WI-7) -> impl-review each -> WI-9 dark pass + Phase 5 gate -> commit + ff-merge",
-  "task_tracker_ids": "TaskCreate #1=WI-1, #2=WI-2a, #10=WI-2b, #3=WI-3, #4=WI-4, #5=WI-5, #6=WI-6, #7=WI-7, #8=WI-8, #9=WI-9",
-  "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — excluded from our gate. git add: explicit paths only.",
-  "updated_at": "2026-09-24",
-  "ship": "DONE: ff-merged redesign/dispatcher-app into main (local, no remote push per authority). main @ bf136c4. 11 commits: handoffs 9a9a6d3 + foundation d4cde98 + header d0b37ca + board a11b0f9 + order form 71f3760 + admin shell/fleets 5b6a38c + drawer a823a8e + search/login c664d20 + tenant/platform 1f3f8da + dark/size 74148c4 + e2e fixes bf136c4."
+  "topo_order": "WI-1 -> {WI-2 + WI-3 (one agent run, same new tree)} -> {WI-4 + WI-5 (one agent run)} -> WI-6 -> WI-7 (conductor). Dispatch grouping keeps one agent per phase of the same npm project — no parallel-tree contention, fewer handoffs.",
+  "pre_existing_worktree_note": "Never commit README.md (untracked, root). product-website/reference/index.html is immutable after WI-1. git add: explicit paths only.",
+  "updated_at": "2026-09-24"
 }

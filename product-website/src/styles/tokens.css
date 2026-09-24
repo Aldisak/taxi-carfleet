@@ -1,0 +1,38 @@
+:root{
+  --bg:#F5F2ED;--surface:#FFFFFF;--surface-2:#F0ECE5;--surface-3:#E6E1D9;
+  --ink:#141414;--ink-2:#5E5E5A;--ink-3:#767672;
+  --line:#E6E1D9;--line-strong:#CFC8BE;
+  --success:#0E7A4A;--success-bg:#E4F3EB;--warning:#8A5300;--warning-bg:#FFF4D6;
+  --danger:#C8362A;--danger-bg:#FDECEA;--info:#1E5EDC;--info-bg:#E7EEFC;
+  --accent:#AD4F09;--on-accent:#FFFFFF;--accent-text:#AD4F09;--accent-soft:#FBEBDD;
+  --shadow-card:0 1px 2px rgba(20,20,20,.06),0 4px 12px rgba(20,20,20,.06);
+  --shadow-float:0 6px 20px rgba(20,20,20,.16);
+  --shadow-sheet:0 -6px 28px rgba(20,20,20,.14);
+  --r-sm:8px;--r-md:14px;--r-lg:22px;--r-pill:999px;
+  --font:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --map:#EAE6DD;--map-road:#FFFFFF;--map-road-2:#F4F1EA;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E0E0E;--surface:#1A1A1A;--surface-2:#262624;--surface-3:#30302E;
+    --ink:#F4F4F1;--ink-2:#A6A6A0;--ink-3:#8A8A85;--line:#2C2C2A;--line-strong:#3E3E3B;
+    --success:#3DBB78;--success-bg:#12301F;--warning:#F0B33C;--warning-bg:#3A2C0E;
+    --danger:#F0625A;--danger-bg:#3B1917;--info:#6E9BFF;--info-bg:#172444;
+    --accent:#B8540B;--on-accent:#FFFFFF;--accent-text:#F0A05A;--accent-soft:#3A2410;
+    --shadow-card:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.35);
+    --shadow-float:0 6px 20px rgba(0,0,0,.5);--shadow-sheet:0 -6px 28px rgba(0,0,0,.5);
+    --map:#232523;--map-road:#33362F;--map-road-2:#2B2D28;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E0E0E;--surface:#1A1A1A;--surface-2:#262624;--surface-3:#30302E;
+  --ink:#F4F4F1;--ink-2:#A6A6A0;--ink-3:#8A8A85;--line:#2C2C2A;--line-strong:#3E3E3B;
+  --success:#3DBB78;--success-bg:#12301F;--warning:#F0B33C;--warning-bg:#3A2C0E;
+  --danger:#F0625A;--danger-bg:#3B1917;--info:#6E9BFF;--info-bg:#172444;
+  --accent:#B8540B;--on-accent:#FFFFFF;--accent-text:#F0A05A;--accent-soft:#3A2410;
+  --shadow-card:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.35);
+  --shadow-float:0 6px 20px rgba(0,0,0,.5);--shadow-sheet:0 -6px 28px rgba(0,0,0,.5);
+  --map:#232523;--map-road:#33362F;--map-road-2:#2B2D28;
+}
