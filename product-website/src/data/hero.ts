@@ -1,76 +1,97 @@
 // Micro-copy for the bespoke Hero mockups (PhoneMockup + DispatchBoard).
-// Czech verbatim from reference/index.html (data-i18n `mock.*` keys). WI-6 will
-// extract these into the cs.json/en.json dictionaries and swap in t().
-//   is a non-breaking space (the reference uses &nbsp; before "Kč").
+// Localizable labels are stored as i18n KEY references (resolved per locale in
+// HomeSections via t(locale, key) and threaded down as props through Hero);
+// literal fields (fleet/place proper nouns, money "… Kč", driver names) stay
+// verbatim in every locale per rules/web-react-style.md#dates-and-money.
+//   is a non-breaking space (the reference uses &nbsp; before "Kč").
 
 /** Copy for the interactive phone mockup (PhoneMockup.astro). */
 export interface PhoneMockupCopy {
+  /** Literal fleet proper noun. */
   fleet: string
-  ride: string
-  edit: string
+  /** i18n key — mock.ride. */
+  rideKey: string
+  /** i18n key — mock.edit. */
+  editKey: string
+  /** Literal pickup place proper noun. */
   pickupPlace: string
-  pickup: string
+  /** i18n key — mock.pickup. */
+  pickupKey: string
+  /** Literal destination place proper noun. */
   destPlace: string
-  dest: string
+  /** i18n key — mock.dest. */
+  destKey: string
+  /** Literal price (money stays cs-CZ). */
   price: string
-  note: string
-  fixed: string
-  now: string
-  pax: string
-  noteChip: string
-  order: string
+  /** i18n key — mock.note. */
+  noteKey: string
+  /** i18n key — mock.fixed. */
+  fixedKey: string
+  /** i18n key — mock.now. */
+  nowKey: string
+  /** i18n key — mock.pax. */
+  paxKey: string
+  /** i18n key — mock.noteChip. */
+  noteChipKey: string
+  /** i18n key — mock.order. */
+  orderKey: string
+  /** Literal order price (money stays cs-CZ). */
   orderPrice: string
-  eta: string
+  /** i18n key — mock.eta. */
+  etaKey: string
 }
 
 /** Copy for the dispatch board mockup (DispatchBoard.astro). */
 export interface DispatchBoardCopy {
-  board: string
-  live: string
-  rows: { route: string; badge: string; badgeVariant: 'info' | 'warning' | 'success'; detail: string }[]
+  /** i18n key — mock.board. */
+  boardKey: string
+  /** i18n key — mock.live. */
+  liveKey: string
+  rows: { routeKey: string; badgeKey: string; badgeVariant: 'info' | 'warning' | 'success'; detailKey: string }[]
+  /** Driver initials + first names stay literal (proper nouns). */
   drivers: { initials: string; name: string; statusVar: string }[]
 }
 
 export const phoneMockup: PhoneMockupCopy = {
   fleet: 'Taxi Kolín',
-  ride: 'Vaše jízda',
-  edit: 'Upravit',
+  rideKey: 'mock.ride',
+  editKey: 'mock.edit',
   pickupPlace: 'Kolín, nádraží',
-  pickup: 'Vyzvednutí',
+  pickupKey: 'mock.pickup',
   destPlace: 'Masarykovo náměstí 12',
-  dest: 'Cíl',
-  price: '100 Kč',
-  note: 'Cena je konečná. Platíte řidiči na konci jízdy.',
-  fixed: 'Pevná cena',
-  now: 'Hned',
-  pax: '1 cestující',
-  noteChip: 'Poznámka',
-  order: 'Objednat',
-  orderPrice: '100 Kč',
-  eta: '12 min · 4,2 km',
+  destKey: 'mock.dest',
+  price: '100 Kč',
+  noteKey: 'mock.note',
+  fixedKey: 'mock.fixed',
+  nowKey: 'mock.now',
+  paxKey: 'mock.pax',
+  noteChipKey: 'mock.noteChip',
+  orderKey: 'mock.order',
+  orderPrice: '100 Kč',
+  etaKey: 'mock.eta',
 }
 
 export const dispatchBoard: DispatchBoardCopy = {
-  board: 'Dispečink · dnes',
-  live: '3 auta online',
+  boardKey: 'mock.board',
+  liveKey: 'mock.live',
   rows: [
     {
-      route: 'Nádraží → Masarykovo nám.',
-      badge: 'Přiřazeno',
+      routeKey: 'mock.row1route',
+      badgeKey: 'mock.assigned',
       badgeVariant: 'info',
-      detail: 'Hned · 1 cestující · 100 Kč pevná cena · Jan N.',
+      detailKey: 'mock.row1detail',
     },
     {
-      route: 'Kutná Hora → Kolín',
-      badge: 'Nová',
+      routeKey: 'mock.row2route',
+      badgeKey: 'mock.new',
       badgeVariant: 'warning',
-      detail: 'Na čas 14:30 · 2 cestující · 300 Kč pevná cena',
+      detailKey: 'mock.row2detail',
     },
     {
-      route: 'Sídliště → Nemocnice',
-      badge: 'Dokončeno',
+      routeKey: 'mock.row3route',
+      badgeKey: 'mock.done',
       badgeVariant: 'success',
-      detail: '13:05 · 1 cestující · 110 Kč · hotově',
+      detailKey: 'mock.row3detail',
     },
   ],
   drivers: [

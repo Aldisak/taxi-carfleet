@@ -1,17 +1,56 @@
 ---
 // Bespoke feature-pillar visuals (reference #features .mini, lines 436-498).
 // Three variants: rider / driver / dispatch. Markup, class names, inline styles
-// and CSS copied verbatim. All copy in src/data/features.ts. Decorative — the
-// parent .pillar-visual is aria-hidden.
+// and CSS copied verbatim. Locale-resolved copy arrives via the `copy` prop
+// (threaded from HomeSections), so this component stays locale-agnostic.
+// Decorative — the parent .pillar-visual is aria-hidden.
 import Pill from './Pill.astro'
-import { miniMockupCopy as c } from '../data/features.ts'
 import type { MiniMockupType } from '../data/features.ts'
+
+/** Locale-resolved mini-mockup strings (labels localized, sample data/money literal). */
+export interface MiniMockupProps {
+  rider: {
+    coming: string
+    onway: string
+    name: string
+    car: string
+    plate: string
+    pay: string
+    price: string
+    call: string
+  }
+  driver: {
+    offer: string
+    pickup: string
+    dest: string
+    timer: string
+    fixed: string
+    price: string
+    accept: string
+    decline: string
+  }
+  dispatch: {
+    week: string
+    rides: string
+    ridesValue: string
+    ridesUp: string
+    revenue: string
+    revenueValue: string
+    revenueUp: string
+    assign: string
+    assignValue: string
+    fromApp: string
+    fromAppValue: string
+    byDay: string
+  }
+}
 
 interface Props {
   type: MiniMockupType
+  copy: MiniMockupProps
 }
 
-const { type } = Astro.props
+const { type, copy: c } = Astro.props
 ---
 
 {

@@ -1,14 +1,14 @@
 ---
 // The full home composition, parameterized by locale. Both pages
 // (src/pages/index.astro = cs, src/pages/en/index.astro = en) render this so the
-// section order + markup live in ONE place. Every user-facing SECTION/chrome string
-// is resolved here via t(locale, key). Decorative mockup illustrations
-// (PhoneMockup / DispatchBoard / MiniMockup / TinyPhone + their src/data fixtures:
-// sample driver names, plates, demo routes, sample prices/numbers) are kept literal
-// in both locales on purpose — a screenshot of a Czech taxi app stays Czech; the
-// reference hard-coded them and did not localize them. Proper nouns (the "Taxi Fleet"
-// product name, "Kolín"/"Kutná Hora" place names, the demo phone/email) are likewise
-// left literal.
+// section order + markup live in ONE place. Every user-facing string — including
+// the decorative mockup copy (PhoneMockup / DispatchBoard / MiniMockup / TinyPhone)
+// — is resolved here via t(locale, key) and threaded DOWN AS PROPS so the mockup
+// components stay locale-agnostic (no t() inside them). The src/data/* fixtures
+// hold i18n KEY references for localizable labels and literal strings for money
+// ("… Kč"), proper nouns (fleet/place/driver names, plates, the "Škoda Octavia"
+// car model, the "Taxi Fleet" product name, the demo phone/email) and numeric
+// captions — those stay literal in every locale per rules/web-react-style.md#dates-and-money.
 import Base from '../layouts/Base.astro'
 import Navigation from './Navigation.astro'
 import Footer from './Footer.astro'
@@ -26,11 +26,16 @@ import ContactForm from './ContactForm.astro'
 
 import { t, type Locale } from '../i18n/t'
 import { whyCards } from '../data/whyCards.ts'
-import { features } from '../data/features.ts'
+import { features, miniMockupCopy } from '../data/features.ts'
 import { brandPhones } from '../data/brand.ts'
 import { steps } from '../data/steps.ts'
 import { pricing } from '../data/pricing.ts'
 import { faq } from '../data/faq.ts'
+import { originRoutes, type OriginRoute } from '../data/routes.ts'
+import { phoneMockup, dispatchBoard } from '../data/hero.ts'
+import type { PhoneMockupProps } from './PhoneMockup.astro'
+import type { DispatchBoardProps } from './DispatchBoard.astro'
+import type { MiniMockupProps } from './MiniMockup.astro'
 
 interface Props {
   locale: Locale
@@ -47,6 +52,84 @@ const contactMessages = {
   copied: tr('msg.copied'),
   copyFail: tr('msg.copyFail'),
 }
+
+// Locale-resolve the decorative mockup copy from the src/data fixtures: i18n key
+// references → translated strings, literal fields (money/proper nouns) verbatim.
+const phoneCopy: PhoneMockupProps = {
+  fleet: phoneMockup.fleet,
+  ride: tr(phoneMockup.rideKey),
+  edit: tr(phoneMockup.editKey),
+  pickupPlace: phoneMockup.pickupPlace,
+  pickup: tr(phoneMockup.pickupKey),
+  destPlace: phoneMockup.destPlace,
+  dest: tr(phoneMockup.destKey),
+  price: phoneMockup.price,
+  note: tr(phoneMockup.noteKey),
+  fixed: tr(phoneMockup.fixedKey),
+  now: tr(phoneMockup.nowKey),
+  pax: tr(phoneMockup.paxKey),
+  noteChip: tr(phoneMockup.noteChipKey),
+  order: tr(phoneMockup.orderKey),
+  orderPrice: phoneMockup.orderPrice,
+  eta: tr(phoneMockup.etaKey),
+}
+
+const boardCopy: DispatchBoardProps = {
+  board: tr(dispatchBoard.boardKey),
+  live: tr(dispatchBoard.liveKey),
+  rows: dispatchBoard.rows.map((r) => ({
+    route: tr(r.routeKey),
+    badge: tr(r.badgeKey),
+    badgeVariant: r.badgeVariant,
+    detail: tr(r.detailKey),
+  })),
+  drivers: dispatchBoard.drivers,
+}
+
+const miniCopy: MiniMockupProps = {
+  rider: {
+    coming: tr(miniMockupCopy.rider.comingKey),
+    onway: tr(miniMockupCopy.rider.onwayKey),
+    name: miniMockupCopy.rider.name,
+    car: `${miniMockupCopy.rider.carModel} · ${tr(miniMockupCopy.rider.carColourKey)}`,
+    plate: miniMockupCopy.rider.plate,
+    pay: tr(miniMockupCopy.rider.payKey),
+    price: miniMockupCopy.rider.price,
+    call: tr(miniMockupCopy.rider.callKey),
+  },
+  driver: {
+    offer: tr(miniMockupCopy.driver.offerKey),
+    pickup: miniMockupCopy.driver.pickup,
+    dest: tr(miniMockupCopy.driver.destKey),
+    timer: miniMockupCopy.driver.timer,
+    fixed: tr(miniMockupCopy.driver.fixedKey),
+    price: miniMockupCopy.driver.price,
+    accept: tr(miniMockupCopy.driver.acceptKey),
+    decline: tr(miniMockupCopy.driver.declineKey),
+  },
+  dispatch: {
+    week: tr(miniMockupCopy.dispatch.weekKey),
+    rides: tr(miniMockupCopy.dispatch.ridesKey),
+    ridesValue: miniMockupCopy.dispatch.ridesValue,
+    ridesUp: miniMockupCopy.dispatch.ridesUp,
+    revenue: tr(miniMockupCopy.dispatch.revenueKey),
+    revenueValue: miniMockupCopy.dispatch.revenueValue,
+    revenueUp: miniMockupCopy.dispatch.revenueUp,
+    assign: tr(miniMockupCopy.dispatch.assignKey),
+    assignValue: miniMockupCopy.dispatch.assignValue,
+    fromApp: tr(miniMockupCopy.dispatch.fromAppKey),
+    fromAppValue: miniMockupCopy.dispatch.fromAppValue,
+    byDay: tr(miniMockupCopy.dispatch.byDayKey),
+  },
+}
+
+// Resolve the fixed-route mockup rows: localizable descriptors via their i18n
+// key, the town→town row from its literal string (proper nouns, cs == en).
+// Prices stay literal money in every locale.
+const originRouteRows: OriginRoute[] = originRoutes.map((route) => ({
+  from: route.fromKey ? tr(route.fromKey) : (route.from ?? ''),
+  price: route.price,
+}))
 ---
 
 <Base
@@ -76,6 +159,8 @@ const contactMessages = {
     cta1={tr('hero.cta1')}
     cta2={tr('hero.cta2')}
     caption={tr('hero.caption')}
+    phoneCopy={phoneCopy}
+    boardCopy={boardCopy}
   />
 
   <section id="why">
@@ -99,7 +184,7 @@ const contactMessages = {
               body={tr(pillar.bodyKey)}
               items={pillar.itemKeys.map((k) => tr(k))}
             >
-              <MiniMockup slot="visual" type={pillar.visual} />
+              <MiniMockup slot="visual" type={pillar.visual} copy={miniCopy} />
             </Pillar>
           ))
         }
@@ -121,9 +206,9 @@ const contactMessages = {
               <TinyPhone
                 variant={phone.variant}
                 fleet={phone.fleet}
-                route={phone.route}
+                route={tr(phone.routeKey)}
                 price={phone.price}
-                order={phone.order}
+                order={tr(phone.orderKey)}
                 orderPrice={phone.orderPrice}
               />
             ))
@@ -165,6 +250,7 @@ const contactMessages = {
         cityKolin="Kolín"
         cityKutna="Kutná Hora"
         routesLabel={tr('origin.routes')}
+        routes={originRouteRows}
       />
     </div>
   </section>

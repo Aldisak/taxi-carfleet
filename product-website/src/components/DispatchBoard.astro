@@ -1,9 +1,23 @@
 ---
 // Bespoke dispatch-board mockup (reference #hero .board, lines ~343-353).
-// Content-specific; Czech micro-copy in src/data/hero.ts. Markup, class names
-// and CSS copied verbatim. Decorative — the caller wraps .stage in aria-hidden.
+// Content-specific; locale-resolved copy arrives via the `copy` prop (threaded
+// from HomeSections through Hero). Markup, class names and CSS copied verbatim.
+// Decorative — the caller wraps .stage in aria-hidden.
 import Pill from './Pill.astro'
-import { dispatchBoard as b } from '../data/hero.ts'
+
+/** Locale-resolved dispatch-board strings (labels/routes localized, driver names literal). */
+export interface DispatchBoardProps {
+  board: string
+  live: string
+  rows: { route: string; badge: string; badgeVariant: 'info' | 'warning' | 'success'; detail: string }[]
+  drivers: { initials: string; name: string; statusVar: string }[]
+}
+
+interface Props {
+  copy: DispatchBoardProps
+}
+
+const { copy: b } = Astro.props
 ---
 
 <div class="board">

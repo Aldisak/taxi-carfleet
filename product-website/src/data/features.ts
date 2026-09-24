@@ -36,77 +36,111 @@ export const features: Pillar[] = [
   },
 ]
 
-// Micro-copy shown inside the three MiniMockups (reference `mock.*` keys).
+// Micro-copy shown inside the three MiniMockups. Localizable labels are i18n KEY
+// references (resolved per locale in HomeSections and threaded down as props);
+// literal fields (driver name, plate, car model, money, numeric captions, the
+// "Kolín, nádraží" pickup place, driver timer) stay verbatim in every locale.
 export interface MiniMockupCopy {
   rider: {
-    coming: string
-    onway: string
+    /** i18n key — mock.coming. */
+    comingKey: string
+    /** i18n key — mock.onway. */
+    onwayKey: string
+    /** Literal driver name (proper noun). */
     name: string
-    car: string
+    /** Literal car model brand (proper noun). */
+    carModel: string
+    /** i18n key — mock.carColour (the colour common noun). */
+    carColourKey: string
+    /** Literal plate. */
     plate: string
-    pay: string
+    /** i18n key — mock.pay. */
+    payKey: string
+    /** Literal price (money stays cs-CZ). */
     price: string
-    call: string
+    /** i18n key — mock.call. */
+    callKey: string
   }
   driver: {
-    offer: string
+    /** i18n key — mock.offer. */
+    offerKey: string
+    /** Literal pickup place (identical in both locales per the borderline rule). */
     pickup: string
-    dest: string
+    /** i18n key — mock.driverDest (whole-string composite). */
+    destKey: string
+    /** Literal countdown timer. */
     timer: string
-    fixed: string
+    /** i18n key — mock.fixed. */
+    fixedKey: string
+    /** Literal price (money stays cs-CZ). */
     price: string
-    accept: string
-    decline: string
+    /** i18n key — mock.accept. */
+    acceptKey: string
+    /** i18n key — mock.decline. */
+    declineKey: string
   }
   dispatch: {
-    week: string
-    rides: string
+    /** i18n key — mock.week. */
+    weekKey: string
+    /** i18n key — mock.rides. */
+    ridesKey: string
+    /** Literal numeric value. */
     ridesValue: string
+    /** Literal numeric delta. */
     ridesUp: string
-    revenue: string
+    /** i18n key — mock.revenue. */
+    revenueKey: string
+    /** Literal numeric value (money stays cs-CZ). */
     revenueValue: string
+    /** Literal numeric delta. */
     revenueUp: string
-    assign: string
+    /** i18n key — mock.assign. */
+    assignKey: string
+    /** Literal numeric value. */
     assignValue: string
-    fromApp: string
+    /** i18n key — mock.fromApp. */
+    fromAppKey: string
+    /** Literal numeric value. */
     fromAppValue: string
-    byDay: string
+    /** i18n key — mock.byDay. */
+    byDayKey: string
   }
 }
 
 export const miniMockupCopy: MiniMockupCopy = {
   rider: {
-    coming: 'Řidič přijede za ~4 min',
-    onway: 'Na cestě',
+    comingKey: 'mock.coming',
+    onwayKey: 'mock.onway',
     name: 'Jan Novák',
-    car: 'Škoda Octavia · bílá',
+    carModel: 'Škoda Octavia',
+    carColourKey: 'mock.carColour',
     plate: '5SK 4821',
-    pay: 'Platíte řidiči na konci jízdy.',
+    payKey: 'mock.pay',
     price: '100 Kč',
-    call: 'Zavolat',
+    callKey: 'mock.call',
   },
   driver: {
-    offer: 'Nová jízda',
+    offerKey: 'mock.offer',
     pickup: 'Kolín, nádraží',
-    dest: '→ Masarykovo náměstí 12 · 1,8 km',
+    destKey: 'mock.driverDest',
     timer: '22 s',
-    fixed: 'Pevná cena',
+    fixedKey: 'mock.fixed',
     price: '100 Kč',
-    accept: 'Přijmout',
-    decline: 'Odmítnout',
+    acceptKey: 'mock.accept',
+    declineKey: 'mock.decline',
   },
   dispatch: {
-    week: 'Reporty · tento týden',
-    rides: 'Jízdy',
+    weekKey: 'mock.week',
+    ridesKey: 'mock.rides',
     ridesValue: '184',
     ridesUp: '+12 %',
-    revenue: 'Tržby',
+    revenueKey: 'mock.revenue',
     revenueValue: '31 250 Kč',
     revenueUp: '+9 %',
-    assign: 'Čas do přiřazení',
+    assignKey: 'mock.assign',
     assignValue: '1:40',
-    fromApp: 'Z aplikace',
+    fromAppKey: 'mock.fromApp',
     fromAppValue: '61 %',
-    byDay: 'Jízdy po dnech',
+    byDayKey: 'mock.byDay',
   },
 }

@@ -1,12 +1,38 @@
 ---
 // Bespoke CSS-only phone mockup (reference #hero .phone, lines ~354-384).
-// Content-specific — not parameterized beyond the Czech micro-copy in
-// src/data/hero.ts. All markup, class names, inline SVG and CSS are copied
-// verbatim from the reference so it renders pixel-identical. The whole subtree
-// is decorative: the caller wraps .stage in aria-hidden.
+// Content-specific — locale-resolved copy arrives via the `copy` prop (threaded
+// from HomeSections through Hero), so this component stays locale-agnostic. All
+// markup, class names, inline SVG and CSS are copied verbatim from the reference
+// so it renders pixel-identical. The whole subtree is decorative: the caller
+// wraps .stage in aria-hidden.
 import Pill from './Pill.astro'
 import Icon from './Icon.astro'
-import { phoneMockup as m } from '../data/hero.ts'
+
+/** Locale-resolved phone-mockup strings (labels localized, proper nouns/money literal). */
+export interface PhoneMockupProps {
+  fleet: string
+  ride: string
+  edit: string
+  pickupPlace: string
+  pickup: string
+  destPlace: string
+  dest: string
+  price: string
+  note: string
+  fixed: string
+  now: string
+  pax: string
+  noteChip: string
+  order: string
+  orderPrice: string
+  eta: string
+}
+
+interface Props {
+  copy: PhoneMockupProps
+}
+
+const { copy: m } = Astro.props
 ---
 
 <div class="phone">

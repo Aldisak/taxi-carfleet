@@ -1,8 +1,9 @@
 ---
 // Origin section (reference #origin). Story copy + a fixed-route mockup map.
-// Copy via props; the 3 routes come from src/data/routes.ts. The .origin-map
-// is decorative (aria-hidden).
-import { originRoutes } from '../data/routes.ts'
+// All copy — including the fixed-route rows — is locale-resolved in
+// HomeSections and threaded down as props (this component stays locale-agnostic;
+// no t() here). The .origin-map is decorative (aria-hidden).
+import type { OriginRoute } from '../data/routes.ts'
 
 interface Props {
   eyebrow: string
@@ -12,9 +13,10 @@ interface Props {
   cityKolin: string
   cityKutna: string
   routesLabel: string
+  routes: OriginRoute[]
 }
 
-const { eyebrow, title, body, caption, cityKolin, cityKutna, routesLabel } = Astro.props
+const { eyebrow, title, body, caption, cityKolin, cityKutna, routesLabel, routes } = Astro.props
 ---
 
 <div class="origin">
@@ -29,7 +31,7 @@ const { eyebrow, title, body, caption, cityKolin, cityKutna, routesLabel } = Ast
     <div class="pin"><i></i>{cityKutna}</div>
     <div class="caption">{routesLabel}</div>
     {
-      originRoutes.map((route) => (
+      routes.map((route) => (
         <div class="rt">
           <span>{route.from}</span>
           <span set:html={route.price} />
