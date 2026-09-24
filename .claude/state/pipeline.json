@@ -137,5 +137,5 @@
   "task_tracker_ids": "TaskCreate #1=WI-1, #2=WI-2a, #10=WI-2b, #3=WI-3, #4=WI-4, #5=WI-5, #6=WI-6, #7=WI-7, #8=WI-8, #9=WI-9",
   "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — excluded from our gate. git add: explicit paths only.",
   "updated_at": "2026-09-24",
-  "ship": "pending ff-merge redesign/dispatcher-app -> main (local, no push per authority)."
+  "ship": "DONE: ff-merged redesign/dispatcher-app into main (local, no remote push per authority). main @ bf136c4. 11 commits: handoffs 9a9a6d3 + foundation d4cde98 + header d0b37ca + board a11b0f9 + order form 71f3760 + admin shell/fleets 5b6a38c + drawer a823a8e + search/login c664d20 + tenant/platform 1f3f8da + dark/size 74148c4 + e2e fixes bf136c4."
 }
