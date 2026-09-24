@@ -280,8 +280,10 @@ test.describe.serial('Tenant onboarding + branding', () => {
     // Drive the second fleet via ?fleet= (no *.localhost DNS locally — see header + runbook).
     await page.goto(`/customer?fleet=${NEW_FLEET.slug}`)
 
-    // (1) NAME: the fleet name from GET /public/fleet renders as the brand h1 in the shell chrome.
-    await expect(page.getByRole('heading', { level: 1, name: NEW_FLEET.name })).toBeVisible({ timeout: 10_000 })
+    // (1) NAME: the fleet name from GET /public/fleet renders in the shell chrome. The UC-020
+    // customer frame redesign moved the brand identity from an <h1> to the centered FleetChip
+    // (see CustomerMapShell.test.tsx "name visible, not an <h1>"), so assert the visible name.
+    await expect(page.getByText(NEW_FLEET.name).first()).toBeVisible({ timeout: 10_000 })
 
     // (2) COLOR: select a destination → the price sheet's primary "Objednat" button uses
     // theme.colors.primary as its background. Assert the computed background matches the fleet color.

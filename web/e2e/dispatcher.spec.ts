@@ -65,9 +65,11 @@ test.describe.serial('Dispatcher board', () => {
     await page.locator('#order-phone').fill('+420777123456')
 
     // ── INTERACTION 2: Click quick chip to fill pickup + coordinates ──────────
-    // The chip is now sourced from the fleet's configured Places (seeded "Nádraží Kolín"),
-    // not the hardcoded quickChips.ts list.
-    await page.getByRole('button', { name: 'Nádraží Kolín' }).click()
+    // The order form prefers the fleet's configured Places (GET /places), but that
+    // endpoint is FleetAdminOnly — this spec logs in as a Dispatcher, so useOrderFormPlaces
+    // falls back to the hardcoded quickChips.ts list. Click a unique fallback chip name
+    // ('Nádraží Kolín' alone is a substring of two fallback chips → strict-mode violation).
+    await page.getByRole('button', { name: 'Vlakové nádraží Kolín' }).click()
 
     // ASAP is the default (no interaction needed — asap button is pre-selected).
     // Assert ASAP is indeed the default before submitting.

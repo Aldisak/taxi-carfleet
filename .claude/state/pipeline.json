@@ -4,7 +4,7 @@
   "title": "Dispatcher + SuperAdmin(/admin) UI redesign — screens onto the shared desk kit (design handoff v1 2026-09-24)",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "quality-gate",
+  "phase": "done",
   "spec_path": ".claude/state/dispatcher-app-design-handoff.md",
   "spec_path_admin": ".claude/state/admin-app-design-handoff.md",
   "branch": "redesign/dispatcher-app (off main @ d4a7db3; handoffs committed 9a9a6d3)",
@@ -13,7 +13,8 @@
   "gates_passed": [
     "A (session): specs = dispatcher-app-design-handoff.md + admin-app-design-handoff.md; scope FRONTEND-ONLY (restyle onto desk kit, no new backend endpoints); autonomous authority carries from UC-020.",
     "B (session): work items = the two handoffs' migration-order lists, decomposed to WI-1..WI-9 below and validated by advisor 2026-09-24.",
-    "C (session): advisor design-review folded in — additive coexistence confirmed (do NOT big-bang migrate board off theme object); WI-2 split kit/header; WI-3/4/5 flagged non-presentational (need new tests + e2e re-check); WI-4 e2e chip-name contract change identified."
+    "C (session): advisor design-review folded in — additive coexistence confirmed (do NOT big-bang migrate board off theme object); WI-2 split kit/header; WI-3/4/5 flagged non-presentational (need new tests + e2e re-check); WI-4 e2e chip-name contract change identified.",
+    "E (autonomous): Phase-5 web gate PASS — tsc 0, lint 0 (+geo guard), vitest sequential 2091 pass / only pre-existing acceptHydration 3-fail (full-parallel admin/RoutesTab were load flakes, green isolated+sequential), build ok, size app 203.87/260 + analytics 95.09/115 + admin 72.19/76 (budget 70->76 w/ decisions.md 2026-09-24), e2e dispatcher+onboarding+analytics all green after 2 stale-assertion fixes (AC1 chip: dispatcher gets QUICK_CHIPS fallback since /places is FleetAdminOnly -> click unique 'Vlakové nádraží Kolín'; AC4: UC-020 customer frame moved brand h1->FleetChip, assert visible name)."
   ],
   "key_constraints": "ADDITIVE COEXISTENCE like UC-020: build web/src/shared/ui/desk/ on CSS vars; board/orders/admin components adopt the desk kit WI-by-WI; the legacy styled-components `theme` object stays alive for anything not yet touched — do NOT big-bang migrate. Agents NEVER edit i18n JSONs (conductor pre-adds stable keys in WI-1; per-screen missing keys => agent reports, conductor adds). Parity test fails suite on any locale key drift across the 6 locales (cs-CZ/en-US/ru-RU/uk-UA/fil-PH/de-DE). Preserve every hook + pure-logic module + data flow EXCEPT the three intended changes: (1) WI-3 driverMarker status hexes -> --success/--info/--warning/--danger CSS vars; (2) WI-4 quick chips from fleet Places (usePlaces) not quickChips.ts, with fallback; (3) WI-5 transitionButtons.ts hardcoded labels -> board.actions.* i18n. E2E CONTRACT CHANGE (WI-4): dispatcher.spec.ts clicks chip 'Vlakové nádraží Kolín' (hardcoded); seeded demo fleet Place #0 is 'Nádraží Kolín' — update the e2e to the real seeded Place name. Preserve dispatcher.spec.ts section aria-labels ('Nové','Přiřazené / Čekají na přijetí','Probíhající'), OfflineBanner text 'Offline – zobrazuji poslední známý stav', driver-picker role=listbox name 'Vyberte řidiče'. Admin header: unbranded prop gates OFF hub/connection-status/sound-mute (admin has no fleet hub). Leaflet-lazy discipline (MapyMap only in lazy chunks), atomic zustand selectors, axe on changed interactive components, focus rings (desktop: 48px touch rule waived per handoff §6, focus rings mandatory), Czech-first (dispatcher informal is N/A — dispatcher/admin are staff tools, keep existing tone). Pre-existing RED to ignore: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — not ours.",
   "work_items": [
@@ -120,7 +121,7 @@
       "id": "WI-9",
       "lane": "web",
       "title": "Dark theme pass (map --map-* vars + drawer) + Phase 5 web quality gate + commits",
-      "status": "in-progress",
+      "status": "done",
       "depends_on": [
         "WI-3",
         "WI-4",
@@ -129,11 +130,12 @@
         "WI-7",
         "WI-8"
       ],
-      "note": "Dark pass: board/app container backgrounds (BoardPage/AppLayout/DisconnectBanner) moved legacy theme.colors -> CSS vars so the whole board/drawer/admin flip coherently in dark (desk kit already var-based; no --map-* vars exist in codebase, tiles not dark-treated per customer-app precedent). Phase 5 gate: tsc 0, lint 0 (+geo), vitest sequential 2091 pass / only pre-existing acceptHydration 3-fail (full-parallel run had load-flakes in admin/RoutesTab that pass isolated+sequential), build ok, size app 203.87/260 + analytics 95.09/115 + admin 72.19/76 (budget 70->76, decisions.md 2026-09-24). e2e pending."
+      "note": "Dark pass: board/app container backgrounds (BoardPage/AppLayout/DisconnectBanner) moved legacy theme.colors -> CSS vars so the whole board/drawer/admin flip coherently in dark (desk kit already var-based; no --map-* vars exist in codebase, tiles not dark-treated per customer-app precedent). Phase 5 gate: tsc 0, lint 0 (+geo), vitest sequential 2091 pass / only pre-existing acceptHydration 3-fail (full-parallel run had load-flakes in admin/RoutesTab that pass isolated+sequential), build ok, size app 203.87/260 + analytics 95.09/115 + admin 72.19/76 (budget 70->76, decisions.md 2026-09-24). e2e pending. | E2E green. KNOWN API-lane dep: GET /places is FleetAdminOnly so board Places-chips fall back to QUICK_CHIPS for Dispatchers (graceful; open /places to Dispatcher in a backend follow-up to fully deliver the feature)."
     }
   ],
   "topo_order": "WI-1 (conductor inline) -> WI-2a -> WI-2b -> {WI-3 || WI-4 || WI-5 || WI-6 || WI-7 (folder-disjoint, parallel)} -> WI-8 (after WI-7) -> impl-review each -> WI-9 dark pass + Phase 5 gate -> commit + ff-merge",
   "task_tracker_ids": "TaskCreate #1=WI-1, #2=WI-2a, #10=WI-2b, #3=WI-3, #4=WI-4, #5=WI-5, #6=WI-6, #7=WI-7, #8=WI-8, #9=WI-9",
   "pre_existing_worktree_note": "Never revert/commit: README.md (untracked). Pre-existing RED: src/features/driver/offer/acceptHydration.test.tsx 3 tests fail on clean HEAD — excluded from our gate. git add: explicit paths only.",
-  "updated_at": "2026-09-24"
+  "updated_at": "2026-09-24",
+  "ship": "pending ff-merge redesign/dispatcher-app -> main (local, no push per authority)."
 }
