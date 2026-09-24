@@ -7,6 +7,7 @@ import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
 import { theme } from '../../shared/theme/theme'
 import i18n from '../../shared/i18n'
+import { axe } from '../../shared/test/axe'
 import { LoginPage } from './LoginPage'
 
 function renderLoginPage() {
@@ -28,6 +29,42 @@ function renderLoginPage() {
     </QueryClientProvider>,
   )
 }
+
+describe('LoginPage — desk kit restyle (WI-6)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    localStorage.clear()
+  })
+
+  it('shows the brand title Dispečink', () => {
+    renderLoginPage()
+    expect(screen.getByText(i18n.t('login.brandTitle'))).toBeInTheDocument()
+  })
+
+  it('shows the password hint caption', () => {
+    renderLoginPage()
+    expect(screen.getByText(i18n.t('login.passwordHint'))).toBeInTheDocument()
+  })
+
+  it('keeps the three E2E input ids fleetSlug/email/password', () => {
+    const { container } = renderLoginPage()
+    expect(container.querySelector('#fleetSlug')).not.toBeNull()
+    expect(container.querySelector('#email')).not.toBeNull()
+    expect(container.querySelector('#password')).not.toBeNull()
+  })
+
+  it('keeps the labelled fields reachable by their accessible name', () => {
+    renderLoginPage()
+    expect(screen.getByLabelText(/kód flotily/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/heslo/i)).toBeInTheDocument()
+  })
+
+  it('has no axe violations', async () => {
+    const { container } = renderLoginPage()
+    expect(await axe(container)).toHaveNoViolations()
+  })
+})
 
 describe('LoginPage — successful login', () => {
   beforeEach(() => {

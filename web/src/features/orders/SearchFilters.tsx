@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import { useQuery } from '@tanstack/react-query'
+import { Ctrl, Lbl, FilterChip } from '../../shared/ui/desk'
 import { getDrivers } from '../../shared/api/client'
 import { useDebouncedValue } from './useDebouncedValue'
 import type { OrderFilterState } from './orderFilters'
@@ -9,99 +10,56 @@ import type { OrderFilterState } from './orderFilters'
 const FiltersBar = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: 12px;
   align-items: flex-end;
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
 `
 
 const FilterGroup = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
 `
 
-const Label = styled.label`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+const SearchField = styled(FilterGroup)`
+  width: 280px;
 `
 
-const Input = styled.input`
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  background: ${({ theme }) => theme.colors.background};
-  color: ${({ theme }) => theme.colors.text};
-  min-width: 130px;
-
-  &:focus {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 1px;
-  }
-`
-
-const Select = styled.select`
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  background: ${({ theme }) => theme.colors.background};
-  color: ${({ theme }) => theme.colors.text};
-  min-width: 130px;
-
-  &:focus {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 1px;
-  }
-`
-
-const Button = styled.button`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ theme }) => theme.colors.primary};
-  color: white;
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  cursor: pointer;
-  white-space: nowrap;
-
-  &:hover {
-    opacity: 0.9;
-  }
-`
-
-const SecondaryButton = styled(Button)`
-  background: ${({ theme }) => theme.colors.surface};
-  color: ${({ theme }) => theme.colors.text};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-`
-
-const StatusPillsContainer = styled.div`
+const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: ${({ theme }) => theme.spacing.xs};
-  max-width: 260px;
+  gap: 6px;
 `
 
-const StatusPill = styled.button<{ $active: boolean }>`
-  padding: 2px 10px;
-  border-radius: 12px;
-  border: 1px solid ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.border)};
-  background: ${({ $active, theme }) => ($active ? theme.colors.primary + '22' : theme.colors.background)};
-  color: ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.textSecondary)};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  cursor: pointer;
-  white-space: nowrap;
+/**
+ * Coarse status buckets for the search filter chips (dispatcher redesign §4). The table still
+ * shows the exact per-row status; the filter folds Assigned/Accepted/Arrived + InProgress into a
+ * single "Probíhá" bucket. Each bucket maps to a concrete `orderFilters` status set — empty for
+ * "Vše" (no filter). The chip group is single-select (radio-like): choosing a bucket replaces the
+ * status filter, it does not toggle-append.
+ */
+const STATUS_BUCKETS: { key: string; statuses: string[] }[] = [
+  { key: 'all', statuses: [] },
+  { key: 'new', statuses: ['New'] },
+  { key: 'inProgress', statuses: ['Assigned', 'Accepted', 'Arrived', 'InProgress'] },
+  { key: 'completed', statuses: ['Completed'] },
+  { key: 'cancelled', statuses: ['Cancelled'] },
+]
 
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.primary};
-  }
-`
+/** Returns true when the two string arrays hold the same set (order-insensitive). */
+function sameSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false
+  const set = new Set(a)
+  return b.every((s) => set.has(s))
+}
 
-const ORDER_STATUSES = ['New', 'Assigned', 'Accepted', 'Arrived', 'InProgress', 'Completed', 'Cancelled']
+/** Derives the active bucket key from the current status filter; defaults to `'all'`. */
+function activeBucketKey(status: string[] | undefined): string {
+  const current = status ?? []
+  const match = STATUS_BUCKETS.find((b) => sameSet(b.statuses, current))
+  return match?.key ?? 'all'
+}
 
 /** Returns a YYYY-MM-DD string for the local date. */
 function toDateInputValue(isoStr: string): string {
@@ -121,11 +79,10 @@ function todayLocal(): string {
 interface SearchFiltersProps {
   filters: OrderFilterState
   onFiltersChange: (filters: OrderFilterState) => void
-  onExportCsv: () => void
 }
 
 /** The filter bar for the search page. Debounces the text search field by 300ms. */
-export function SearchFilters({ filters, onFiltersChange, onExportCsv }: SearchFiltersProps) {
+export function SearchFilters({ filters, onFiltersChange }: SearchFiltersProps) {
   const { t } = useTranslation()
   const { data: driversData } = useQuery({
     queryKey: ['drivers'],
@@ -143,80 +100,60 @@ export function SearchFilters({ filters, onFiltersChange, onExportCsv }: SearchF
     if (debouncedSearch !== currentSearch) {
       onFiltersChange({ ...filters, search: debouncedSearch || undefined, page: 1 })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
   const fromValue = filters.from ?? todayLocal()
   const toValue = filters.to ?? todayLocal()
+  const activeBucket = activeBucketKey(filters.status)
 
-  function handleFromChange(e: React.ChangeEvent<HTMLInputElement>) {
-    onFiltersChange({ ...filters, from: e.target.value, page: 1 })
+  function handleFromChange(value: string) {
+    onFiltersChange({ ...filters, from: value, page: 1 })
   }
 
-  function handleToChange(e: React.ChangeEvent<HTMLInputElement>) {
-    onFiltersChange({ ...filters, to: e.target.value, page: 1 })
+  function handleToChange(value: string) {
+    onFiltersChange({ ...filters, to: value, page: 1 })
   }
 
-  function handleStatusToggle(status: string) {
-    const current = filters.status ?? []
-    const next = current.includes(status)
-      ? current.filter((s) => s !== status)
-      : [...current, status]
-    onFiltersChange({ ...filters, status: next.length > 0 ? next : [], page: 1 })
+  function handleBucketSelect(statuses: string[]) {
+    onFiltersChange({ ...filters, status: statuses, page: 1 })
   }
 
-  function handleDriverChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    onFiltersChange({ ...filters, driverId: e.target.value || undefined, page: 1 })
+  function handleDriverChange(value: string) {
+    onFiltersChange({ ...filters, driverId: value || undefined, page: 1 })
   }
 
   return (
     <FiltersBar>
-      <FilterGroup>
-        <Label htmlFor="sf-from">{t('search.filters.dateFrom')}</Label>
-        <Input
-          id="sf-from"
-          type="date"
-          value={fromValue}
-          onChange={handleFromChange}
-          aria-label={t('search.filters.dateFrom')}
+      <SearchField>
+        <Lbl htmlFor="sf-search">{t('search.filters.search')}</Lbl>
+        <Ctrl
+          id="sf-search"
+          type="text"
+          value={searchInput}
+          onChange={setSearchInput}
+          placeholder={t('search.filters.searchPlaceholder')}
         />
+      </SearchField>
+
+      <FilterGroup>
+        <Lbl htmlFor="sf-from">{t('search.filters.dateFrom')}</Lbl>
+        <Ctrl id="sf-from" type="date" value={fromValue} onChange={handleFromChange} />
       </FilterGroup>
 
       <FilterGroup>
-        <Label htmlFor="sf-to">{t('search.filters.dateTo')}</Label>
-        <Input
-          id="sf-to"
-          type="date"
-          value={toValue}
-          onChange={handleToChange}
-          aria-label={t('search.filters.dateTo')}
-        />
+        <Lbl htmlFor="sf-to">{t('search.filters.dateTo')}</Lbl>
+        <Ctrl id="sf-to" type="date" value={toValue} onChange={handleToChange} />
       </FilterGroup>
 
       <FilterGroup>
-        <Label>{t('search.filters.status')}</Label>
-        <StatusPillsContainer aria-label={t('search.filters.status')}>
-          {ORDER_STATUSES.map((s) => (
-            <StatusPill
-              key={s}
-              type="button"
-              $active={filters.status?.includes(s) ?? false}
-              onClick={() => handleStatusToggle(s)}
-              aria-pressed={filters.status?.includes(s) ?? false}
-            >
-              {t(`status.order.${s}`)}
-            </StatusPill>
-          ))}
-        </StatusPillsContainer>
-      </FilterGroup>
-
-      <FilterGroup>
-        <Label htmlFor="sf-driver">{t('search.filters.driver')}</Label>
-        <Select
+        <Lbl htmlFor="sf-driver">{t('search.filters.driver')}</Lbl>
+        <Ctrl
           id="sf-driver"
+          as="select"
           value={filters.driverId ?? ''}
           onChange={handleDriverChange}
-          aria-label={t('search.filters.driver')}
+          selectProps={{ 'aria-label': t('search.filters.driver') }}
         >
           <option value="">{t('search.filters.allDrivers')}</option>
           {driversData?.items.map((d) => (
@@ -224,24 +161,23 @@ export function SearchFilters({ filters, onFiltersChange, onExportCsv }: SearchF
               {d.displayName}
             </option>
           ))}
-        </Select>
+        </Ctrl>
       </FilterGroup>
 
       <FilterGroup>
-        <Label htmlFor="sf-search">{t('search.filters.search')}</Label>
-        <Input
-          id="sf-search"
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder={t('search.filters.searchPlaceholder')}
-          aria-label={t('search.filters.search')}
-        />
+        <Lbl htmlFor="sf-status">{t('search.filters.status')}</Lbl>
+        <ChipRow id="sf-status" role="group" aria-label={t('search.filters.status')}>
+          {STATUS_BUCKETS.map((bucket) => (
+            <FilterChip
+              key={bucket.key}
+              selected={activeBucket === bucket.key}
+              onClick={() => handleBucketSelect(bucket.statuses)}
+            >
+              {t(`search.filters.statusChips.${bucket.key}`)}
+            </FilterChip>
+          ))}
+        </ChipRow>
       </FilterGroup>
-
-      <SecondaryButton type="button" onClick={onExportCsv}>
-        {t('search.filters.exportCsv')}
-      </SecondaryButton>
     </FiltersBar>
   )
 }

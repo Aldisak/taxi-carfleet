@@ -87,11 +87,12 @@
       "id": "WI-6",
       "lane": "web",
       "title": "SearchPage filters + table + dispatcher LoginPage",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-2b"
       ],
-      "files_scope": "web/src/features/orders/SearchPage* + web/src/features/auth/LoginPage*"
+      "files_scope": "web/src/features/orders/SearchPage* + web/src/features/auth/LoginPage*",
+      "note": "DONE committed: SearchPage on desk Panel/Table (status DeskPill, tabular price, CSV in header, pagination), SearchFilters status FilterChip buckets (Probíhá folds Assigned/Accepted/Arrived), LoginPage 420px desk card (#fleetSlug/#email/#password preserved, danger Callout). 26 tests+axe."
     },
     {
       "id": "WI-7",

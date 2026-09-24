@@ -1,6 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { Panel, Lbl, Ctrl, DeskButton } from '../../shared/ui/desk'
+import { Callout } from '../../shared/ui'
 import { useLogin } from './useLogin'
 import { validateLoginForm } from './loginSchema'
 import { authStorage } from '../../shared/api/auth-storage'
@@ -11,95 +13,62 @@ const Page = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${({ theme }) => theme.colors.background};
+  padding: 24px;
+  background: var(--bg);
 `
 
-const Card = styled.div`
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  box-shadow: ${({ theme }) => theme.shadows.md};
-  padding: ${({ theme }) => theme.spacing.xl};
+const CardWrap = styled.div`
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+`
+
+const Head = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 16px 0;
+`
+
+const Dot = styled.span`
+  width: 12px;
+  height: 12px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  flex-shrink: 0;
 `
 
 const Title = styled.h1`
-  font-size: ${({ theme }) => theme.typography.fontSizeXl};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
-  margin: 0 0 ${({ theme }) => theme.spacing.lg} 0;
-  text-align: center;
+  margin: 0;
+  font-size: var(--fs-headline);
+  font-weight: var(--fw-extra);
+  color: var(--ink);
 `
 
-const FormGroup = styled.div`
-  margin-bottom: ${({ theme }) => theme.spacing.md};
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
 `
 
-const Label = styled.label`
-  display: block;
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.text};
-  margin-bottom: ${({ theme }) => theme.spacing.xs};
+const Field = styled.div`
+  display: flex;
+  flex-direction: column;
 `
 
-const Input = styled.input<{ $hasError?: boolean }>`
-  width: 100%;
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme, $hasError }) => ($hasError ? theme.colors.error : theme.colors.border)};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
-  background: ${({ theme }) => theme.colors.surface};
-  box-sizing: border-box;
-  outline: none;
-
-  &:focus {
-    border-color: ${({ theme }) => theme.colors.primary};
-    box-shadow: 0 0 0 2px ${({ theme }) => theme.colors.primary}33;
-  }
+const Hint = styled.p`
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
 `
 
-const FieldError = styled.span`
-  display: block;
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.error};
-  margin-top: ${({ theme }) => theme.spacing.xs};
-`
-
-const GlobalError = styled.div`
-  background: #fce8e6;
-  border: 1px solid ${({ theme }) => theme.colors.error};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  color: ${({ theme }) => theme.colors.error};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  margin-bottom: ${({ theme }) => theme.spacing.md};
-`
-
-const SubmitButton = styled.button`
-  width: 100%;
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  cursor: pointer;
-  margin-top: ${({ theme }) => theme.spacing.sm};
-
-  &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.colors.primaryDark};
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`
-
+/**
+ * Dispatcher (fleet-scoped) login screen (/dispatcher/login). Three fields — Kód flotily / E-mail /
+ * Heslo — post to /auth/staff/login. Restyled onto the desk kit (dispatcher redesign §5).
+ *
+ * E2E contract: `web/e2e/dispatcher.spec.ts` fills `#fleetSlug` / `#email` / `#password` and clicks
+ * the submit button — those input ids and the submit button MUST be preserved.
+ */
 export function LoginPage() {
   const { t } = useTranslation()
   const { login, isPending, errorMessageKey } = useLogin()
@@ -139,61 +108,60 @@ export function LoginPage() {
 
   return (
     <Page>
-      <Card>
-        <Title>{t('login.title')}</Title>
-        <form onSubmit={handleSubmit} noValidate>
-          {errorMessageKey && (
-            <GlobalError role="alert">{t(errorMessageKey)}</GlobalError>
-          )}
-          <FormGroup>
-            <Label htmlFor="fleetSlug">{t('login.fleetSlug')}</Label>
-            <Input
-              id="fleetSlug"
-              type="text"
-              value={fleetSlug}
-              onChange={e => setFleetSlug(e.target.value)}
-              placeholder={t('login.fleetSlugPlaceholder')}
-              $hasError={!!fieldErrors.fleetSlug}
-              autoComplete="organization"
-            />
-            {fieldErrors.fleetSlug && (
-              <FieldError>{t(fieldErrors.fleetSlug)}</FieldError>
+      <CardWrap>
+        <Panel>
+          <Head>
+            <Dot aria-hidden="true" />
+            <Title>{t('login.brandTitle')}</Title>
+          </Head>
+          <Form onSubmit={handleSubmit} noValidate>
+            {errorMessageKey && (
+              <Callout tone="danger" role="alert">
+                {t(errorMessageKey)}
+              </Callout>
             )}
-          </FormGroup>
-          <FormGroup>
-            <Label htmlFor="email">{t('login.email')}</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder={t('login.emailPlaceholder')}
-              $hasError={!!fieldErrors.email}
-              autoComplete="email"
-            />
-            {fieldErrors.email && (
-              <FieldError>{t(fieldErrors.email)}</FieldError>
-            )}
-          </FormGroup>
-          <FormGroup>
-            <Label htmlFor="password">{t('login.password')}</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              $hasError={!!fieldErrors.password}
-              autoComplete="current-password"
-            />
-            {fieldErrors.password && (
-              <FieldError>{t(fieldErrors.password)}</FieldError>
-            )}
-          </FormGroup>
-          <SubmitButton type="submit" disabled={isPending}>
-            {isPending ? t('login.loading') : t('login.submit')}
-          </SubmitButton>
-        </form>
-      </Card>
+            <Field>
+              <Lbl htmlFor="fleetSlug">{t('login.fleetSlug')}</Lbl>
+              <Ctrl
+                id="fleetSlug"
+                type="text"
+                value={fleetSlug}
+                onChange={setFleetSlug}
+                placeholder={t('login.fleetSlugPlaceholder')}
+                autoComplete="organization"
+                error={fieldErrors.fleetSlug ? t(fieldErrors.fleetSlug) : undefined}
+              />
+            </Field>
+            <Field>
+              <Lbl htmlFor="email">{t('login.email')}</Lbl>
+              <Ctrl
+                id="email"
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder={t('login.emailPlaceholder')}
+                autoComplete="email"
+                error={fieldErrors.email ? t(fieldErrors.email) : undefined}
+              />
+            </Field>
+            <Field>
+              <Lbl htmlFor="password">{t('login.password')}</Lbl>
+              <Ctrl
+                id="password"
+                type="password"
+                value={password}
+                onChange={setPassword}
+                autoComplete="current-password"
+                error={fieldErrors.password ? t(fieldErrors.password) : undefined}
+              />
+            </Field>
+            <DeskButton type="submit" variant="primary" disabled={isPending}>
+              {isPending ? t('login.loading') : t('login.submit')}
+            </DeskButton>
+            <Hint>{t('login.passwordHint')}</Hint>
+          </Form>
+        </Panel>
+      </CardWrap>
     </Page>
   )
 }

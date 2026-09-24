@@ -3,8 +3,21 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import { useQuery } from '@tanstack/react-query'
+import {
+  Panel,
+  PanelHeader,
+  DeskButton,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  DeskPill,
+} from '../../shared/ui/desk'
 import { useOrderSearch } from './useOrderSearch'
 import { SearchFilters } from './SearchFilters'
+import { getOrderStatusTone } from './orderStatusTone'
 import { exportOrdersToCsv, getCsvFilename, downloadCsv } from './csvExport'
 import { getDrivers } from '../../shared/api/client'
 import type { OrderSummaryDto } from '../../shared/api/client'
@@ -16,6 +29,12 @@ const Page = styled.div`
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  padding: 20px 24px;
+
+  & > section {
+    flex: 1;
+    overflow: hidden;
+  }
 `
 
 const TableContainer = styled.div`
@@ -23,101 +42,47 @@ const TableContainer = styled.div`
   overflow: auto;
 `
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-`
-
-const Th = styled.th`
-  text-align: left;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  background: ${({ theme }) => theme.colors.surface};
-  border-bottom: 2px solid ${({ theme }) => theme.colors.border};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  white-space: nowrap;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-`
-
-const Tr = styled.tr`
+const ClickableRow = styled(Tr)`
   cursor: pointer;
+`
 
-  &:hover {
-    background: ${({ theme }) => theme.colors.background};
-  }
+const RowButton = styled.button`
+  all: unset;
+  cursor: pointer;
+  font-weight: var(--fw-bold);
+  color: var(--ink);
 
-  &:not(:last-child) td {
-    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: var(--r-sm);
   }
 `
 
-const Td = styled.td`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  white-space: nowrap;
-  max-width: 200px;
+const Ellipsis = styled(Td)`
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
-`
-
-const StatusPill = styled.span<{ $status: string }>`
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  background: ${({ $status, theme }) => {
-    switch ($status) {
-      case 'New': return theme.colors.orderNew + '33'
-      case 'Assigned': return theme.colors.orderAssigned + '33'
-      case 'Accepted': return theme.colors.orderAssigned + '33'
-      case 'Arrived': return theme.colors.orderAssigned + '33'
-      case 'InProgress': return theme.colors.orderInProgress + '33'
-      case 'Completed': return theme.colors.orderCompleted + '33'
-      case 'Cancelled': return theme.colors.orderCancelled + '33'
-      default: return theme.colors.border
-    }
-  }};
-  color: ${({ $status, theme }) => {
-    switch ($status) {
-      case 'New': return theme.colors.orderNew
-      case 'InProgress': return theme.colors.orderInProgress
-      case 'Completed': return theme.colors.orderCompleted
-      case 'Cancelled': return theme.colors.orderCancelled
-      default: return theme.colors.primary
-    }
-  }};
-`
-
-const Pagination = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
-  border-top: 1px solid ${({ theme }) => theme.colors.border};
-`
-
-const PaginationButton = styled.button`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ theme }) => theme.colors.background};
-  color: ${({ theme }) => theme.colors.text};
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
+  white-space: nowrap;
 `
 
 const EmptyMessage = styled.div`
-  padding: ${({ theme }) => theme.spacing.xl};
+  padding: 40px;
   text-align: center;
-  color: ${({ theme }) => theme.colors.textSecondary};
+  color: var(--ink-3);
+`
+
+const Footer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+`
+
+const PageInfo = styled.span`
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
 function formatWhen(order: OrderSummaryDto, t: (key: string) => string): string {
@@ -149,7 +114,7 @@ export function SearchPage() {
 
   const { data, isLoading } = useOrderSearch(filters)
 
-  // Load drivers for name lookup in CSV export
+  // Load drivers for name lookup in CSV export + table
   const { data: driversData } = useQuery({
     queryKey: ['drivers'],
     queryFn: getDrivers,
@@ -189,104 +154,119 @@ export function SearchPage() {
 
   return (
     <Page>
-      <SearchFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        onExportCsv={handleExportCsv}
-      />
+      <Panel>
+        <PanelHeader
+          title={t('nav.orders')}
+          right={
+            <>
+              {data && <span>{t('search.resultCount', { count: data.total })}</span>}
+              <DeskButton variant="secondary" size="xs" onClick={handleExportCsv}>
+                {t('search.filters.exportCsv')}
+              </DeskButton>
+            </>
+          }
+        />
 
-      <TableContainer>
-        <Table>
-          <thead>
-            <tr>
-              <Th>{t('search.table.code')}</Th>
-              <Th>{t('search.table.created')}</Th>
-              <Th>{t('search.table.when')}</Th>
-              <Th>{t('search.table.customer')}</Th>
-              <Th>{t('search.table.route')}</Th>
-              <Th>{t('search.table.price')}</Th>
-              <Th>{t('search.table.driver')}</Th>
-              <Th>{t('search.table.status')}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={8}>
-                  <EmptyMessage>{t('search.table.loading')}</EmptyMessage>
-                </td>
-              </tr>
-            ) : !data || data.items.length === 0 ? (
-              <tr>
-                <td colSpan={8}>
-                  <EmptyMessage>{t('search.table.noResults')}</EmptyMessage>
-                </td>
-              </tr>
-            ) : (
-              data.items.map((order) => (
-                <Tr
-                  key={order.id}
-                  onClick={() => handleRowClick(order.id)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={order.publicCode}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') handleRowClick(order.id)
-                  }}
-                >
-                  <Td title={order.publicCode}>{order.publicCode}</Td>
-                  <Td>{new Date(order.createdAt).toLocaleDateString('cs-CZ')}</Td>
-                  <Td>{formatWhen(order, t)}</Td>
-                  <Td title={`${order.customerPhone} ${order.customerName ?? ''}`}>
-                    {order.customerPhone}
-                    {order.customerName ? ` ${order.customerName}` : ''}
-                  </Td>
-                  <Td title={`${order.pickupAddress} → ${order.dropoffAddress ?? ''}`}>
-                    {order.pickupAddress}
-                    {order.dropoffAddress ? ` → ${order.dropoffAddress}` : ''}
-                  </Td>
-                  <Td>{formatPrice(order)}</Td>
-                  <Td>
-                    {order.driverId
-                      ? (driverNameMap.get(order.driverId) ?? t('search.table.noDriver'))
-                      : t('search.table.noDriver')}
-                  </Td>
-                  <Td>
-                    <StatusPill $status={order.status}>
-                      {t(`status.order.${order.status}`)}
-                    </StatusPill>
+        <SearchFilters filters={filters} onFiltersChange={setFilters} />
+
+        <TableContainer>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>{t('search.table.code')}</Th>
+                <Th>{t('search.table.created')}</Th>
+                <Th>{t('search.table.when')}</Th>
+                <Th>{t('search.table.customer')}</Th>
+                <Th>{t('search.table.route')}</Th>
+                <Th $num>{t('search.table.price')}</Th>
+                <Th>{t('search.table.driver')}</Th>
+                <Th>{t('search.table.status')}</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {isLoading ? (
+                <Tr>
+                  <Td colSpan={8}>
+                    <EmptyMessage>{t('search.table.loading')}</EmptyMessage>
                   </Td>
                 </Tr>
-              ))
-            )}
-          </tbody>
-        </Table>
-      </TableContainer>
+              ) : !data || data.items.length === 0 ? (
+                <Tr>
+                  <Td colSpan={8}>
+                    <EmptyMessage>{t('search.table.noResults')}</EmptyMessage>
+                  </Td>
+                </Tr>
+              ) : (
+                data.items.map((order) => (
+                  // Whole-row mouse click opens the drawer (design §4 "Row click still opens the
+                  // drawer"). No role/tabIndex is added to the <tr> so the table's ARIA semantics
+                  // stay intact; the keyboard/AT path is the real <button> in the code cell below.
+                  // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+                  <ClickableRow key={order.id} onClick={() => handleRowClick(order.id)}>
+                    <Td>
+                      <RowButton
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRowClick(order.id)
+                        }}
+                        title={order.publicCode}
+                      >
+                        {order.publicCode}
+                      </RowButton>
+                    </Td>
+                    <Td>{new Date(order.createdAt).toLocaleDateString('cs-CZ')}</Td>
+                    <Td>{formatWhen(order, t)}</Td>
+                    <Ellipsis title={`${order.customerPhone} ${order.customerName ?? ''}`}>
+                      {order.customerPhone}
+                      {order.customerName ? ` ${order.customerName}` : ''}
+                    </Ellipsis>
+                    <Ellipsis title={`${order.pickupAddress} → ${order.dropoffAddress ?? ''}`}>
+                      {order.pickupAddress}
+                      {order.dropoffAddress ? ` → ${order.dropoffAddress}` : ''}
+                    </Ellipsis>
+                    <Td $num>{formatPrice(order)}</Td>
+                    <Td>
+                      {order.driverId
+                        ? (driverNameMap.get(order.driverId) ?? t('search.table.noDriver'))
+                        : t('search.table.noDriver')}
+                    </Td>
+                    <Td>
+                      <DeskPill tone={getOrderStatusTone(order.status)}>
+                        {t(`status.order.${order.status}`)}
+                      </DeskPill>
+                    </Td>
+                  </ClickableRow>
+                ))
+              )}
+            </Tbody>
+          </Table>
+        </TableContainer>
 
-      {data && data.total > (filters.pageSize ?? 50) && (
-        <Pagination>
-          <PaginationButton
-            type="button"
-            disabled={currentPage <= 1}
-            onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}
-          >
-            {t('search.pagination.prev')}
-          </PaginationButton>
-          <span>
-            {t('search.pagination.page', {
-              page: currentPage,
-              total: totalPages,
-            })}
-          </span>
-          <PaginationButton
-            type="button"
-            disabled={currentPage >= totalPages}
-            onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
-          >
-            {t('search.pagination.next')}
-          </PaginationButton>
-        </Pagination>
-      )}
+        {data && data.total > (filters.pageSize ?? 50) && (
+          <Footer>
+            <DeskButton
+              variant="outline"
+              size="xs"
+              disabled={currentPage <= 1}
+              onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}
+            >
+              {t('search.pagination.prev')}
+            </DeskButton>
+            <PageInfo>
+              {t('search.pagination.page', { page: currentPage, total: totalPages })}
+            </PageInfo>
+            <DeskButton
+              variant="outline"
+              size="xs"
+              disabled={currentPage >= totalPages}
+              onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
+            >
+              {t('search.pagination.next')}
+            </DeskButton>
+          </Footer>
+        )}
+      </Panel>
     </Page>
   )
 }
