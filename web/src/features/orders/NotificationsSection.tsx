@@ -1,5 +1,6 @@
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { DeskPill, type DeskPillTone } from '../../shared/ui/desk'
 import {
   statusDescriptor,
   channelLabelKey,
@@ -14,77 +15,51 @@ const List = styled.ul`
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 8px;
 `
 
 const Item = styled.li`
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
 `
 
 const TopRow = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 8px;
   flex-wrap: wrap;
 `
 
 const EventLabel = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.text};
-`
-
-const ChannelLabel = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const StatusPill = styled.span<{ $tone: NotificationTone }>`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  padding: 1px ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  background: ${({ $tone, theme }) => {
-    switch ($tone) {
-      case 'success': return theme.colors.orderCompleted
-      case 'error': return theme.colors.orderCancelled
-      case 'muted': return theme.colors.border
-      default: return theme.colors.background
-    }
-  }};
-  color: ${({ $tone, theme }) => {
-    switch ($tone) {
-      case 'success': return theme.colors.orderCompletedText
-      case 'error': return theme.colors.orderCancelledText
-      default: return theme.colors.text
-    }
-  }};
+  font-size: var(--fs-label);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
 `
 
 const TimeLabel = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
   margin-left: auto;
 `
 
 const Recipient = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
 const ErrorText = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.error};
+  font-size: var(--fs-caption);
+  color: var(--danger);
 `
 
 const EmptyText = styled.p`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: var(--fs-body);
+  color: var(--ink-2);
   margin: 0;
 `
 
@@ -97,14 +72,29 @@ function formatTime(iso: string): string {
   })
 }
 
+/** Map a notification status tone to the desk-kit pill tone. */
+function toDeskTone(tone: NotificationTone): DeskPillTone {
+  switch (tone) {
+    case 'success':
+      return 'success'
+    case 'error':
+      return 'danger'
+    case 'muted':
+    case 'neutral':
+    default:
+      return 'neutral'
+  }
+}
+
 export interface NotificationsSectionProps {
   notifications: readonly OrderNotificationDto[]
 }
 
 /**
- * Dispatcher "Notifikace" list in the order drawer (UC-005 B2, assignment 05 §5). Renders each
- * sent/failed/skipped notification with a Czech event label, channel, status pill (tone, not color
- * alone — role="status" conveys it to AT), recipient, and the send/create time in Europe/Prague.
+ * Dispatcher "Notifikace" list in the order drawer (UC-005 B2), restyled onto the desk kit (WI-5):
+ * each row shows the Czech event label, a channel {@link DeskPill} (SMS/Push), a status
+ * {@link DeskPill} (Odesláno/Selhalo/Ve frontě/Přeskočeno — tone, not colour alone; `role="status"`
+ * conveys it to AT), the recipient, the send/create time in Europe/Prague, and the provider error.
  */
 export function NotificationsSection({ notifications }: NotificationsSectionProps) {
   const { t } = useTranslation()
@@ -122,16 +112,13 @@ export function NotificationsSection({ notifications }: NotificationsSectionProp
           <Item key={`${n.event}-${n.channel}-${n.createdAt}-${i}`}>
             <TopRow>
               <EventLabel>{t(eventLabelKey(n.event), n.event)}</EventLabel>
-              <ChannelLabel>{t(channelLabelKey(n.channel), n.channel)}</ChannelLabel>
-              <StatusPill
-                $tone={desc.tone}
+              <DeskPill tone="neutral">{t(channelLabelKey(n.channel), n.channel)}</DeskPill>
+              <span
                 role="status"
-                aria-label={t('notifications.statusOf', {
-                  status: t(desc.labelKey),
-                })}
+                aria-label={t('notifications.statusOf', { status: t(desc.labelKey) })}
               >
-                {t(desc.labelKey)}
-              </StatusPill>
+                <DeskPill tone={toDeskTone(desc.tone)}>{t(desc.labelKey)}</DeskPill>
+              </span>
               <TimeLabel>{formatTime(when)}</TimeLabel>
             </TopRow>
             <Recipient>{n.recipient}</Recipient>

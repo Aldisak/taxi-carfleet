@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { axe } from '../../shared/test/axe'
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
@@ -290,6 +291,126 @@ describe('OrderDrawer — address autocomplete edit', () => {
     expect(payload).not.toHaveProperty('dropoffLat')
     expect(payload).not.toHaveProperty('dropoffLng')
     expect(payload).toHaveProperty('version', 1)
+  })
+})
+
+describe('OrderDrawer — desk kit restyle (WI-5)', () => {
+  it('keeps the dialog accessible name as the plain title (aria-label), header shows #code', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder())
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    const dialog = await screen.findByRole('dialog', { name: i18n.t('orders.drawer.title') })
+    expect(dialog).toBeInTheDocument()
+    expect(await screen.findByText(/KH-001/)).toBeInTheDocument()
+  })
+
+  it('shows a Zákazník Stat card with phone, name and passengers', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ customerPhone: '+420600111222', customerName: 'Jan Novák', passengers: 3 }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    expect(screen.getByText(i18n.t('orders.drawer.customer'))).toBeInTheDocument()
+    expect(screen.getByText('+420600111222')).toBeInTheDocument()
+    expect(screen.getByText('Jan Novák')).toBeInTheDocument()
+    // passengers value 3 appears in the customer card (rendered as "Cestující: 3")
+    expect(screen.getByText(/Cestující:\s*3/)).toBeInTheDocument()
+  })
+
+  it('shows a Cena Stat card with the estimated amount formatted as CZK', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ priceType: 'Estimate', estimatedPriceCzk: 150, fixedPriceCzk: null }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    expect(screen.getByText(i18n.t('orders.drawer.priceCard'))).toBeInTheDocument()
+    // 150 Kč (cs-CZ groups thousands with a NBSP; 150 has no separator)
+    expect(screen.getByText(/150\s*Kč/)).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('orders.drawer.priceEstimated'))).toBeInTheDocument()
+  })
+
+  it('shows the fixed price label when priceType is Fixed', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ priceType: 'Fixed', fixedPriceCzk: 300, estimatedPriceCzk: null }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    expect(screen.getByText(/300\s*Kč/)).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('orders.drawer.priceFixed'))).toBeInTheDocument()
+  })
+
+  it('renders transition action labels from i18n (assign → Přiřadit)', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ allowedActions: ['assign'] }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    expect(screen.getByRole('button', { name: i18n.t('orders.actions.assign') })).toBeInTheDocument()
+  })
+
+  it('splits history and notifications into tabs with tabpanel roles', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder())
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    const historyTab = screen.getByRole('tab', { name: i18n.t('orders.drawer.tabs.history') })
+    const notifTab = screen.getByRole('tab', { name: i18n.t('orders.drawer.tabs.notifications') })
+    expect(historyTab).toBeInTheDocument()
+    expect(notifTab).toBeInTheDocument()
+    // History active by default → a tabpanel is present
+    expect(screen.getByRole('tabpanel')).toBeInTheDocument()
+
+    // Switching to Notifikace surfaces the notifications panel
+    fireEvent.click(notifTab)
+    expect(notifTab).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('shows the scheduled time (Kdy) in read mode without entering edit', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ scheduledAt: '2026-09-10T14:00:00Z' }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    // 14:00 UTC is 16:00 Europe/Prague (CEST); assert the field label + a formatted time appears
+    expect(screen.getByText(i18n.t('orders.drawer.fields.scheduledAt'))).toBeInTheDocument()
+    expect(screen.getByText(/16:00/)).toBeInTheDocument()
+  })
+
+  it('shows ASAP for an order with no scheduled time in read mode', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ scheduledAt: null }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    expect(screen.getByText(i18n.t('board.order.asap'))).toBeInTheDocument()
+  })
+
+  it('shows the editable-status reason as a caption when the order is not editable', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder({ status: 'Completed', allowedActions: [] }))
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    expect(screen.getByText(i18n.t('orders.drawer.editableStatuses'))).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: i18n.t('orders.drawer.edit') })).not.toBeInTheDocument()
+  })
+
+  it('renders the conflict callout with role=alert and a reload button on a 409 save', async () => {
+    const order = makeOrder({ status: 'New', note: 'Původní' })
+    mockGetOrder.mockResolvedValue(order)
+    mockPatchOrder.mockRejectedValue(
+      new client.ApiResponseError(409, { status: 409, title: 'Conflict', type: 'Order.StaleVersion' }),
+    )
+    render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+
+    await screen.findByText(/KH-001/)
+    fireEvent.click(await screen.findByRole('button', { name: i18n.t('orders.drawer.edit') }))
+    fireEvent.change(screen.getByRole('textbox', { name: /note|poznámka/i }), { target: { value: 'Změna' } })
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('orders.drawer.save') }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain(i18n.t('orders.drawer.conflict'))
+    expect(screen.getByRole('button', { name: i18n.t('orders.drawer.reload') })).toBeInTheDocument()
+  })
+
+  it('has no axe violations on the restyled drawer', async () => {
+    mockGetOrder.mockResolvedValue(makeOrder())
+    const { container } = render(createElement(OrderDrawer), { wrapper: makeWrapper('/dispatcher/orders/order-abc') })
+    await screen.findByText(/KH-001/)
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
 

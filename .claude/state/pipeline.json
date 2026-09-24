@@ -75,12 +75,13 @@
       "id": "WI-5",
       "lane": "web",
       "title": "OrderDrawer: Zákazník/Cena Stat cards, Historie/Notifikace tabs, i18n transition labels, conflict callout",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-2b"
       ],
       "files_scope": "web/src/features/orders/**",
-      "non_presentational": true
+      "non_presentational": true,
+      "note": "DONE committed: OrderDrawer on desk kit — Zákazník/Cena Stat cards, Historie/Notifikace desk Tabs, note Callout, conflict danger Callout+Načíst znovu. transitionButtons dropped hardcoded label -> t('orders.actions.'+action) (sole consumer OrderDrawer). New orderStatusTone.ts (duplicated from board statusPill, no cross-feature import). 52 tests+axe. Gaps (API-lane): DTO has no actor/matchedRoute/source fields; orders.source.* i18n deferred."
     },
     {
       "id": "WI-6",

@@ -1,62 +1,14 @@
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { Timeline, type TimelineItem } from '../../shared/ui/desk'
 import { formatEventTime } from './eventTimeline'
 import { auditEventLabelKey } from '../../shared/audit/auditEventLabel'
 import type { OrderEventDto } from '../../shared/api/client'
 
-const TimelineList = styled.ol`
-  list-style: none;
-  margin: 0;
-  padding: 0;
-`
-
-const TimelineItem = styled.li`
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-
-  &:last-child {
-    border-bottom: none;
-  }
-`
-
-const TimelineDot = styled.div`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: ${({ theme }) => theme.colors.primary};
-  flex-shrink: 0;
-  margin-top: 4px;
-`
-
-const TimelineContent = styled.div`
-  flex: 1;
-`
-
-const EventType = styled.div`
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.text};
-`
-
-const EventMeta = styled.div`
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  margin-top: 1px;
-`
-
-const EventPayload = styled.div`
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  margin-top: 2px;
-  font-style: italic;
-`
-
 const EmptyMessage = styled.div`
-  padding: ${({ theme }) => theme.spacing.md};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  padding: 12px;
+  color: var(--ink-2);
+  font-size: var(--fs-body);
   text-align: center;
 `
 
@@ -64,7 +16,12 @@ interface EventTimelineProps {
   events: OrderEventDto[]
 }
 
-/** Renders the order event timeline in Czech with actor and relative time. */
+/**
+ * Renders the order event timeline on the desk-kit {@link Timeline} (newest first). Each event
+ * becomes a title (the Czech event label) plus a single caption folding "Actor · relative time"
+ * and, when present, the cancel reason / note (the desk Timeline caption is one line — see the
+ * WI-5 handoff deviation). The latest (topmost) event gets the accent dot.
+ */
 export function EventTimeline({ events }: EventTimelineProps) {
   const { t } = useTranslation()
 
@@ -77,35 +34,24 @@ export function EventTimeline({ events }: EventTimelineProps) {
     (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
   )
 
-  return (
-    <TimelineList>
-      {sorted.map((event, idx) => {
-        const { relative, absolute } = formatEventTime(event.at)
-        const actor = t(`orders.timeline.actor.${event.actorRole}`, { defaultValue: event.actorRole })
-        const label = t(auditEventLabelKey(event.type), { defaultValue: event.type })
+  const items: TimelineItem[] = sorted.map((event, idx) => {
+    const { relative } = formatEventTime(event.at)
+    const actor = t(`orders.timeline.actor.${event.actorRole}`, { defaultValue: event.actorRole })
+    const title = t(auditEventLabelKey(event.type), { defaultValue: event.type })
 
-        // Extract notable payload fields
-        const reason = event.payload?.['reason'] as string | undefined
-        const note = event.payload?.['note'] as string | undefined
+    const reason = event.payload?.['reason'] as string | undefined
+    const note = event.payload?.['note'] as string | undefined
 
-        return (
-          <TimelineItem key={idx}>
-            <TimelineDot />
-            <TimelineContent>
-              <EventType>{label}</EventType>
-              <EventMeta>
-                {actor} · <span title={absolute}>{relative}</span>
-              </EventMeta>
-              {reason && (
-                <EventPayload>
-                  {t('board.cancelReasons.title')}: {reason}
-                </EventPayload>
-              )}
-              {note && <EventPayload>{note}</EventPayload>}
-            </TimelineContent>
-          </TimelineItem>
-        )
-      })}
-    </TimelineList>
-  )
+    const parts = [`${actor} · ${relative}`]
+    if (reason) parts.push(`${t('board.cancelReasons.title')}: ${reason}`)
+    if (note) parts.push(note)
+
+    return {
+      title,
+      caption: parts.join(' · '),
+      accent: idx === 0,
+    }
+  })
+
+  return <Timeline items={items} />
 }

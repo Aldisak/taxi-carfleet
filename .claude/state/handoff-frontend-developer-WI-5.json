@@ -1,36 +1,83 @@
 {
-  "wi": "WI-5",
   "wi_id": "WI-5",
-  "uc": "UC-019",
-  "status": "complete",
-  "hit_max_turns": false,
+  "uc": "UC-021",
+  "lane": "web",
   "files_changed": [
-    "web/src/features/driver/map/DriverMapScreen.tsx",
-    "web/src/features/driver/map/DriverMapScreen.test.tsx",
-    "web/src/app/DriverLayout.tsx",
-    "web/src/app/DriverLayout.test.tsx",
-    "web/src/app/router.tsx",
-    ".claude/state/handoff-frontend-developer-WI-5.json"
+    "web/src/features/orders/OrderDrawer.tsx",
+    "web/src/features/orders/OrderDrawer.test.tsx",
+    "web/src/features/orders/OrderEventTimeline.tsx",
+    "web/src/features/orders/OrderEventTimeline.test.tsx",
+    "web/src/features/orders/NotificationsSection.tsx",
+    "web/src/features/orders/transitionButtons.ts",
+    "web/src/features/orders/transitionButtons.test.ts",
+    "web/src/features/orders/orderStatusTone.ts",
+    "web/src/features/orders/orderStatusTone.test.ts"
   ],
-  "files_removed": [
-    "web/src/features/driver/home/DriverHomePage.tsx",
-    "web/src/features/driver/ride/DriverRidePage.tsx",
-    "web/src/features/driver/ride/DriverRidePage.test.tsx",
-    "web/src/features/driver/offer/OfferTakeover.tsx",
-    "web/src/features/driver/ride/RideMapStrip.tsx",
-    "web/src/features/driver/ride/RideMapStrip.test.tsx",
-    "web/src/features/driver/ride/RideMapInner.tsx"
+  "files_touched": [
+    "web/src/features/orders/OrderDrawer.tsx",
+    "web/src/features/orders/OrderDrawer.test.tsx",
+    "web/src/features/orders/OrderEventTimeline.tsx",
+    "web/src/features/orders/OrderEventTimeline.test.tsx",
+    "web/src/features/orders/NotificationsSection.tsx",
+    "web/src/features/orders/transitionButtons.ts",
+    "web/src/features/orders/transitionButtons.test.ts",
+    "web/src/features/orders/orderStatusTone.ts",
+    "web/src/features/orders/orderStatusTone.test.ts"
   ],
-  "tests_added": 17,
-  "tests_passing": 20,
-  "coverage_delta": "+DriverMapScreen.tsx (new assembly screen, 13 behavior tests incl. F-2 mount pins, complete-nav, stale-banner, atomic-selector no-loop, 3 axe states) + 4 new DriverLayout tests (OfferCard-swap, position/queue mounts, BottomNav visible@order==null / hidden@order!=null). Removed 2 test files (DriverRidePage.test, RideMapStrip.test) whose behavior is superseded by RideSheet.test (WI-4) + DriverMapScreen.test.",
-  "red_observed": true,
-  "red_detail": "Cycle 1 (DriverMapScreen): RED = 'Failed to resolve import ./DriverMapScreen' (module missing) -> implemented -> 13 green. Cycle 2 (DriverLayout WI-5 tests): RED = 2 failing (offer-card testid absent because DriverLayout still rendered OfferTakeover; BottomNav still present when activeOrder set) -> swapped OfferTakeover->OfferCard + gated BottomNav on activeOrder==null -> 7 green.",
-  "tsc": "npm run --prefix web tsc -> 0 errors (PRIMARY no-dangle gate: proves none of the 7 removals left a dangling import). Two transient test-only errors fixed during the cycle (unused ReactNode import; vi.fn generic single-arg form for the arrive/start/cancelNoShow Outcome mocks).",
-  "lint": "npm run --prefix web lint -> pass (check:geo OK + eslint --max-warnings 0, 0 warnings).",
-  "verification": "npm-build -> exit 0 (fresh re-run). tsc+build succeed (no dangle), then npm run --prefix web size -> all three budgets green.",
-  "verification_output": "npm run build -> vite built in 5.58s + PWA precache 32 entries, BUILD_EXIT=0. npm run size -> app js (eager+lazy non-analytics/non-admin): 195.95 kB / 260 kB limit; analytics chunk: 94.87 kB / 115 kB; admin chunk: 64 kB / 70 kB — all within budget. Full driver+app vitest: 56 files / 348 tests passed.",
-  "leaflet_lazy": "CONFIRMED. Grep 'from react-leaflet' under web/src/features/driver -> ONLY DriverMapInner.tsx. DriverMapScreen imports DriverMapInner via lazy(() => import('./DriverMapInner')) inside <Suspense fallback={null}> — the sole import site. dist shows a distinct DriverMapInner-DbaJAMXU.js lazy chunk that carries leaflet-container; its existence proves the split held (Rollup would have inlined leaflet into index had any eager-reachable driver module statically imported it). DriverMapScreen itself lands in the eager index chunk (correct). The leaflet-container in index-*.js is PRE-EXISTING from the dispatcher BoardPage's static react-leaflet import (router.tsx line 6) — documented verbatim in CLAUDE.md UC-010 WI-15; not a WI-5 regression. The index reference to the DriverMapInner-*.js filename is the dynamic-import runtime manifest, the opposite of a static import.",
-  "removal_order": "ATOMIC, ordered to keep tsc always green: (1) wrote DriverMapScreen + test; (2) swapped DriverLayout OfferTakeover->OfferCard + BottomNav conditional; (3) re-pointed router index to DriverMapScreen + deleted the 'ride' child + DriverHomePage/DriverRidePage imports; (4) THEN git rm'd the 7 modules. App never referenced a deleted module at any intermediate step. Grep-confirmed before deletion: RideMapInner's only importer was RideMapStrip (also removed); all removed-module importers were router.tsx/DriverLayout.tsx (edited) or removed files. Remaining textual hits post-removal are comments/test-descriptions only — zero dangling imports (tsc 0 errors is authoritative).",
-  "notes": "ADVISOR-CRITICAL ORDER-GATING (trap A): DriverMapScreen renders RideSheet on `order != null` (from useActiveOrder), NOT on useDriverMe status; DriverLayout hides BottomNav on `useActiveOrderStore(s=>s.order) == null` (atomic selector) — SAME signal, so no accept/hub race where status flips before order hydrates. Status picks Offline-vs-Free ONLY when order==null; a transient (status Busy/EnRoute but order not yet restored) renders map + minimal panel, never RideSheet (needs a non-null order). F-2 RE-HOME (design-review MEDIUM folded in): all re-homed session hooks are called UNCONDITIONALLY at the top of DriverMapScreen (never inside a branch) — useRideRestore(myDriverId), useLiveClear(myDriverId), useOwnStatusSync(myDriverId), useActiveOrder(), useWakeLock(order != null), useQueuePendingCount(), useRideTransition(), useRouteGeometry({leg,own,order}). useRideRestore runs in EVERY state (correct — cold-load restore, AC#6 server-over-IDB authority via reconcileActiveRide). The F-2 mount test vi.mocks useRideRestore/useLiveClear/useWakeLock and asserts each is called on mount in the EnRoute+order state (useRideRestore/useLiveClear with 'd1'; useWakeLock(true)) + a second test asserts useWakeLock(false) when order==null — pins the re-home so a future silent drop goes RED (tsc cannot catch an omitted hook call). runTransition wrapper owns outcome.type==='stale' -> setReconciledNote(true) reassigned-banner logic, passed to RideSheet. PORTED DriverHomePage effects (AC explicit): ensureSubscribed() push effect on mount + Permissions API geolocation check (hasLocation -> disables 'Začít směnu' + shows noLocationHint). useRouteToast rendered as a role=status Toast (where 'Hotovo ✓' surfaces post-complete + F-04 reassigned). LAYOUT (advisor + AC#1/#2): screen is position:relative flex:1 (fills DriverLayout <Content>, now position:relative overflow:hidden); MapLayer position:absolute inset:0 z-index:map (definite size, avoids jsdom height:100% collapse trap). Offline/Free panels are IN-SCREEN absolute BottomSlot overlays (NOT shared/ui/BottomSheet) so they never collide with the VISIBLE BottomNav (order==null in those states); only RideSheet (WI-4, fixed BottomSheet) uses BottomSheet, and only then does DriverLayout hide BottomNav. BottomSlot left-padded off the bottom-left Mapy logo (CLAUDE.md UC-014 WI-2). ATOMIC zustand selectors throughout (useOwnPositionStore(s=>s.position), useActiveOrderStore(s=>s.order)) — no object selectors (laneB3c loop trap); a no-loop smoke test asserts no console.error on render. No premature memoization (module-level NO_LEG_ORDER const for the null-order route-geometry skip). ROUTER: /driver index -> DriverMapScreen (CHILD of DriverLayout, not sibling — session mounts live in DriverLayout, Assumption 2); DELETED { path:'ride' } child + DriverHomePage/DriverRidePage imports; KEPT ride/complete, history, settings, /driver/login. Accept no longer navigates (WI-2); state-driven screen reactively renders the ride view. DID NOT touch OfferCard/DriverMapInner/RideSheet (consumed as-is per WI-2/3/4 prop contracts) or locale JSONs (all keys front-loaded in WI-1; verified driver.map.*, driver.home.status.waitingForOrder/startShift/endShift, driver.nav.*, driver.ride.etaTo* present in cs-CZ). Left StatusButton/ConnectionDot/homeState/useMySummary in place (now-unused-but-harmless per AC#7 — deleting a still-referenced one would dangle tsc). *** WI-6 HEADS-UP (non-blocking, MUST retarget): the map-first Free state intentionally has NO summary chips (old DriverHomePage chips removed by WI-5 AC design). WI-6's existing 'summary chips 1 ride + cash total' assertion in Driver_FullFlow is now INVALID — retarget it (completion-summary lives on /driver/ride/complete + the Free-state 'Hotovo' toast). DO NOT add chips back — contradicts the WI-5 AC. Also: offer is now role='region' name 'Nová objednávka' (not dialog 'Nástup'); after Accept the ride view appears ON /driver (no waitForURL('/driver/ride')). *** Scope: DriverMapScreen.tsx + .test.tsx (new), DriverLayout.tsx + .test.tsx (edited — extended the existing boot-test file with a new describe for offer/BottomNav), router.tsx (edited), 7 modules removed via git rm. Staged with explicit paths + git rm; nothing committed. e2e NOT run (WI-6 owns it)."
+  "tests_added": 21,
+  "tests_passing": 52,
+  "coverage_delta": "not measured (WI did not request a coverage run; scoped tests all green)",
+  "transitionButtons_change": {
+    "signature_before": "deriveTransitionButtons(allowedActions: string[]): { action: string; label: string; needsDriverPicker: boolean; needsReason: boolean }[]",
+    "signature_after": "deriveTransitionButtons(allowedActions: string[]): { action: string; needsDriverPicker: boolean; needsReason: boolean }[]",
+    "change": "Dropped the hardcoded Czech `label` field and the ACTION_LABELS map. Labels now come from i18n at the consumer via t('orders.actions.' + action).",
+    "consumer_verification": "grep '\\.label\\b' across web/src/features found exactly one non-test read at OrderDrawer.tsx (old line ~735); it now renders t('orders.actions.' + btn.action, btn.action). No other module reads .label off the result. transitionButtons.test.ts asserts buttons[0] does NOT have a 'label' property (RED observed against the label-returning impl, green after removal)."
+  },
+  "new_stat_cards": {
+    "customer": {
+      "label_key": "orders.drawer.customer",
+      "fields": ["customerPhone (orders.drawer.fields.phone)", "customerName (orders.drawer.fields.name, hidden when null)", "passengers rendered 'Cestující: N' (orders.drawer.fields.passengers)"]
+    },
+    "price": {
+      "label_key": "orders.drawer.priceCard",
+      "fields": ["amount = fixedPriceCzk when priceType==='Fixed' else estimatedPriceCzk, formatted Intl.NumberFormat('cs-CZ') + ' Kč', '—' when null (orders.drawer.fields.amount)", "priceType label orders.drawer.priceFixed / priceEstimated (orders.drawer.fields.priceType)", "matchedRoute = 'pickup → dropoff' route text — DTO has no matchedRoute field (orders.drawer.fields.matchedRoute)"]
+    },
+    "component": "Both use desk-kit Stat with a composed ReactNode value (StatLines) so multiple lines fit the KPI slot."
+  },
+  "tabs_wiring": {
+    "component": "shared desk Tabs (role=tablist, role=tab, arrow-key nav, active underline)",
+    "panels": "role='tabpanel', id='panel-history'/'panel-notifications', aria-labelledby='tab-history'/'tab-notifications' (desk Tabs generates tab ids 'tab-<id>'); only the active panel is mounted",
+    "history_panel": "EventTimeline restyled onto desk Timeline (newest-first, accent dot on latest, caption folds 'Actor · relative time · reason')",
+    "notifications_panel": "NotificationsSection restyled: channel DeskPill (SMS/Push) + status DeskPill (Odesláno/Selhalo/Ve frontě/Přeskočeno), status wrapped in role='status' for AT",
+    "aria_controls_gap": "shared desk Tabs emits role='tab'+id but NOT aria-controls (out-of-scope to edit); panels carry aria-labelledby back to their tab as the achievable half"
+  },
+  "i18n_requests": [
+    "orders.source.Dispatcher / orders.source.Phone / orders.source.App (and any other OrderSource enum values): needed to localize the order source in the drawer created line. The DTO exposes `source` as a raw enum string; showing it verbatim would violate #i18n-czech-first, so `source` was DROPPED from the created line (now 'Vytvořeno · <Prague time>' only). Add these keys to all 6 locales, then the created line can render t('orders.source.' + order.source)."
+  ],
+  "data_gaps": [
+    "OrderDetailDto has no `actor` field — created line shows 'Vytvořeno · <Prague time>' only; actor omitted.",
+    "OrderDetailDto exposes `source` only as a raw enum string with no i18n keys — dropped from the created line (see i18n_requests) to avoid an untranslated user-facing string.",
+    "OrderDetailDto has no matchedRoute/matchedRouteId — Cena card matchedRoute row shows pickup → dropoff route text as the closest available data."
+  ],
+  "test_counts": {
+    "transitionButtons": 16,
+    "orderStatusTone": 6,
+    "OrderEventTimeline": 6,
+    "NotificationsSection": 5,
+    "OrderDrawer": 19
+  },
+  "verification_output": {
+    "vitest": "npx vitest run src/features/orders/OrderDrawer src/features/orders/OrderEventTimeline src/features/orders/NotificationsSection src/features/orders/transitionButtons -> 4 files / 46 tests passed, exit 0. Full scoped run incl. orderStatusTone = 5 files / 52 tests passed.",
+    "tsc": "npx tsc --noEmit -> exit 0, 0 errors on the final run. (Earlier an AdminFleetsPage TS2322 '<DeskButton as={Link}>' error flickered from a concurrent lane mid-editing that out-of-scope, unstaged file; WI-5's scoped files compile clean and the final tsc run was 0 errors once that lane settled.)",
+    "eslint": "npx eslint src/features/orders --max-warnings 0 -> exit 0, clean."
+  },
+  "deviations": [
+    "Restyle-in-place (NOT desk Drawer component): kept routing-driven open/close, Overlay onClick-to-close (existing test relies on it), and the exact a11y contract (role='dialog' + aria-modal + aria-label = orders.drawer.title while header shows 'Objednávka #code'). Desk Drawer would couple title -> both h2 and aria-label and break the click-scrim-close test. WI blesses this fallback.",
+    "getOrderStatusTone colocated as new pure module features/orders/orderStatusTone.ts (with test) instead of importing features/board/statusPill.ts (banned cross-feature import) or promoting to shared/ (out of file scope). Intentional small duplication documented in the module JSDoc.",
+    "aria-controls not set on tabs (shared desk Tabs out of scope); panels carry aria-labelledby.",
+    "Desk Timeline caption is one line, so 'Actor · relative time' and reason are folded into a single caption string.",
+    "Created line omits actor and source; matchedRoute shows route text. actor/matchedRoute are DTO data gaps; source is a data+i18n gap (raw enum, no keys) reported in i18n_requests."
+  ],
+  "hit_max_turns": false,
+  "notes": "TDD red-green-refactor per cycle: transitionButtons label-drop (RED observed), orderStatusTone new module (RED observed), OrderEventTimeline behavior tests, NotificationsSection restyle (kept green incl. axe), OrderDrawer 8 new tests (RED observed: 7 failing incl. empty-label axe button-name violation, then green). No memoization added (no measured re-render problem). Money Intl.NumberFormat('cs-CZ') + ' Kč'; dates Europe/Prague. Kept useUpdateOrder/useAssignOrder/useReassignOrder/useCancelOrder/eventTimeline/isOrderEditable/cancelReasons/useAddressSuggest logic untouched. No locale JSONs edited. Only web/src/features/orders/* staged; SearchPage/SearchFilters and board files untouched. POST-REVIEW FIXES: (a) restored a read-mode 'Kdy'/scheduledAt line — the rewrite had accidentally gated it behind isEditing, hiding pickup time in read mode; added 2 tests (read-mode time shows, ASAP fallback). (b) removed the raw `source` enum from the created line (untranslated string vs #i18n-czech-first) and filed the orders.source.* i18n_request. NOTE: this file previously held a stale UC-019 WI-5 handoff (handoff filenames are keyed on WI-<n> only and collide across UCs) — overwritten with this UC-021 result."
 }

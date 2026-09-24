@@ -11,7 +11,11 @@ describe('transitionButtons — allowedActions → button set', () => {
     const buttons = deriveTransitionButtons(['assign'])
     expect(buttons).toHaveLength(1)
     expect(buttons[0].action).toBe('assign')
-    expect(buttons[0].label).toBeTruthy()
+  })
+
+  it('no longer carries a hardcoded label (labels moved to i18n)', () => {
+    const buttons = deriveTransitionButtons(['assign'])
+    expect(buttons[0]).not.toHaveProperty('label')
   })
 
   it('maps reassign action to a button', () => {

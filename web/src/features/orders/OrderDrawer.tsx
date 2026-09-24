@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { getOrder, getOrderEvents } from '../../shared/api/client'
+import { DeskButton, DeskPill, Stat, Tabs } from '../../shared/ui/desk'
+import { Callout } from '../../shared/ui'
+import { Icon } from '../../shared/ui/icons/Icon'
 import { isOrderEditable } from './isOrderEditable'
+import { getOrderStatusTone } from './orderStatusTone'
 import { EventTimeline } from './OrderEventTimeline'
 import { NotificationsSection } from './NotificationsSection'
 import { deriveTransitionButtons } from './transitionButtons'
@@ -17,7 +21,7 @@ import { CANCEL_REASON_CODES, buildCancelReason, reasonRequiresFreeText } from '
 import type { CancelReasonCode } from '../board/cancelReasons'
 import { useAddressSuggest } from '../board/useAddressSuggest'
 import { orderHasNoCoords } from '../board/orderCoords'
-import type { UpdateOrderRequest, GeoSuggestItem } from '../../shared/api/client'
+import type { UpdateOrderRequest, GeoSuggestItem, OrderDetailDto } from '../../shared/api/client'
 import { suggestionMeta } from '../../shared/geo/suggestionMeta'
 
 // ---------------------------------------------------------------------------
@@ -35,10 +39,10 @@ const SuggestList = styled.ul`
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ theme }) => theme.colors.surface};
-  box-shadow: ${({ theme }) => theme.shadows.md};
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
   max-height: 160px;
   overflow-y: auto;
   position: absolute;
@@ -48,22 +52,22 @@ const SuggestList = styled.ul`
 `
 
 const SuggestItem = styled.li<{ $highlighted: boolean }>`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  padding: 6px 10px;
+  font-size: var(--fs-body);
   cursor: pointer;
-  background: ${({ $highlighted, theme }) => ($highlighted ? theme.colors.primary : 'transparent')};
-  color: ${({ $highlighted, theme }) => ($highlighted ? '#fff' : theme.colors.text)};
+  background: ${({ $highlighted }) => ($highlighted ? 'var(--accent)' : 'transparent')};
+  color: ${({ $highlighted }) => ($highlighted ? 'var(--on-accent)' : 'var(--ink)')};
 
   &:hover {
-    background: ${({ theme }) => theme.colors.primary};
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
   }
 `
 
 const SuggestMeta = styled.span<{ $highlighted: boolean }>`
   display: block;
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ $highlighted, theme }) => ($highlighted ? '#fff' : theme.colors.textSecondary)};
+  font-size: var(--fs-caption);
+  color: ${({ $highlighted }) => ($highlighted ? 'var(--on-accent)' : 'var(--ink-2)')};
 `
 
 /** Address input with Photon autocomplete — used during edit mode in the drawer. */
@@ -138,14 +142,14 @@ function AddressEditInput({ value, onChange, onSelect, 'aria-label': ariaLabel }
 }
 
 // ---------------------------------------------------------------------------
-// Styled components
+// Styled components (desk tokens)
 // ---------------------------------------------------------------------------
 
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  background: var(--scrim);
+  z-index: 1000;
   display: flex;
   justify-content: flex-end;
 `
@@ -154,8 +158,9 @@ const DrawerPanel = styled.aside`
   width: 480px;
   max-width: 100vw;
   height: 100%;
-  background: ${({ theme }) => theme.colors.surface};
-  box-shadow: ${({ theme }) => theme.shadows.lg};
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-float);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -163,62 +168,105 @@ const DrawerPanel = styled.aside`
 
 const DrawerHeader = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: ${({ theme }) => theme.spacing.md};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
   flex-shrink: 0;
+`
+
+const HeaderText = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 `
 
 const DrawerTitle = styled.h2`
   margin: 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-headline);
+  font-weight: var(--fw-extra);
+  color: var(--ink);
+`
+
+const CreatedLine = styled.span`
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
 const CloseButton = styled.button`
-  background: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-2);
   cursor: pointer;
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  padding: ${({ theme }) => theme.spacing.xs};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  line-height: 1;
 
   &:hover {
-    background: ${({ theme }) => theme.colors.background};
+    background: var(--surface-2);
   }
 `
 
 const DrawerBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: ${({ theme }) => theme.spacing.md};
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
+  gap: 16px;
+`
+
+const StatRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+`
+
+const StatLines = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`
+
+const StatLine = styled.span`
+  font-size: var(--fs-body);
+  color: var(--ink);
+`
+
+const StatSub = styled.span`
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
 const Section = styled.section`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: 8px;
 `
 
 const SectionTitle = styled.h3`
-  margin: 0 0 ${({ theme }) => theme.spacing.xs};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  margin: 0 0 4px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-extra);
+  color: var(--ink-2);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 `
 
 const FieldValue = styled.div`
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
+  font-size: var(--fs-body);
+  color: var(--ink);
+`
+
+const Caption = styled.p`
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--ink-2);
 `
 
 // "bez souřadnic" warning shown under the pickup address when the order has no usable pickup
@@ -228,113 +276,88 @@ const NoCoordsWarning = styled.p`
   align-items: center;
   gap: 4px;
   margin: 4px 0 0;
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.warning};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
+  font-size: var(--fs-body);
+  color: var(--warning);
+  font-weight: var(--fw-bold);
 `
 
 const FieldInput = styled.input`
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  font-size: var(--fs-body);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
   width: 100%;
+  background: var(--surface-2);
 
   &:focus {
     outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
   }
 `
 
 const FieldTextArea = styled.textarea`
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  font-size: var(--fs-body);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
   width: 100%;
   resize: vertical;
   min-height: 64px;
+  background: var(--surface-2);
 
   &:focus {
     outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
+    background: var(--surface);
+    box-shadow: inset 0 0 0 2px var(--ink);
   }
 `
 
 const ButtonRow = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: 8px;
   flex-wrap: wrap;
 `
 
-const ActionButton = styled.button<{ $variant?: 'primary' | 'danger' | 'secondary' }>`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme, $variant }) =>
-    $variant === 'primary' ? theme.colors.primary :
-    $variant === 'danger' ? theme.colors.error :
-    theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ theme, $variant }) =>
-    $variant === 'primary' ? theme.colors.primary :
-    $variant === 'danger' ? theme.colors.error :
-    'transparent'};
-  color: ${({ theme, $variant }) =>
-    $variant === 'primary' || $variant === 'danger' ? '#ffffff' : theme.colors.text};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`
-
-const ConflictBanner = styled.div`
-  background: ${({ theme }) => theme.colors.warning};
-  color: #202124;
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-`
-
-const LoadingMessage = styled.div`
-  padding: ${({ theme }) => theme.spacing.md};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  text-align: center;
-`
-
 const CancelForm = styled.div`
-  margin-top: ${({ theme }) => theme.spacing.xs};
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
+  gap: 8px;
 `
 
 const ReasonSelect = styled.select`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  color: ${({ theme }) => theme.colors.text};
-  background: ${({ theme }) => theme.colors.surface};
+  font-size: var(--fs-body);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  background: var(--surface-2);
 `
 
 const FreeTextInput = styled.input`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  font-size: var(--fs-body);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
 `
 
 const ErrorMsg = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.error};
+  font-size: var(--fs-caption);
+  color: var(--danger);
+`
+
+const LoadingMessage = styled.div`
+  padding: 16px;
+  color: var(--ink-2);
+  text-align: center;
+`
+
+const ReloadRow = styled.div`
+  margin-top: 8px;
 `
 
 // ---------------------------------------------------------------------------
@@ -353,9 +376,28 @@ interface EditState {
   scheduledAt: string  // datetime-local string (YYYY-MM-DDTHH:mm) or ''
 }
 
+type DrawerTab = 'history' | 'notifications'
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const czkFormatter = new Intl.NumberFormat('cs-CZ')
+
+/** Formats an integer CZK amount as "1 234 Kč" (cs-CZ grouping); "—" when null. */
+function formatCzk(amount: number | null): string {
+  if (amount == null) return '—'
+  return `${czkFormatter.format(amount)} Kč`
+}
+
+/** Formats a UTC ISO timestamp for the created line in Europe/Prague (cs-CZ). */
+function formatCreated(iso: string): string {
+  return new Date(iso).toLocaleString('cs-CZ', {
+    timeZone: 'Europe/Prague',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  })
+}
 
 /** Converts ISO string to datetime-local input value (truncate seconds). */
 function isoToDateTimeLocal(iso: string | null): string {
@@ -405,15 +447,25 @@ function buildPatchFields(
   return patch
 }
 
+/** Picks the display amount + price-type label key based on the order's price type. */
+function priceDisplay(order: OrderDetailDto): { amount: number | null; typeKey: string } {
+  if (order.priceType === 'Fixed') {
+    return { amount: order.fixedPriceCzk, typeKey: 'orders.drawer.priceFixed' }
+  }
+  return { amount: order.estimatedPriceCzk, typeKey: 'orders.drawer.priceEstimated' }
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-/** B8: Right-side drawer showing order detail, editable fields, timeline, and action buttons. */
+/** B8 / WI-5: Right-side drawer showing order detail on the desk kit — customer/price Stat cards,
+ * route + note callout, transition actions, and Historie / Notifikace tabs. */
 export function OrderDrawer() {
   const { t } = useTranslation()
   const { id: orderId } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   // State for edit mode
   const [isEditing, setIsEditing] = useState(false)
@@ -429,6 +481,7 @@ export function OrderDrawer() {
     scheduledAt: '',
   })
   const [showConflict, setShowConflict] = useState(false)
+  const [activeTab, setActiveTab] = useState<DrawerTab>('history')
 
   // Driver picker state for assign/reassign
   const [activePickerAction, setActivePickerAction] = useState<string | null>(null)
@@ -440,7 +493,7 @@ export function OrderDrawer() {
   const [cancelReasonError, setCancelReasonError] = useState(false)
 
   // Fetch order detail
-  const { data: order, isLoading } = useQuery({
+  const { data: order, isLoading, refetch: refetchOrder } = useQuery({
     queryKey: ['orders', 'detail', orderId],
     queryFn: () => getOrder(orderId!),
     enabled: !!orderId,
@@ -448,7 +501,7 @@ export function OrderDrawer() {
   })
 
   // Fetch order events
-  const { data: events } = useQuery({
+  const { data: events, refetch: refetchEvents } = useQuery({
     queryKey: ['orders', 'detail', orderId, 'events'],
     queryFn: () => getOrderEvents(orderId!),
     enabled: !!orderId,
@@ -474,6 +527,15 @@ export function OrderDrawer() {
 
   function handleClose() {
     navigate('/dispatcher')
+  }
+
+  function handleReload() {
+    setShowConflict(false)
+    void refetchOrder()
+    void refetchEvents()
+    if (orderId) {
+      void queryClient.invalidateQueries({ queryKey: ['orders', 'detail', orderId] })
+    }
   }
 
   function handleStartEdit() {
@@ -577,15 +639,37 @@ export function OrderDrawer() {
   const nonCancelButtons = buttons.filter(b => b.action !== 'cancel')
   const hasCancelAction = buttons.some(b => b.action === 'cancel')
 
+  const price = order ? priceDisplay(order) : null
+  const routeText = order
+    ? `${order.pickupAddress} → ${order.dropoffAddress ?? '—'}`
+    : '—'
+
+  const tabs = [
+    { id: 'history', label: t('orders.drawer.tabs.history') },
+    { id: 'notifications', label: t('orders.drawer.tabs.notifications') },
+  ]
+
   return (
     <Overlay onClick={handleClose} role="dialog" aria-modal="true" aria-label={t('orders.drawer.title')}>
       <DrawerPanel onClick={(e) => e.stopPropagation()}>
         <DrawerHeader>
-          <DrawerTitle>
-            {order ? `${t('orders.drawer.title')} #${order.publicCode}` : t('orders.drawer.title')}
-          </DrawerTitle>
+          <HeaderText>
+            <DrawerTitle>
+              {order ? `${t('orders.drawer.title')} #${order.publicCode}` : t('orders.drawer.title')}
+            </DrawerTitle>
+            {order && (
+              <CreatedLine>
+                {t('orders.drawer.created')} · {formatCreated(order.createdAt)}
+              </CreatedLine>
+            )}
+          </HeaderText>
+          {order && (
+            <DeskPill tone={getOrderStatusTone(order.status)}>
+              {t(`status.order.${order.status}`, order.status)}
+            </DeskPill>
+          )}
           <CloseButton onClick={handleClose} aria-label={t('orders.drawer.close')}>
-            ×
+            <Icon name="close" size={18} />
           </CloseButton>
         </DrawerHeader>
 
@@ -596,15 +680,46 @@ export function OrderDrawer() {
             <LoadingMessage>{t('orders.notFound')}</LoadingMessage>
           )}
 
-          {order && (
+          {order && price && (
             <>
               {showConflict && (
-                <ConflictBanner role="alert">
+                <Callout tone="danger" role="alert">
                   {t('orders.drawer.conflict')}
-                </ConflictBanner>
+                  <ReloadRow>
+                    <DeskButton variant="danger" size="xs" onClick={handleReload}>
+                      {t('orders.drawer.reload')}
+                    </DeskButton>
+                  </ReloadRow>
+                </Callout>
               )}
 
-              {/* Editable fields */}
+              {/* Customer + Price Stat cards */}
+              <StatRow>
+                <Stat
+                  label={t('orders.drawer.customer')}
+                  value={
+                    <StatLines>
+                      <StatLine>{order.customerPhone}</StatLine>
+                      {order.customerName && <StatSub>{order.customerName}</StatSub>}
+                      <StatSub>
+                        {t('orders.drawer.fields.passengers')}: {order.passengers}
+                      </StatSub>
+                    </StatLines>
+                  }
+                />
+                <Stat
+                  label={t('orders.drawer.priceCard')}
+                  value={
+                    <StatLines>
+                      <StatLine>{formatCzk(price.amount)}</StatLine>
+                      <StatSub>{t(price.typeKey)}</StatSub>
+                      <StatSub>{routeText}</StatSub>
+                    </StatLines>
+                  }
+                />
+              </StatRow>
+
+              {/* Editable route + note fields */}
               <Section>
                 <SectionTitle>{t('orders.drawer.fields.pickup')}</SectionTitle>
                 {isEditing ? (
@@ -648,14 +763,16 @@ export function OrderDrawer() {
                     onChange={(e) => setEditState(s => ({ ...s, note: e.target.value }))}
                     aria-label={t('orders.drawer.fields.note')}
                   />
+                ) : order.note ? (
+                  <Callout tone="neutral">{order.note}</Callout>
                 ) : (
-                  <FieldValue>{order.note ?? '—'}</FieldValue>
+                  <FieldValue>—</FieldValue>
                 )}
               </Section>
 
-              <Section>
-                <SectionTitle>{t('orders.drawer.fields.passengers')}</SectionTitle>
-                {isEditing ? (
+              {isEditing && (
+                <Section>
+                  <SectionTitle>{t('orders.drawer.fields.passengers')}</SectionTitle>
                   <FieldInput
                     type="number"
                     min={1}
@@ -664,11 +781,10 @@ export function OrderDrawer() {
                     onChange={(e) => setEditState(s => ({ ...s, passengers: Number(e.target.value) }))}
                     aria-label={t('orders.drawer.fields.passengers')}
                   />
-                ) : (
-                  <FieldValue>{order.passengers}</FieldValue>
-                )}
-              </Section>
+                </Section>
+              )}
 
+              {/* Kdy / scheduled time — shown in both read and edit mode */}
               <Section>
                 <SectionTitle>{t('orders.drawer.fields.scheduledAt')}</SectionTitle>
                 {isEditing ? (
@@ -681,7 +797,11 @@ export function OrderDrawer() {
                 ) : (
                   <FieldValue>
                     {order.scheduledAt
-                      ? new Date(order.scheduledAt).toLocaleString('cs-CZ', { dateStyle: 'short', timeStyle: 'short' })
+                      ? new Date(order.scheduledAt).toLocaleString('cs-CZ', {
+                          timeZone: 'Europe/Prague',
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        })
                       : t('board.order.asap')}
                   </FieldValue>
                 )}
@@ -690,28 +810,28 @@ export function OrderDrawer() {
               {/* Edit / Save / Cancel buttons */}
               <ButtonRow>
                 {!isEditing && editable && (
-                  <ActionButton $variant="secondary" onClick={handleStartEdit}>
+                  <DeskButton variant="secondary" size="xs" onClick={handleStartEdit}>
                     {t('orders.drawer.edit')}
-                  </ActionButton>
+                  </DeskButton>
                 )}
                 {isEditing && (
                   <>
-                    <ActionButton
-                      $variant="primary"
+                    <DeskButton
+                      variant="primary"
+                      size="xs"
                       onClick={handleSave}
-                      disabled={isSaving}
+                      loading={isSaving}
+                      loadingLabel={t('orders.drawer.saving')}
                     >
-                      {isSaving ? t('orders.drawer.saving') : t('orders.drawer.save')}
-                    </ActionButton>
-                    <ActionButton $variant="secondary" onClick={handleCancelEdit} disabled={isSaving}>
+                      {t('orders.drawer.save')}
+                    </DeskButton>
+                    <DeskButton variant="secondary" size="xs" onClick={handleCancelEdit} disabled={isSaving}>
                       {t('orders.drawer.cancel')}
-                    </ActionButton>
+                    </DeskButton>
                   </>
                 )}
                 {!editable && !isEditing && (
-                  <FieldValue style={{ fontSize: '12px', color: '#5f6368' }}>
-                    {t('orders.drawer.editableStatuses')}
-                  </FieldValue>
+                  <Caption>{t('orders.drawer.editableStatuses')}</Caption>
                 )}
               </ButtonRow>
 
@@ -721,9 +841,10 @@ export function OrderDrawer() {
                   <SectionTitle>{t('orders.actions.title')}</SectionTitle>
                   <ButtonRow>
                     {nonCancelButtons.map((btn) => (
-                      <ActionButton
+                      <DeskButton
                         key={btn.action}
-                        $variant="secondary"
+                        variant="secondary"
+                        size="xs"
                         onClick={() => {
                           if (btn.needsDriverPicker) {
                             setActivePickerAction(btn.action)
@@ -732,8 +853,8 @@ export function OrderDrawer() {
                           }
                         }}
                       >
-                        {btn.label}
-                      </ActionButton>
+                        {t('orders.actions.' + btn.action, btn.action)}
+                      </DeskButton>
                     ))}
                   </ButtonRow>
                 </Section>
@@ -743,12 +864,11 @@ export function OrderDrawer() {
               {hasCancelAction && (
                 <Section>
                   {!showCancelForm ? (
-                    <ActionButton
-                      $variant="danger"
-                      onClick={() => setShowCancelForm(true)}
-                    >
-                      {t('board.actions.cancel')}
-                    </ActionButton>
+                    <ButtonRow>
+                      <DeskButton variant="danger" size="xs" onClick={() => setShowCancelForm(true)}>
+                        {t('orders.actions.cancel')}
+                      </DeskButton>
+                    </ButtonRow>
                   ) : (
                     <CancelForm aria-label="cancel-form">
                       <label htmlFor="drawer-cancel-reason">
@@ -784,15 +904,17 @@ export function OrderDrawer() {
                       )}
 
                       <ButtonRow>
-                        <ActionButton
-                          $variant="danger"
+                        <DeskButton
+                          variant="danger"
+                          size="xs"
                           onClick={handleCancelSubmit}
                           aria-label={t('board.actions.confirm')}
                         >
                           {t('board.actions.confirm')}
-                        </ActionButton>
-                        <ActionButton
-                          $variant="secondary"
+                        </DeskButton>
+                        <DeskButton
+                          variant="secondary"
+                          size="xs"
                           onClick={() => {
                             setShowCancelForm(false)
                             setCancelReasonCode('')
@@ -801,7 +923,7 @@ export function OrderDrawer() {
                           }}
                         >
                           {t('orders.drawer.cancel')}
-                        </ActionButton>
+                        </DeskButton>
                       </ButtonRow>
                     </CancelForm>
                   )}
@@ -821,16 +943,24 @@ export function OrderDrawer() {
                 />
               )}
 
-              {/* Notifikace — sent/failed notification delivery status (UC-005 B2) */}
+              {/* Historie / Notifikace tabs */}
               <Section>
-                <SectionTitle>{t('notifications.title')}</SectionTitle>
-                <NotificationsSection notifications={order.notifications ?? []} />
-              </Section>
-
-              {/* Event timeline */}
-              <Section>
-                <SectionTitle>{t('orders.timeline.title')}</SectionTitle>
-                <EventTimeline events={events ?? []} />
+                <Tabs
+                  tabs={tabs}
+                  activeId={activeTab}
+                  onChange={(id) => setActiveTab(id as DrawerTab)}
+                  ariaLabel={t('orders.drawer.title')}
+                />
+                {activeTab === 'history' && (
+                  <div role="tabpanel" id="panel-history" aria-labelledby="tab-history">
+                    <EventTimeline events={events ?? []} />
+                  </div>
+                )}
+                {activeTab === 'notifications' && (
+                  <div role="tabpanel" id="panel-notifications" aria-labelledby="tab-notifications">
+                    <NotificationsSection notifications={order.notifications ?? []} />
+                  </div>
+                )}
               </Section>
             </>
           )}
