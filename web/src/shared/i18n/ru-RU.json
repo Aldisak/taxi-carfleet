@@ -1608,6 +1608,9 @@
     "themeDark": "Тёмная",
     "themeSystem": "Система",
     "themeToggle": "Переключить тему",
-    "languageToggle": "Сменить язык"
+    "languageToggle": "Сменить язык",
+    "roleDispatcher": "диспетчер",
+    "roleAdmin": "администратор автопарка",
+    "roleSuperAdmin": "суперадмин"
   }
 }

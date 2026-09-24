@@ -1608,6 +1608,9 @@
     "themeDark": "Dark",
     "themeSystem": "System",
     "themeToggle": "Toggle theme",
-    "languageToggle": "Change language"
+    "languageToggle": "Change language",
+    "roleDispatcher": "dispatcher",
+    "roleAdmin": "fleet admin",
+    "roleSuperAdmin": "superadmin"
   }
 }

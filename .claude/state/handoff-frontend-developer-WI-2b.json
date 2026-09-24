@@ -1,0 +1,43 @@
+{
+  "wi_id": "WI-2b",
+  "files_changed": [
+    "web/src/app/AppLayout.tsx",
+    "web/src/app/AppLayout.test.tsx",
+    "web/src/app/AppHeader.tsx",
+    "web/src/app/AppHeader.test.tsx",
+    "web/src/app/useFleetHeader.ts"
+  ],
+  "tests_added": [
+    "web/src/app/AppHeader.test.tsx (9 tests: nav links, brand name, branded connection+mute present, unbranded connection+mute absent, mute aria-pressed/name, theme toggle, logout, axe branded, axe unbranded)",
+    "web/src/app/AppLayout.test.tsx (3 new: fleet name from public fleet data, mute testid+aria-pressed, theme toggle present)"
+  ],
+  "tests_passing": true,
+  "coverage_delta": "not measured (WI verification is scoped vitest run src/app; coverage not requested)",
+  "hit_max_turns": false,
+  "i18n_requests": [
+    {
+      "reason": "Right-cluster user line currently renders the raw role string (e.g. 'Dispatcher', 'FleetAdmin'). A localized short role label would replace it.",
+      "keys": {
+        "appLayout.roleDispatcher": "Dispečer",
+        "appLayout.roleAdmin": "Správce",
+        "appLayout.roleSuperAdmin": "Administrátor systému"
+      },
+      "note": "Low priority. AppHeader takes a `roleLabel` string prop, so wiring is a one-line change in AppLayout once keys land (map userRole -> t(...)). No AppHeader.tsx edit needed. Keys must be added to all 6 locale JSONs by the conductor (i18n parity gate)."
+    }
+  ],
+  "verification_output": {
+    "vitest": "npx vitest run src/app -> EXIT 0; Test Files 4 passed (4); Tests 27 passed (27). AppLayout.test.tsx 7, AppHeader.test.tsx 9 (incl 2 axe), customerRoutes.test.ts 4, DriverLayout.test.tsx 7. The customerRoutes.test.ts 'Not implemented: navigation' stderr is pre-existing jsdom noise (test passes).",
+    "tsc": "npm run tsc -> tsc --noEmit, 0 errors",
+    "eslint": "npx eslint src/app --max-warnings 0 -> clean, no output"
+  },
+  "deviations": [
+    "SEAM DECISION: AppHeader is fully presentational (prop-drilled), NOT hook-calling. All branded-only hooks (getPublicFleet via useFleetHeader, useHubConnectionState, useNotificationSound) are called in AppLayout and passed down as props. Rationale: calling them conditionally on `unbranded` inside AppHeader would violate rules-of-hooks and crash when WI-7 mounts it unbranded. 'getPublicFleet gated off when unbranded' is satisfied by intent: WI-7 simply does not pass connection/isMuted/onToggleMute and never mounts useFleetHeader. This also makes AppHeader.test.tsx trivial (no QueryClientProvider, no hook mocks).",
+    "unbranded brand text is a caller-supplied prop (`brand={{ name, colorHex }}`), NOT hardcoded 'Carfleet · Správa systému'. WI-7 passes its own admin brand + ink dot (colorHex handling: unbranded forces the ink dot regardless of colorHex). This keeps admin i18n owned by WI-7 and avoids re-opening AppHeader surgically.",
+    "Added a small shared-ish app hook web/src/app/useFleetHeader.ts (reuses queryKey ['public','fleet'] + 5min staleTime) instead of importing the customer-feature useFleetBranding hook (task forbids cross-feature import).",
+    "Role label: renders the RAW role string for now (see i18n_requests). Did not edit any locale JSON.",
+    "DisconnectBanner left UNTOUCHED (exact 'Offline – zobrazuji poslední známý stav' text + role=alert + isServerActionBlocked gate preserved; e2e depends on it). Header is 56px; legacy Shell/Content keep old theme for layout, header chrome uses desk CSS vars.",
+    "Header 'Right' cluster: connection dot+label (success/warning/danger CSS vars), bell IconButton (data-testid=mute-toggle, aria-pressed, aria-label unmute/mute), globe-adorned LanguageSelector (combobox 'Jazyk' name preserved), moon/sun theme IconButton, role label, DeskButton xs outline logout.",
+    "Nav uses real React Router NavLink so aria-current='page' drives the active --surface-2 pill. `end` prop set for top-level /dispatcher so it is not marked active on child routes."
+  ],
+  "notes": "Did NOT run full suite/build (per WI). Pre-existing acceptHydration.test.tsx failure is out of scope and untouched. No new npm packages added. Memoization: none added (no measured re-render problem; navItems array is rebuilt per render but AppHeader is not memoized and the header is not a hot path)."
+}

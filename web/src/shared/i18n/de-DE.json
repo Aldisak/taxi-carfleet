@@ -1608,6 +1608,9 @@
     "themeDark": "Dunkel",
     "themeSystem": "System",
     "themeToggle": "Design umschalten",
-    "languageToggle": "Sprache ändern"
+    "languageToggle": "Sprache ändern",
+    "roleDispatcher": "Disponent",
+    "roleAdmin": "Flottenadmin",
+    "roleSuperAdmin": "Superadmin"
   }
 }

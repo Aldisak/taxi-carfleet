@@ -1608,6 +1608,9 @@
     "themeDark": "Tmavý",
     "themeSystem": "Systém",
     "themeToggle": "Přepnout vzhled",
-    "languageToggle": "Změnit jazyk"
+    "languageToggle": "Změnit jazyk",
+    "roleDispatcher": "dispečer",
+    "roleAdmin": "správce flotily",
+    "roleSuperAdmin": "superadmin"
   }
 }

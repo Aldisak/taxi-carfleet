@@ -1608,6 +1608,9 @@
     "themeDark": "Madilim",
     "themeSystem": "Sistema",
     "themeToggle": "Palitan ang tema",
-    "languageToggle": "Baguhin ang wika"
+    "languageToggle": "Baguhin ang wika",
+    "roleDispatcher": "dispatcher",
+    "roleAdmin": "fleet admin",
+    "roleSuperAdmin": "superadmin"
   }
 }

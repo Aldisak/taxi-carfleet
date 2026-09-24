@@ -3,13 +3,19 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import { theme } from '../shared/theme/theme'
 import i18n from '../shared/i18n'
 
 // AppLayout pulls in SignalR hub + notification sound — mock them so no connection is needed.
-vi.mock('../shared/realtime/useFleetHub', () => ({ useFleetHub: vi.fn() }))
+// NOTE: useFleetHub also exports useHubConnectionState (read by the header) — stub both.
+vi.mock('../shared/realtime/useFleetHub', () => ({
+  useFleetHub: vi.fn(),
+  useHubConnectionState: vi.fn().mockReturnValue('connected'),
+  isServerActionBlocked: vi.fn().mockReturnValue(false),
+}))
 vi.mock('../shared/sound/useNotificationSound', () => ({
   useNotificationSound: vi.fn().mockReturnValue([false, vi.fn()]),
 }))
@@ -27,15 +33,25 @@ vi.mock('../shared/api/auth-storage', () => ({
   },
 }))
 
+// Fleet name is now data-driven via GET public/fleet.
+vi.mock('../shared/api/client', () => ({
+  getPublicFleet: vi.fn().mockResolvedValue({ name: 'Taxi Praha', primaryColorHex: '#ff0000' }),
+}))
+
 import { AppLayout } from './AppLayout'
 import { authStorage } from '../shared/api/auth-storage'
 
 function makeWrapper() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: ReactNode }) =>
     createElement(
-      MemoryRouter,
-      null,
-      createElement(ThemeProvider, { theme }, createElement(I18nextProvider, { i18n }, children)),
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(ThemeProvider, { theme }, createElement(I18nextProvider, { i18n }, children)),
+      ),
     )
 }
 
@@ -70,5 +86,25 @@ describe('AppLayout nav gating', () => {
     vi.mocked(authStorage.getUserRole).mockReturnValue('Dispatcher')
     renderLayout()
     expect(screen.getByRole('combobox', { name: 'Jazyk' })).toBeInTheDocument()
+  })
+
+  it('renders the fleet name from public fleet data', async () => {
+    vi.mocked(authStorage.getUserRole).mockReturnValue('Dispatcher')
+    renderLayout()
+    expect(await screen.findByText('Taxi Praha')).toBeInTheDocument()
+  })
+
+  it('renders the mute toggle with its testid and aria-pressed', () => {
+    vi.mocked(authStorage.getUserRole).mockReturnValue('Dispatcher')
+    renderLayout()
+    const button = screen.getByTestId('mute-toggle')
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(button).toHaveAccessibleName('Ztlumit zvuk')
+  })
+
+  it('renders the theme toggle', () => {
+    vi.mocked(authStorage.getUserRole).mockReturnValue('Dispatcher')
+    renderLayout()
+    expect(screen.getByRole('button', { name: 'Přepnout vzhled' })).toBeInTheDocument()
   })
 })
