@@ -1,0 +1,21 @@
+{
+  "wi_id": "UC022-WI-6a",
+  "files_changed": [
+    "product-website/src/i18n/cs.json",
+    "product-website/src/i18n/en.json",
+    "product-website/src/i18n/t.ts",
+    "product-website/scripts/check-i18n-parity.mjs",
+    "product-website/package.json"
+  ],
+  "key_count": 143,
+  "html_keys": ["hero.title"],
+  "english_gaps_translated": [],
+  "parity_result": "OK: cs.json and en.json have identical key sets (143 keys). node scripts/check-i18n-parity.mjs exit 0",
+  "astro_check_result": "0 errors, 0 warnings, 0 hints (31 files) — exit 0",
+  "tests_added": 0,
+  "tests_passing": true,
+  "coverage_delta": "n/a — no component/unit tests in scope for 6a (data layer only)",
+  "hit_max_turns": false,
+  "verification_output": "node scripts/check-i18n-parity.mjs => OK: cs.json and en.json have identical key sets (143 keys). exit=0\nnpx astro check => Result (31 files): 0 errors, 0 warnings, 0 hints. exit=0",
+  "notes": "WI-6a i18n data layer only, no component/page refactor (that is 6b). cs.json ported Czech verbatim from reference/index.html data-i18n innerHTML; en.json from the reference EN + MSG objects. Added msg.* keys (sending/ok/err/req/copied/copyFail) from the MSG object under an msg. namespace, present in both locales. Only HTML-bearing value is hero.title (contains <br>); HTML_KEYS in t.ts is computed by scanning both dicts for '<'. No English gaps: the reference EN dict already covered every data-i18n key, so nothing needed a fresh English translation. t.ts is strict-typed (no any), imports both JSONs via resolveJsonModule (on via astro/tsconfigs/strict), t() returns key + console.warn on miss. check:i18n script wired into package.json. Staged with explicit git add; NOT committed. pipeline.json shows modified in git status but is the conductor's file, not touched by this WI."
+}

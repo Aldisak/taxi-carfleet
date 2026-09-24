@@ -72,15 +72,26 @@
       "note": "DONE committed: Card/Pillar+MiniMockup/TinyPhone/Step/PricingList/Origin/FaqItem/ContactForm + src/data/*.ts (Czech copy inline for WI-6 extract). Pillar odd/even flip, check-icons via li :global(svg), nbsp prices byte-verified. ContactForm: is:inline define:vars messages, demo setTimeout stub + 'wire to POST /api/v1/public/leads' comment preserved, lang-toggle dropped. Page composes all 9 sections in order."
     },
     {
-      "id": "WI-6",
+      "id": "WI-6a",
       "lane": "web",
-      "title": "i18n cs.json/en.json + MSG + t() + parity check; pages index.astro (cs) + en/index.astro",
-      "status": "todo",
+      "title": "i18n data layer: cs.json + en.json (identical keys) + t.ts helper + check-i18n-parity.mjs",
+      "status": "done",
       "depends_on": [
         "WI-4",
         "WI-5"
       ],
-      "files_scope": "product-website/src/i18n/**, src/pages/**"
+      "files_scope": "product-website/src/i18n/**, scripts/**, package.json",
+      "note": "WI-6 was split after the single run idled on too-large output. 6a = dictionaries + helper + parity only (no component/page refactor). DONE committed: 143 keys, parity OK, astro check 0, HTML_KEYS=[hero.title], no EN gaps."
+    },
+    {
+      "id": "WI-6b",
+      "lane": "web",
+      "title": "Refactor data->keys + HomeSections + cs/en pages + define:vars wiring",
+      "status": "todo",
+      "depends_on": [
+        "WI-6a"
+      ],
+      "files_scope": "product-website/src/data/**, src/components/**, src/pages/**"
     },
     {
       "id": "WI-7",
