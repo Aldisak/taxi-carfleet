@@ -218,7 +218,12 @@
       "submit": "Создать заказ",
       "creating": "Создание...",
       "pickupPlaceholder": "Введите адрес подачи",
-      "dropoffPlaceholder": "Введите адрес назначения (необязательно)"
+      "dropoffPlaceholder": "Введите адрес назначения (необязательно)",
+      "hint": "F2 · Enter отправит",
+      "scheduled": "На время",
+      "fixedPill": "Фикс.",
+      "distanceDuration": "{{km}} км · {{min}} мин",
+      "placesFallbackNote": "Быстрый выбор"
     },
     "columns": {
       "orders": "Заказы",
@@ -239,7 +244,10 @@
       "fixedPriceBadge": "ФИКС. {{price}} Kč",
       "estimatedPrice": "~{{price}} Kč",
       "elapsedTime": "{{sec}}с",
-      "elapsedTimeMin": "{{min}} мин"
+      "elapsedTimeMin": "{{min}} мин",
+      "noCoords": "Без координат",
+      "smsFailed": "SMS не отправлено",
+      "waiting": "ждёт {{time}}"
     },
     "actions": {
       "assign": "Назначить",
@@ -266,7 +274,9 @@
     "driverPicker": {
       "title": "Выберите водителя",
       "noDrivers": "Нет доступных водителей",
-      "loading": "Загрузка водителей..."
+      "loading": "Загрузка водителей...",
+      "byDistance": "по расстоянию",
+      "busy": "занят"
     },
     "conflict": "Заказ тем временем изменил кто-то другой"
   },
@@ -298,7 +308,10 @@
       "minutes": "{{n}} мин назад"
     },
     "noOrderCode": "—",
-    "overrideError": "Произошла ошибка при установке статуса"
+    "overrideError": "Произошла ошибка при установке статуса",
+    "onlineSummary": "{{online}} / {{total}} онлайн",
+    "mapHint": "Нажмите на водителя, чтобы выделить его на карте.",
+    "menuLabel": "Опции водителя"
   },
   "map": {
     "loading": "Загрузка карты...",

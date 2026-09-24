@@ -3,7 +3,7 @@
  *
  * Interaction counting for AC#1 (≤6 scripted UI interactions):
  *   1. Type phone number into the Phone field             (fill / keyboard)
- *   2. Click quick chip "Vlakové nádraží Kolín"           (click)
+ *   2. Click quick chip "Nádraží Kolín" (from fleet Places)   (click)
  *   3. Press Enter to submit (ASAP is the default)        (keyboard)
  *   4. Click "Přiřadit" on the new order card             (click)
  *   5. Click "Jan Novák" in the driver picker             (click)
@@ -65,7 +65,9 @@ test.describe.serial('Dispatcher board', () => {
     await page.locator('#order-phone').fill('+420777123456')
 
     // ── INTERACTION 2: Click quick chip to fill pickup + coordinates ──────────
-    await page.getByRole('button', { name: 'Vlakové nádraží Kolín' }).click()
+    // The chip is now sourced from the fleet's configured Places (seeded "Nádraží Kolín"),
+    // not the hardcoded quickChips.ts list.
+    await page.getByRole('button', { name: 'Nádraží Kolín' }).click()
 
     // ASAP is the default (no interaction needed — asap button is pre-selected).
     // Assert ASAP is indeed the default before submitting.

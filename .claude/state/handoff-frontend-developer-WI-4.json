@@ -1,20 +1,43 @@
 {
-  "wi": "WI-4",
-  "uc": "UC-019",
-  "status": "complete",
+  "wi_id": "WI-4",
+  "status": "done",
   "hit_max_turns": false,
   "files_changed": [
-    "web/src/features/driver/ride/RideSheet.tsx",
-    "web/src/features/driver/ride/RideSheet.test.tsx",
-    ".claude/state/handoff-frontend-developer-WI-4.json"
+    "web/src/features/board/OrderForm.tsx",
+    "web/src/features/board/OrderForm.test.tsx",
+    "web/src/features/board/useOrderFormPlaces.ts",
+    "web/src/features/board/useOrderFormPlaces.test.ts",
+    "web/e2e/dispatcher.spec.ts"
+  ],
+  "files_touched": [
+    "web/src/features/board/OrderForm.tsx",
+    "web/src/features/board/OrderForm.test.tsx",
+    "web/src/features/board/useOrderFormPlaces.ts",
+    "web/src/features/board/useOrderFormPlaces.test.ts",
+    "web/e2e/dispatcher.spec.ts"
   ],
   "tests_added": 8,
-  "tests_passing": 8,
-  "coverage_delta": "+RideSheet.tsx (new presentational component, 8 behavior tests incl. axe)",
-  "red_observed": true,
-  "tsc": "no RideSheet errors (grep 'ridesheet' on tsc output => 0 hits). Full `npm run --prefix web tsc` currently reports 3 errors from CONCURRENT sibling WIs only: OfferCard.test.tsx (WI-2, unused afterEach + missing ./OfferCard) and DriverMapInner.test.tsx (WI-3, missing ./DriverMapInner). None touch RideSheet; out of this WI's scope.",
-  "lint": "pass (0 warnings) on RideSheet.tsx + RideSheet.test.tsx via `npx eslint --max-warnings 0`",
-  "verification": "vitest filter features/driver/ride/RideSheet -> exit 0 (1 file, 8 tests, fresh re-run)",
-  "verification_output": "vitest run features/driver/ride/RideSheet -> Test Files 1 passed (1), Tests 8 passed (8), EXIT 0",
-  "notes": "PRESENTATIONAL PROP CONTRACT (RideSheetProps, exactly per WI-4 AC#1 - NO open/expanded/onClose props; RideSheet owns open/expanded locally like TrackingSheet): { order: OrderDetailDto, noShowEnabled: boolean, noShowCountdownSeconds: number|null, etaMinutes: number|null, onArrive: () => void, onStart: () => void, onComplete: () => void, onNoShow: () => void, isPending: boolean, pendingCount: number, reconciledNote: boolean }. All four handlers are bare () => void - WI-5's runTransition wrapper binds order.id and owns useRideTransition/useActiveOrder/useQueuePendingCount + the 'stale'->reconciledNote logic; RideSheet just invokes onXxx on click (tests use plain vi.fn() spies). RideSheet calls NO transition/data hooks and imports NO api client (only the OrderDetailDto TYPE). BUTTON WIRING lifted verbatim from DriverRidePage: deriveRideButtons(order.status, noShowEnabled, noShowCountdownSeconds, hasDropoff) -> RideButton; handlePrimary routes arrive/start/complete by primaryAction; handleSecondary calls onNoShow for the noShow secondary. NAVIGATE HANDOFF (advisor-flagged duplicate-nav trap AVOIDED): NavHandoff is rendered as the real <a> gated on buttons.navAction==='navigate' && buttons.navLabel, AND RideButton receives {...buttons, navAction:null, navLabel:null} so its internal nav <button> is suppressed - exactly the DriverRidePage pattern; test asserts the anchor href directly (contains pickupLat 49.95 for Accepted, dropoffLat 49.96 for InProgress) rather than mocking buildNavUrl. Nav target computed via navToDropoff = status==='InProgress' && hasDropoff -> dropoff coords else pickup coords, labelKey from buttons.navLabel (driver.ride.navigate / driver.ride.navigateToDropoff). NOTE per rideButtonState (reused unchanged): 'Arrived' has navAction:null so NO Navigate button on Arrived - the AC prose 'pickup while Accepted/Arrived' is superseded by the derived state; matches DriverRidePage and test 2 (asserts only primary+no-show). ETA line keys off status: driver.ride.etaToDropoff for InProgress, driver.ride.etaToPickup otherwise; {{min}} interpolation param is 'min'; whole line omitted when etaMinutes==null (test 6). BOTTOMSHEET: wraps shared/ui/BottomSheet (ariaLabelKey='driver.ride.sheetLabel', open always true while mounted since parent only mounts RideSheet during an active ride, expanded via local useState). onClose is wired to setExpanded(false) - Escape COLLAPSES, never unmounts (ride controls persist); BottomSheet supplies role=dialog + i18n aria-label + focus-in-on-open + Escape + focus-restore + non-modal (Mapy logo reachable). Test 8 asserts the dialog persists after Escape (observable) + axe clean via the shared ../../../shared/test/axe helper (color-contrast disabled for jsdom). Touch targets inherited: RideButton PrimaryButton=theme.touchTargets.primary, NavHandoff/SecondaryButton=theme.touchTargets.min; PendingBadge (role=status) shown when pendingCount>0; reassigned banner role=alert t('driver.ride.reassigned') when reconciledNote. i18n: uses ONLY WI-1 keys (all present in cs-CZ: sheetLabel/etaToPickup/etaToDropoff/reassigned + existing navigate/navigateToDropoff/arrive/start/complete/noShow/noShowCountdown/pickup/dropoff/phone/note + queue.pending); ZERO locale JSON edits, no new keys. Money not rendered in RideSheet (price shown on complete page). Scope: ONLY RideSheet.tsx + RideSheet.test.tsx created; DriverRidePage/OfferCard/DriverMapInner/DriverMapScreen/router/DriverLayout/RideButton/NavHandoff/BottomSheet/locale JSONs untouched (WI-5 wires the hooks + removes DriverRidePage). Staged with explicit paths (git add web/src/features/driver/ride/RideSheet.tsx + .test.tsx); nothing committed. NOTE: overwrote a stale UC-016-era handoff-frontend-developer-WI-4.json (WI numbers repeat across UCs - documented collision in CLAUDE.md); UC-016 WI-4 detail recoverable from git history."
+  "tests_passing": 36,
+  "coverage_delta": "not measured (scoped run only; no coverage instrumentation invoked)",
+  "e2e_change": {
+    "file": "web/e2e/dispatcher.spec.ts",
+    "old_chip_name": "Vlakové nádraží Kolín",
+    "new_chip_name": "Nádraží Kolín",
+    "reason": "Chips now come from the fleet's configured Places (DevelopmentSeeder demo fleet, sortOrder 0). Only the chip-name reference + its comment were changed; the rest of the AC1 flow (phone fill, ASAP-default assertion, Enter submit, assign) is untouched."
+  },
+  "places_source": "New board-local hook web/src/features/board/useOrderFormPlaces.ts calls the shared client getPlaces() via useQuery({ queryKey: ['places'], queryFn: getPlaces, staleTime: 5*60_000 }). It maps only enabled Places (isEnabled) to chips (label=name, address, lat, lng) in the backend sortOrder. NO cross-feature import of settings' usePlaces (web-architecture #feature-folders). Chip click fills pickup address + lat/lng exactly as before (handleChipClick) so the create flow keeps pickup coords with no geo call.",
+  "fallback_behavior": "useOrderFormPlaces returns [...QUICK_CHIPS] whenever the enabled-Places list is empty (empty response, error, or not-yet-resolved first render). quickChips.ts is preserved and still exported as the fallback source (NOT deleted). This keeps chips present on the first synchronous render so the board never flickers an empty chip row.",
+  "i18n_requests": [],
+  "verification_output": {
+    "vitest": "npm run --prefix web test -- \"board/OrderForm\" \"board/useOrderFormPlaces\" => 3 files, 36 tests passed, exit 0 (incl. axe assertion + Places-switch + empty-fallback tests).",
+    "tsc": "npm run --prefix web tsc => 0 errors, exit 0.",
+    "lint": "npm run --prefix web lint => check:geo OK + eslint . --max-warnings 0 clean, exit 0."
+  },
+  "notes": "Restyled the dispatcher New-Order form onto the desk kit (Panel/PanelHeader titled board.form.title with board.form.hint in header meta; Ctrl+Lbl fields; DeskSegmented for Kdy; DeskButton primary submit with board.form.creating loading label; DeskPill 'Pevná' in the price card) AND switched the pickup quick chips from hardcoded QUICK_CHIPS to the fleet's Places via the new useOrderFormPlaces hook, with QUICK_CHIPS kept as the fallback. Phone+Jmeno on one row; Nastup with a pin leadingIcon; scheduled datetime Ctrl appears only when 'Na cas' is selected; Cestujici ~90px Ctrl type=number (renders as a spinbutton, matching the existing test). Kept useCreateOrder / useAddressSuggest / useRouteEstimate / orderFormSchema / phoneNormalization untouched. All board.form.validation.* messages and their display preserved. Price card: shows the estimate (20/700) + a 'Pevna' pill + 'km . min' line when useRouteEstimate returns estimatedPriceCzk (see judgment below); distance-only line when only distance is known; nothing until a route resolves. F2 focus + post-submit refocus now use document.getElementById('order-phone') because the desk Ctrl forwards no ref (deliberate; the id contract is unchanged and both e2e + unit tests rely on the id, not a ref). ALL required accessible handles preserved: ids order-phone/order-name/order-pickup/order-dropoff/order-passengers/order-note, submit button 'Vytvorit objednavku', ASAP as a DeskSegmented button named 'Co nejdrive' with aria-pressed (the e2e asserts this). ROLE CHANGE (in-scope, unit tests only): the pickup/dropoff address inputs are now proper comboboxes (role=combobox + aria-autocomplete + aria-expanded) - the previous plain-input-with-aria-expanded was an axe aria-allowed-attr violation the new axe test caught. The address fields render a board-local desk-styled control (AddrControl/AddrInput mirroring the Ctrl CSS vars) rather than Ctrl, because the committed desk Ctrl API Picks a fixed attribute set and cannot forward role/aria-autocomplete/aria-expanded/onKeyDown needed for the autosuggest combobox; the desk kit was NOT modified (out of scope). Unit queries for the two address fields were updated from getByRole('textbox') to getByRole('combobox') in OrderForm.test.tsx (the file I own); the e2e selects those fields by id (#order-pickup/#order-dropoff), never by role, so it is unaffected. RED observed first for the hook (missing module) and for the OrderForm Places-switch + axe tests before implementation. JUDGMENT recorded (not escalated): GeoRouteResponse has no fixed/estimate discriminator, so estimatedPriceCzk !== null is the only available signal for the 'Pevna' pill; SS3 pairs 'price + Pevna pill' as one unit, so showing the pill whenever a server price renders is the defensible reading.",
+  "reported_gaps": [
+    "DOUBLE TITLE (known residue, out of scope): web/src/features/board/BoardPage.tsx (~line 125) renders <ColumnHeader>{t('board.form.title')}</ColumnHeader> directly above <OrderForm/>. OrderForm now owns its own desk PanelHeader with the same title per spec SS3, so 'Nova objednavka' renders twice. BoardPage is committed (WI-3) and the WI-4 instructions forbid touching other board files, so this cannot be fixed here. Recommend removing the now-redundant ColumnHeader (still on legacy theme tokens, not desk vars) in a BoardPage follow-up pass.",
+    "'No scroll at 900px viewport height' and Lighthouse a11y >= 90 are design-intent checks not mechanically verifiable with the three verification commands; the layout was kept dense (phone+name one row, gap 10px, 40px controls) but not asserted in a test.",
+    "The board-local AddrControl/AddrInput duplicate the desk Ctrl's visual shell to gain combobox ARIA. If the desk Ctrl later grows a forwardRef + passthrough for role/aria-autocomplete/aria-expanded/onKeyDown, these could be replaced by Ctrl to remove the small duplication (desk-kit change, out of WI-4 scope)."
+  ],
+  "note_previous_file": "This filename previously held a stale UC-019 WI-4 handoff (handoff filenames are keyed on WI-<n> only and collide across UCs, per CLAUDE.md). Overwritten by UC-021 WI-4."
 }

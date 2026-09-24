@@ -218,7 +218,12 @@
       "submit": "Bestellung anlegen",
       "creating": "Wird angelegt...",
       "pickupPlaceholder": "Abholadresse eingeben",
-      "dropoffPlaceholder": "Zieladresse eingeben (optional)"
+      "dropoffPlaceholder": "Zieladresse eingeben (optional)",
+      "hint": "F2 · Enter sendet",
+      "scheduled": "Geplant",
+      "fixedPill": "Fest",
+      "distanceDuration": "{{km}} km · {{min}} min",
+      "placesFallbackNote": "Schnellauswahl"
     },
     "columns": {
       "orders": "Bestellungen",
@@ -239,7 +244,10 @@
       "fixedPriceBadge": "FEST {{price}} Kč",
       "estimatedPrice": "~{{price}} Kč",
       "elapsedTime": "{{sec}}s",
-      "elapsedTimeMin": "{{min}} min"
+      "elapsedTimeMin": "{{min}} min",
+      "noCoords": "Keine Koordinaten",
+      "smsFailed": "SMS fehlgeschlagen",
+      "waiting": "wartet {{time}}"
     },
     "actions": {
       "assign": "Zuweisen",
@@ -266,7 +274,9 @@
     "driverPicker": {
       "title": "Fahrer auswählen",
       "noDrivers": "Keine verfügbaren Fahrer",
-      "loading": "Fahrer werden geladen..."
+      "loading": "Fahrer werden geladen...",
+      "byDistance": "nach Entfernung",
+      "busy": "besetzt"
     },
     "conflict": "Die Bestellung wurde inzwischen von jemand anderem geändert"
   },
@@ -298,7 +308,10 @@
       "minutes": "vor {{n}} min"
     },
     "noOrderCode": "—",
-    "overrideError": "Beim Setzen des Status ist ein Fehler aufgetreten"
+    "overrideError": "Beim Setzen des Status ist ein Fehler aufgetreten",
+    "onlineSummary": "{{online}} / {{total}} online",
+    "mapHint": "Klicken Sie auf einen Fahrer, um ihn auf der Karte hervorzuheben.",
+    "menuLabel": "Fahreroptionen"
   },
   "map": {
     "loading": "Karte wird geladen...",

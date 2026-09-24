@@ -218,7 +218,12 @@
       "submit": "Create order",
       "creating": "Creating...",
       "pickupPlaceholder": "Enter pickup address",
-      "dropoffPlaceholder": "Enter dropoff address (optional)"
+      "dropoffPlaceholder": "Enter dropoff address (optional)",
+      "hint": "F2 · Enter submits",
+      "scheduled": "Scheduled",
+      "fixedPill": "Fixed",
+      "distanceDuration": "{{km}} km · {{min}} min",
+      "placesFallbackNote": "Quick pick"
     },
     "columns": {
       "orders": "Orders",
@@ -239,7 +244,10 @@
       "fixedPriceBadge": "FIXED {{price}} CZK",
       "estimatedPrice": "~{{price}} CZK",
       "elapsedTime": "{{sec}}s",
-      "elapsedTimeMin": "{{min}} min"
+      "elapsedTimeMin": "{{min}} min",
+      "noCoords": "No coordinates",
+      "smsFailed": "SMS failed",
+      "waiting": "waiting {{time}}"
     },
     "actions": {
       "assign": "Assign",
@@ -266,7 +274,9 @@
     "driverPicker": {
       "title": "Select driver",
       "noDrivers": "No available drivers",
-      "loading": "Loading drivers..."
+      "loading": "Loading drivers...",
+      "byDistance": "by distance",
+      "busy": "busy"
     },
     "conflict": "The order was changed by someone else"
   },
@@ -298,7 +308,10 @@
       "minutes": "{{n}} min ago"
     },
     "noOrderCode": "—",
-    "overrideError": "Failed to set status"
+    "overrideError": "Failed to set status",
+    "onlineSummary": "{{online}} / {{total}} online",
+    "mapHint": "Click a driver to highlight them on the map.",
+    "menuLabel": "Driver options"
   },
   "map": {
     "loading": "Loading map...",

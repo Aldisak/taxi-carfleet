@@ -218,7 +218,12 @@
       "submit": "Gumawa ng order",
       "creating": "Ginagawa...",
       "pickupPlaceholder": "Ilagay ang address ng pickup",
-      "dropoffPlaceholder": "Ilagay ang address ng destinasyon (opsyonal)"
+      "dropoffPlaceholder": "Ilagay ang address ng destinasyon (opsyonal)",
+      "hint": "F2 · Enter para isumite",
+      "scheduled": "Naka-iskedyul",
+      "fixedPill": "Fixed",
+      "distanceDuration": "{{km}} km · {{min}} min",
+      "placesFallbackNote": "Mabilis na pili"
     },
     "columns": {
       "orders": "Mga order",
@@ -239,7 +244,10 @@
       "fixedPriceBadge": "NAKATAKDA {{price}} Kč",
       "estimatedPrice": "~{{price}} Kč",
       "elapsedTime": "{{sec}}s",
-      "elapsedTimeMin": "{{min}} min"
+      "elapsedTimeMin": "{{min}} min",
+      "noCoords": "Walang coordinates",
+      "smsFailed": "Nabigo ang SMS",
+      "waiting": "naghihintay {{time}}"
     },
     "actions": {
       "assign": "Italaga",
@@ -266,7 +274,9 @@
     "driverPicker": {
       "title": "Pumili ng driver",
       "noDrivers": "Walang available na driver",
-      "loading": "Naglo-load ng mga driver..."
+      "loading": "Naglo-load ng mga driver...",
+      "byDistance": "ayon sa layo",
+      "busy": "abala"
     },
     "conflict": "Binago ng ibang tao ang order habang ginagawa mo"
   },
@@ -298,7 +308,10 @@
       "minutes": "{{n}} min na ang nakaraan"
     },
     "noOrderCode": "—",
-    "overrideError": "May naganap na error habang itinatakda ang estado"
+    "overrideError": "May naganap na error habang itinatakda ang estado",
+    "onlineSummary": "{{online}} / {{total}} online",
+    "mapHint": "I-click ang driver para i-highlight sa mapa.",
+    "menuLabel": "Mga opsyon ng driver"
   },
   "map": {
     "loading": "Naglo-load ng mapa...",

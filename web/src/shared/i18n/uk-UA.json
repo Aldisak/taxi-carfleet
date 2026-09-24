@@ -218,7 +218,12 @@
       "submit": "Створити замовлення",
       "creating": "Створення...",
       "pickupPlaceholder": "Введіть адресу посадки",
-      "dropoffPlaceholder": "Введіть адресу призначення (необов'язково)"
+      "dropoffPlaceholder": "Введіть адресу призначення (необов'язково)",
+      "hint": "F2 · Enter надішле",
+      "scheduled": "На час",
+      "fixedPill": "Фікс.",
+      "distanceDuration": "{{km}} км · {{min}} хв",
+      "placesFallbackNote": "Швидкий вибір"
     },
     "columns": {
       "orders": "Замовлення",
@@ -239,7 +244,10 @@
       "fixedPriceBadge": "ФІКС. {{price}} Kč",
       "estimatedPrice": "~{{price}} Kč",
       "elapsedTime": "{{sec}}с",
-      "elapsedTimeMin": "{{min}} хв"
+      "elapsedTimeMin": "{{min}} хв",
+      "noCoords": "Без координат",
+      "smsFailed": "SMS не надіслано",
+      "waiting": "чекає {{time}}"
     },
     "actions": {
       "assign": "Призначити",
@@ -266,7 +274,9 @@
     "driverPicker": {
       "title": "Виберіть водія",
       "noDrivers": "Немає доступних водіїв",
-      "loading": "Завантаження водіїв..."
+      "loading": "Завантаження водіїв...",
+      "byDistance": "за відстанню",
+      "busy": "зайнятий"
     },
     "conflict": "Замовлення тим часом змінив хтось інший"
   },
@@ -298,7 +308,10 @@
       "minutes": "{{n}} хв тому"
     },
     "noOrderCode": "—",
-    "overrideError": "Сталася помилка під час встановлення стану"
+    "overrideError": "Сталася помилка під час встановлення стану",
+    "onlineSummary": "{{online}} / {{total}} онлайн",
+    "mapHint": "Натисніть на водія, щоб виділити його на карті.",
+    "menuLabel": "Опції водія"
   },
   "map": {
     "loading": "Завантаження мапи...",

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { useCreateOrder, toCreateOrderRequest } from './useCreateOrder'
@@ -6,184 +6,230 @@ import { useHubConnectionState, isServerActionBlocked } from '../../shared/realt
 import { useAddressSuggest } from './useAddressSuggest'
 import { useRouteEstimate } from './useRouteEstimate'
 import { validateOrderForm } from './orderFormSchema'
-import { QUICK_CHIPS } from './quickChips'
+import { useOrderFormPlaces, type OrderFormChip } from './useOrderFormPlaces'
 import type { OrderFormValues, AddressField, OrderFormErrors } from './orderFormSchema'
 import type { GeoSuggestItem } from '../../shared/api/client'
 import { suggestionMeta } from '../../shared/geo/suggestionMeta'
+import { Panel, PanelHeader, Ctrl, Lbl, DeskButton, DeskSegmented, DeskPill } from '../../shared/ui/desk'
+// The address fields need combobox ARIA + keyboard handling the desk `Ctrl` API does not
+// expose (it Picks a fixed attribute set). They render a locally-styled control that mirrors
+// the `Ctrl` look via the same CSS custom properties — kept board-local to avoid changing the
+// committed desk kit.
+import { Icon } from '../../shared/ui/icons/Icon'
 
 // ---------------------------------------------------------------------------
-// Styled components
+// Styled components — dense desk layout (no scroll at 900px height)
 // ---------------------------------------------------------------------------
+
+const Wrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+`
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-  height: 100%;
+  gap: 10px;
+  min-height: 0;
   overflow-y: auto;
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.surface};
+  padding: 12px 14px;
 `
 
-const FieldGroup = styled.div`
+const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
 `
 
-const Label = styled.label`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
-  color: ${({ theme }) => theme.colors.textSecondary};
+const Row = styled.div`
+  display: flex;
+  gap: 10px;
 `
 
-const Input = styled.input`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  color: ${({ theme }) => theme.colors.text};
-  background: ${({ theme }) => theme.colors.surface};
-  width: 100%;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
-    border-color: ${({ theme }) => theme.colors.primary};
-  }
-
-  &[aria-invalid='true'] {
-    border-color: ${({ theme }) => theme.colors.error};
-  }
+const RowCol = styled.div<{ $grow?: number; $basis?: string }>`
+  flex: ${({ $grow }) => $grow ?? 1} 1 ${({ $basis }) => $basis ?? '0'};
+  min-width: 0;
 `
 
-const ErrorMsg = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ theme }) => theme.colors.error};
-  min-height: 16px;
+const Hint = styled.span`
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
 `
 
 const ChipsRow = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: ${({ theme }) => theme.spacing.xs};
-  margin-top: 2px;
+  gap: 6px;
+  margin-top: 6px;
 `
 
-const Chip = styled.button`
-  padding: 2px ${({ theme }) => theme.spacing.xs};
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
-  background: ${({ theme }) => theme.colors.background};
-  color: ${({ theme }) => theme.colors.text};
-  cursor: pointer;
+const PlaceChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--dur-press);
 
   &:hover {
-    background: ${({ theme }) => theme.colors.primary};
-    color: #fff;
-    border-color: ${({ theme }) => theme.colors.primary};
+    color: var(--ink);
+    border-color: var(--line-strong);
   }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`
+
+const AddrControl = styled.div<{ $hasError: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: ${({ $hasError }) => ($hasError ? '2px solid var(--danger)' : '1px solid var(--line)')};
+
+  &:focus-within {
+    background: var(--surface);
+    border: ${({ $hasError }) => ($hasError ? '2px solid var(--danger)' : '2px solid var(--ink)')};
+  }
+`
+
+const AddrIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-3);
+`
+
+const AddrInput = styled.input`
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-regular);
+  color: var(--ink);
+
+  &::placeholder {
+    color: var(--ink-3);
+  }
+`
+
+const AddrError = styled.small`
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--danger);
 `
 
 const SuggestList = styled.ul`
   list-style: none;
   margin: 0;
-  padding: 0;
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ theme }) => theme.colors.surface};
-  box-shadow: ${({ theme }) => theme.shadows.md};
-  max-height: 160px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+  max-height: 180px;
   overflow-y: auto;
   position: absolute;
   left: 0;
   right: 0;
+  top: 100%;
   z-index: 100;
 `
 
 const SuggestItem = styled.li<{ $highlighted: boolean }>`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-body);
   cursor: pointer;
-  background: ${({ $highlighted, theme }) => ($highlighted ? theme.colors.primary : 'transparent')};
-  color: ${({ $highlighted, theme }) => ($highlighted ? '#fff' : theme.colors.text)};
+  color: ${({ $highlighted }) => ($highlighted ? 'var(--on-accent)' : 'var(--ink)')};
+  background: ${({ $highlighted }) => ($highlighted ? 'var(--accent)' : 'transparent')};
 
   &:hover {
-    background: ${({ theme }) => theme.colors.primary};
-    color: #fff;
+    background: var(--accent);
+    color: var(--on-accent);
   }
 `
 
 const SuggestMeta = styled.span<{ $highlighted: boolean }>`
   display: block;
-  font-size: ${({ theme }) => theme.typography.fontSizeXs};
-  color: ${({ $highlighted, theme }) => ($highlighted ? '#fff' : theme.colors.textSecondary)};
+  font-size: var(--fs-caption);
+  color: ${({ $highlighted }) => ($highlighted ? 'var(--on-accent)' : 'var(--ink-3)')};
 `
 
-const WhenRow = styled.div`
+const PriceCardBox = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
   align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
 `
 
-const AsapToggle = styled.button<{ $active: boolean }>`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  border: 1px solid ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.border)};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  background: ${({ $active, theme }) => ($active ? theme.colors.primary : 'transparent')};
-  color: ${({ $active }) => ($active ? '#fff' : 'inherit')};
-  cursor: pointer;
-  flex-shrink: 0;
+const PriceValue = styled.span`
+  font-size: 20px;
+  font-weight: var(--fw-extra);
+  color: var(--ink);
 `
 
-const PricePreview = styled.div`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  padding: ${({ theme }) => theme.spacing.xs} 0;
-  min-height: 20px;
+const PriceMeta = styled.span`
+  margin-left: auto;
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
 `
 
-const SubmitBtn = styled.button`
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #fff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  cursor: pointer;
-  width: 100%;
-  margin-top: ${({ theme }) => theme.spacing.sm};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primaryDark};
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
+const PricePlaceholder = styled.span`
+  font-size: var(--fs-body);
+  color: var(--ink-3);
 `
 
 // ---------------------------------------------------------------------------
-// Address autocomplete sub-component
+// Address autocomplete sub-component (desk-styled Ctrl + suggestion popover)
 // ---------------------------------------------------------------------------
 
 interface AddressInputProps {
   id: string
   label: string
   value: string
+  placeholder?: string
+  leadingIcon?: React.ReactNode
   onChange: (val: string) => void
   onSelect: (item: GeoSuggestItem) => void
   onClear: () => void
   error?: string
-  'aria-label'?: string
 }
 
-function AddressInput({ id, label, value, onChange, onSelect, onClear, error }: AddressInputProps) {
+function AddressInput({
+  id,
+  label,
+  value,
+  placeholder,
+  leadingIcon,
+  onChange,
+  onSelect,
+  onClear,
+  error,
+}: AddressInputProps) {
   const { items, clear } = useAddressSuggest(value)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
 
@@ -213,55 +259,63 @@ function AddressInput({ id, label, value, onChange, onSelect, onClear, error }: 
     }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setHighlightedIndex(-1)
-    onChange(e.target.value)
-  }
-
   function handleItemClick(item: GeoSuggestItem) {
     onSelect(item)
     clear()
     setHighlightedIndex(-1)
   }
 
+  const hasError = error !== undefined && error !== ''
+  const errorId = `${id}-error`
+
   return (
-    <div style={{ position: 'relative' }}>
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type="text"
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        aria-label={label}
-        aria-invalid={!!error}
-        aria-autocomplete="list"
-        aria-expanded={items.length > 0}
-        autoComplete="off"
-      />
-      {error && <ErrorMsg role="alert">{error}</ErrorMsg>}
-      {items.length > 0 && (
-        <SuggestList role="listbox">
-          {items.map((item, i) => {
-            const meta = suggestionMeta(item)
-            return (
-              <SuggestItem
-                key={`${item.lat}-${item.lng}`}
-                role="option"
-                aria-selected={i === highlightedIndex}
-                $highlighted={i === highlightedIndex}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  handleItemClick(item)
-                }}
-              >
-                <span>{item.name}</span>
-                {meta && <SuggestMeta $highlighted={i === highlightedIndex}>{meta}</SuggestMeta>}
-              </SuggestItem>
-            )
-          })}
-        </SuggestList>
-      )}
+    <div>
+      <Lbl htmlFor={id}>{label}</Lbl>
+      <div style={{ position: 'relative' }}>
+        <AddrControl $hasError={hasError}>
+          {leadingIcon && <AddrIcon aria-hidden="true">{leadingIcon}</AddrIcon>}
+          <AddrInput
+            id={id}
+            type="text"
+            value={value}
+            placeholder={placeholder}
+            autoComplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={items.length > 0}
+            aria-invalid={hasError || undefined}
+            aria-describedby={hasError ? errorId : undefined}
+            onChange={(e) => {
+              setHighlightedIndex(-1)
+              onChange(e.target.value)
+            }}
+            onKeyDown={handleKeyDown}
+          />
+        </AddrControl>
+        {hasError && <AddrError id={errorId} role="alert">{error}</AddrError>}
+        {items.length > 0 && (
+          <SuggestList role="listbox">
+            {items.map((item, i) => {
+              const meta = suggestionMeta(item)
+              return (
+                <SuggestItem
+                  key={`${item.lat}-${item.lng}`}
+                  role="option"
+                  aria-selected={i === highlightedIndex}
+                  $highlighted={i === highlightedIndex}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    handleItemClick(item)
+                  }}
+                >
+                  <span>{item.name}</span>
+                  {meta && <SuggestMeta $highlighted={i === highlightedIndex}>{meta}</SuggestMeta>}
+                </SuggestItem>
+              )
+            })}
+          </SuggestList>
+        )}
+      </div>
     </div>
   )
 }
@@ -288,11 +342,11 @@ export interface OrderFormProps {
 /** The dispatcher's New Order form — left column of the board. */
 export function OrderForm({ onOrderCreated }: OrderFormProps) {
   const { t } = useTranslation()
-  const phoneRef = useRef<HTMLInputElement>(null)
   const [values, setValues] = useState<OrderFormValues>(INITIAL_VALUES)
   const [errors, setErrors] = useState<OrderFormErrors>({})
   const [submitted, setSubmitted] = useState(false)
 
+  const chips = useOrderFormPlaces()
   const createOrder = useCreateOrder()
   const connectionState = useHubConnectionState()
   const blocked = isServerActionBlocked(connectionState)
@@ -304,12 +358,17 @@ export function OrderForm({ onOrderCreated }: OrderFormProps) {
     toLng: values.dropoff.lng,
   })
 
+  const focusPhone = () => {
+    const el = document.getElementById('order-phone') as HTMLInputElement | null
+    el?.focus()
+  }
+
   // F2 focus handler — registered at window level
   useEffect(() => {
     function handleF2(e: KeyboardEvent) {
       if (e.key === 'F2') {
         e.preventDefault()
-        phoneRef.current?.focus()
+        focusPhone()
       }
     }
     window.addEventListener('keydown', handleF2)
@@ -345,7 +404,7 @@ export function OrderForm({ onOrderCreated }: OrderFormProps) {
       setSubmitted(false)
       onOrderCreated?.()
       // Slight delay to ensure React has re-rendered before focusing
-      setTimeout(() => phoneRef.current?.focus(), 0)
+      setTimeout(focusPhone, 0)
     } catch {
       // Mutation error handled by TanStack Query; form is not cleared
     }
@@ -360,7 +419,7 @@ export function OrderForm({ onOrderCreated }: OrderFormProps) {
     }
   }
 
-  function handleChipClick(chip: typeof QUICK_CHIPS[number]) {
+  function handleChipClick(chip: OrderFormChip) {
     setAddressField('pickup', {
       address: chip.address,
       lat: chip.lat,
@@ -376,152 +435,196 @@ export function OrderForm({ onOrderCreated }: OrderFormProps) {
     }
   }, [values, submitted])
 
+  const priceCard = (() => {
+    const km = routeEstimate.distanceMeters !== null
+      ? (routeEstimate.distanceMeters / 1000).toFixed(1)
+      : null
+    const min = routeEstimate.durationSeconds !== null
+      ? Math.round(routeEstimate.durationSeconds / 60)
+      : null
+
+    if (routeEstimate.estimatedPriceCzk !== null) {
+      return (
+        <PriceCardBox aria-live="polite">
+          <PriceValue>{t('board.form.pricePreview', { price: routeEstimate.estimatedPriceCzk })}</PriceValue>
+          <DeskPill tone="accent">{t('board.form.fixedPill')}</DeskPill>
+          {km !== null && (
+            <PriceMeta>
+              {min !== null
+                ? t('board.form.distanceDuration', { km, min })
+                : t('board.form.distanceOnly', { km })}
+            </PriceMeta>
+          )}
+        </PriceCardBox>
+      )
+    }
+
+    if (km !== null) {
+      return (
+        <PriceCardBox aria-live="polite">
+          <PricePlaceholder>
+            {min !== null
+              ? t('board.form.distanceDuration', { km, min })
+              : t('board.form.distanceOnly', { km })}
+          </PricePlaceholder>
+        </PriceCardBox>
+      )
+    }
+
+    return null
+  })()
+
   return (
-    <Form onSubmit={(e) => { void handleSubmit(e) }} onKeyDown={handleKeyDown} noValidate>
-      {/* Phone */}
-      <FieldGroup>
-        <Label htmlFor="order-phone">{t('board.form.phone')}</Label>
-        <Input
-          id="order-phone"
-          ref={phoneRef}
-          type="tel"
-          value={values.phone}
-          onChange={e => setField('phone', e.target.value)}
-          aria-label={t('board.form.phone')}
-          aria-invalid={!!errors.phone}
-          aria-required="true"
-          autoComplete="tel"
-        />
-        {errors.phone && <ErrorMsg role="alert">{t(errors.phone)}</ErrorMsg>}
-      </FieldGroup>
+    <Panel>
+      <Wrap>
+        <PanelHeader title={t('board.form.title')} right={<Hint>{t('board.form.hint')}</Hint>} />
+        <Form onSubmit={(e) => { void handleSubmit(e) }} onKeyDown={handleKeyDown} noValidate>
+          {/* Phone + Name on one row */}
+          <Row>
+            <RowCol>
+              <Field>
+                <Lbl htmlFor="order-phone">{t('board.form.phone')}</Lbl>
+                <Ctrl
+                  id="order-phone"
+                  type="tel"
+                  value={values.phone}
+                  onChange={(v) => setField('phone', v)}
+                  error={errors.phone ? t(errors.phone) : undefined}
+                  autoComplete="tel"
+                />
+              </Field>
+            </RowCol>
+            <RowCol>
+              <Field>
+                <Lbl htmlFor="order-name">{t('board.form.name')}</Lbl>
+                <Ctrl
+                  id="order-name"
+                  type="text"
+                  value={values.name}
+                  onChange={(v) => setField('name', v)}
+                  autoComplete="off"
+                />
+              </Field>
+            </RowCol>
+          </Row>
 
-      {/* Name */}
-      <FieldGroup>
-        <Label htmlFor="order-name">{t('board.form.name')}</Label>
-        <Input
-          id="order-name"
-          type="text"
-          value={values.name}
-          onChange={e => setField('name', e.target.value)}
-          aria-label={t('board.form.name')}
-          autoComplete="off"
-        />
-      </FieldGroup>
+          {/* Pickup + Places chips */}
+          <Field>
+            <AddressInput
+              id="order-pickup"
+              label={t('board.form.pickup')}
+              value={values.pickup.address}
+              placeholder={t('board.form.pickupPlaceholder')}
+              leadingIcon={<Icon name="pin" size={16} />}
+              onChange={val => setAddressField('pickup', { address: val, lat: null, lng: null })}
+              onSelect={item =>
+                setAddressField('pickup', { address: item.name, lat: item.lat, lng: item.lng })
+              }
+              onClear={() => setAddressField('pickup', { address: '', lat: null, lng: null })}
+              error={errors.pickup ? t(errors.pickup) : undefined}
+            />
+            <ChipsRow aria-label={t('board.form.placesFallbackNote')}>
+              {chips.map(chip => (
+                <PlaceChip
+                  key={chip.label}
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => handleChipClick(chip)}
+                >
+                  {chip.label}
+                </PlaceChip>
+              ))}
+            </ChipsRow>
+          </Field>
 
-      {/* Pickup */}
-      <FieldGroup>
-        <AddressInput
-          id="order-pickup"
-          label={t('board.form.pickup')}
-          value={values.pickup.address}
-          onChange={val => setAddressField('pickup', { address: val, lat: null, lng: null })}
-          onSelect={item =>
-            setAddressField('pickup', { address: item.name, lat: item.lat, lng: item.lng })
-          }
-          onClear={() => setAddressField('pickup', { address: '', lat: null, lng: null })}
-          error={errors.pickup ? t(errors.pickup) : undefined}
-        />
-        <ChipsRow>
-          {QUICK_CHIPS.map(chip => (
-            <Chip
-              key={chip.label}
-              type="button"
-              tabIndex={-1}
-              aria-label={chip.label}
-              onClick={() => handleChipClick(chip)}
-            >
-              {chip.label}
-            </Chip>
-          ))}
-        </ChipsRow>
-      </FieldGroup>
+          {/* Dropoff */}
+          <Field>
+            <AddressInput
+              id="order-dropoff"
+              label={t('board.form.dropoff')}
+              value={values.dropoff.address}
+              placeholder={t('board.form.dropoffPlaceholder')}
+              onChange={val => setAddressField('dropoff', { address: val, lat: null, lng: null })}
+              onSelect={item =>
+                setAddressField('dropoff', { address: item.name, lat: item.lat, lng: item.lng })
+              }
+              onClear={() => setAddressField('dropoff', { address: '', lat: null, lng: null })}
+            />
+          </Field>
 
-      {/* Dropoff */}
-      <FieldGroup>
-        <AddressInput
-          id="order-dropoff"
-          label={t('board.form.dropoff')}
-          value={values.dropoff.address}
-          onChange={val => setAddressField('dropoff', { address: val, lat: null, lng: null })}
-          onSelect={item =>
-            setAddressField('dropoff', { address: item.name, lat: item.lat, lng: item.lng })
-          }
-          onClear={() => setAddressField('dropoff', { address: '', lat: null, lng: null })}
-        />
-      </FieldGroup>
+          {/* When + Passengers */}
+          <Row>
+            <RowCol $grow={1}>
+              <Field>
+                <Lbl htmlFor="order-when">{t('board.form.when')}</Lbl>
+                <div id="order-when">
+                  <DeskSegmented
+                    ariaLabel={t('board.form.when')}
+                    value={values.asap ? 'asap' : 'scheduled'}
+                    onChange={(v) => setField('asap', v === 'asap')}
+                    options={[
+                      { value: 'asap', label: t('board.form.asap') },
+                      { value: 'scheduled', label: t('board.form.scheduled') },
+                    ]}
+                  />
+                </div>
+              </Field>
+            </RowCol>
+            <RowCol $grow={0} $basis="90px">
+              <Field>
+                <Lbl htmlFor="order-passengers">{t('board.form.passengers')}</Lbl>
+                <Ctrl
+                  id="order-passengers"
+                  type="number"
+                  value={String(values.passengers)}
+                  onChange={(v) => setField('passengers', Math.max(1, parseInt(v, 10) || 1))}
+                  error={errors.passengers ? t(errors.passengers) : undefined}
+                  inputMode="numeric"
+                />
+              </Field>
+            </RowCol>
+          </Row>
 
-      {/* When */}
-      <FieldGroup>
-        <Label>{t('board.form.when')}</Label>
-        <WhenRow>
-          <AsapToggle
-            type="button"
-            $active={values.asap}
-            onClick={() => setField('asap', true)}
-            aria-pressed={values.asap}
+          {/* Scheduled datetime — only when "Na čas" is selected */}
+          {!values.asap && (
+            <Field>
+              <Lbl htmlFor="order-scheduled-at">{t('board.form.scheduledAt')}</Lbl>
+              <Ctrl
+                id="order-scheduled-at"
+                type="datetime-local"
+                value={values.scheduledAt}
+                onChange={(v) => setField('scheduledAt', v)}
+                error={errors.scheduledAt ? t(errors.scheduledAt) : undefined}
+              />
+            </Field>
+          )}
+
+          {/* Note */}
+          <Field>
+            <Lbl htmlFor="order-note">{t('board.form.note')}</Lbl>
+            <Ctrl
+              id="order-note"
+              type="text"
+              value={values.note}
+              onChange={(v) => setField('note', v)}
+            />
+          </Field>
+
+          {/* Price preview card (F-03) */}
+          {priceCard}
+
+          {/* Submit */}
+          <DeskButton
+            type="submit"
+            variant="primary"
+            disabled={blocked}
+            loading={createOrder.isPending}
+            loadingLabel={t('board.form.creating')}
           >
-            {t('board.form.asap')}
-          </AsapToggle>
-          <Input
-            type="datetime-local"
-            value={values.scheduledAt}
-            onChange={e => {
-              setField('asap', false)
-              setField('scheduledAt', e.target.value)
-            }}
-            aria-label={t('board.form.scheduledAt')}
-            aria-invalid={!!errors.scheduledAt}
-            style={{ flex: 1 }}
-          />
-        </WhenRow>
-        {errors.scheduledAt && <ErrorMsg role="alert">{t(errors.scheduledAt)}</ErrorMsg>}
-      </FieldGroup>
-
-      {/* Passengers */}
-      <FieldGroup>
-        <Label htmlFor="order-passengers">{t('board.form.passengers')}</Label>
-        <Input
-          id="order-passengers"
-          type="number"
-          min={1}
-          max={99}
-          value={values.passengers}
-          onChange={e => setField('passengers', Math.max(1, parseInt(e.target.value, 10) || 1))}
-          aria-label={t('board.form.passengers')}
-          aria-invalid={!!errors.passengers}
-          style={{ width: '80px' }}
-        />
-        {errors.passengers && <ErrorMsg role="alert">{t(errors.passengers)}</ErrorMsg>}
-      </FieldGroup>
-
-      {/* Note */}
-      <FieldGroup>
-        <Label htmlFor="order-note">{t('board.form.note')}</Label>
-        <Input
-          as="input"
-          id="order-note"
-          type="text"
-          value={values.note}
-          onChange={e => setField('note', e.target.value)}
-          aria-label={t('board.form.note')}
-        />
-      </FieldGroup>
-
-      {/* Price preview (F-03) */}
-      <PricePreview aria-live="polite">
-        {routeEstimate.estimatedPriceCzk !== null
-          ? t('board.form.pricePreview', { price: routeEstimate.estimatedPriceCzk })
-          : routeEstimate.distanceMeters !== null
-            ? t('board.form.distanceOnly', {
-                km: (routeEstimate.distanceMeters / 1000).toFixed(1),
-              })
-            : null}
-      </PricePreview>
-
-      {/* Submit */}
-      <SubmitBtn type="submit" disabled={createOrder.isPending || blocked}>
-        {createOrder.isPending ? t('board.form.creating') : t('board.form.submit')}
-      </SubmitBtn>
-    </Form>
+            {t('board.form.submit')}
+          </DeskButton>
+        </Form>
+      </Wrap>
+    </Panel>
   )
 }

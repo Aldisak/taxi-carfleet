@@ -63,12 +63,13 @@
       "id": "WI-4",
       "lane": "web",
       "title": "OrderForm restyle + Places-driven chips + price preview card (e2e chip-name contract change)",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-2b"
       ],
       "files_scope": "web/src/features/board/OrderForm* + web/e2e/dispatcher.spec.ts",
-      "non_presentational": true
+      "non_presentational": true,
+      "note": "DONE committed: order form on desk kit; chips from fleet Places (useOrderFormPlaces, queryKey ['places']) with QUICK_CHIPS fallback; e2e chip 'Vlakové nádraží Kolín'->'Nádraží Kolín'; address inputs now comboboxes; 36 tests + axe. Conductor removed BoardPage double-title ColumnHeader."
     },
     {
       "id": "WI-5",

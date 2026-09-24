@@ -218,7 +218,12 @@
       "submit": "Vytvořit objednávku",
       "creating": "Vytváří se...",
       "pickupPlaceholder": "Zadejte adresu nástupu",
-      "dropoffPlaceholder": "Zadejte adresu cíle (volitelné)"
+      "dropoffPlaceholder": "Zadejte adresu cíle (volitelné)",
+      "hint": "F2 · Enter odešle",
+      "scheduled": "Na čas",
+      "fixedPill": "Pevná",
+      "distanceDuration": "{{km}} km · {{min}} min",
+      "placesFallbackNote": "Rychlý výběr"
     },
     "columns": {
       "orders": "Objednávky",
@@ -239,7 +244,10 @@
       "fixedPriceBadge": "PEVNÁ {{price}} Kč",
       "estimatedPrice": "~{{price}} Kč",
       "elapsedTime": "{{sec}}s",
-      "elapsedTimeMin": "{{min}} min"
+      "elapsedTimeMin": "{{min}} min",
+      "noCoords": "Bez souřadnic",
+      "smsFailed": "SMS selhala",
+      "waiting": "čeká {{time}}"
     },
     "actions": {
       "assign": "Přiřadit",
@@ -266,7 +274,9 @@
     "driverPicker": {
       "title": "Vyberte řidiče",
       "noDrivers": "Žádní dostupní řidiči",
-      "loading": "Načítám řidiče..."
+      "loading": "Načítám řidiče...",
+      "byDistance": "podle vzdálenosti",
+      "busy": "obsazen"
     },
     "conflict": "Objednávku mezitím změnil někdo jiný"
   },
@@ -298,7 +308,10 @@
       "minutes": "před {{n}} min"
     },
     "noOrderCode": "—",
-    "overrideError": "Nastala chyba při nastavení stavu"
+    "overrideError": "Nastala chyba při nastavení stavu",
+    "onlineSummary": "{{online}} / {{total}} online",
+    "mapHint": "Kliknutím na řidiče ho zvýrazníte na mapě.",
+    "menuLabel": "Možnosti řidiče"
   },
   "map": {
     "loading": "Načítám mapu...",

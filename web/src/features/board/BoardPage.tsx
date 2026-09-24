@@ -120,9 +120,8 @@ export function BoardPage() {
 
   return (
     <BoardShell $showMap={showMap} $wideMap={false}>
-      {/* Left column — New order form */}
+      {/* Left column — New order form (OrderForm renders its own Panel header) */}
       <LeftColumn>
-        <ColumnHeader>{t('board.form.title')}</ColumnHeader>
         <OrderForm />
       </LeftColumn>
 

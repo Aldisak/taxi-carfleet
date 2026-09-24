@@ -6,6 +6,7 @@ import { ThemeProvider } from 'styled-components'
 import { I18nextProvider } from 'react-i18next'
 import { theme } from '../../shared/theme/theme'
 import i18n from '../../shared/i18n'
+import { axe } from '../../shared/test/axe'
 import { OrderForm } from './OrderForm'
 
 // Mock the hub connection state so forms are not blocked by default in tests
@@ -25,6 +26,7 @@ vi.mock('../../shared/api/client', async (importOriginal) => {
     getGeoSuggest: vi.fn().mockResolvedValue({ items: [] }),
     getGeoRoute: vi.fn().mockResolvedValue({ distanceMeters: 0, durationSeconds: 0, estimatedPriceCzk: null }),
     postCreateOrder: vi.fn().mockResolvedValue({ id: 'new-order-id' }),
+    getPlaces: vi.fn().mockResolvedValue([]),
   }
 })
 
@@ -53,8 +55,8 @@ describe('OrderForm — field order and tab stops', () => {
     // Verify fields exist
     expect(screen.getByRole('textbox', { name: /telefon/i })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /jméno/i })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: /nástup/i })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: /cíl/i })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /nástup/i })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /cíl/i })).toBeInTheDocument()
     expect(screen.getByRole('spinbutton', { name: /cestující/i })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /poznámka/i })).toBeInTheDocument()
   })
@@ -81,12 +83,69 @@ describe('OrderForm — quick chip fill', () => {
     await user.click(chips[0])
 
     // Pickup field should be filled
-    const pickupField = screen.getByRole('textbox', { name: /nástup/i })
+    const pickupField = screen.getByRole('combobox', { name: /nástup/i })
     expect(pickupField).toHaveValue()
     expect((pickupField as HTMLInputElement).value.length).toBeGreaterThan(0)
 
     // No geo/suggest call should have been made (chip provides coords directly)
     expect(getGeoSuggest).not.toHaveBeenCalled()
+  })
+})
+
+describe('OrderForm — quick chips from fleet Places (WI-4)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('renders quick chips from the fleet Places data, not the hardcoded list', async () => {
+    const { getPlaces } = await import('../../shared/api/client')
+    vi.mocked(getPlaces).mockResolvedValue([
+      { id: 'p1', name: 'Nádraží Kolín', address: 'Nádraží, Kolín', lat: 50.0281, lng: 15.2006, sortOrder: 0, isEnabled: true },
+    ] as never)
+
+    renderForm()
+
+    // The Place name renders as a chip button…
+    expect(await screen.findByRole('button', { name: 'Nádraží Kolín' })).toBeInTheDocument()
+    // …and the hardcoded QUICK_CHIPS label is gone.
+    expect(screen.queryByRole('button', { name: 'Vlakové nádraží Kolín' })).not.toBeInTheDocument()
+  })
+
+  it('clicking a Places chip fills pickup with the place coordinates (no geo call)', async () => {
+    const user = userEvent.setup()
+    const { getPlaces, getGeoSuggest } = await import('../../shared/api/client')
+    vi.mocked(getPlaces).mockResolvedValue([
+      { id: 'p1', name: 'Nádraží Kolín', address: 'Nádraží, Kolín', lat: 50.0281, lng: 15.2006, sortOrder: 0, isEnabled: true },
+    ] as never)
+
+    renderForm()
+
+    await user.click(await screen.findByRole('button', { name: 'Nádraží Kolín' }))
+
+    const pickupField = screen.getByRole('combobox', { name: /nástup/i }) as HTMLInputElement
+    expect(pickupField.value.length).toBeGreaterThan(0)
+    expect(getGeoSuggest).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the hardcoded QUICK_CHIPS when the Places query is empty', async () => {
+    const { getPlaces } = await import('../../shared/api/client')
+    vi.mocked(getPlaces).mockResolvedValue([] as never)
+
+    renderForm()
+
+    // The hardcoded chip is present as the fallback source.
+    expect(await screen.findByRole('button', { name: 'Vlakové nádraží Kolín' })).toBeInTheDocument()
+  })
+})
+
+describe('OrderForm — accessibility', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('has no axe violations', async () => {
+    const { container } = renderForm()
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
 
@@ -107,7 +166,7 @@ describe('OrderForm — enriched suggestions (AC#2)', () => {
 
     renderForm()
 
-    await user.type(screen.getByRole('textbox', { name: /nástup/i }), 'Náměstí')
+    await user.type(screen.getByRole('combobox', { name: /nástup/i }), 'Náměstí')
 
     // The town is part of each option's accessible name (plain text, not aria-hidden).
     const kolin = await screen.findByRole('option', { name: /kolín/i })
