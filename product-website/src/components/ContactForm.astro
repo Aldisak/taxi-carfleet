@@ -1,10 +1,12 @@
 ---
 // Contact section (reference #contact): copy-number button + 5-field form with
 // client-side validation, clipboard copy (with range-selection fallback) and a
-// toast. Ports the reference <script> (lines 708-727) MINUS the language toggle
-// (routing replaces it). Toast/validation strings pass to the scoped script via
-// define:vars (Astro scoped scripts cannot read props otherwise). The submit is
-// a demo stub — no real network call.
+// toast. The client behaviour lives in ../scripts/contactForm.ts, imported by the
+// processed <script> below so Astro bundles it into an EXTERNAL same-origin
+// /_astro/*.js file — required under the apex site's strict CSP (`script-src
+// 'self'`, infra/Caddyfile) that blocks inline scripts. Toast/validation strings
+// pass via the `.contact` element's `data-contact-messages` JSON attribute
+// (CSP-safe) instead of `define:vars`. The submit is a demo stub — no network call.
 import Button from './Button.astro'
 import FormField from './FormField.astro'
 
@@ -53,7 +55,7 @@ const {
 } = Astro.props
 ---
 
-<div class="contact">
+<div class="contact" data-contact-messages={JSON.stringify(messages)}>
   <div class="contact-copy">
     <span class="eyebrow">{eyebrow}</span>
     <h2 class="h-section">{title}</h2>
@@ -101,71 +103,8 @@ const {
   </form>
 </div>
 
-<script is:inline define:vars={{ messages }}>
-  ;(function () {
-    var MSG = messages
-    function toast(t) {
-      var el = document.createElement('div')
-      el.className = 'toast'
-      el.textContent = t
-      el.setAttribute('role', 'status')
-      document.body.appendChild(el)
-      setTimeout(function () {
-        el.remove()
-      }, 2200)
-    }
-    var copyBtn = document.getElementById('copy-phone')
-    if (copyBtn) {
-      copyBtn.addEventListener('click', function () {
-        var num = document.getElementById('phone-number')
-        var text = num.textContent
-        function fallback() {
-          var r = document.createRange()
-          r.selectNodeContents(num)
-          var sel = window.getSelection()
-          sel.removeAllRanges()
-          sel.addRange(r)
-          toast(MSG.copyFail)
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText)
-          navigator.clipboard.writeText(text).then(function () {
-            toast(MSG.copied)
-          }, fallback)
-        else fallback()
-      })
-    }
-
-    var form = document.getElementById('contact-form'),
-      msg = document.getElementById('form-msg'),
-      submit = document.getElementById('f-submit')
-    if (form) {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault()
-        var name = document.getElementById('f-name').value.trim(),
-          phone = document.getElementById('f-phone').value.trim()
-        msg.hidden = false
-        document.getElementById('f-name').setAttribute('aria-invalid', !name)
-        document.getElementById('f-phone').setAttribute('aria-invalid', !phone)
-        if (!name || !phone) {
-          msg.className = 'callout err'
-          msg.textContent = MSG.req
-          ;(!name ? document.getElementById('f-name') : document.getElementById('f-phone')).focus()
-          return
-        }
-        var label = submit.textContent
-        submit.textContent = MSG.sending
-        submit.disabled = true
-        // Demo shell: wire this to your API (e.g. POST /api/v1/public/leads) before launch.
-        setTimeout(function () {
-          msg.className = 'callout ok'
-          msg.textContent = MSG.ok
-          submit.textContent = label
-          submit.disabled = false
-          form.reset()
-        }, 600)
-      })
-    }
-  })()
+<script>
+  import '../scripts/contactForm.ts'
 </script>
 
 <style>

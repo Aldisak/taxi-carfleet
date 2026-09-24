@@ -153,6 +153,7 @@ const composeTierLabel = (titleKey: string, carsKey: string): string =>
   `${tr(titleKey)} · ${tr(carsKey)}`
 
 const calcScriptVars: CalcScriptVars = {
+  locale,
   tierLabels: {
     small: composeTierLabel('tier.small', 'tier.smallCars'),
     medium: composeTierLabel('tier.medium', 'tier.mediumCars'),
