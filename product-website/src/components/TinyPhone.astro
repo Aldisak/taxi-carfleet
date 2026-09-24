@@ -1,0 +1,131 @@
+---
+// Brand-band tiny phone (reference #brand .tiny.a/.b/.c). Three colour variants
+// via the `variant` prop; copy via props. Decorative — parent .trio is aria-hidden.
+interface Props {
+  variant: 'a' | 'b' | 'c'
+  fleet: string
+  route: string
+  price: string
+  order: string
+  orderPrice: string
+}
+
+const { variant, fleet, route, price, order, orderPrice } = Astro.props
+---
+
+<div class:list={['tiny', variant]}>
+  <div class="sc">
+    <span class="fc"><i></i>{fleet}</span>
+    <div class="sh">
+      <b>{route}</b>
+      <span class="pr" set:html={price}></span>
+      <span class="bt"><span>{order}</span><span set:html={orderPrice}></span></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tiny {
+    --accent: #ad4f09;
+    width: 118px;
+    height: 210px;
+    border-radius: 22px;
+    background: #0e0e0e;
+    padding: 6px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    flex: none;
+  }
+  .tiny .sc {
+    height: 100%;
+    border-radius: 17px;
+    background: #f3f3f1;
+    color: #141414;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    position: relative;
+  }
+  .tiny .sc::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 100px;
+    background:
+      linear-gradient(90deg, transparent 0 28px, #fff 28px 34px, transparent 34px),
+      linear-gradient(0deg, transparent 0 40px, #fff 40px 45px, transparent 45px),
+      #e9ebe4;
+  }
+  .tiny .fc {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    background: #fff;
+    border-radius: 99px;
+    padding: 3px 6px 3px 3px;
+    width: max-content;
+  }
+  .tiny .fc i {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+  .tiny .sh {
+    position: relative;
+    background: #fff;
+    border-radius: 12px 12px 0 0;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .tiny .sh b {
+    font-size: 11px;
+  }
+  .tiny .sh .pr {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .tiny .sh .bt {
+    height: 24px;
+    border-radius: 7px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+  }
+  .tiny.b {
+    --accent: #1e5edc;
+  }
+  .tiny.c {
+    --accent: #6b3fa0;
+  }
+  .tiny.a {
+    transform: translateY(-14px);
+  }
+  .tiny.c {
+    transform: translateY(-8px);
+  }
+  @media (max-width: 480px) {
+    .tiny {
+      width: 96px;
+      height: 176px;
+    }
+    .tiny .sc::before {
+      height: 80px;
+    }
+  }
+</style>

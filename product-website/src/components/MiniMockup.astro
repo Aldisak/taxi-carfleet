@@ -1,0 +1,239 @@
+---
+// Bespoke feature-pillar visuals (reference #features .mini, lines 436-498).
+// Three variants: rider / driver / dispatch. Markup, class names, inline styles
+// and CSS copied verbatim. All copy in src/data/features.ts. Decorative — the
+// parent .pillar-visual is aria-hidden.
+import Pill from './Pill.astro'
+import { miniMockupCopy as c } from '../data/features.ts'
+import type { MiniMockupType } from '../data/features.ts'
+
+interface Props {
+  type: MiniMockupType
+}
+
+const { type } = Astro.props
+---
+
+{
+  type === 'rider' && (
+    <div class="mini">
+      <div class="row">
+        <span>{c.rider.coming}</span>
+        <Pill variant="info">{c.rider.onway}</Pill>
+      </div>
+      <div class="row" style="justify-content:flex-start;gap:12px">
+        <span class="drv" style="padding:0">
+          <i style="width:36px;height:36px;font-size:12px">JN</i>
+        </span>
+        <div>
+          <div>{c.rider.name}</div>
+          <div class="caption">{c.rider.car}</div>
+        </div>
+        <span class="plate" style="margin-left:auto">
+          {c.rider.plate}
+        </span>
+      </div>
+      <div class="row">
+        <span>{c.rider.pay}</span>
+        <b set:html={c.rider.price} />
+      </div>
+      <div class="bar sec">{c.rider.call}</div>
+    </div>
+  )
+}
+
+{
+  type === 'driver' && (
+    <div class="mini" style="background:#141414;color:#F4F4F1">
+      <div class="caption" style="color:#A6A6A0">
+        {c.driver.offer}
+      </div>
+      <div class="big">{c.driver.pickup}</div>
+      <div style="color:#A6A6A0;font-weight:600">{c.driver.dest}</div>
+      <div class="ring" style="background:conic-gradient(#F0A05A 0 72%,#30302E 72% 100%)">
+        <b style="background:#141414;color:#F4F4F1">{c.driver.timer}</b>
+      </div>
+      <div class="row" style="background:#262624;color:#F4F4F1">
+        <span>{c.driver.fixed}</span>
+        <b set:html={c.driver.price} />
+      </div>
+      <div class="bar acc" style="height:64px">
+        {c.driver.accept}
+      </div>
+      <div class="bar" style="background:#262624;color:#F4F4F1">
+        {c.driver.decline}
+      </div>
+    </div>
+  )
+}
+
+{
+  type === 'dispatch' && (
+    <div class="mini">
+      <div class="caption">{c.dispatch.week}</div>
+      <div class="stat-grid">
+        <div class="stat">
+          <small>{c.dispatch.rides}</small>
+          <b>{c.dispatch.ridesValue}</b> <span class="up">{c.dispatch.ridesUp}</span>
+        </div>
+        <div class="stat">
+          <small>{c.dispatch.revenue}</small>
+          <b set:html={c.dispatch.revenueValue} /> <span class="up">{c.dispatch.revenueUp}</span>
+        </div>
+        <div class="stat">
+          <small>{c.dispatch.assign}</small>
+          <b>{c.dispatch.assignValue}</b> <span class="caption">p50</span>
+        </div>
+        <div class="stat">
+          <small>{c.dispatch.fromApp}</small>
+          <b>{c.dispatch.fromAppValue}</b>
+        </div>
+      </div>
+      <div class="stat">
+        <small>{c.dispatch.byDay}</small>
+        <div class="bars">
+          <i style="height:40%" />
+          <i style="height:35%" />
+          <i style="height:45%" />
+          <i style="height:50%" />
+          <i style="height:70%" />
+          <i class="max" style="height:100%" />
+          <i style="height:85%" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+<style>
+  .mini {
+    width: 100%;
+    max-width: 340px;
+    background: var(--surface-2);
+    border-radius: var(--r-lg);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .mini .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-weight: 700;
+  }
+  .mini .big {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .mini .bar {
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 16px;
+  }
+  .mini .bar.acc {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .mini .bar.sec {
+    background: var(--surface);
+    border: 1.5px solid var(--line-strong);
+  }
+  .mini .ring {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: conic-gradient(var(--accent) 0 72%, var(--surface-3) 72% 100%);
+    display: grid;
+    place-items: center;
+    margin: 4px auto;
+  }
+  .mini .ring b {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .mini .plate {
+    align-self: flex-start;
+    white-space: nowrap;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    font-size: 15px;
+  }
+  /* .drv reused from the board mockup context; local copy for the rider mini. */
+  .mini .drv {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mini .drv i {
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--bg);
+    display: grid;
+    place-items: center;
+    font-style: normal;
+    font-weight: 800;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .stat {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .stat small {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .stat b {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .up {
+    font-size: 11px;
+    color: var(--success);
+    font-weight: 800;
+  }
+  .bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 56px;
+    padding: 0 4px;
+  }
+  .bars i {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+    background: color-mix(in srgb, var(--accent) 55%, var(--surface));
+  }
+  .bars i.max {
+    background: var(--accent);
+  }
+</style>

@@ -1,0 +1,232 @@
+---
+// Contact section (reference #contact): copy-number button + 5-field form with
+// client-side validation, clipboard copy (with range-selection fallback) and a
+// toast. Ports the reference <script> (lines 708-727) MINUS the language toggle
+// (routing replaces it). Toast/validation strings pass to the scoped script via
+// define:vars (Astro scoped scripts cannot read props otherwise). The submit is
+// a demo stub — no real network call.
+import Button from './Button.astro'
+import FormField from './FormField.astro'
+
+interface Props {
+  eyebrow: string
+  title: string
+  phoneNumber: string
+  copyLabel: string
+  hours: string
+  formTitle: string
+  nameLabel: string
+  phoneLabel: string
+  fleetLabel: string
+  carsLabel: string
+  noteLabel: string
+  sendLabel: string
+  privacy: string
+  required: string
+  // Toast/validation messages (reference MSG dict, resolved to one locale).
+  messages: {
+    sending: string
+    ok: string
+    err: string
+    req: string
+    copied: string
+    copyFail: string
+  }
+}
+
+const {
+  eyebrow,
+  title,
+  phoneNumber,
+  copyLabel,
+  hours,
+  formTitle,
+  nameLabel,
+  phoneLabel,
+  fleetLabel,
+  carsLabel,
+  noteLabel,
+  sendLabel,
+  privacy,
+  required,
+  messages,
+} = Astro.props
+---
+
+<div class="contact">
+  <div class="contact-copy">
+    <span class="eyebrow">{eyebrow}</span>
+    <h2 class="h-section">{title}</h2>
+    <div class="phonebox">
+      <span class="num" id="phone-number">{phoneNumber}</span>
+      <Button variant="secondary" size="sm" id="copy-phone">{copyLabel}</Button>
+    </div>
+    <p class="muted">{hours}</p>
+  </div>
+  <form class="form" id="contact-form" novalidate>
+    <h3 class="h-card">{formTitle}</h3>
+    <div class="grid">
+      <FormField
+        id="f-name"
+        name="name"
+        label={nameLabel}
+        autocomplete="name"
+        required
+        requiredMark="*"
+      />
+      <FormField
+        id="f-phone"
+        name="phone"
+        type="tel"
+        label={phoneLabel}
+        autocomplete="tel"
+        required
+        requiredMark="*"
+      />
+      <FormField id="f-fleet" name="fleet" label={fleetLabel} autocomplete="organization" />
+      <FormField
+        id="f-cars"
+        name="cars"
+        type="number"
+        label={carsLabel}
+        inputmode="numeric"
+        min={1}
+        max={99}
+      />
+    </div>
+    <FormField id="f-note" name="note" type="textarea" label={noteLabel} />
+    <div id="form-msg" hidden aria-live="polite"></div>
+    <Button variant="primary" type="submit" id="f-submit">{sendLabel}</Button>
+    <p class="caption"><span>{privacy}</span> <span>{required}</span></p>
+  </form>
+</div>
+
+<script is:inline define:vars={{ messages }}>
+  ;(function () {
+    var MSG = messages
+    function toast(t) {
+      var el = document.createElement('div')
+      el.className = 'toast'
+      el.textContent = t
+      el.setAttribute('role', 'status')
+      document.body.appendChild(el)
+      setTimeout(function () {
+        el.remove()
+      }, 2200)
+    }
+    var copyBtn = document.getElementById('copy-phone')
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        var num = document.getElementById('phone-number')
+        var text = num.textContent
+        function fallback() {
+          var r = document.createRange()
+          r.selectNodeContents(num)
+          var sel = window.getSelection()
+          sel.removeAllRanges()
+          sel.addRange(r)
+          toast(MSG.copyFail)
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText)
+          navigator.clipboard.writeText(text).then(function () {
+            toast(MSG.copied)
+          }, fallback)
+        else fallback()
+      })
+    }
+
+    var form = document.getElementById('contact-form'),
+      msg = document.getElementById('form-msg'),
+      submit = document.getElementById('f-submit')
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault()
+        var name = document.getElementById('f-name').value.trim(),
+          phone = document.getElementById('f-phone').value.trim()
+        msg.hidden = false
+        document.getElementById('f-name').setAttribute('aria-invalid', !name)
+        document.getElementById('f-phone').setAttribute('aria-invalid', !phone)
+        if (!name || !phone) {
+          msg.className = 'callout err'
+          msg.textContent = MSG.req
+          ;(!name ? document.getElementById('f-name') : document.getElementById('f-phone')).focus()
+          return
+        }
+        var label = submit.textContent
+        submit.textContent = MSG.sending
+        submit.disabled = true
+        // Demo shell: wire this to your API (e.g. POST /api/v1/public/leads) before launch.
+        setTimeout(function () {
+          msg.className = 'callout ok'
+          msg.textContent = MSG.ok
+          submit.textContent = label
+          submit.disabled = false
+          form.reset()
+        }, 600)
+      })
+    }
+  })()
+</script>
+
+<style>
+  .contact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+  .contact-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .phonebox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .phonebox .num {
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    user-select: all;
+  }
+  .form {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .form .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .callout {
+    padding: 14px 16px;
+    border-radius: var(--r-md);
+    font-weight: 600;
+  }
+  /* form-msg toggles these classes at runtime; declared globally so the runtime
+     className switch (not present at build) still resolves. */
+  :global(.callout.ok) {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  :global(.callout.err) {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+  @media (max-width: 860px) {
+    .contact {
+      grid-template-columns: 1fr;
+    }
+    .form .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

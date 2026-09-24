@@ -1,0 +1,68 @@
+{
+  "wi_id": "UC022-WI-4-5",
+  "lane": "web",
+  "files_created": [
+    "product-website/src/components/Hero.astro",
+    "product-website/src/components/PhoneMockup.astro",
+    "product-website/src/components/DispatchBoard.astro",
+    "product-website/src/components/Card.astro",
+    "product-website/src/components/Pillar.astro",
+    "product-website/src/components/MiniMockup.astro",
+    "product-website/src/components/TinyPhone.astro",
+    "product-website/src/components/Step.astro",
+    "product-website/src/components/PricingList.astro",
+    "product-website/src/components/Origin.astro",
+    "product-website/src/components/FaqItem.astro",
+    "product-website/src/components/ContactForm.astro",
+    "product-website/src/data/hero.ts",
+    "product-website/src/data/whyCards.ts",
+    "product-website/src/data/features.ts",
+    "product-website/src/data/brand.ts",
+    "product-website/src/data/steps.ts",
+    "product-website/src/data/pricing.ts",
+    "product-website/src/data/routes.ts",
+    "product-website/src/data/faq.ts"
+  ],
+  "files_changed": [
+    "product-website/src/pages/index.astro"
+  ],
+  "data_file_shapes": {
+    "note": "WI-6 extracts the Czech string values from these arrays into cs.json/en.json keyed by the reference dot-notation (mock.*, why.*, feat.*, p1.*/p2.*/p3.*, brand.*, how.*, price.*, origin.*, faq.*, contact.*). Structural (non-copy) fields — icon names, variant discriminants, badgeVariant, statusVar — stay in TS.",
+    "hero.ts": {
+      "phoneMockup: PhoneMockupCopy": "fleet, ride, edit, pickupPlace, pickup, destPlace, dest, price, note, fixed, now, pax, noteChip, order, orderPrice, eta (all string). price/orderPrice carry a U+00A0 before 'Kč' and render via set:html.",
+      "dispatchBoard: DispatchBoardCopy": "board, live (string); rows: {route, badge, badgeVariant:'info'|'warning'|'success', detail}[]; drivers: {initials, name, statusVar}[]. badgeVariant + statusVar are structural (map to Pill variant / status dot colour) — NOT i18n copy."
+    },
+    "whyCards.ts": "whyCards: {icon: IconName, title, body}[] (3). icon is structural (Icon name); title+body are copy.",
+    "features.ts": {
+      "features: Pillar[]": "{tag, title, body, items: string[](5), visual:'rider'|'driver'|'dispatch'}[] (3). visual is structural; tag/title/body/items are copy.",
+      "miniMockupCopy: MiniMockupCopy": "nested rider/driver/dispatch objects of string micro-copy (revenueValue carries U+00A0 before Kč, rendered set:html)."
+    },
+    "brand.ts": "brandPhones: {variant:'a'|'b'|'c', fleet, route, price, order, orderPrice}[] (3). variant is structural (colour class); rest is copy. price/orderPrice carry U+00A0 + set:html.",
+    "steps.ts": "steps: {title, body}[] (3). all copy.",
+    "pricing.ts": "pricing: {features: string[](6), terms: string[](3), cta: string}. all copy.",
+    "routes.ts": "originRoutes: {from, price}[] (3). all copy. price carries U+00A0 + set:html.",
+    "faq.ts": "faq: {question, answer}[] (7). all copy."
+  },
+  "verification": {
+    "npm run build": "exit 0 — dist/index.html emitted; single page (cs). All 8 id'd sections present in document order (why, features, brand, how, pricing, origin, faq, contact) plus the id-less hero section, matching reference/index.html.",
+    "npx astro check": "exit 0 — 0 errors, 0 warnings, 0 hints (TS strict, 30 files).",
+    "structural_diff_vs_reference": "9 <section> elements in both dist and reference. Hero headline ('Vaše taxislužba.<br>Vaše aplikace.'), a FAQ question ('Proč ne Bolt nebo Liftago?'), the contact submit (id=f-submit), the demo comment ('wire this to your API (e.g. POST /api/v1/public/leads) before launch.'), and mockup micro-copy (Přiřazeno / Vaše jízda / Taxi Poděbrady / Jan Novák / 31 250) all present. Scope-crossing CSS confirmed in dist/_astro/*.css: pillar :nth-child(2n) flip (scoped to Pillar hash, .pillar-visual shares it), check-icon :global(svg) rule with accent-text colour (21 check glyphs = 15 pillar + 6 pricing), terms-pill :global(.pill) white-space:normal override, section padding-block, counter-reset/increment step, prefers-reduced-motion, callout.ok/.err globals.",
+    "reference_untouched": "git status clean for product-website/reference/."
+  },
+  "deviations": [
+    "Astro scopes CSS per component. Selectors whose target lives in a different component's scope use :global() as the WI-2/WI-3 precedent (.btn :global(svg)): Pillar/PricingList check-icons (li :global(svg)), the pricing terms-pill relaxation (.terms :global(.pill)) which overrides the WI-3 Pill base rule WITHOUT editing the Pill primitive, PhoneMockup .iconbtn :global(svg), FaqItem summary :global(svg), and ContactForm callout.ok/.err (applied to #form-msg at runtime).",
+    "section{padding-block}, .cards/.band/.trio/.steps/.faq wrappers, counter-reset:step, and the prefers-reduced-motion * reset are page-composition/global concerns and live in a <style is:global> block in index.astro (global.css is WI-1 scope; page is explicitly in scope for this WI). Advisor-confirmed as the faithful 1:1 port.",
+    "SectionHead (WI-3 primitive) IS used for all four eyebrow+title(+lead) heads (why/features/how/faq); the features head passes its lead. The page-level global .sec-head duplicate was removed once SectionHead was wired — the rule now emits scoped to SectionHead's own hash. All five primitives (Button, Pill, Icon, FormField, SectionHead) are reused.",
+    "The copy-number button is Button size='sm' (min-height 44px, below the 48px touch-target guideline). This is a faithful port of the reference's .btn-sm and Button.astro is WI-3 scope — intentionally NOT diverged from the reference to 'fix' it.",
+    "Prices carry a real U+00A0 (verified in source bytes: 0xC2 0xA0 after '100') and survive into dist; set:html is used on those spans (harmless on static data; plain interpolation would also work).",
+    "The reference client <script> language-toggle + CS-from-DOM block was NOT ported (routing replaces it per the task). Only the toast/clipboard/validation stub was ported, via <script is:inline define:vars={{ messages }}> with the cs-resolved MSG dict. The demo setTimeout(...,600) stub and its exact 'wire this to your API' comment are preserved. No real fetch added.",
+    "The bespoke mockups (PhoneMockup, DispatchBoard, MiniMockup per-type, TinyPhone) each keep their entire markup + all their CSS in one .astro scope so no mockup-internal selector needs :global.",
+    "Decorative subtrees keep aria-hidden: Hero .stage, brand .trio, Pillar .pillar-visual, Origin .origin-map.",
+    "Czech copy currently lives inline in index.astro (section heads) and in src/data/*.ts (arrays) as required — WI-6 extracts to i18n. No t() layer invented here."
+  ],
+  "tests_added": 0,
+  "tests_passing": 0,
+  "coverage_delta": "n/a — Astro SSG WI with no vitest wiring; verification is npm run build + astro check + structural diff vs reference (per task).",
+  "hit_max_turns": false,
+  "notes": "WI-4 (Hero + PhoneMockup + DispatchBoard) and WI-5 (data-driven sections + ContactForm stub) implemented as a faithful port from product-website/reference/index.html. Reused all five WI-2/WI-3 primitives (Button, Pill, Icon, FormField, SectionHead) and global helpers (.wrap/.eyebrow/.h-*/.lead/.caption/.muted/.toast). Staged with explicit git add under product-website/src/ (12 components + 8 data files created, index.astro modified). Nothing committed. Note for WI-6: IconName is imported via `import type { IconName } from '../components/Icon.astro'` in data files — that import works under astro check strict TS."
+}

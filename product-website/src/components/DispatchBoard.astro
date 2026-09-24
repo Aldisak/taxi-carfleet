@@ -1,0 +1,130 @@
+---
+// Bespoke dispatch-board mockup (reference #hero .board, lines ~343-353).
+// Content-specific; Czech micro-copy in src/data/hero.ts. Markup, class names
+// and CSS copied verbatim. Decorative — the caller wraps .stage in aria-hidden.
+import Pill from './Pill.astro'
+import { dispatchBoard as b } from '../data/hero.ts'
+---
+
+<div class="board">
+  <div class="board-h"><span>{b.board}</span><span class="live">{b.live}</span></div>
+  {
+    b.rows.map((r) => (
+      <div class="orow">
+        <b>{r.route}</b>
+        <Pill variant={r.badgeVariant}>{r.badge}</Pill>
+        <small>{r.detail}</small>
+      </div>
+    ))
+  }
+  <div class="drivers">
+    {
+      b.drivers.map((d) => (
+        <span class="drv">
+          <i>{d.initials}</i>
+          {d.name}
+          <span class="st" style={`background:${d.statusVar}`} />
+        </span>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .board {
+    position: absolute;
+    right: 0;
+    top: 300px;
+    width: min(360px, 92%);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-card);
+    padding: 14px;
+    z-index: 1;
+    font-size: 13px;
+  }
+  .board-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  .board-h .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--success);
+    font-weight: 800;
+  }
+  .board-h .live::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+  .orow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    align-items: center;
+  }
+  .orow b {
+    font-size: 13px;
+  }
+  .orow small {
+    grid-column: 1 / -1;
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .drivers {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .drv {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px 4px 4px;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+  }
+  .drv i {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--bg);
+    display: grid;
+    place-items: center;
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .drv .st {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  @media (max-width: 900px) {
+    .board {
+      position: relative;
+      right: auto;
+      top: auto;
+      width: 100%;
+      margin-top: -40px;
+      padding-top: 54px;
+      z-index: 0;
+    }
+  }
+</style>

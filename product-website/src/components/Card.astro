@@ -1,0 +1,43 @@
+---
+// "Why" card (reference #why .card). Icon + title + body via props.
+import Icon from './Icon.astro'
+import type { IconName } from './Icon.astro'
+
+interface Props {
+  icon: IconName
+  title: string
+  body: string
+}
+
+const { icon, title, body } = Astro.props
+---
+
+<article class="card">
+  <span class="ic"><Icon name={icon} /></span>
+  <h3 class="h-card">{title}</h3>
+  <p>{body}</p>
+</article>
+
+<style>
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card .ic {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    display: grid;
+    place-items: center;
+  }
+  .card p {
+    color: var(--ink-2);
+  }
+</style>

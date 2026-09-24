@@ -1,0 +1,44 @@
+---
+// "How it works" step (reference #how .step). CSS counter renders the number;
+// the counter is reset on the parent .steps grid (owned by the page section).
+interface Props {
+  title: string
+  body: string
+}
+
+const { title, body } = Astro.props
+---
+
+<article class="step">
+  <h3 class="h-card">{title}</h3>
+  <p>{body}</p>
+</article>
+
+<style>
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+  }
+  .step::before {
+    counter-increment: step;
+    content: counter(step);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--bg);
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 15px;
+  }
+  .step p {
+    color: var(--ink-2);
+  }
+</style>

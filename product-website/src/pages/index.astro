@@ -1,13 +1,40 @@
 ---
-// Czech (default) page. Composes the WI-2 chrome + WI-3 primitives.
-// NOTE: literal Czech copy below is TEMPORARY — WI-6 replaces every literal
-// with t(locale, key) from the cs.json/en.json dictionaries. Section bodies
-// (Hero/Why/Features/…) arrive in WI-4/WI-5; this page currently renders the
-// nav, a couple of section heads, and the footer so the build has real content.
+// Czech (default) page. Composes the WI-2 chrome + WI-3 primitives + WI-4/WI-5
+// section components in document order (Hero → Why → Features → Brand → How →
+// Pricing → Origin → FAQ → Contact).
+// NOTE: literal Czech copy below is TEMPORARY — WI-6 replaces every literal with
+// t(locale, key) from the cs.json/en.json dictionaries. Section-body copy lives
+// in src/data/*.ts; section-head literals are inline here for now.
 import Base from '../layouts/Base.astro'
 import Navigation from '../components/Navigation.astro'
 import Footer from '../components/Footer.astro'
 import SectionHead from '../components/SectionHead.astro'
+import Hero from '../components/Hero.astro'
+import Card from '../components/Card.astro'
+import Pillar from '../components/Pillar.astro'
+import MiniMockup from '../components/MiniMockup.astro'
+import TinyPhone from '../components/TinyPhone.astro'
+import Step from '../components/Step.astro'
+import PricingList from '../components/PricingList.astro'
+import Origin from '../components/Origin.astro'
+import FaqItem from '../components/FaqItem.astro'
+import ContactForm from '../components/ContactForm.astro'
+
+import { whyCards } from '../data/whyCards.ts'
+import { features } from '../data/features.ts'
+import { brandPhones } from '../data/brand.ts'
+import { steps } from '../data/steps.ts'
+import { pricing } from '../data/pricing.ts'
+import { faq } from '../data/faq.ts'
+
+const contactMessages = {
+  sending: 'Odesílám…',
+  ok: 'Děkujeme. Ozveme se vám do jednoho pracovního dne.',
+  err: 'Zprávu se nepodařilo odeslat. Zkuste to znovu, nebo nám zavolejte.',
+  req: 'Vyplňte prosím jméno a telefon.',
+  copied: 'Číslo zkopírováno',
+  copyFail: 'Číslo je označené – zkopírujte ho ručně.',
+}
 ---
 
 <Base
@@ -30,9 +57,21 @@ import SectionHead from '../components/SectionHead.astro'
     callLabel="Zavolat"
   />
 
+  <Hero
+    eyebrow="Aplikace a dispečink pro taxislužby od 2 aut"
+    title="Vaše taxislužba.<br>Vaše aplikace."
+    sub="Zákazníci si objednají na tři ťuknutí a vidí cenu předem. Vy vidíte auta, objednávky a tržby na jedné obrazovce. Bez App Storu, bez licence za řidiče, bez provize z jízd."
+    cta1="Zavolat +420 123 456 789"
+    cta2="Napsat nám"
+    caption="Zavedení do týdne · první měsíc zdarma · bez smlouvy na dobu určitou"
+  />
+
   <section id="why">
     <div class="wrap">
       <SectionHead eyebrow="Proč teď" title="Telefon už nestačí" />
+      <div class="cards">
+        {whyCards.map((card) => <Card icon={card.icon} title={card.title} body={card.body} />)}
+      </div>
     </div>
   </section>
 
@@ -42,6 +81,111 @@ import SectionHead from '../components/SectionHead.astro'
         eyebrow="Co umí"
         title="Jeden systém, tři aplikace"
         lead="Zákazník, řidič i dispečink pracují nad stejnými objednávkami v reálném čase. Nic se neopisuje, nic se neztrácí."
+      />
+      <div class="pillars">
+        {
+          features.map((pillar) => (
+            <Pillar tag={pillar.tag} title={pillar.title} body={pillar.body} items={pillar.items}>
+              <MiniMockup slot="visual" type={pillar.visual} />
+            </Pillar>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="brand">
+    <div class="wrap">
+      <div class="band">
+        <div class="pillar-copy">
+          <span class="eyebrow">Vaše značka</span>
+          <h2 class="h-section">Vaše barva, vaše logo, vaše číslo</h2>
+          <p>
+            Aplikace nese jméno vaší taxislužby, ne naše. Zákazník ji otevře z odkazu nebo z ikony na
+            ploše – žádný App Store, žádné čekání na schválení. Světlý i tmavý režim.
+          </p>
+        </div>
+        <div class="trio" aria-hidden="true">
+          {
+            brandPhones.map((phone) => (
+              <TinyPhone
+                variant={phone.variant}
+                fleet={phone.fleet}
+                route={phone.route}
+                price={phone.price}
+                order={phone.order}
+                orderPrice={phone.orderPrice}
+              />
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <SectionHead eyebrow="Zavedení" title="Jak to funguje" />
+      <div class="steps">
+        {steps.map((step) => <Step title={step.title} body={step.body} />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="wrap">
+      <PricingList
+        eyebrow="Cena"
+        title="Cena podle velikosti flotily"
+        body="Jedna měsíční částka za celou taxislužbu. Zákaznická aplikace je v ceně. Neplatíte za každého řidiče, neplatíte provizi z jízd."
+        terms={pricing.terms}
+        cta={pricing.cta}
+        features={pricing.features}
+      />
+    </div>
+  </section>
+
+  <section id="origin">
+    <div class="wrap">
+      <Origin
+        eyebrow="Odkud jsme"
+        title="Postaveno pro tři auta v Kolíně"
+        body="Systém vznikl pro Taxi Kolín, rodinnou taxislužbu se třemi auty v Kolíně a Kutné Hoře, která do té doby brala objednávky jen telefonem. Nejdřív jsme ho stavěli pro sebe, teprve potom pro ostatní. Proto v něm není nic, co by malá taxislužba nepotřebovala."
+        caption="Jízdy, hodnocení a čísla z provozu doplníme, jakmile je budeme mít."
+        cityKolin="Kolín"
+        cityKutna="Kutná Hora"
+        routesLabel="Pevné trasy, které fleet nastavil jednou"
+      />
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <SectionHead eyebrow="Otázky" title="Na co se ptají majitelé" />
+      <div class="faq">
+        {faq.map((entry) => <FaqItem question={entry.question} answer={entry.answer} />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="wrap">
+      <ContactForm
+        eyebrow="Kontakt"
+        title="Zavolejte nám. Za týden objednávají vaši zákazníci sami."
+        phoneNumber="+420 123 456 789"
+        copyLabel="Kopírovat číslo"
+        hours="Po–Pá 8–18, nebo nám nechte zprávu a ozveme se."
+        formTitle="Nebo nám napište"
+        nameLabel="Jméno"
+        phoneLabel="Telefon"
+        fleetLabel="Taxislužba a město"
+        carsLabel="Počet aut"
+        noteLabel="Co vás zajímá (nepovinné)"
+        sendLabel="Odeslat"
+        privacy="Údaje použijeme jen k tomu, abychom se vám ozvali."
+        required="* povinné"
+        messages={contactMessages}
       />
     </div>
   </section>
@@ -54,3 +198,92 @@ import SectionHead from '../components/SectionHead.astro'
     attributionLine="Postaveno v Kolíně. Mapy poskytuje Mapy.com."
   />
 </Base>
+
+<style is:global>
+  /* Section rhythm + brand band + steps grid + why/faq wrappers. Page-level
+     because sections live in the page composition (faithful port of the
+     reference's global section/.cards/.band/.steps/.faq rules). */
+  section {
+    padding-block: 72px;
+  }
+  @media (max-width: 700px) {
+    section {
+      padding-block: 52px;
+    }
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 860px) {
+    .cards {
+      grid-template-columns: 1fr;
+    }
+  }
+  .pillars {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .band {
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: var(--r-lg);
+    padding: 48px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 40px;
+    align-items: center;
+  }
+  .band .h-section {
+    color: var(--bg);
+  }
+  .band p {
+    color: color-mix(in srgb, var(--bg) 70%, var(--ink));
+  }
+  .band .eyebrow {
+    color: color-mix(in srgb, var(--bg) 70%, var(--ink));
+  }
+  .band .pillar-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .trio {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 860px) {
+    .band {
+      grid-template-columns: 1fr;
+      padding: 32px 22px;
+    }
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    counter-reset: step;
+  }
+  @media (max-width: 860px) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+  }
+  .faq {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>

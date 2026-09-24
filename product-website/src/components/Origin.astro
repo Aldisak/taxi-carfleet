@@ -1,0 +1,90 @@
+---
+// Origin section (reference #origin). Story copy + a fixed-route mockup map.
+// Copy via props; the 3 routes come from src/data/routes.ts. The .origin-map
+// is decorative (aria-hidden).
+import { originRoutes } from '../data/routes.ts'
+
+interface Props {
+  eyebrow: string
+  title: string
+  body: string
+  caption: string
+  cityKolin: string
+  cityKutna: string
+  routesLabel: string
+}
+
+const { eyebrow, title, body, caption, cityKolin, cityKutna, routesLabel } = Astro.props
+---
+
+<div class="origin">
+  <div class="origin-copy">
+    <span class="eyebrow">{eyebrow}</span>
+    <h2 class="h-section">{title}</h2>
+    <p class="lead">{body}</p>
+    <p class="caption">{caption}</p>
+  </div>
+  <div class="origin-map" aria-hidden="true">
+    <div class="pin"><i></i>{cityKolin}</div>
+    <div class="pin"><i></i>{cityKutna}</div>
+    <div class="caption">{routesLabel}</div>
+    {
+      originRoutes.map((route) => (
+        <div class="rt">
+          <span>{route.from}</span>
+          <span set:html={route.price} />
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .origin {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: center;
+  }
+  .origin-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .origin-map {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .origin-map .pin {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+  }
+  .origin-map .pin i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .origin-map .rt {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  @media (max-width: 860px) {
+    .origin {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

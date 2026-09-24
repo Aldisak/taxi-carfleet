@@ -1,0 +1,55 @@
+---
+// FAQ item (reference #faq details). Native <details>/<summary> disclosure
+// with the rotating plus->cross chevron. Question/answer via props.
+import Icon from './Icon.astro'
+
+interface Props {
+  question: string
+  answer: string
+}
+
+const { question, answer } = Astro.props
+---
+
+<details>
+  <summary><span>{question}</span><Icon name="plus" /></summary>
+  <p>{answer}</p>
+</details>
+
+<style>
+  /* Ported from reference `.faq details / summary / p`. The .faq container
+     (border-top + flex column) is owned by the page section. */
+  details {
+    border-bottom: 1px solid var(--line);
+  }
+  summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 4px;
+    font-size: 17px;
+    font-weight: 700;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  /* Chevron icon is from Icon.astro (own scope) — target globally. */
+  summary :global(svg) {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    color: var(--ink-2);
+    transition: transform 0.2s ease;
+  }
+  details[open] summary :global(svg) {
+    transform: rotate(45deg);
+  }
+  details p {
+    padding: 0 4px 20px;
+    color: var(--ink-2);
+    max-width: 68ch;
+  }
+</style>

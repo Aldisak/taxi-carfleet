@@ -1,0 +1,85 @@
+---
+// Hero section (reference #hero, lines 329-387). Headline/lead/2 CTAs/caption
+// plus the two bespoke mockups. All user-facing copy arrives via props so the
+// component stays presentational (WI-6 wires t()). `title` may contain a <br>
+// and is rendered with set:html.
+import Button from './Button.astro'
+import Icon from './Icon.astro'
+import PhoneMockup from './PhoneMockup.astro'
+import DispatchBoard from './DispatchBoard.astro'
+
+interface Props {
+  eyebrow: string
+  title: string
+  sub: string
+  cta1: string
+  cta2: string
+  caption: string
+}
+
+const { eyebrow, title, sub, cta1, cta2, caption } = Astro.props
+---
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="eyebrow">{eyebrow}</span>
+      <h1 class="h-title" set:html={title}></h1>
+      <p class="lead">{sub}</p>
+      <div class="cta-row">
+        <Button variant="primary" href="#contact">
+          <Icon slot="icon" name="phone" />
+          <span>{cta1}</span>
+        </Button>
+        <Button variant="secondary" href="#contact">{cta2}</Button>
+      </div>
+      <p class="caption">{caption}</p>
+    </div>
+
+    <div class="stage" aria-hidden="true">
+      <DispatchBoard />
+      <PhoneMockup />
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-block: 56px 40px;
+  }
+  .hero .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 48px;
+    align-items: center;
+  }
+  .hero-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .stage {
+    position: relative;
+    min-height: 600px;
+  }
+  @media (max-width: 900px) {
+    .hero .wrap {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+    .hero {
+      padding-block: 40px 24px;
+    }
+    .stage {
+      min-height: auto;
+      padding-top: 28px;
+      display: grid;
+      justify-items: center;
+    }
+  }
+</style>

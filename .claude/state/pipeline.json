@@ -51,23 +51,25 @@
       "id": "WI-4",
       "lane": "web",
       "title": "Hero + PhoneMockup + DispatchBoard",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-2",
         "WI-3"
       ],
-      "files_scope": "product-website/src/components/Hero.astro, PhoneMockup.astro, DispatchBoard.astro"
+      "files_scope": "product-website/src/components/Hero.astro, PhoneMockup.astro, DispatchBoard.astro",
+      "note": "DONE committed: Hero + bespoke PhoneMockup + DispatchBoard (markup+CSS ported verbatim, single scope each)."
     },
     {
       "id": "WI-5",
       "lane": "web",
       "title": "Data-driven sections (Card/Why, Pillar+MiniMockup, TinyPhone/Brand, Step/How, PricingList, Origin, FaqItem, ContactForm stub) + src/data/*.ts",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-2",
         "WI-3"
       ],
-      "files_scope": "product-website/src/components/**, src/data/**"
+      "files_scope": "product-website/src/components/**, src/data/**",
+      "note": "DONE committed: Card/Pillar+MiniMockup/TinyPhone/Step/PricingList/Origin/FaqItem/ContactForm + src/data/*.ts (Czech copy inline for WI-6 extract). Pillar odd/even flip, check-icons via li :global(svg), nbsp prices byte-verified. ContactForm: is:inline define:vars messages, demo setTimeout stub + 'wire to POST /api/v1/public/leads' comment preserved, lang-toggle dropped. Page composes all 9 sections in order."
     },
     {
       "id": "WI-6",

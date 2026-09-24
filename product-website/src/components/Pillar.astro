@@ -1,0 +1,98 @@
+---
+// Feature pillar (reference #features .pillar). tag Pill + title + body +
+// 5-item check list + a bespoke visual (MiniMockup) in the `visual` slot.
+// The even/odd flip lives in this scope so sibling <Pillar> instances share
+// the scope hash and :nth-child(even) works.
+import Pill from './Pill.astro'
+import Icon from './Icon.astro'
+
+interface Props {
+  tag: string
+  title: string
+  body: string
+  items: string[]
+}
+
+const { tag, title, body, items } = Astro.props
+---
+
+<article class="pillar">
+  <div class="pillar-copy">
+    <Pill variant="accent">{tag}</Pill>
+    <h3 class="h-card" style="font-size:26px">{title}</h3>
+    <p class="muted">{body}</p>
+    <ul>
+      {
+        items.map((item) => (
+          <li>
+            <Icon name="check" />
+            <span>{item}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+  <div class="pillar-visual" aria-hidden="true">
+    <slot name="visual" />
+  </div>
+</article>
+
+<style>
+  .pillar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 36px;
+  }
+  .pillar:nth-child(even) .pillar-visual {
+    order: -1;
+  }
+  .pillar-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .pillar ul {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .pillar li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  /* Check icon comes from Icon.astro (its own scope) — target it globally. */
+  .pillar li :global(svg) {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-text);
+    flex: none;
+    margin-top: 2px;
+  }
+  .pillar-visual {
+    display: grid;
+    place-items: center;
+    min-height: 260px;
+  }
+  @media (max-width: 860px) {
+    .pillar {
+      grid-template-columns: 1fr;
+      padding: 24px;
+      gap: 24px;
+    }
+    .pillar:nth-child(even) .pillar-visual {
+      order: 1;
+    }
+  }
+</style>

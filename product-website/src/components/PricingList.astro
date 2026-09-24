@@ -1,0 +1,102 @@
+---
+// Pricing block (reference #pricing .price). Copy + 6-item checklist + terms
+// Pills + CTA Button. All copy via props. Owns the .pill wrap override that
+// relaxes the WI-3 Pill base rule for the multi-line term pills (:global).
+import Button from './Button.astro'
+import Icon from './Icon.astro'
+import Pill from './Pill.astro'
+
+interface Props {
+  eyebrow: string
+  title: string
+  body: string
+  terms: string[]
+  cta: string
+  features: string[]
+}
+
+const { eyebrow, title, body, terms, cta, features } = Astro.props
+---
+
+<div class="price">
+  <div class="price-copy">
+    <span class="eyebrow">{eyebrow}</span>
+    <h2 class="h-section">{title}</h2>
+    <p class="lead">{body}</p>
+    <div class="terms">
+      {terms.map((term) => <Pill variant="neutral">{term}</Pill>)}
+    </div>
+    <div><Button variant="primary" href="#contact">{cta}</Button></div>
+  </div>
+  <ul>
+    {
+      features.map((feature) => (
+        <li>
+          <Icon name="check" />
+          <span>{feature}</span>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style>
+  .price {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 32px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 40px;
+  }
+  .price ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .price li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  /* Check icon from Icon.astro (own scope) — target globally. */
+  .price li :global(svg) {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-text);
+    flex: none;
+    margin-top: 2px;
+  }
+  .price-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .terms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Relax the WI-3 Pill base rule so long term labels wrap (reference line 258).
+     Pill carries its base .pill in its own scope; reach it with :global. */
+  .terms :global(.pill) {
+    max-width: 100%;
+    white-space: normal;
+    height: auto;
+    min-height: 26px;
+    padding-block: 4px;
+    line-height: 1.2;
+  }
+  @media (max-width: 860px) {
+    .price {
+      grid-template-columns: 1fr;
+      padding: 26px;
+    }
+  }
+</style>

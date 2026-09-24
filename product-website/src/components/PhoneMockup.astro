@@ -1,0 +1,292 @@
+---
+// Bespoke CSS-only phone mockup (reference #hero .phone, lines ~354-384).
+// Content-specific — not parameterized beyond the Czech micro-copy in
+// src/data/hero.ts. All markup, class names, inline SVG and CSS are copied
+// verbatim from the reference so it renders pixel-identical. The whole subtree
+// is decorative: the caller wraps .stage in aria-hidden.
+import Pill from './Pill.astro'
+import Icon from './Icon.astro'
+import { phoneMockup as m } from '../data/hero.ts'
+---
+
+<div class="phone">
+  <div class="screen">
+    <div class="map"></div>
+    <svg class="route" viewBox="0 0 276 576" aria-hidden="true">
+      <path
+        d="M70 250 L70 200 L150 200 L150 120 L196 120"
+        fill="none"
+        stroke="var(--ink)"
+        stroke-width="4"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+      <circle cx="70" cy="250" r="9" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"></circle>
+      <rect x="188" y="112" width="16" height="16" fill="var(--ink)" stroke="var(--surface)" stroke-width="3"></rect>
+    </svg>
+    <div class="topbar">
+      <span class="iconbtn"><Icon name="menu" /></span>
+      <span class="fleetchip"><i>TK</i>{m.fleet}</span>
+      <span class="iconbtn acc"><Icon name="phone" /></span>
+    </div>
+    <span class="eta">{m.eta}</span>
+    <div class="sheet">
+      <div class="handle"></div>
+      <div class="sheet-title">
+        <span style="font-size:20px;color:var(--ink)">{m.ride}</span><span>{m.edit}</span>
+      </div>
+      <div class="rs">
+        <span class="d"></span><div>{m.pickupPlace}<small>{m.pickup}</small></div>
+        <span class="c"></span><span></span>
+        <span class="sq"></span><div>{m.destPlace}<small>{m.dest}</small></div>
+      </div>
+      <div class="pricecard">
+        <div><div class="p" set:html={m.price}></div><div class="n">{m.note}</div></div>
+        <Pill variant="accent">{m.fixed}</Pill>
+      </div>
+      <div class="chips">
+        <span class="chip on">{m.now}</span><span class="chip">{m.pax}</span><span class="chip">{m.noteChip}</span>
+      </div>
+      <div class="sbtn"><span>{m.order}</span><span set:html={m.orderPrice}></span></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .phone {
+    position: relative;
+    width: 300px;
+    height: 600px;
+    border-radius: 44px;
+    background: var(--ink);
+    padding: 12px;
+    box-shadow: var(--shadow-float);
+    z-index: 2;
+    max-width: 100%;
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 34px;
+    overflow: hidden;
+    background: var(--map);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    font-size: 13px;
+  }
+  .map {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, transparent 0 62px, var(--map-road) 62px 72px, transparent 72px 100%),
+      linear-gradient(0deg, transparent 0 150px, var(--map-road) 150px 162px, transparent 162px 100%),
+      linear-gradient(28deg, transparent 0 48%, var(--map-road-2) 48% 51%, transparent 51% 100%),
+      linear-gradient(90deg, transparent 0 190px, var(--map-road-2) 190px 197px, transparent 197px 100%),
+      linear-gradient(0deg, transparent 0 60px, var(--map-road-2) 60px 66px, transparent 66px 100%),
+      var(--map);
+  }
+  .route {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .topbar {
+    position: absolute;
+    top: 14px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .iconbtn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+  }
+  .iconbtn.acc {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .iconbtn :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+  .fleetchip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 12px 0 6px;
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .fleetchip i {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    display: grid;
+    place-items: center;
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .eta {
+    position: absolute;
+    left: 150px;
+    top: 214px;
+    background: var(--ink);
+    color: var(--bg);
+    font-weight: 800;
+    font-size: 12px;
+    padding: 5px 9px;
+    border-radius: 8px;
+  }
+  .sheet {
+    position: relative;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    padding: 10px 16px 20px;
+    box-shadow: var(--shadow-sheet);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--ink);
+  }
+  .handle {
+    width: 40px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--line-strong);
+    margin: 0 auto 4px;
+  }
+  .sheet-title {
+    font-size: 20px;
+    font-weight: 800;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sheet-title span {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-text);
+  }
+  .rs {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: 6px 10px;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .rs .d {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    justify-self: center;
+  }
+  .rs .sq {
+    width: 10px;
+    height: 10px;
+    background: var(--ink);
+    justify-self: center;
+  }
+  .rs .c {
+    width: 2px;
+    height: 10px;
+    background: var(--line-strong);
+    justify-self: center;
+  }
+  .rs small {
+    display: block;
+    font-size: 11px;
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .pricecard {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--surface-2);
+  }
+  .pricecard .p {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .pricecard .n {
+    font-size: 11px;
+    color: var(--ink-2);
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--r-pill);
+    border: 1.5px solid var(--line-strong);
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .chip.on {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .sbtn {
+    height: 52px;
+    border-radius: 14px;
+    background: var(--accent);
+    color: var(--on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    font-weight: 800;
+    font-size: 16px;
+  }
+  @media (max-width: 900px) {
+    .phone {
+      height: 560px;
+    }
+  }
+  @media (max-width: 420px) {
+    .phone {
+      width: 270px;
+      height: 540px;
+    }
+    .eta {
+      left: 135px;
+      top: 190px;
+    }
+  }
+</style>
