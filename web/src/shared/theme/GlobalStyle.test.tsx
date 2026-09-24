@@ -8,13 +8,16 @@ import { globalCss } from './GlobalStyle'
  * lossy CSSOM round-tripping of custom properties.
  */
 describe('globalCss', () => {
-  it('declares the self-hosted Manrope font faces', () => {
+  it('declares the self-hosted variable Manrope font face', () => {
     expect(globalCss).toContain('@font-face')
     expect(globalCss).toContain("font-family: 'Manrope'")
-    expect(globalCss).toContain('manrope-500.woff2')
-    expect(globalCss).toContain('manrope-700.woff2')
-    expect(globalCss).toContain('manrope-800.woff2')
+    // Single variable file (Latin + latin-ext + Cyrillic), not per-weight/per-subset splits.
+    expect(globalCss).toContain('Manrope-var.woff2')
+    expect(globalCss).toContain('font-weight: 500 800')
     expect(globalCss).toContain('font-display: swap')
+    // Guard against regressing to the old split-subset approach.
+    expect(globalCss).not.toContain('fonts.googleapis')
+    expect(globalCss).not.toContain('@fontsource')
   })
 
   it('declares the light-theme ground, ink and accent tokens on :root', () => {

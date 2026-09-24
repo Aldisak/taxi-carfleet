@@ -1,5 +1,19 @@
 # Decisions
 
+## 2026-09-24 — Brand font: one self-hosted variable Manrope (Latin + latin-ext + Cyrillic)
+
+Both the React app (`web/`) and the Astro product site (`product-website/`) render Manrope from **one self-hosted variable woff2** (`public/fonts/Manrope-var.woff2`, ~45 KB) that carries Latin + Latin-ext + Cyrillic in a single file — covering all six UI locales (cs, en, de, ru, uk, fil). The `wght` axis (200–800) is declared to CSS as `font-weight: 500 800`, serving every weight the apps use (500/600/700/800).
+
+**Do NOT use Google Fonts `css2` or the `@fontsource` per-subset packages.** Both split Manrope into separate files (latin / latin-ext / cyrillic / …) joined by `unicode-range`. Czech ě š č ř ž ů ď ť ň live in **latin-ext** and ru/uk letters in **cyrillic**; if that subset file is blocked, slow, or a stylesheet lists only the first face, those glyphs silently fall back to a system font **mid-word**. A single combined file eliminates the split entirely.
+
+Two independent reasons this is mandatory here:
+- The edge CSP (`infra/Caddyfile`) is `default-src 'self'` + `style-src 'self' 'unsafe-inline'` (no `https:`), so external font stylesheets **and** gstatic woff2 are refused in production. The product site was previously on the css2 `<link>` and was rendering in system fallback behind the edge — this change fixes that.
+- Runtime locale switching (cs↔ru↔uk↔…) needs all scripts present immediately; a combined file has no per-subset late-download/FOUT.
+
+Wiring: `@font-face` in `web/src/shared/theme/GlobalStyle.tsx` (`globalCss`) and `product-website/src/styles/global.css`; a same-origin `<link rel="preload">` in `product-website/src/layouts/Base.astro`. Regeneration command + rationale: `docs/fonts.md`. The font is built from upstream `Manrope[wght].ttf` (OFL) via `pyftsubset`; guard tests assert no `fonts.googleapis`/`@fontsource` reappears.
+
+---
+
 ## 2026-09-10 — Backend stack: .NET 10 + FastEndpoints
 
 The `.claude/` scaffold contained two contradictory stacks: `.claude/rules/` + agents + `gc-*` skills (FastEndpoints, .NET 10, vertical slices) vs the original `00-PROJECT-CONTEXT.md` (Minimal APIs, .NET 9, `Domain/` folder). The user decided in favor of the rules:

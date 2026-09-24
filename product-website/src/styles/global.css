@@ -1,3 +1,14 @@
+/*
+ * ONE self-hosted variable Manrope carrying Latin + Latin-ext + Cyrillic in a
+ * single file (covers cs, en, de, ru, uk, fil); the wght axis (500–800) serves
+ * every weight the site uses (500/600/700/800). Do NOT switch to a hosted
+ * webfont CDN or per-subset webfont packages: they split latin-ext/cyrillic into
+ * separate unicode-range files, so Czech ě š č ř ž ů ď ť ň and Cyrillic fall
+ * back to a system font mid-word if that subset fails — and the production edge
+ * CSP (default-src 'self', style-src 'self') blocks external fonts/stylesheets
+ * anyway. Regenerate with the pyftsubset command in docs/fonts.md.
+ */
+@font-face{font-family:'Manrope';font-style:normal;font-weight:500 800;font-display:swap;src:url('/fonts/Manrope-var.woff2') format('woff2')}
 html{color-scheme:light dark}
 img{max-width:100%}
 [hidden]{display:none!important}

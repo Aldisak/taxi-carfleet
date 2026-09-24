@@ -20,3 +20,7 @@ services:
     build:
       context: ..
       dockerfile: api/Dockerfile
+  website:
+    build:
+      context: ..
+      dockerfile: product-website/Dockerfile

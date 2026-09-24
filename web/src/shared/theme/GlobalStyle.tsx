@@ -24,26 +24,22 @@ import { createGlobalStyle } from 'styled-components'
  * this source string rather than introspecting injected rules).
  */
 export const globalCss = `
+  /*
+   * ONE self-hosted variable Manrope carrying Latin + Latin-ext + Cyrillic in a
+   * single file (covers cs, en, de, ru, uk, fil). The wght axis (500–800) serves
+   * every weight the apps use. Do NOT switch to hosted-CDN font stylesheets or
+   * the per-subset webfont packages: both split latin-ext/cyrillic into separate
+   * unicode-range files, so Czech ě š č ř ž ů ď ť ň (latin-ext) and ru/uk glyphs
+   * silently fall back to a system font mid-word if that subset fails to load —
+   * and the production CSP (default-src 'self') blocks external fonts anyway.
+   * Rationale + regeneration: docs/fonts.md and docs/decisions.md.
+   */
   @font-face {
     font-family: 'Manrope';
     font-style: normal;
-    font-weight: 500;
+    font-weight: 500 800;
     font-display: swap;
-    src: url('/fonts/manrope-500.woff2') format('woff2');
-  }
-  @font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 700;
-    font-display: swap;
-    src: url('/fonts/manrope-700.woff2') format('woff2');
-  }
-  @font-face {
-    font-family: 'Manrope';
-    font-style: normal;
-    font-weight: 800;
-    font-display: swap;
-    src: url('/fonts/manrope-800.woff2') format('woff2');
+    src: url('/fonts/Manrope-var.woff2') format('woff2');
   }
 
   :root {

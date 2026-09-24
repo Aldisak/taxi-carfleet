@@ -46,12 +46,13 @@ const canonical = locale === 'cs' ? `${origin}/` : `${origin}/en/`
     <meta property="og:image" content={`${origin}/og.png`} />
     <meta name="theme-color" content="#AD4F09" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <!-- Self-host Manrope (woff2, weights 500/700/800) in production per the design handoff; Google Fonts is the fallback below. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Self-hosted variable Manrope (Latin + latin-ext + Cyrillic, one file); @font-face in src/styles/global.css. No external webfont CDN — see docs/fonts.md. -->
     <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap"
+      rel="preload"
+      href="/fonts/Manrope-var.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     <script
       is:inline
