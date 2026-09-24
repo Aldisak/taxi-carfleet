@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Taxi Fleet – vlastní aplikace a dispečink pro malé taxislužby</title>
+<meta name="description" content="Vlastní objednávací aplikace pro vaše zákazníky, aplikace pro řidiče a dispečink v jednom. Bez App Storu, bez licence za řidiče, bez provize. Pro taxislužby od 2 aut.">
+<link rel="canonical" href="https://{{domain}}/">
+<link rel="alternate" hreflang="cs" href="https://{{domain}}/">
+<link rel="alternate" hreflang="en" href="https://{{domain}}/#en">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Taxi Fleet – vlastní aplikace a dispečink pro malé taxislužby">
+<meta property="og:description" content="Zákazníci si objednají na tři ťuknutí a vidí cenu předem. Bez App Storu, bez licence za řidiče, bez provize z jízd.">
+<meta property="og:url" content="https://{{domain}}/">
+<meta property="og:locale" content="cs_CZ">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:image" content="https://{{domain}}/og.png">
+<meta name="theme-color" content="#AD4F09">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- Self-host Manrope (woff2, weights 500/700/800) in production per the design handoff; Google Fonts is the fallback below. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"Organization","name":"Taxi Fleet","url":"https://{{domain}}/","telephone":"+420123456789","email":"info@example.cz","address":{"@type":"PostalAddress","addressLocality":"Kolín","addressCountry":"CZ"}},
+ {"@type":"SoftwareApplication","name":"Taxi Fleet","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android, iOS (PWA)","description":"Objednávací aplikace pro zákazníky, aplikace pro řidiče a dispečink pro malé taxislužby.","offers":{"@type":"Offer","priceCurrency":"CZK","description":"Měsíční cena podle velikosti flotily, zákaznická aplikace v ceně."},"inLanguage":["cs","en","de","ru","uk","fil"]},
+ {"@type":"FAQPage","mainEntity":[
+  {"@type":"Question","name":"Proč ne Bolt nebo Liftago?","acceptedAnswer":{"@type":"Answer","text":"Zprostředkovatel vlastní zákazníka, určuje cenu a bere si provizi. Vaše aplikace vlastní vás: cenu i zákazníka. Jezdit pro ně můžete dál, vedle toho."}},
+  {"@type":"Question","name":"Není to v App Storu. Nevadí to?","acceptedAnswer":{"@type":"Answer","text":"Zákazník otevře odkaz a přidá si ikonu na plochu – dvě ťuknutí. Nečekáte na schválení, aktualizace jsou okamžité a aplikace je pod vaším jménem, ne pod účtem dodavatele."}},
+  {"@type":"Question","name":"Potřebuji někoho na dispečinku?","acceptedAnswer":{"@type":"Answer","text":"Ne nutně. Objednávky z aplikace přicházejí samy a přiřadit auto zvládne majitel z notebooku nebo tabletu. Když dispečink máte, dostane přehlednou obrazovku místo sešitu."}},
+  {"@type":"Question","name":"Co když vypadne internet?","acceptedAnswer":{"@type":"Answer","text":"Zákazník vidí tlačítko Zavolat a vaše číslo. Řidič má jízdu uloženou v telefonu a pokračuje, jakmile se připojí."}},
+  {"@type":"Question","name":"Jak dlouho trvá zavedení?","acceptedAnswer":{"@type":"Answer","text":"Obvykle do týdne od telefonátu. Nastavíme barvu, logo, telefon, pevné trasy a řidiče; vy rozdáte odkaz."}},
+  {"@type":"Question","name":"Kde jsou data?","acceptedAnswer":{"@type":"Answer","text":"Na serverech v EU, každá taxislužba odděleně. Objednávky, zákazníky i reporty si kdykoli stáhnete v CSV."}},
+  {"@type":"Question","name":"Můžu odejít?","acceptedAnswer":{"@type":"Answer","text":"Ano, kdykoli. Bez smlouvy na dobu určitou, data si odnesete."}}
+ ]}
+]}
+</script>
+<style>html{color-scheme:light dark}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#F5F2ED;--surface:#FFFFFF;--surface-2:#F0ECE5;--surface-3:#E6E1D9;
+  --ink:#141414;--ink-2:#5E5E5A;--ink-3:#767672;
+  --line:#E6E1D9;--line-strong:#CFC8BE;
+  --success:#0E7A4A;--success-bg:#E4F3EB;--warning:#8A5300;--warning-bg:#FFF4D6;
+  --danger:#C8362A;--danger-bg:#FDECEA;--info:#1E5EDC;--info-bg:#E7EEFC;
+  --accent:#AD4F09;--on-accent:#FFFFFF;--accent-text:#AD4F09;--accent-soft:#FBEBDD;
+  --shadow-card:0 1px 2px rgba(20,20,20,.06),0 4px 12px rgba(20,20,20,.06);
+  --shadow-float:0 6px 20px rgba(20,20,20,.16);
+  --shadow-sheet:0 -6px 28px rgba(20,20,20,.14);
+  --r-sm:8px;--r-md:14px;--r-lg:22px;--r-pill:999px;
+  --font:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --map:#EAE6DD;--map-road:#FFFFFF;--map-road-2:#F4F1EA;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E0E0E;--surface:#1A1A1A;--surface-2:#262624;--surface-3:#30302E;
+    --ink:#F4F4F1;--ink-2:#A6A6A0;--ink-3:#8A8A85;--line:#2C2C2A;--line-strong:#3E3E3B;
+    --success:#3DBB78;--success-bg:#12301F;--warning:#F0B33C;--warning-bg:#3A2C0E;
+    --danger:#F0625A;--danger-bg:#3B1917;--info:#6E9BFF;--info-bg:#172444;
+    --accent:#B8540B;--on-accent:#FFFFFF;--accent-text:#F0A05A;--accent-soft:#3A2410;
+    --shadow-card:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.35);
+    --shadow-float:0 6px 20px rgba(0,0,0,.5);--shadow-sheet:0 -6px 28px rgba(0,0,0,.5);
+    --map:#232523;--map-road:#33362F;--map-road-2:#2B2D28;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E0E0E;--surface:#1A1A1A;--surface-2:#262624;--surface-3:#30302E;
+  --ink:#F4F4F1;--ink-2:#A6A6A0;--ink-3:#8A8A85;--line:#2C2C2A;--line-strong:#3E3E3B;
+  --success:#3DBB78;--success-bg:#12301F;--warning:#F0B33C;--warning-bg:#3A2C0E;
+  --danger:#F0625A;--danger-bg:#3B1917;--info:#6E9BFF;--info-bg:#172444;
+  --accent:#B8540B;--on-accent:#FFFFFF;--accent-text:#F0A05A;--accent-soft:#3A2410;
+  --shadow-card:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.35);
+  --shadow-float:0 6px 20px rgba(0,0,0,.5);--shadow-sheet:0 -6px 28px rgba(0,0,0,.5);
+  --map:#232523;--map-road:#33362F;--map-road-2:#2B2D28;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;font-weight:500;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{text-wrap:balance}
+a{color:var(--accent-text)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
+button,input,textarea{font:inherit;color:inherit}
+.wrap{max-width:1120px;margin-inline:auto;padding-inline:20px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-text)}
+.h-title{font-size:clamp(34px,5.4vw,58px);font-weight:800;line-height:1.04;letter-spacing:-.02em}
+.h-section{font-size:clamp(26px,3.4vw,36px);font-weight:800;line-height:1.1;letter-spacing:-.015em}
+.h-card{font-size:20px;font-weight:700;line-height:1.25}
+.lead{font-size:17px;font-weight:500;color:var(--ink-2);max-width:60ch}
+.muted{color:var(--ink-2)}
+.caption{font-size:13px;font-weight:600;color:var(--ink-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:56px;padding:14px 22px;line-height:1.2;text-align:center;border-radius:var(--r-md);border:0;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;transition:transform .12s ease,background .15s ease;max-width:100%}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:var(--on-accent)}
+.btn-primary:hover{background:color-mix(in srgb,var(--accent) 88%,black)}
+.btn-secondary{background:var(--surface);color:var(--ink);border:1.5px solid var(--line-strong)}
+.btn-secondary:hover{background:var(--surface-2)}
+.btn-sm{min-height:44px;padding:10px 16px;font-size:15px}
+.btn svg{width:20px;height:20px;flex:none}
+.pill{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:var(--r-pill);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pill-accent{background:var(--accent-soft);color:var(--accent-text)}
+.pill-info{background:var(--info-bg);color:var(--info)}
+.pill-warning{background:var(--warning-bg);color:var(--warning)}
+.pill-success{background:var(--success-bg);color:var(--success)}
+.pill-neutral{background:var(--surface-2);color:var(--ink-2)}
+.icon{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* nav */
+.skip{position:absolute;left:16px;top:-60px;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:var(--r-sm);font-weight:700;z-index:40;text-decoration:none}
+.skip:focus{top:12px}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:18px;height:68px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.brand-dot{width:30px;height:30px;border-radius:9px;background:var(--accent);display:grid;place-items:center;color:var(--on-accent)}
+.brand-dot svg{width:18px;height:18px}
+.nav-links{display:flex;gap:4px;margin-left:auto}
+.nav-links a{color:var(--ink-2);text-decoration:none;font-weight:700;font-size:14px;padding:8px 12px;border-radius:var(--r-sm)}
+.nav-links a:hover{color:var(--ink);background:var(--surface-2)}
+.lang{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:var(--r-pill);padding:3px;gap:2px;background:var(--surface)}
+.lang button{border:0;background:transparent;border-radius:var(--r-pill);height:36px;padding:0 14px;font-size:13px;font-weight:800;color:var(--ink-2);cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.nav .btn{min-height:44px;padding:10px 16px;font-size:15px;white-space:nowrap}
+@media (max-width:860px){.nav-links{display:none}.nav .cta-label{display:none}}
+
+/* hero */
+.hero{padding-block:56px 40px}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px;align-items:center}
+.hero-copy{display:flex;flex-direction:column;gap:22px}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr;gap:40px}.hero{padding-block:40px 24px}}
+
+/* device mock */
+.stage{position:relative;min-height:600px}
+.phone{position:relative;width:300px;height:600px;border-radius:44px;background:var(--ink);padding:12px;box-shadow:var(--shadow-float);z-index:2;max-width:100%}
+.screen{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--map);display:flex;flex-direction:column;justify-content:flex-end;font-size:13px}
+.map{position:absolute;inset:0;background:
+  linear-gradient(90deg,transparent 0 62px,var(--map-road) 62px 72px,transparent 72px 100%),
+  linear-gradient(0deg,transparent 0 150px,var(--map-road) 150px 162px,transparent 162px 100%),
+  linear-gradient(28deg,transparent 0 48%,var(--map-road-2) 48% 51%,transparent 51% 100%),
+  linear-gradient(90deg,transparent 0 190px,var(--map-road-2) 190px 197px,transparent 197px 100%),
+  linear-gradient(0deg,transparent 0 60px,var(--map-road-2) 60px 66px,transparent 66px 100%),
+  var(--map)}
+.route{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.topbar{position:absolute;top:14px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.iconbtn{width:40px;height:40px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-card);display:grid;place-items:center;color:var(--ink)}
+.iconbtn.acc{background:var(--accent);color:var(--on-accent)}
+.iconbtn svg{width:20px;height:20px}
+.fleetchip{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px 0 6px;border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--shadow-card);font-weight:800;font-size:13px;color:var(--ink)}
+.fleetchip i{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:800}
+.eta{position:absolute;left:150px;top:214px;background:var(--ink);color:var(--bg);font-weight:800;font-size:12px;padding:5px 9px;border-radius:8px}
+.sheet{position:relative;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 16px 20px;box-shadow:var(--shadow-sheet);display:flex;flex-direction:column;gap:12px;color:var(--ink)}
+.handle{width:40px;height:5px;border-radius:3px;background:var(--line-strong);margin:0 auto 4px}
+.sheet-title{font-size:20px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.sheet-title span{font-size:13px;font-weight:700;color:var(--accent-text)}
+.rs{display:grid;grid-template-columns:14px 1fr;gap:6px 10px;align-items:center;font-size:14px;font-weight:600}
+.rs .d{width:10px;height:10px;border-radius:50%;background:var(--accent);justify-self:center}
+.rs .sq{width:10px;height:10px;background:var(--ink);justify-self:center}
+.rs .c{width:2px;height:10px;background:var(--line-strong);justify-self:center}
+.rs small{display:block;font-size:11px;color:var(--ink-2);font-weight:600}
+.pricecard{display:flex;justify-content:space-between;align-items:flex-start;gap:8px 12px;padding:12px 14px;border-radius:14px;background:var(--surface-2)}
+.pricecard .p{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.pricecard .n{font-size:11px;color:var(--ink-2);font-weight:600;margin-top:6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:32px;padding:0 12px;border-radius:var(--r-pill);border:1.5px solid var(--line-strong);display:inline-flex;align-items:center;font-size:12px;font-weight:700}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sbtn{height:52px;border-radius:14px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-weight:800;font-size:16px}
+.board{position:absolute;right:0;top:300px;width:min(360px,92%);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-card);padding:14px;z-index:1;font-size:13px}
+.board-h{display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:10px}
+.board-h .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--success);font-weight:800}
+.board-h .live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--success)}
+.orow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+.orow b{font-size:13px}
+.orow small{grid-column:1/-1;color:var(--ink-2);font-size:12px;font-weight:600}
+.drivers{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.drv{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 10px 4px 4px;border-radius:var(--r-pill);background:var(--surface-2)}
+.drv i{width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:800}
+.drv .st{width:8px;height:8px;border-radius:50%}
+@media (max-width:900px){.stage{min-height:auto;padding-top:28px;display:grid;justify-items:center}.board{position:relative;right:auto;top:auto;width:100%;margin-top:-40px;padding-top:54px;z-index:0}.phone{height:560px}}
+@media (max-width:420px){.phone{width:270px;height:540px}.eta{left:135px;top:190px}}
+
+/* sections */
+section{padding-block:72px}
+@media (max-width:700px){section{padding-block:52px}}
+.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:36px;max-width:64ch}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.cards{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px;display:flex;flex-direction:column;gap:12px}
+.card .ic{width:44px;height:44px;border-radius:14px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center}
+.card p{color:var(--ink-2)}
+
+.pillars{display:flex;flex-direction:column;gap:20px}
+.pillar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:36px}
+.pillar:nth-child(even) .pillar-visual{order:-1}
+.pillar-copy{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.pillar ul{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.pillar li{display:flex;gap:10px;align-items:flex-start;color:var(--ink-2);font-weight:600}
+.pillar li svg{width:20px;height:20px;color:var(--accent-text);flex:none;margin-top:2px}
+.pillar-visual{display:grid;place-items:center;min-height:260px}
+@media (max-width:860px){.pillar{grid-template-columns:1fr;padding:24px;gap:24px}.pillar:nth-child(even) .pillar-visual{order:1}}
+
+.mini{width:100%;max-width:340px;background:var(--surface-2);border-radius:var(--r-lg);padding:16px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.mini .row{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border-radius:12px;padding:12px 14px;font-weight:700}
+.mini .big{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.mini .bar{height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px}
+.mini .bar.acc{background:var(--accent);color:var(--on-accent)}
+.mini .bar.sec{background:var(--surface);border:1.5px solid var(--line-strong)}
+.mini .ring{width:88px;height:88px;border-radius:50%;background:conic-gradient(var(--accent) 0 72%,var(--surface-3) 72% 100%);display:grid;place-items:center;margin:4px auto}
+.mini .ring b{width:70px;height:70px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:18px;font-weight:800}
+.mini .plate{align-self:flex-start;white-space:nowrap;border:2px solid var(--ink);border-radius:8px;padding:4px 10px;font-weight:800;letter-spacing:.08em;font-size:15px}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{background:var(--surface);border-radius:12px;padding:12px}
+.stat small{display:block;font-size:11px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em}
+.stat b{font-size:20px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat .up{font-size:11px;color:var(--success);font-weight:800}
+.bars{display:flex;align-items:flex-end;gap:5px;height:56px;padding:0 4px}
+.bars i{flex:1;border-radius:4px 4px 0 0;background:color-mix(in srgb,var(--accent) 55%,var(--surface))}
+.bars i.max{background:var(--accent)}
+
+/* brand band */
+.band{background:var(--ink);color:var(--bg);border-radius:var(--r-lg);padding:48px 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:40px;align-items:center}
+.band .h-section{color:var(--bg)}
+.band p{color:color-mix(in srgb,var(--bg) 70%,var(--ink))}
+.band .eyebrow{color:color-mix(in srgb,var(--bg) 70%,var(--ink))}
+.trio{display:flex;gap:14px;justify-content:center;align-items:flex-end;flex-wrap:wrap}
+.tiny{--accent:#AD4F09;width:118px;height:210px;border-radius:22px;background:#0E0E0E;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.4);flex:none}
+.tiny .sc{height:100%;border-radius:17px;background:#F3F3F1;color:#141414;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;position:relative}
+.tiny .sc::before{content:"";position:absolute;inset:0 0 auto 0;height:100px;background:linear-gradient(90deg,transparent 0 28px,#fff 28px 34px,transparent 34px),linear-gradient(0deg,transparent 0 40px,#fff 40px 45px,transparent 45px),#E9EBE4}
+.tiny .fc{position:absolute;top:8px;left:8px;right:8px;display:flex;align-items:center;gap:4px;font-size:8px;font-weight:800;background:#fff;border-radius:99px;padding:3px 6px 3px 3px;width:max-content}
+.tiny .fc i{width:14px;height:14px;border-radius:50%;background:var(--accent);flex:none}
+.tiny .sh{position:relative;background:#fff;border-radius:12px 12px 0 0;padding:8px;display:flex;flex-direction:column;gap:6px}
+.tiny .sh b{font-size:11px}
+.tiny .sh .pr{font-size:15px;font-weight:800;letter-spacing:-.02em}
+.tiny .sh .bt{height:24px;border-radius:7px;background:var(--accent);color:#fff;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:space-between;padding:0 8px}
+.tiny.b{--accent:#1E5EDC}.tiny.c{--accent:#6B3FA0}
+.tiny.a{transform:translateY(-14px)}.tiny.c{transform:translateY(-8px)}
+@media (max-width:860px){.band{grid-template-columns:1fr;padding:32px 22px}}
+@media (max-width:480px){.tiny{width:96px;height:176px}.tiny .sc::before{height:80px}}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;counter-reset:step}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px;display:flex;flex-direction:column;gap:10px;position:relative}
+.step::before{counter-increment:step;content:counter(step);width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:800;font-size:15px}
+.step p{color:var(--ink-2)}
+@media (max-width:860px){.steps{grid-template-columns:1fr}}
+
+/* pricing */
+.price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:40px}
+.price ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.price li{display:flex;gap:10px;align-items:flex-start;font-weight:600;color:var(--ink-2)}
+.price li svg{width:20px;height:20px;color:var(--accent-text);flex:none;margin-top:2px}
+.price-copy{display:flex;flex-direction:column;gap:16px}
+.terms{display:flex;flex-wrap:wrap;gap:8px}
+.pill{max-width:100%;white-space:normal;height:auto;min-height:26px;padding-block:4px;line-height:1.2}
+@media (max-width:860px){.price{grid-template-columns:1fr;padding:26px}}
+
+/* origin */
+.origin{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:center}
+.origin-copy{display:flex;flex-direction:column;gap:16px}
+.origin-map{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;display:flex;flex-direction:column;gap:14px}
+.origin-map .pin{display:flex;align-items:center;gap:10px;font-weight:700}
+.origin-map .pin i{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.origin-map .rt{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:var(--surface-2);font-weight:700;font-size:14px}
+@media (max-width:860px){.origin{grid-template-columns:1fr}}
+
+/* faq */
+.faq{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 4px;font-size:17px;font-weight:700}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary svg{width:22px;height:22px;flex:none;color:var(--ink-2);transition:transform .2s ease}
+.faq details[open] summary svg{transform:rotate(45deg)}
+.faq details p{padding:0 4px 20px;color:var(--ink-2);max-width:68ch}
+
+/* contact */
+.contact{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+.contact-copy{display:flex;flex-direction:column;gap:18px}
+.phonebox{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.phonebox .num{font-size:clamp(24px,4vw,34px);font-weight:800;letter-spacing:-.01em;user-select:all}
+.form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;display:flex;flex-direction:column;gap:14px}
+.form .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:700}
+.field input,.field textarea{height:52px;padding:0 14px;border-radius:var(--r-md);border:2px solid transparent;background:var(--surface-2);color:var(--ink);font-weight:600}
+.field textarea{height:auto;min-height:96px;padding:12px 14px;resize:vertical}
+.field input:focus,.field textarea:focus{outline:0;border-color:var(--ink);background:var(--surface)}
+.field input[aria-invalid="true"]{border-color:var(--danger)}
+.callout{padding:14px 16px;border-radius:var(--r-md);font-weight:600}
+.callout.ok{background:var(--success-bg);color:var(--success)}
+.callout.err{background:var(--danger-bg);color:var(--danger)}
+@media (max-width:860px){.contact{grid-template-columns:1fr}.form .grid{grid-template-columns:1fr}}
+
+footer{border-top:1px solid var(--line);padding-block:28px 40px}
+footer .wrap{display:flex;flex-direction:column;gap:8px;color:var(--ink-2);font-size:13px;font-weight:600}
+footer a{color:var(--ink-2)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:var(--r-md);font-weight:700;box-shadow:var(--shadow-float);z-index:30}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<a class="skip" href="#top" data-i18n="skip">Přeskočit na obsah</a>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Taxi Fleet">
+      <span class="brand-dot"><svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M5 17h14M6 17l1.5-6h9L18 17M8 11l1-3h6l1 3"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg></span>
+      Taxi Fleet
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features" data-i18n="nav.features">Co umí</a>
+      <a href="#how" data-i18n="nav.how">Jak to funguje</a>
+      <a href="#pricing" data-i18n="nav.pricing">Cena</a>
+      <a href="#faq" data-i18n="nav.faq">Otázky</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Jazyk / Language">
+      <button type="button" id="lang-cs" aria-pressed="true" lang="cs">CS</button>
+      <button type="button" id="lang-en" aria-pressed="false" lang="en">EN</button>
+    </div>
+    <a class="btn btn-primary" href="#contact">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>
+      <span class="cta-label" data-i18n="nav.call">Zavolat</span>
+    </a>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="eyebrow" data-i18n="hero.eyebrow">Aplikace a dispečink pro taxislužby od 2 aut</span>
+      <h1 class="h-title" data-i18n="hero.title">Vaše taxislužba.<br>Vaše aplikace.</h1>
+      <p class="lead" data-i18n="hero.sub">Zákazníci si objednají na tři ťuknutí a vidí cenu předem. Vy vidíte auta, objednávky a tržby na jedné obrazovce. Bez App Storu, bez licence za řidiče, bez provize z jízd.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#contact"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg><span data-i18n="hero.cta1">Zavolat +420 123 456 789</span></a>
+        <a class="btn btn-secondary" href="#contact" data-i18n="hero.cta2">Napsat nám</a>
+      </div>
+      <p class="caption" data-i18n="hero.caption">Zavedení do týdne · první měsíc zdarma · bez smlouvy na dobu určitou</p>
+    </div>
+
+    <div class="stage" aria-hidden="true">
+      <div class="board">
+        <div class="board-h"><span data-i18n="mock.board">Dispečink · dnes</span><span class="live" data-i18n="mock.live">3 auta online</span></div>
+        <div class="orow"><b>Nádraží → Masarykovo nám.</b><span class="pill pill-info" data-i18n="mock.assigned">Přiřazeno</span><small>Hned · 1 cestující · 100 Kč pevná cena · Jan N.</small></div>
+        <div class="orow"><b>Kutná Hora → Kolín</b><span class="pill pill-warning" data-i18n="mock.new">Nová</span><small>Na čas 14:30 · 2 cestující · 300 Kč pevná cena</small></div>
+        <div class="orow"><b>Sídliště → Nemocnice</b><span class="pill pill-success" data-i18n="mock.done">Dokončeno</span><small>13:05 · 1 cestující · 110 Kč · hotově</small></div>
+        <div class="drivers">
+          <span class="drv"><i>JN</i>Jan<span class="st" style="background:var(--info)"></span></span>
+          <span class="drv"><i>PS</i>Petr<span class="st" style="background:var(--success)"></span></span>
+          <span class="drv"><i>KD</i>Karel<span class="st" style="background:var(--warning)"></span></span>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="screen">
+          <div class="map"></div>
+          <svg class="route" viewBox="0 0 276 576" aria-hidden="true">
+            <path d="M70 250 L70 200 L150 200 L150 120 L196 120" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="70" cy="250" r="9" fill="var(--accent)" stroke="var(--surface)" stroke-width="3"/>
+            <rect x="188" y="112" width="16" height="16" fill="var(--ink)" stroke="var(--surface)" stroke-width="3"/>
+          </svg>
+          <div class="topbar">
+            <span class="iconbtn"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+            <span class="fleetchip"><i>TK</i>Taxi Kolín</span>
+            <span class="iconbtn acc"><svg class="icon" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></span>
+          </div>
+          <span class="eta">12 min · 4,2 km</span>
+          <div class="sheet">
+            <div class="handle"></div>
+            <div class="sheet-title"><span style="font-size:20px;color:var(--ink)" data-i18n="mock.ride">Vaše jízda</span><span data-i18n="mock.edit">Upravit</span></div>
+            <div class="rs">
+              <span class="d"></span><div>Kolín, nádraží<small data-i18n="mock.pickup">Vyzvednutí</small></div>
+              <span class="c"></span><span></span>
+              <span class="sq"></span><div>Masarykovo náměstí 12<small data-i18n="mock.dest">Cíl</small></div>
+            </div>
+            <div class="pricecard">
+              <div><div class="p">100&nbsp;Kč</div><div class="n" data-i18n="mock.note">Cena je konečná. Platíte řidiči na konci jízdy.</div></div>
+              <span class="pill pill-accent" data-i18n="mock.fixed">Pevná cena</span>
+            </div>
+            <div class="chips"><span class="chip on" data-i18n="mock.now">Hned</span><span class="chip" data-i18n="mock.pax">1 cestující</span><span class="chip" data-i18n="mock.noteChip">Poznámka</span></div>
+            <div class="sbtn"><span data-i18n="mock.order">Objednat</span><span>100&nbsp;Kč</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="why.eyebrow">Proč teď</span>
+      <h2 class="h-section" data-i18n="why.title">Telefon už nestačí</h2>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <span class="ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+        <h3 class="h-card" data-i18n="why.c1t">Bolt a Liftago jsou i ve vašem městě</h3>
+        <p data-i18n="why.c1b">Od jara 2026 objedná Bolt kdekoli v Česku. Když si zákazník zvykne na aplikaci, telefonní číslo vaší taxislužby si už nevyhledá.</p>
+      </article>
+      <article class="card">
+        <span class="ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></svg></span>
+        <h3 class="h-card" data-i18n="why.c2t">Konkurence ve vedlejším městě aplikaci má</h3>
+        <p data-i18n="why.c2b">Většinou pronajatou od dodavatele, pod jeho účtem a s jeho vzhledem. Vaše aplikace bude vaše: vaše barva, vaše logo, vaše číslo.</p>
+      </article>
+      <article class="card">
+        <span class="ic"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M7 8.5a4 3 0 0 1 4-2.5h2a3.5 3 0 0 1 0 6h-2a3.5 3 0 0 0 0 6h2a4 3 0 0 0 4-2.5"/></svg></span>
+        <h3 class="h-card" data-i18n="why.c3t">Provize se nevyplatí</h3>
+        <p data-i18n="why.c3b">Zprostředkovatel si bere z každé jízdy a určuje cenu. Stálí zákazníci, nádraží, pevné ceny a jízdy na letiště jsou vaše výhoda. Nechte si ji.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="feat.eyebrow">Co umí</span>
+      <h2 class="h-section" data-i18n="feat.title">Jeden systém, tři aplikace</h2>
+      <p class="lead" data-i18n="feat.sub">Zákazník, řidič i dispečink pracují nad stejnými objednávkami v reálném čase. Nic se neopisuje, nic se neztrácí.</p>
+    </div>
+    <div class="pillars">
+      <article class="pillar">
+        <div class="pillar-copy">
+          <span class="pill pill-accent" data-i18n="p1.tag">Zákazník</span>
+          <h3 class="h-card" style="font-size:26px" data-i18n="p1.title">Objednávka na tři ťuknutí</h3>
+          <p class="muted" data-i18n="p1.body">Otevřít, vybrat cíl, objednat. Cena je vidět předem – pevná, nebo odhad. Zákazník sleduje auto na mapě, ví, jaké přijede a kdy, a na konci jízdy ohodnotí řidiče.</p>
+          <ul>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p1.l1">Přihlášení SMS kódem, žádné heslo</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p1.l2">Sledování jízdy i bez přihlášení, přes odkaz</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p1.l3">Šest jazyků včetně ukrajinštiny a ruštiny</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p1.l4">Funguje i na levném telefonu se slabým signálem</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p1.l5">Tlačítko Zavolat na každé obrazovce</span></li>
+          </ul>
+        </div>
+        <div class="pillar-visual" aria-hidden="true">
+          <div class="mini">
+            <div class="row"><span data-i18n="mock.coming">Řidič přijede za ~4 min</span><span class="pill pill-info" data-i18n="mock.onway">Na cestě</span></div>
+            <div class="row" style="justify-content:flex-start;gap:12px"><span class="drv" style="padding:0"><i style="width:36px;height:36px;font-size:12px">JN</i></span><div><div>Jan Novák</div><div class="caption">Škoda Octavia · bílá</div></div><span class="plate" style="margin-left:auto">5SK 4821</span></div>
+            <div class="row"><span data-i18n="mock.pay">Platíte řidiči na konci jízdy.</span><b>100&nbsp;Kč</b></div>
+            <div class="bar sec" data-i18n="mock.call">Zavolat</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="pillar">
+        <div class="pillar-copy">
+          <span class="pill pill-accent" data-i18n="p2.tag">Řidič</span>
+          <h3 class="h-card" style="font-size:26px" data-i18n="p2.title">Řidič vidí jen to, co teď potřebuje</h3>
+          <p class="muted" data-i18n="p2.body">Nabídka jízdy přes celou obrazovku, s cenou a vzdáleností. Jedno velké tlačítko pro každý krok: přijmout, jsem na místě, zahájit, ukončit. Navigace jedním ťuknutím.</p>
+          <ul>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p2.l1">Pevná cena předvyplněná, změna jen s důvodem</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p2.l2">Hotově, kartou, na fakturu</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p2.l3">Denní přehled jízd a tržeb</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p2.l4">Nic neinstalujete, otevře se jako aplikace</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p2.l5">Po výpadku signálu pokračuje tam, kde skončil</span></li>
+          </ul>
+        </div>
+        <div class="pillar-visual" aria-hidden="true">
+          <div class="mini" style="background:#141414;color:#F4F4F1">
+            <div class="caption" style="color:#A6A6A0" data-i18n="mock.offer">Nová jízda</div>
+            <div class="big">Kolín, nádraží</div>
+            <div style="color:#A6A6A0;font-weight:600">→ Masarykovo náměstí 12 · 1,8 km</div>
+            <div class="ring" style="background:conic-gradient(#F0A05A 0 72%,#30302E 72% 100%)"><b style="background:#141414;color:#F4F4F1">22 s</b></div>
+            <div class="row" style="background:#262624;color:#F4F4F1"><span data-i18n="mock.fixed">Pevná cena</span><b>100&nbsp;Kč</b></div>
+            <div class="bar acc" style="height:64px" data-i18n="mock.accept">Přijmout</div>
+            <div class="bar" style="background:#262624;color:#F4F4F1" data-i18n="mock.decline">Odmítnout</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="pillar">
+        <div class="pillar-copy">
+          <span class="pill pill-accent" data-i18n="p3.tag">Dispečink a majitel</span>
+          <h3 class="h-card" style="font-size:26px" data-i18n="p3.title">Auta, objednávky a mapa na jedné obrazovce</h3>
+          <p class="muted" data-i18n="p3.body">Dispečer přijme telefonickou objednávku a přiřadí auto během pár vteřin. Objednávky z aplikace přibývají samy. Majitel vidí, jak se dařilo, kdo jezdil a kolik to stálo.</p>
+          <ul>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p3.l1">Objednávky z telefonu i z aplikace v jednom seznamu</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p3.l2">Pevné trasy a zóny: nádraží – centrum 100 Kč nastavíte jednou</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p3.l3">Reporty, analytika a export do CSV</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p3.l4">Kdo co změnil, je v auditu</span></li>
+            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="p3.l5">Dispečink otevřete v prohlížeči, bez instalace</span></li>
+          </ul>
+        </div>
+        <div class="pillar-visual" aria-hidden="true">
+          <div class="mini">
+            <div class="caption" data-i18n="mock.week">Reporty · tento týden</div>
+            <div class="stat-grid">
+              <div class="stat"><small data-i18n="mock.rides">Jízdy</small><b>184</b> <span class="up">+12 %</span></div>
+              <div class="stat"><small data-i18n="mock.revenue">Tržby</small><b>31 250&nbsp;Kč</b> <span class="up">+9 %</span></div>
+              <div class="stat"><small data-i18n="mock.assign">Čas do přiřazení</small><b>1:40</b> <span class="caption">p50</span></div>
+              <div class="stat"><small data-i18n="mock.fromApp">Z aplikace</small><b>61 %</b></div>
+            </div>
+            <div class="stat"><small data-i18n="mock.byDay">Jízdy po dnech</small>
+              <div class="bars"><i style="height:40%"></i><i style="height:35%"></i><i style="height:45%"></i><i style="height:50%"></i><i style="height:70%"></i><i class="max" style="height:100%"></i><i style="height:85%"></i></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="brand">
+  <div class="wrap">
+    <div class="band">
+      <div class="pillar-copy">
+        <span class="eyebrow" data-i18n="brand.eyebrow">Vaše značka</span>
+        <h2 class="h-section" data-i18n="brand.title">Vaše barva, vaše logo, vaše číslo</h2>
+        <p data-i18n="brand.body">Aplikace nese jméno vaší taxislužby, ne naše. Zákazník ji otevře z odkazu nebo z ikony na ploše – žádný App Store, žádné čekání na schválení. Světlý i tmavý režim.</p>
+      </div>
+      <div class="trio" aria-hidden="true">
+        <div class="tiny a"><div class="sc"><span class="fc"><i></i>Taxi Kolín</span><div class="sh"><b>Kolín, nádraží → centrum</b><span class="pr">100&nbsp;Kč</span><span class="bt"><span data-i18n="mock.order">Objednat</span><span>100&nbsp;Kč</span></span></div></div></div>
+        <div class="tiny b"><div class="sc"><span class="fc"><i></i>Taxi Poděbrady</span><div class="sh"><b>Lázně → nádraží</b><span class="pr">90&nbsp;Kč</span><span class="bt"><span data-i18n="mock.order">Objednat</span><span>90&nbsp;Kč</span></span></div></div></div>
+        <div class="tiny c"><div class="sc"><span class="fc"><i></i>Taxi Čáslav</span><div class="sh"><b>Náměstí → nemocnice</b><span class="pr">80&nbsp;Kč</span><span class="bt"><span data-i18n="mock.order">Objednat</span><span>80&nbsp;Kč</span></span></div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="how.eyebrow">Zavedení</span>
+      <h2 class="h-section" data-i18n="how.title">Jak to funguje</h2>
+    </div>
+    <div class="steps">
+      <article class="step"><h3 class="h-card" data-i18n="how.s1t">Zavoláte nám.</h3><p data-i18n="how.s1b">Projdeme, jak dnes jezdíte: kolik aut, jaké ceny, kde.</p></article>
+      <article class="step"><h3 class="h-card" data-i18n="how.s2t">Nastavíme vaši flotilu.</h3><p data-i18n="how.s2b">Barva, logo, telefon, pevné trasy, řidiči. Obvykle do týdne.</p></article>
+      <article class="step"><h3 class="h-card" data-i18n="how.s3t">Zákazníci objednávají sami.</h3><p data-i18n="how.s3b">Odkaz dáte na web, na vizitky, do SMS. Telefon vám zůstává – jen zvoní méně.</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="price">
+      <div class="price-copy">
+        <span class="eyebrow" data-i18n="price.eyebrow">Cena</span>
+        <h2 class="h-section" data-i18n="price.title">Cena podle velikosti flotily</h2>
+        <p class="lead" data-i18n="price.body">Jedna měsíční částka za celou taxislužbu. Zákaznická aplikace je v ceně. Neplatíte za každého řidiče, neplatíte provizi z jízd.</p>
+        <div class="terms">
+          <span class="pill pill-neutral" data-i18n="price.t1">První měsíc zdarma</span>
+          <span class="pill pill-neutral" data-i18n="price.t2">Bez smlouvy na dobu určitou</span>
+          <span class="pill pill-neutral" data-i18n="price.t3">Bez poplatku za zavedení</span>
+        </div>
+        <div><a class="btn btn-primary" href="#contact" data-i18n="price.cta">Zavolejte nám a řekneme vám cenu pro vaši flotilu</a></div>
+      </div>
+      <ul>
+        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l1">Zákaznická, řidičská i dispečerská aplikace</span></li>
+        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l2">Vaše značka a barvy</span></li>
+        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l3">Pevné trasy a zóny</span></li>
+        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l4">Reporty a analytika</span></li>
+        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l5">Aktualizace a podpora</span></li>
+        <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg><span data-i18n="price.l6">SMS a mapy za skutečnou cenu, s měsíčním limitem, který si nastavíte</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="origin">
+  <div class="wrap">
+    <div class="origin">
+      <div class="origin-copy">
+        <span class="eyebrow" data-i18n="origin.eyebrow">Odkud jsme</span>
+        <h2 class="h-section" data-i18n="origin.title">Postaveno pro tři auta v Kolíně</h2>
+        <p class="lead" data-i18n="origin.body">Systém vznikl pro Taxi Kolín, rodinnou taxislužbu se třemi auty v Kolíně a Kutné Hoře, která do té doby brala objednávky jen telefonem. Nejdřív jsme ho stavěli pro sebe, teprve potom pro ostatní. Proto v něm není nic, co by malá taxislužba nepotřebovala.</p>
+        <p class="caption" data-i18n="origin.caption">Jízdy, hodnocení a čísla z provozu doplníme, jakmile je budeme mít.</p>
+      </div>
+      <div class="origin-map" aria-hidden="true">
+        <div class="pin"><i></i>Kolín</div>
+        <div class="pin"><i></i>Kutná Hora</div>
+        <div class="caption" data-i18n="origin.routes">Pevné trasy, které fleet nastavil jednou</div>
+        <div class="rt"><span>Nádraží → centrum</span><span>100&nbsp;Kč</span></div>
+        <div class="rt"><span data-i18n="origin.anywhereKH">Kdekoli po Kutné Hoře</span><span>110&nbsp;Kč</span></div>
+        <div class="rt"><span>Kutná Hora → Kolín</span><span>300&nbsp;Kč</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="faq.eyebrow">Otázky</span>
+      <h2 class="h-section" data-i18n="faq.title">Na co se ptají majitelé</h2>
+    </div>
+    <div class="faq">
+      <details><summary><span data-i18n="faq.q1">Proč ne Bolt nebo Liftago?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a1">Zprostředkovatel vlastní zákazníka, určuje cenu a bere si provizi. Vaše aplikace vlastní vás: cenu i zákazníka. Jezdit pro ně můžete dál, vedle toho.</p></details>
+      <details><summary><span data-i18n="faq.q2">Není to v App Storu. Nevadí to?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a2">Zákazník otevře odkaz a přidá si ikonu na plochu – dvě ťuknutí. Nečekáte na schválení, aktualizace jsou okamžité a aplikace je pod vaším jménem, ne pod účtem dodavatele.</p></details>
+      <details><summary><span data-i18n="faq.q3">Potřebuji někoho na dispečinku?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a3">Ne nutně. Objednávky z aplikace přicházejí samy a přiřadit auto zvládne majitel z notebooku nebo tabletu. Když dispečink máte, dostane přehlednou obrazovku místo sešitu.</p></details>
+      <details><summary><span data-i18n="faq.q4">Co když vypadne internet?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a4">Zákazník vidí tlačítko Zavolat a vaše číslo. Řidič má jízdu uloženou v telefonu a pokračuje, jakmile se připojí.</p></details>
+      <details><summary><span data-i18n="faq.q5">Jak dlouho trvá zavedení?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a5">Obvykle do týdne od telefonátu. Nastavíme barvu, logo, telefon, pevné trasy a řidiče; vy rozdáte odkaz.</p></details>
+      <details><summary><span data-i18n="faq.q6">Kde jsou data?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a6">Na serverech v EU, každá taxislužba odděleně. Objednávky, zákazníky i reporty si kdykoli stáhnete v CSV.</p></details>
+      <details><summary><span data-i18n="faq.q7">Můžu odejít?</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary><p data-i18n="faq.a7">Ano, kdykoli. Bez smlouvy na dobu určitou, data si odnesete.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <div class="contact">
+      <div class="contact-copy">
+        <span class="eyebrow" data-i18n="contact.eyebrow">Kontakt</span>
+        <h2 class="h-section" data-i18n="contact.title">Zavolejte nám. Za týden objednávají vaši zákazníci sami.</h2>
+        <div class="phonebox">
+          <span class="num" id="phone-number">+420 123 456 789</span>
+          <button type="button" class="btn btn-secondary btn-sm" id="copy-phone" data-i18n="contact.copy">Kopírovat číslo</button>
+        </div>
+        <p class="muted" data-i18n="contact.hours">Po–Pá 8–18, nebo nám nechte zprávu a ozveme se.</p>
+      </div>
+      <form class="form" id="contact-form" novalidate>
+        <h3 class="h-card" data-i18n="contact.formTitle">Nebo nám napište</h3>
+        <div class="grid">
+          <div class="field"><label for="f-name"><span data-i18n="contact.name">Jméno</span> <span aria-hidden="true">*</span></label><input id="f-name" name="name" autocomplete="name" required aria-required="true"></div>
+          <div class="field"><label for="f-phone"><span data-i18n="contact.phone">Telefon</span> <span aria-hidden="true">*</span></label><input id="f-phone" name="phone" type="tel" autocomplete="tel" required aria-required="true"></div>
+          <div class="field"><label for="f-fleet" data-i18n="contact.fleet">Taxislužba a město</label><input id="f-fleet" name="fleet" autocomplete="organization"></div>
+          <div class="field"><label for="f-cars" data-i18n="contact.cars">Počet aut</label><input id="f-cars" name="cars" type="number" min="1" max="99" inputmode="numeric"></div>
+        </div>
+        <div class="field"><label for="f-note" data-i18n="contact.note">Co vás zajímá (nepovinné)</label><textarea id="f-note" name="note"></textarea></div>
+        <div id="form-msg" hidden aria-live="polite"></div>
+        <button class="btn btn-primary" type="submit" id="f-submit" data-i18n="contact.send">Odeslat</button>
+        <p class="caption"><span data-i18n="contact.privacy">Údaje použijeme jen k tomu, abychom se vám ozvali.</span> <span data-i18n="contact.required">* povinné</span></p>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>Taxi Fleet · info@example.cz · +420 123 456 789</div>
+    <div><a href="#contact" data-i18n="foot.privacy">Ochrana osobních údajů</a> · <a href="#contact" data-i18n="foot.terms">Obchodní podmínky</a></div>
+    <div data-i18n="foot.line">Postaveno v Kolíně. Mapy poskytuje Mapy.com.</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var EN = {
+    "nav.features":"Features","nav.how":"How it works","nav.pricing":"Pricing","nav.faq":"FAQ","nav.call":"Call",
+    "hero.eyebrow":"App and dispatch for taxi fleets from 2 cars","hero.title":"Your taxi service.<br>Your own app.",
+    "hero.sub":"Customers order in three taps and see the price up front. You see your cars, orders and revenue on one screen. No app store, no per-driver licence, no commission on rides.",
+    "hero.cta1":"Call +420 123 456 789","hero.cta2":"Send a message","hero.caption":"Live within a week · first month free · no fixed-term contract",
+    "mock.board":"Dispatch · today","mock.live":"3 cars online","mock.assigned":"Assigned","mock.new":"New","mock.done":"Completed",
+    "mock.ride":"Your ride","mock.edit":"Edit","mock.pickup":"Pickup","mock.dest":"Destination","mock.note":"The price is final. You pay the driver at the end of the ride.",
+    "mock.fixed":"Fixed price","mock.now":"Now","mock.pax":"1 passenger","mock.noteChip":"Note","mock.order":"Order",
+    "mock.coming":"Your driver arrives in ~4 min","mock.onway":"On the way","mock.pay":"You pay the driver at the end of the ride.","mock.call":"Call",
+    "mock.offer":"New ride","mock.accept":"Accept","mock.decline":"Decline",
+    "mock.week":"Reports · this week","mock.rides":"Rides","mock.revenue":"Revenue","mock.assign":"Time to assign","mock.fromApp":"From the app","mock.byDay":"Rides by day",
+    "why.eyebrow":"Why now","why.title":"The phone is no longer enough",
+    "why.c1t":"Bolt and Liftago are in your town too","why.c1b":"Since spring 2026 Bolt takes orders anywhere in Czechia. Once a customer gets used to an app, they stop looking up your number.",
+    "why.c2t":"The fleet in the next town already has one","why.c2b":"Usually rented from a vendor, under the vendor's account, in the vendor's look. Yours will be yours: your colour, your logo, your number.",
+    "why.c3t":"Commission does not pay","why.c3b":"A marketplace takes a cut of every ride and sets the price. Regulars, the station run, fixed prices and airport trips are your edge. Keep it.",
+    "feat.eyebrow":"Features","feat.title":"One system, three apps","feat.sub":"Customer, driver and dispatch work on the same orders in real time. Nothing is retyped, nothing gets lost.",
+    "p1.tag":"Customer","p1.title":"Order in three taps","p1.body":"Open, pick a destination, order. The price shows up front – fixed or an estimate. The customer watches the car on the map, knows which car is coming and when, and rates the driver at the end.",
+    "p1.l1":"Sign-in by SMS code, no password","p1.l2":"Ride tracking without an account, via a link","p1.l3":"Six languages incl. Ukrainian and Russian","p1.l4":"Works on a cheap phone with weak signal","p1.l5":"A Call button on every screen",
+    "p2.tag":"Driver","p2.title":"The driver sees only what matters now","p2.body":"A full-screen ride offer with price and distance. One big button for every step: accept, arrived, start, finish. Navigation in one tap.",
+    "p2.l1":"Fixed price pre-filled, changed only with a reason","p2.l2":"Cash, card, invoice","p2.l3":"Daily rides and earnings","p2.l4":"Nothing to install, opens like an app","p2.l5":"Picks up where it left off after a signal drop",
+    "p3.tag":"Dispatch and owner","p3.title":"Cars, orders and map on one screen","p3.body":"The dispatcher takes a phone order and assigns a car in seconds. App orders arrive on their own. The owner sees how the fleet did, who drove and what it cost.",
+    "p3.l1":"Phone and app orders in one list","p3.l2":"Fixed routes and zones: station – centre 100 Kč, set once","p3.l3":"Reports, analytics and CSV export","p3.l4":"Every change is in the audit log","p3.l5":"Dispatch opens in a browser, nothing to install",
+    "brand.eyebrow":"Your brand","brand.title":"Your colour, your logo, your number","brand.body":"The app carries your fleet's name, not ours. Customers open it from a link or a home-screen icon – no app store, no waiting for approval. Light and dark mode.",
+    "how.eyebrow":"Setup","how.title":"How it works","how.s1t":"You call us.","how.s1b":"We go through how you work today: how many cars, what prices, where.",
+    "how.s2t":"We set up your fleet.","how.s2b":"Colour, logo, phone, fixed routes, drivers. Usually within a week.","how.s3t":"Customers order themselves.","how.s3b":"Put the link on your website, business cards, SMS. You keep your phone number – it just rings less.",
+    "price.eyebrow":"Pricing","price.title":"Priced by fleet size","price.body":"One monthly amount for the whole fleet. The customer app is included. No per-driver licence, no commission on rides.",
+    "price.t1":"First month free","price.t2":"No fixed-term contract","price.t3":"No setup fee","price.cta":"Call us and we'll tell you the price for your fleet",
+    "price.l1":"Customer, driver and dispatch apps","price.l2":"Your brand and colours","price.l3":"Fixed routes and zones","price.l4":"Reports and analytics","price.l5":"Updates and support","price.l6":"SMS and maps at cost, with a monthly cap you set",
+    "origin.eyebrow":"Where we come from","origin.title":"Built for three cars in Kolín","origin.body":"The system was built for Taxi Kolín, a family taxi service with three cars in Kolín and Kutná Hora that used to take every order by phone. We built it for ourselves first, then for others. That is why there is nothing in it a small fleet does not need.",
+    "origin.caption":"Rides, ratings and operating numbers will follow as we collect them.","origin.routes":"Fixed routes the fleet set once","origin.anywhereKH":"Anywhere in Kutná Hora",
+    "faq.eyebrow":"FAQ","faq.title":"What owners ask",
+    "faq.q1":"Why not Bolt or Liftago?","faq.a1":"A marketplace owns the customer, sets the price and takes a cut. Your own app is yours: the price and the customer. You can still drive for them on the side.",
+    "faq.q2":"It isn't in the App Store. Is that a problem?","faq.a2":"The customer opens a link and adds an icon to the home screen – two taps. No approval queue, instant updates, and the app is under your name, not a vendor's account.",
+    "faq.q3":"Do I need a dispatcher?","faq.a3":"Not necessarily. App orders arrive on their own and the owner can assign cars from a laptop or tablet. If you have a dispatcher, they get a clear board instead of a notebook.",
+    "faq.q4":"What if the internet drops?","faq.a4":"The customer sees a Call button and your number. The driver's ride is saved on the phone and continues once they reconnect.",
+    "faq.q5":"How long does setup take?","faq.a5":"Usually within a week of the call. We set colour, logo, phone, fixed routes and drivers; you hand out the link.",
+    "faq.q6":"Where is the data?","faq.a6":"On servers in the EU, each fleet separated. You can download orders, customers and reports as CSV at any time.",
+    "faq.q7":"Can I leave?","faq.a7":"Yes, any time. No fixed-term contract, and you take your data with you.",
+    "contact.eyebrow":"Contact","contact.title":"Call us. In a week your customers order themselves.","contact.copy":"Copy number","contact.hours":"Mon–Fri 8–18, or leave a message and we'll get back to you.",
+    "contact.formTitle":"Or send us a message","contact.name":"Name","contact.phone":"Phone","contact.fleet":"Taxi service and town","contact.cars":"Number of cars","contact.note":"What you'd like to know (optional)","contact.send":"Send","contact.privacy":"We only use your details to get back to you.",
+    "skip":"Skip to content","contact.required":"* required",
+    "foot.privacy":"Privacy","foot.terms":"Terms","foot.line":"Built in Kolín. Maps by Mapy.com."
+  };
+  var MSG = {
+    cs:{sending:"Odesílám…",ok:"Děkujeme. Ozveme se vám do jednoho pracovního dne.",err:"Zprávu se nepodařilo odeslat. Zkuste to znovu, nebo nám zavolejte.",req:"Vyplňte prosím jméno a telefon.",copied:"Číslo zkopírováno",copyFail:"Číslo je označené – zkopírujte ho ručně."},
+    en:{sending:"Sending…",ok:"Thank you. We'll get back to you within one working day.",err:"The message couldn't be sent. Try again, or give us a call.",req:"Please fill in your name and phone.",copied:"Number copied",copyFail:"The number is selected – copy it manually."}
+  };
+  var CS = {};
+  var nodes = document.querySelectorAll("[data-i18n]");
+  nodes.forEach(function(n){ CS[n.getAttribute("data-i18n")] = n.innerHTML; });
+  var lang = "cs";
+  function apply(l){
+    lang = l;
+    var dict = l === "en" ? EN : CS;
+    nodes.forEach(function(n){ var k=n.getAttribute("data-i18n"); if(dict[k]!==undefined) n.innerHTML = dict[k]; });
+    document.documentElement.lang = l;
+    document.getElementById("lang-cs").setAttribute("aria-pressed", l==="cs");
+    document.getElementById("lang-en").setAttribute("aria-pressed", l==="en");
+    try{ localStorage.setItem("tf-lang", l); }catch(e){}
+  }
+  document.getElementById("lang-cs").addEventListener("click", function(){ apply("cs"); });
+  document.getElementById("lang-en").addEventListener("click", function(){ apply("en"); });
+  var initial = "cs";
+  if (location.hash === "#en") initial = "en";
+  else { try{ var s = localStorage.getItem("tf-lang"); if (s==="en"||s==="cs") initial = s; }catch(e){} }
+  document.documentElement.lang = "cs";
+  if (initial !== "cs") apply(initial);
+
+  function toast(t){ var el=document.createElement("div"); el.className="toast"; el.textContent=t; el.setAttribute("role","status"); document.body.appendChild(el); setTimeout(function(){ el.remove(); }, 2200); }
+  document.getElementById("copy-phone").addEventListener("click", function(){
+    var num = document.getElementById("phone-number");
+    var text = num.textContent;
+    function fallback(){ var r=document.createRange(); r.selectNodeContents(num); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r); toast(MSG[lang].copyFail); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ toast(MSG[lang].copied); }, fallback); else fallback();
+  });
+
+  var form = document.getElementById("contact-form"), msg = document.getElementById("form-msg"), submit = document.getElementById("f-submit");
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var name = document.getElementById("f-name").value.trim(), phone = document.getElementById("f-phone").value.trim();
+    msg.hidden = false;
+    document.getElementById("f-name").setAttribute("aria-invalid", !name);
+    document.getElementById("f-phone").setAttribute("aria-invalid", !phone);
+    if (!name || !phone) { msg.className="callout err"; msg.textContent = MSG[lang].req; (!name?document.getElementById("f-name"):document.getElementById("f-phone")).focus(); return; }
+    var label = submit.textContent; submit.textContent = MSG[lang].sending; submit.disabled = true;
+    // Demo shell: wire this to your API (e.g. POST /api/v1/public/leads) before launch.
+    setTimeout(function(){ msg.className="callout ok"; msg.textContent = MSG[lang].ok; submit.textContent = label; submit.disabled = false; form.reset(); }, 600);
+  });
+})();
+</script>
+
+</body>
+</html>
