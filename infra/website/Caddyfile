@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# INNER product-website Caddyfile (baked into the website image by
+# product-website/Dockerfile).
+#
+# Runs on the internal docker network on :8080 with NO public TLS. The EDGE Caddy
+# (infra/Caddyfile) terminates HTTPS for the apex domain and forwards here. Stock
+# caddy:2-alpine is sufficient — no DNS/ratelimit plugins at this layer.
+#
+# The site is a fully static Astro build (SSG). Unlike the web SPA there is NO
+# /api or /hubs proxy and NO SPA history fallback — each route is its own .html
+# (/, /en/). Directory-format output: `/` → index.html, `/en/` → en/index.html.
+# ─────────────────────────────────────────────────────────────────────────────
+
+{
+	admin off
+	# The edge terminates TLS; this server speaks plain HTTP on the internal network.
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+
+	root * /srv
+
+	# Hashed Astro assets (/_astro/<name>.<hash>.<ext>) — cache 1 year immutable.
+	@assets path /_astro/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# HTML documents must always be revalidated (content can change on redeploy).
+	@html path *.html /
+	header @html Cache-Control "no-cache, no-store, must-revalidate"
+
+	# Resolve extensionless + directory routes to their static file
+	# (e.g. /en → /en/index.html); file_server also serves directory index.html.
+	try_files {path} {path}/index.html {path}.html
+	file_server
+
+	# Astro emits dist/404.html — serve it (with a 404 status) for unknown paths.
+	handle_errors {
+		@notfound expression {err.status_code} == 404
+		rewrite @notfound /404.html
+		file_server
+	}
+}

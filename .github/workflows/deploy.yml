@@ -72,6 +72,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build & push website (static Astro product site)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: product-website/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}/taxi-website:${{ steps.meta.outputs.sha_tag }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}/taxi-website:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Build & push caddy (edge, with DNS + ratelimit plugins)
         uses: docker/build-push-action@v6
         with:
@@ -131,10 +143,11 @@ jobs:
                 echo "${var}=${val}" >> .env
               fi
             }
-            set_tag API_TAG    "$NEW_TAG"
-            set_tag WEB_TAG    "$NEW_TAG"
-            set_tag CADDY_TAG  "$NEW_TAG"
-            set_tag BACKUP_TAG "$NEW_TAG"
+            set_tag API_TAG     "$NEW_TAG"
+            set_tag WEB_TAG     "$NEW_TAG"
+            set_tag WEBSITE_TAG "$NEW_TAG"
+            set_tag CADDY_TAG   "$NEW_TAG"
+            set_tag BACKUP_TAG  "$NEW_TAG"
 
             $COMPOSE pull
 
@@ -156,10 +169,11 @@ jobs:
             # ── Auto-rollback to the previous tag on failure ───────────────────
             if [ "$ok" -ne 1 ]; then
               echo "[deploy] HEALTH CHECK FAILED — rolling back to $PREV_TAG"
-              set_tag API_TAG    "$PREV_TAG"
-              set_tag WEB_TAG    "$PREV_TAG"
-              set_tag CADDY_TAG  "$PREV_TAG"
-              set_tag BACKUP_TAG "$PREV_TAG"
+              set_tag API_TAG     "$PREV_TAG"
+              set_tag WEB_TAG     "$PREV_TAG"
+              set_tag WEBSITE_TAG "$PREV_TAG"
+              set_tag CADDY_TAG   "$PREV_TAG"
+              set_tag BACKUP_TAG  "$PREV_TAG"
               $COMPOSE pull
               $COMPOSE up -d
               echo "[deploy] rolled back to $PREV_TAG"

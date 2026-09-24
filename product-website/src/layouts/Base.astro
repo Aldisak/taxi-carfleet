@@ -20,10 +20,11 @@ const { locale, title, description, ogDescription, skipLabel } = Astro.props
 
 const ogLocale = locale === 'cs' ? 'cs_CZ' : 'en_US'
 const ogLocaleAlt = locale === 'cs' ? 'en_US' : 'cs_CZ'
-// Per-locale canonical: cs -> "/", en -> "/en/". Keep the {{domain}} placeholder
-// consistent with the reference. NOTE: deviates from reference line 10 which
+// Canonical origin comes from astro.config `site` (Astro.site). Per-locale
+// canonical: cs -> "/", en -> "/en/". NOTE: deviates from reference line 10 which
 // pointed the en hreflang at "/#en"; per the assignment en now lives at /en/.
-const canonical = locale === 'cs' ? 'https://{{domain}}/' : 'https://{{domain}}/en/'
+const origin = Astro.site?.origin ?? 'https://taxi-carfleet.com'
+const canonical = locale === 'cs' ? `${origin}/` : `${origin}/en/`
 ---
 
 <!doctype html>
@@ -34,15 +35,15 @@ const canonical = locale === 'cs' ? 'https://{{domain}}/' : 'https://{{domain}}/
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <link rel="alternate" hreflang="cs" href="https://{{domain}}/" />
-    <link rel="alternate" hreflang="en" href="https://{{domain}}/en/" />
+    <link rel="alternate" hreflang="cs" href={`${origin}/`} />
+    <link rel="alternate" hreflang="en" href={`${origin}/en/`} />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={ogDescription ?? description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:locale" content={ogLocale} />
     <meta property="og:locale:alternate" content={ogLocaleAlt} />
-    <meta property="og:image" content="https://{{domain}}/og.png" />
+    <meta property="og:image" content={`${origin}/og.png`} />
     <meta name="theme-color" content="#AD4F09" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Self-host Manrope (woff2, weights 500/700/800) in production per the design handoff; Google Fonts is the fallback below. -->
@@ -61,7 +62,7 @@ const canonical = locale === 'cs' ? 'https://{{domain}}/' : 'https://{{domain}}/
           {
             '@type': 'Organization',
             name: 'Taxi Fleet',
-            url: 'https://{{domain}}/',
+            url: `${origin}/`,
             telephone: '+420123456789',
             email: 'info@example.cz',
             address: {

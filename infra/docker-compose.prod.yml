@@ -53,6 +53,7 @@ services:
       - fleet_data:/srv/fleets:ro
     depends_on:
       - web
+      - website
       - api
     networks:
       - edge
@@ -68,6 +69,17 @@ services:
       API_UPSTREAM: "api:8080"
     depends_on:
       - api
+    networks:
+      - internal
+
+  # Static product/marketing site (Astro SSG). Served by the edge on the apex
+  # domain only; purely static, no API access. Mirrors the `web` container.
+  website:
+    image: ${GHCR_OWNER:-local}/taxi-website:${WEBSITE_TAG:-latest}
+    # build: { context: .., dockerfile: product-website/Dockerfile }   # uncomment for local build
+    container_name: taxi_website
+    restart: unless-stopped
+    logging: *default-logging
     networks:
       - internal
 

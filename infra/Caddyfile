@@ -99,16 +99,33 @@
 	reverse_proxy web:8080
 }
 
-# ── Apex domain ──────────────────────────────────────────────────────────────
+# ── Apex domain → static product/marketing website ───────────────────────────
+# No subdomain = the marketing site (Astro SSG in the `website` container). It is
+# purely static and makes no API calls, so it does NOT import proxy_app.
 {$DOMAIN} {
 	import security_headers
-	import proxy_app
+	reverse_proxy website:8080
+}
+
+# ── www → canonical apex ──────────────────────────────────────────────────────
+# EXPLICIT block so `www` does NOT fall through to the `*.{$DOMAIN}` wildcard
+# below (the SPA treats `www` as "no fleet", so it must not serve the customer
+# app). Caddy matches the most-specific host first, so this wins over the wildcard.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
 }
 
 # ── Wildcard: every fleet subdomain (demo.{domain}, second.{domain}, …) ──────
 # Covered by the single wildcard cert from the DNS-01 challenge above — a NEW
-# fleet needs NO deploy and NO new cert.
+# fleet needs NO deploy and NO new cert. The SPA (proxy_app) serves the whole app
+# here; the fleet slug is the first hostname label (resolveFleetSlug). A visitor
+# to the bare subdomain root is redirected to the customer app; every other path
+# (/customer/*, /dispatcher/*, /driver/*, /admin/*, /api/*, /hubs/*, /fleets/*)
+# flows through proxy_app unchanged (redir runs before reverse_proxy in Caddy's
+# default directive order, and @root scopes it to exactly "/").
 *.{$DOMAIN} {
 	import security_headers
+	@root path /
+	redir @root /customer 302
 	import proxy_app
 }
