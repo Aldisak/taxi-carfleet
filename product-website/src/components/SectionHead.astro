@@ -1,0 +1,27 @@
+---
+// Presentational section header. Ports .sec-head and reuses the global
+// .eyebrow / .h-section / .lead helpers.
+interface Props {
+  eyebrow: string
+  title: string
+  lead?: string
+}
+
+const { eyebrow, title, lead } = Astro.props
+---
+
+<div class="sec-head">
+  <span class="eyebrow">{eyebrow}</span>
+  <h2 class="h-section">{title}</h2>
+  {lead && <p class="lead">{lead}</p>}
+</div>
+
+<style>
+  .sec-head {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 36px;
+    max-width: 64ch;
+  }
+</style>

@@ -1,0 +1,161 @@
+---
+// Base layout — owns <head> (SEO/OG/JSON-LD/hreflang/fonts) and page chrome.
+// Ported from reference/index.html lines ~3-42. The page supplies the
+// Navigation and Footer via the `header`/`footer` slots so this layout stays
+// free of hardcoded, user-facing copy.
+import '../styles/tokens.css'
+import '../styles/global.css'
+
+interface Props {
+  locale: 'cs' | 'en'
+  title: string
+  description: string
+  // og:description is a distinct marketing string in the reference; defaults to
+  // description when omitted. og:title is identical to <title> in the reference.
+  ogDescription?: string
+  skipLabel: string
+}
+
+const { locale, title, description, ogDescription, skipLabel } = Astro.props
+
+const ogLocale = locale === 'cs' ? 'cs_CZ' : 'en_US'
+const ogLocaleAlt = locale === 'cs' ? 'en_US' : 'cs_CZ'
+// Per-locale canonical: cs -> "/", en -> "/en/". Keep the {{domain}} placeholder
+// consistent with the reference. NOTE: deviates from reference line 10 which
+// pointed the en hreflang at "/#en"; per the assignment en now lives at /en/.
+const canonical = locale === 'cs' ? 'https://{{domain}}/' : 'https://{{domain}}/en/'
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="cs" href="https://{{domain}}/" />
+    <link rel="alternate" hreflang="en" href="https://{{domain}}/en/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={ogDescription ?? description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:locale:alternate" content={ogLocaleAlt} />
+    <meta property="og:image" content="https://{{domain}}/og.png" />
+    <meta name="theme-color" content="#AD4F09" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Self-host Manrope (woff2, weights 500/700/800) in production per the design handoff; Google Fonts is the fallback below. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap"
+    />
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'Organization',
+            name: 'Taxi Fleet',
+            url: 'https://{{domain}}/',
+            telephone: '+420123456789',
+            email: 'info@example.cz',
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: 'Kolín',
+              addressCountry: 'CZ',
+            },
+          },
+          {
+            '@type': 'SoftwareApplication',
+            name: 'Taxi Fleet',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web, Android, iOS (PWA)',
+            description:
+              'Objednávací aplikace pro zákazníky, aplikace pro řidiče a dispečink pro malé taxislužby.',
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'CZK',
+              description:
+                'Měsíční cena podle velikosti flotily, zákaznická aplikace v ceně.',
+            },
+            inLanguage: ['cs', 'en', 'de', 'ru', 'uk', 'fil'],
+          },
+          {
+            '@type': 'FAQPage',
+            mainEntity: [
+              {
+                '@type': 'Question',
+                name: 'Proč ne Bolt nebo Liftago?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Zprostředkovatel vlastní zákazníka, určuje cenu a bere si provizi. Vaše aplikace vlastní vás: cenu i zákazníka. Jezdit pro ně můžete dál, vedle toho.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Není to v App Storu. Nevadí to?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Zákazník otevře odkaz a přidá si ikonu na plochu – dvě ťuknutí. Nečekáte na schválení, aktualizace jsou okamžité a aplikace je pod vaším jménem, ne pod účtem dodavatele.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Potřebuji někoho na dispečinku?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Ne nutně. Objednávky z aplikace přicházejí samy a přiřadit auto zvládne majitel z notebooku nebo tabletu. Když dispečink máte, dostane přehlednou obrazovku místo sešitu.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Co když vypadne internet?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Zákazník vidí tlačítko Zavolat a vaše číslo. Řidič má jízdu uloženou v telefonu a pokračuje, jakmile se připojí.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Jak dlouho trvá zavedení?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Obvykle do týdne od telefonátu. Nastavíme barvu, logo, telefon, pevné trasy a řidiče; vy rozdáte odkaz.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Kde jsou data?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Na serverech v EU, každá taxislužba odděleně. Objednávky, zákazníky i reporty si kdykoli stáhnete v CSV.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Můžu odejít?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Ano, kdykoli. Bez smlouvy na dobu určitou, data si odnesete.',
+                },
+              },
+            ],
+          },
+        ],
+      })}
+    />
+  </head>
+  <body>
+    <a class="skip" href="#top">{skipLabel}</a>
+    <slot name="header" />
+    <main id="top">
+      <slot />
+    </main>
+    <slot name="footer" />
+  </body>
+</html>

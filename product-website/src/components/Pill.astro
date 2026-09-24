@@ -1,0 +1,49 @@
+---
+// Presentational pill/badge primitive. Ports .pill / .pill-accent /
+// .pill-info / .pill-warning / .pill-success / .pill-neutral from the reference.
+interface Props {
+  variant?: 'accent' | 'info' | 'warning' | 'success' | 'neutral'
+  class?: string
+}
+
+const { variant = 'neutral', class: className } = Astro.props
+
+const classes = ['pill', `pill-${variant}`, className]
+---
+
+<span class:list={classes}><slot /></span>
+
+<style>
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .pill-accent {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+  .pill-info {
+    background: var(--info-bg);
+    color: var(--info);
+  }
+  .pill-warning {
+    background: var(--warning-bg);
+    color: var(--warning);
+  }
+  .pill-success {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  .pill-neutral {
+    background: var(--surface-2);
+    color: var(--ink-2);
+  }
+</style>

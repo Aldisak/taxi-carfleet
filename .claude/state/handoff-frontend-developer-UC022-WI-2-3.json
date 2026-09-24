@@ -1,0 +1,54 @@
+{
+  "wi_id": "UC022-WI-2-3",
+  "files_changed": [
+    "product-website/src/layouts/Base.astro",
+    "product-website/src/components/Navigation.astro",
+    "product-website/src/components/Footer.astro",
+    "product-website/src/components/Button.astro",
+    "product-website/src/components/Pill.astro",
+    "product-website/src/components/SectionHead.astro",
+    "product-website/src/components/Icon.astro",
+    "product-website/src/components/FormField.astro",
+    "product-website/src/pages/index.astro"
+  ],
+  "files_created": [
+    "product-website/src/layouts/Base.astro",
+    "product-website/src/components/Navigation.astro",
+    "product-website/src/components/Footer.astro",
+    "product-website/src/components/Button.astro",
+    "product-website/src/components/Pill.astro",
+    "product-website/src/components/SectionHead.astro",
+    "product-website/src/components/Icon.astro",
+    "product-website/src/components/FormField.astro"
+  ],
+  "tests_added": 0,
+  "tests_passing": true,
+  "coverage_delta": "n/a — Astro SSG components; no Vitest suite in product-website (verification is astro build + astro check, per WI). No web/ gates apply (outside web/).",
+  "hit_max_turns": false,
+  "component_prop_contracts": {
+    "Base.astro": "Props: locale ('cs'|'en'), title, description, ogDescription?(defaults to description), skipLabel. Owns <head> (charset/viewport/title/description/canonical/hreflang cs+en/OG per-locale/theme-color #AD4F09/JSON-LD @graph/favicon/font preconnect+Manrope). Body: skip-link (href=#top), <slot name='header'/>, <main id='top'><slot/></main>, <slot name='footer'/>. No hardcoded user-facing copy; JSON-LD copy is machine metadata ported verbatim.",
+    "Navigation.astro": "Props: locale, brandLabel, sectionsLabel, navFeatures, navHow, navPricing, navFaq, langGroupLabel, callLabel. Renders sticky nav; brand car Icon + 'Taxi Fleet'; section anchor links; lang toggle as <a href='/'>CS</a>/<a href='/en/'>EN</a> with aria-current on active locale; role='group' preserved; primary CTA Button (phone Icon) to #contact.",
+    "Footer.astro": "Props: companyLine, privacyLabel, termsLabel, privacyHref?(=#contact), termsHref?(=#contact), attributionLine. Renders company line, privacy/terms links, attribution line.",
+    "Button.astro": "Props: variant('primary'|'secondary', default primary), size?('sm'), href?, type?('button'|'submit'), id?, class?. Renders <a> when href else <button>. Slots: default (label), named 'icon' (leading). Ports .btn/.btn-primary/.btn-secondary/.btn-sm.",
+    "Pill.astro": "Props: variant('accent'|'info'|'warning'|'success'|'neutral', default neutral), class?. Slot: default. Ports .pill*.",
+    "SectionHead.astro": "Props: eyebrow, title, lead?. Renders .sec-head with global .eyebrow/.h-section(h2)/.lead helpers.",
+    "Icon.astro": "Props: name (IconName: car|phone|check|plus|menu|globe|device|currency), label?, class?. Inline SVG glyphs copied verbatim; scoped .icon rule (stroke:currentColor;fill:none;stroke-width:2). aria-hidden='true' by default; label sets role='img'+aria-label.",
+    "FormField.astro": "Props: label, name, id, type?('text'|'tel'|'number'|'email'|'textarea', default text), required?, autocomplete?, inputmode?, min?, max?, requiredMark?. Ports .field (label+input/textarea, focus + aria-invalid styling). Built for WI-5 ContactForm."
+  },
+  "verification_output": {
+    "npm run build": "exit 0 — 1 page built (/index.html). dist/index.html contains nav brand 'Taxi Fleet' and footer attribution 'Postaveno v Kolíně. Mapy poskytuje Mapy.com.'",
+    "npx astro check": "exit 0 — Result (10 files): 0 errors, 0 warnings, 0 hints.",
+    "css_scoping_checks": "Emitted CSS confirmed: .icon rule (fill:none;stroke:currentColor) present and SVGs carry class='icon'; .brand-dot :global(svg){width:18px} and .btn :global(svg){width:20px} compiled to descendant selectors reaching Icon's scope; .lang a{height:36px...} and .lang a[aria-current=true]{background:var(--ink)} both present.",
+    "head_parity_checks": "canonical https://{{domain}}/ (cs), hreflang cs+en, JSON-LD @graph, theme-color #AD4F09, favicon, OG per-locale all present in dist/index.html; aria-current='true' on active cs locale link; /en/ link present. og:description is the reference's distinct marketing string ('Zákazníci si objednají na tři ťuknutí…'), separate from meta description ('Vlastní objednávací aplikace…') — verified in dist/index.html."
+  },
+  "deviations": [
+    "en hreflang/canonical: reference line 10 pointed en at 'https://{{domain}}/#en'; per the assignment, Base emits en canonical/hreflang at '/en/' (cs stays '/'). {{domain}} placeholder preserved.",
+    "Lang toggle: reference used <button aria-pressed>; per assignment rendered as <a href='/'|'/en/'> with aria-current on the active locale. The scoped CSS was ported from '.lang button...'/'[aria-pressed=true]' to '.lang a...'/'[aria-current=true]' so active-pill styling+sizing survive.",
+    "Astro style scoping: all icon SVGs route through <Icon> so each carries Icon's scope and the .icon rule; parent descendant sizing (.brand-dot svg, .btn svg) uses :global(svg); nav CTA sizing uses .nav :global(.btn) since Button is a separate component scope. No hand-inlined class='icon' SVGs in Navigation.",
+    "JSON-LD <script> carries is:inline (required by astro check for a typed application/ld+json script with set:html).",
+    "og:description is a distinct marketing string in the reference (line 13, differs from the meta description on line 7). Base exposes an optional ogDescription prop (defaults to description) so WI-6 can route it through t() without reopening Base; index.astro passes the reference literal now. og:title stays collapsed to <title> (identical in the reference).",
+    "index.astro carries temporary literal Czech copy (nav/footer/2 SectionHeads) as expected by the WI; WI-6 replaces every literal with t(locale,key). Section bodies (Hero/Why cards/Features pillars/etc.) arrive in WI-4/WI-5.",
+    "dev-result.v1.json schema file is absent (documented scaffold gap in CLAUDE.md); handoff matches the field set enumerated in the WI (wi_id, files_changed, tests_added, tests_passing, coverage_delta, hit_max_turns, notes, verification_output) plus the requested extras (files_created, component_prop_contracts, deviations)."
+  ],
+  "notes": "WI-2 (Base/Navigation/Footer) + WI-3 (Button/Pill/SectionHead/Icon/FormField) implemented as faithful ports from product-website/reference/index.html. Components are presentational (all user-facing text via typed props; no t()/i18n and no hardcoded Czech inside reusable components). reference/index.html untouched. Staged with explicit git add; nothing committed. Advisor consulted before writing; the Astro style-scoping traps (icon .icon rule crossing component boundaries, descendant svg sizing) were baked in on the first pass and verified in the emitted CSS."
+}

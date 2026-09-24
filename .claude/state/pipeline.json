@@ -29,21 +29,23 @@
       "id": "WI-2",
       "lane": "web",
       "title": "Base.astro (head/SEO/OG/JSON-LD/hreflang/fonts/skip-link) + Navigation (locale-link toggle) + Footer",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-1"
       ],
-      "files_scope": "product-website/src/layouts/**, src/components/Navigation.astro, Footer.astro"
+      "files_scope": "product-website/src/layouts/**, src/components/Navigation.astro, Footer.astro",
+      "note": "DONE committed: Base.astro (head/SEO/OG/JSON-LD/hreflang cs->/ en->/en/, favicon, Manrope, skip-link, slot-based header/main/footer); Navigation (CS/EN as locale links + aria-current); Footer. Presentational, text via props."
     },
     {
       "id": "WI-3",
       "lane": "web",
       "title": "Primitives: Button, Pill, SectionHead, Icon, FormField",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-1"
       ],
-      "files_scope": "product-website/src/components/**"
+      "files_scope": "product-website/src/components/**",
+      "note": "DONE committed: primitives Button/Pill/SectionHead/Icon(8 glyphs)/FormField, reference CSS ported to scoped styles; Astro scoping handled via <Icon> for .icon + :global for descendant sizing (advisor-verified)."
     },
     {
       "id": "WI-4",

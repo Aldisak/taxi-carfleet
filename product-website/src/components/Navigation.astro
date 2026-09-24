@@ -1,0 +1,154 @@
+---
+// Sticky site navigation. Ports header.nav from reference/index.html.
+// Presentational: all user-facing labels arrive via props (no i18n here).
+// The CS/EN toggle is rendered as links (/, /en/) with aria-current on the
+// active locale — replaces the reference's client-side button toggle.
+import Icon from './Icon.astro'
+import Button from './Button.astro'
+
+interface Props {
+  locale: 'cs' | 'en'
+  brandLabel: string
+  sectionsLabel: string
+  navFeatures: string
+  navHow: string
+  navPricing: string
+  navFaq: string
+  langGroupLabel: string
+  callLabel: string
+}
+
+const {
+  locale,
+  brandLabel,
+  sectionsLabel,
+  navFeatures,
+  navHow,
+  navPricing,
+  navFaq,
+  langGroupLabel,
+  callLabel,
+} = Astro.props
+---
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label={brandLabel}>
+      <span class="brand-dot"><Icon name="car" /></span>
+      Taxi Fleet
+    </a>
+    <nav class="nav-links" aria-label={sectionsLabel}>
+      <a href="#features">{navFeatures}</a>
+      <a href="#how">{navHow}</a>
+      <a href="#pricing">{navPricing}</a>
+      <a href="#faq">{navFaq}</a>
+    </nav>
+    <div class="lang" role="group" aria-label={langGroupLabel}>
+      <a href="/" lang="cs" aria-current={locale === 'cs' ? 'true' : undefined}>CS</a>
+      <a href="/en/" lang="en" aria-current={locale === 'en' ? 'true' : undefined}>EN</a>
+    </div>
+    <Button variant="primary" href="#contact">
+      <Icon slot="icon" name="phone" />
+      <span class="cta-label">{callLabel}</span>
+    </Button>
+  </div>
+</header>
+
+<style>
+  .nav {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav .wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    height: 68px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 18px;
+    text-decoration: none;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .brand-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: var(--accent);
+    display: grid;
+    place-items: center;
+    color: var(--on-accent);
+  }
+  /* Icon carries its own scope — target it globally. */
+  .brand-dot :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .nav-links a {
+    color: var(--ink-2);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: var(--r-sm);
+  }
+  .nav-links a:hover {
+    color: var(--ink);
+    background: var(--surface-2);
+  }
+  .lang {
+    display: inline-flex;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--r-pill);
+    padding: 3px;
+    gap: 2px;
+    background: var(--surface);
+  }
+  .lang a {
+    border: 0;
+    background: transparent;
+    border-radius: var(--r-pill);
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ink-2);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .lang a[aria-current='true'] {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .nav :global(.btn) {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  @media (max-width: 860px) {
+    .nav-links {
+      display: none;
+    }
+    .cta-label {
+      display: none;
+    }
+  }
+</style>

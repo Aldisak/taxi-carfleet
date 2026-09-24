@@ -1,19 +1,56 @@
 ---
-import '../styles/tokens.css'
-import '../styles/global.css'
+// Czech (default) page. Composes the WI-2 chrome + WI-3 primitives.
+// NOTE: literal Czech copy below is TEMPORARY — WI-6 replaces every literal
+// with t(locale, key) from the cs.json/en.json dictionaries. Section bodies
+// (Hero/Why/Features/…) arrive in WI-4/WI-5; this page currently renders the
+// nav, a couple of section heads, and the footer so the build has real content.
+import Base from '../layouts/Base.astro'
+import Navigation from '../components/Navigation.astro'
+import Footer from '../components/Footer.astro'
+import SectionHead from '../components/SectionHead.astro'
 ---
 
-<!doctype html>
-<html lang="cs">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Taxi Fleet</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  </head>
-  <body>
-    <main class="wrap">
-      <h1 class="h-title">Taxi Fleet</h1>
-    </main>
-  </body>
-</html>
+<Base
+  locale="cs"
+  title="Taxi Fleet – vlastní aplikace a dispečink pro malé taxislužby"
+  description="Vlastní objednávací aplikace pro vaše zákazníky, aplikace pro řidiče a dispečink v jednom. Bez App Storu, bez licence za řidiče, bez provize. Pro taxislužby od 2 aut."
+  ogDescription="Zákazníci si objednají na tři ťuknutí a vidí cenu předem. Bez App Storu, bez licence za řidiče, bez provize z jízd."
+  skipLabel="Přeskočit na obsah"
+>
+  <Navigation
+    slot="header"
+    locale="cs"
+    brandLabel="Taxi Fleet"
+    sectionsLabel="Sections"
+    navFeatures="Co umí"
+    navHow="Jak to funguje"
+    navPricing="Cena"
+    navFaq="Otázky"
+    langGroupLabel="Jazyk / Language"
+    callLabel="Zavolat"
+  />
+
+  <section id="why">
+    <div class="wrap">
+      <SectionHead eyebrow="Proč teď" title="Telefon už nestačí" />
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <SectionHead
+        eyebrow="Co umí"
+        title="Jeden systém, tři aplikace"
+        lead="Zákazník, řidič i dispečink pracují nad stejnými objednávkami v reálném čase. Nic se neopisuje, nic se neztrácí."
+      />
+    </div>
+  </section>
+
+  <Footer
+    slot="footer"
+    companyLine="Taxi Fleet · info@example.cz · +420 123 456 789"
+    privacyLabel="Ochrana osobních údajů"
+    termsLabel="Obchodní podmínky"
+    attributionLine="Postaveno v Kolíně. Mapy poskytuje Mapy.com."
+  />
+</Base>

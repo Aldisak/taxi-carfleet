@@ -1,0 +1,91 @@
+---
+// Presentational labelled form field. Ports .field (label + input/textarea,
+// focus + aria-invalid styling) from the reference. Consumed by WI-5's
+// ContactForm. All user-facing text arrives via props.
+interface Props {
+  label: string
+  name: string
+  id: string
+  type?: 'text' | 'tel' | 'number' | 'email' | 'textarea'
+  required?: boolean
+  autocomplete?: string
+  inputmode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'
+  min?: number
+  max?: number
+  requiredMark?: string
+}
+
+const {
+  label,
+  name,
+  id,
+  type = 'text',
+  required = false,
+  autocomplete,
+  inputmode,
+  min,
+  max,
+  requiredMark,
+} = Astro.props
+---
+
+<div class="field">
+  <label for={id}>
+    <span>{label}</span>
+    {requiredMark && <span aria-hidden="true">{requiredMark}</span>}
+  </label>
+  {
+    type === 'textarea' ? (
+      <textarea id={id} name={name} required={required} aria-required={required ? 'true' : undefined} />
+    ) : (
+      <input
+        id={id}
+        name={name}
+        type={type}
+        required={required}
+        aria-required={required ? 'true' : undefined}
+        autocomplete={autocomplete}
+        inputmode={inputmode}
+        min={min}
+        max={max}
+      />
+    )
+  }
+</div>
+
+<style>
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field label {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .field input,
+  .field textarea {
+    height: 52px;
+    padding: 0 14px;
+    border-radius: var(--r-md);
+    border: 2px solid transparent;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .field textarea {
+    height: auto;
+    min-height: 96px;
+    padding: 12px 14px;
+    resize: vertical;
+  }
+  .field input:focus,
+  .field textarea:focus {
+    outline: 0;
+    border-color: var(--ink);
+    background: var(--surface);
+  }
+  .field input[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+</style>
