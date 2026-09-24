@@ -19,7 +19,10 @@ import Pillar from './Pillar.astro'
 import MiniMockup from './MiniMockup.astro'
 import TinyPhone from './TinyPhone.astro'
 import Step from './Step.astro'
-import PricingList from './PricingList.astro'
+import PricingCalculator from './PricingCalculator.astro'
+import Button from './Button.astro'
+import Pill from './Pill.astro'
+import Icon from './Icon.astro'
 import Origin from './Origin.astro'
 import FaqItem from './FaqItem.astro'
 import ContactForm from './ContactForm.astro'
@@ -29,7 +32,13 @@ import { whyCards } from '../data/whyCards.ts'
 import { features, miniMockupCopy } from '../data/features.ts'
 import { brandPhones } from '../data/brand.ts'
 import { steps } from '../data/steps.ts'
-import { pricing } from '../data/pricing.ts'
+import {
+  pricingTiers,
+  calculatorConstants,
+  includedFeatureKeys,
+  termKeys as pricingTermKeys,
+} from '../data/pricing.ts'
+import type { CalcScriptVars } from './PricingCalculator.astro'
 import { faq } from '../data/faq.ts'
 import { originRoutes, type OriginRoute } from '../data/routes.ts'
 import { phoneMockup, dispatchBoard } from '../data/hero.ts'
@@ -130,6 +139,58 @@ const originRouteRows: OriginRoute[] = originRoutes.map((route) => ({
   from: route.fromKey ? tr(route.fromKey) : (route.from ?? ''),
   price: route.price,
 }))
+
+// --- Pricing (reference #pricing redesign) ---
+// Non-breaking-space thousands + Kč, mirroring the calculator's kc() so SSR
+// values match the client-derived ones exactly (money stays literal in both
+// locales per rules/web-react-style.md#dates-and-money).
+const kc = (n: number): string => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} Kč`
+
+// Composed tier pill labels for the calculator ("<title> · <cars descriptor>").
+// Sourced from the tier.* keys with the reference's " · " (U+00B7) separator;
+// injected into the per-locale script (functions can't cross define:vars).
+const composeTierLabel = (titleKey: string, carsKey: string): string =>
+  `${tr(titleKey)} · ${tr(carsKey)}`
+
+const calcScriptVars: CalcScriptVars = {
+  tierLabels: {
+    small: composeTierLabel('tier.small', 'tier.smallCars'),
+    medium: composeTierLabel('tier.medium', 'tier.mediumCars'),
+    large: composeTierLabel('tier.large', 'tier.largeCars'),
+    custom: composeTierLabel('tier.custom', 'tier.customCars'),
+  },
+  saveTemplate: tr('calc.saveTemplate'),
+  indiv: tr('tier.customPrice'),
+  minusAria: tr('calc.minusAria'),
+  plusAria: tr('calc.plusAria'),
+  min: calculatorConstants.min,
+  max: calculatorConstants.max,
+  initial: calculatorConstants.initial,
+  licPerDriver: calculatorConstants.licPerDriver,
+  appFee: calculatorConstants.appFee,
+}
+
+// SSR initial values for cars = initial (3 → small tier). The client script
+// re-derives everything on load; these keep the no-JS render correct.
+const carsCount = calculatorConstants.initial
+const carsWord =
+  locale === 'cs'
+    ? `${carsCount} ${carsCount === 1 ? 'auto' : carsCount < 5 ? 'auta' : 'aut'}`
+    : `${carsCount}${carsCount === 1 ? ' car' : ' cars'}`
+const initialTier = pricingTiers.find((t) => carsCount <= t.max) ?? pricingTiers[0]
+const initialComparePrice = kc(
+  calculatorConstants.licPerDriver * carsCount + calculatorConstants.appFee,
+)
+const initialSaving = tr('calc.saveTemplate').replace(
+  '{x}',
+  kc(calculatorConstants.licPerDriver * carsCount + calculatorConstants.appFee - (initialTier.price ?? 0)).replace(
+    ' Kč',
+    '',
+  ),
+)
+
+const priceFooterFeatures = includedFeatureKeys.map((k) => tr(k))
+const priceFooterTerms = pricingTermKeys.map((k) => tr(k))
 ---
 
 <Base
@@ -229,14 +290,72 @@ const originRouteRows: OriginRoute[] = originRoutes.map((route) => ({
 
   <section id="pricing">
     <div class="wrap">
-      <PricingList
-        eyebrow={tr('price.eyebrow')}
-        title={tr('price.title')}
-        body={tr('price.body')}
-        terms={pricing.termKeys.map((k) => tr(k))}
-        cta={tr(pricing.ctaKey)}
-        features={pricing.featureKeys.map((k) => tr(k))}
+      <SectionHead eyebrow={tr('price.eyebrow')} title={tr('price.title')} lead={tr('price.body')} />
+
+      <PricingCalculator
+        locale={locale}
+        labelText={tr('calc.label')}
+        carsInitial={carsWord}
+        yoursLabel={tr('calc.yours')}
+        priceInitial={initialTier.priceText ?? tr('tier.customPrice')}
+        perMonth={tr('calc.perMonth')}
+        tierInitial={calcScriptVars.tierLabels[initialTier.code]}
+        customText={tr('calc.custom')}
+        compareLabel={tr('calc.compareLabel')}
+        comparePriceInitial={initialComparePrice}
+        perMonth2={tr('calc.perMonth2')}
+        compareNote={tr('calc.compareNote')}
+        savingInitial={initialSaving}
+        minusAria={tr('calc.minusAria')}
+        plusAria={tr('calc.plusAria')}
+        min={calculatorConstants.min}
+        max={calculatorConstants.max}
+        initial={calculatorConstants.initial}
+        scriptVars={calcScriptVars}
       />
+
+      <div class="tiers">
+        {
+          pricingTiers.map((tier) => (
+            <article
+              class:list={['tier', tier.code === initialTier.code ? 'is-active' : null]}
+              data-tier={tier.code}
+            >
+              <Pill variant={tier.highlighted ? 'accent' : 'neutral'}>{tr(tier.pillKey)}</Pill>
+              <h3 class="h-card">{tr(tier.titleKey)}</h3>
+              <div class="tier-price">{tier.priceText ?? tr(tier.customPriceKey ?? 'tier.customPrice')}</div>
+              <span class="caption">{tier.captionKeys.map((k) => tr(k)).join(' · ')}</span>
+              <Button variant={tier.highlighted ? 'primary' : 'secondary'} size="sm" href="#contact">
+                {tr(tier.ctaKey)}
+              </Button>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="price-foot">
+        <div>
+          <h3 class="h-card">{tr('price.inclTitle')}</h3>
+          <ul class="incl">
+            {
+              priceFooterFeatures.map((feature) => (
+                <li>
+                  <Icon name="check" />
+                  <span>{feature}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+        <div class="price-terms">
+          <div class="terms">
+            {priceFooterTerms.map((term) => <Pill variant="neutral">{term}</Pill>)}
+          </div>
+          <p class="muted">{tr('price.sms')}</p>
+          <p class="muted">{tr('price.switch')}</p>
+          <p class="caption">{tr('price.note')}</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -376,6 +495,110 @@ const originRouteRows: OriginRoute[] = originRoutes.map((route) => ({
     flex-direction: column;
     border-top: 1px solid var(--line);
   }
+
+  /* Pricing tier cards + "in every plan" footer (reference pricing block).
+     Global because the .tier articles + .price-foot render in this composition,
+     not in a child component — scoped styles would not match their class hashes.
+     The calculator (.calc rules) owns its own scoped CSS in PricingCalculator.astro. */
+  .tiers {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .tier {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .tier .btn {
+    margin-top: auto;
+    align-self: stretch;
+  }
+  .tier-price {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+  }
+  .tier.is-active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .tier[data-tier='medium'] {
+    border-color: var(--line-strong);
+  }
+  .price-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 28px;
+  }
+  .incl {
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .incl li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .incl li svg {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-text);
+    flex: none;
+    margin-top: 2px;
+  }
+  .price-terms {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  /* Relax the Pill base rule so long term labels wrap (reference line 280). */
+  .price-terms .terms .pill {
+    max-width: 100%;
+    white-space: normal;
+    height: auto;
+    min-height: 26px;
+    padding-block: 4px;
+    line-height: 1.2;
+  }
+  @media (max-width: 1000px) {
+    .tiers {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 860px) {
+    .price-foot {
+      grid-template-columns: 1fr;
+      padding: 22px;
+    }
+  }
+  @media (max-width: 520px) {
+    .tiers {
+      grid-template-columns: 1fr;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * {
       transition: none !important;

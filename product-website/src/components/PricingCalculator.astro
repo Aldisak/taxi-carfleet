@@ -1,0 +1,339 @@
+---
+// Interactive price calculator (reference #pricing .calc block). Ports the
+// reference `pricing calculator` <script> as a PER-LOCALE inline script: the
+// original drove off the deleted client-side lang toggle (CT[lang], lang-cs/
+// lang-en listeners) — here each locale is a separate static page, so the
+// page-locale strings are injected via `define:vars` (functions cannot be
+// serialized, so the Czech auto/auta/aut pluralization + savings template are
+// re-implemented in the script body from injected string data).
+//
+// Scope note: only the .calc* CSS lives here (the range, steppers, result
+// panels). The .tiers/.tier* cards + .price-foot render in HomeSections, so
+// their CSS lives in HomeSections' global <style> — the calculator script
+// toggles .is-active on .tier articles document-wide regardless of CSS scope.
+import type { Locale } from '../i18n/t'
+
+export interface CalcScriptVars {
+  /** Composed tier pill labels keyed by tier code (e.g. "Malá flotila · do 3 aut"). */
+  tierLabels: Record<'small' | 'medium' | 'large' | 'custom', string>
+  /** Savings-pill template with an {x} placeholder for the formatted amount. */
+  saveTemplate: string
+  /** Custom-tier price word ("individuálně" / "individually"). */
+  indiv: string
+  /** −/+ stepper aria-labels. */
+  minusAria: string
+  plusAria: string
+  /** Range bounds + starting value + comparison constants. */
+  min: number
+  max: number
+  initial: number
+  licPerDriver: number
+  appFee: number
+}
+
+interface Props {
+  locale: Locale
+  /** Initial rendered strings (SSR values; the script re-derives on the client). */
+  labelText: string
+  carsInitial: string
+  yoursLabel: string
+  priceInitial: string
+  perMonth: string
+  tierInitial: string
+  customText: string
+  compareLabel: string
+  comparePriceInitial: string
+  perMonth2: string
+  compareNote: string
+  savingInitial: string
+  minusAria: string
+  plusAria: string
+  min: number
+  max: number
+  initial: number
+  scriptVars: CalcScriptVars
+}
+
+const {
+  labelText,
+  carsInitial,
+  yoursLabel,
+  priceInitial,
+  perMonth,
+  tierInitial,
+  customText,
+  compareLabel,
+  comparePriceInitial,
+  perMonth2,
+  compareNote,
+  savingInitial,
+  minusAria,
+  plusAria,
+  min,
+  max,
+  initial,
+  scriptVars,
+} = Astro.props
+---
+
+<div class="calc">
+  <div class="calc-ctl">
+    <label for="calc-cars" class="calc-label">{labelText}</label>
+    <div class="calc-row">
+      <button type="button" class="stepbtn" id="calc-minus" aria-label={minusAria}>−</button>
+      <output id="calc-cars-out" for="calc-cars" class="calc-val" aria-live="off">{carsInitial}</output>
+      <button type="button" class="stepbtn" id="calc-plus" aria-label={plusAria}>+</button>
+    </div>
+    <input
+      type="range"
+      id="calc-cars"
+      min={min}
+      max={max}
+      value={initial}
+      step="1"
+      aria-label={labelText}
+      aria-valuetext={carsInitial}
+    />
+    <div class="calc-ticks" aria-hidden="true"><span>1</span><span>5</span><span>10</span><span>15</span></div>
+  </div>
+  <div class="calc-res" aria-live="polite">
+    <div class="calc-yours">
+      <span class="caption">{yoursLabel}</span>
+      <div class="calc-price">
+        <span id="calc-price">{priceInitial}</span>
+        <span class="calc-per" id="calc-per">{perMonth}</span>
+      </div>
+      <span class="pill pill-accent" id="calc-tier">{tierInitial}</span>
+      <p class="caption" id="calc-custom" hidden>{customText}</p>
+    </div>
+    <div class="calc-cmp" id="calc-cmp">
+      <span class="caption">{compareLabel}</span>
+      <div class="calc-cmp-price">
+        <s id="calc-cmp-price">{comparePriceInitial}</s>
+        <span class="calc-per">{perMonth2}</span>
+      </div>
+      <p class="caption">{compareNote}</p>
+      <span class="pill pill-success" id="calc-saving">{savingInitial}</span>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ vars: scriptVars }}>
+  ;(function () {
+    var V = vars
+    var TIERS = [
+      { code: 'small', max: 3, price: 1490 },
+      { code: 'medium', max: 6, price: 2490 },
+      { code: 'large', max: 10, price: 3490 },
+      { code: 'custom', max: 99, price: null },
+    ]
+    var LIC = V.licPerDriver,
+      APPFEE = V.appFee
+
+    // Non-breaking-space thousands + Kč (reference kc()).
+    function kc(n) {
+      return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' Kč'
+    }
+    // Locale-specific car count. define:vars cannot carry functions, so the
+    // Czech auto/auta/aut vs English car/cars logic is baked in here, branched
+    // on the injected locale.
+    function cars(n) {
+      if (V.locale === 'cs') return n + ' ' + (n === 1 ? 'auto' : n < 5 ? 'auta' : 'aut')
+      return n + (n === 1 ? ' car' : ' cars')
+    }
+    function saving(amount) {
+      return V.saveTemplate.replace('{x}', amount)
+    }
+
+    var range = document.getElementById('calc-cars'),
+      out = document.getElementById('calc-cars-out')
+    if (!range || !out) return
+
+    function calc() {
+      var n = parseInt(range.value, 10)
+      var t = TIERS.filter(function (x) {
+        return n <= x.max
+      })[0]
+      out.textContent = cars(n)
+      range.setAttribute('aria-valuetext', cars(n))
+      document.getElementById('calc-tier').textContent = V.tierLabels[t.code]
+      var custom = t.price === null,
+        cmp = LIC * n + APPFEE
+      document.getElementById('calc-price').textContent = custom ? V.indiv : kc(t.price)
+      document.getElementById('calc-per').hidden = custom
+      document.getElementById('calc-custom').hidden = !custom
+      document.getElementById('calc-cmp').hidden = custom
+      if (!custom) {
+        document.getElementById('calc-cmp-price').textContent = kc(cmp)
+        document.getElementById('calc-saving').textContent = saving(
+          kc(cmp - t.price).replace(' Kč', ''),
+        )
+      }
+      var tiers = document.querySelectorAll('.tier')
+      for (var i = 0; i < tiers.length; i++) {
+        tiers[i].classList.toggle('is-active', tiers[i].getAttribute('data-tier') === t.code)
+      }
+    }
+
+    range.addEventListener('input', calc)
+    document.getElementById('calc-minus').addEventListener('click', function () {
+      range.value = Math.max(V.min, parseInt(range.value, 10) - 1)
+      calc()
+    })
+    document.getElementById('calc-plus').addEventListener('click', function () {
+      range.value = Math.min(V.max, parseInt(range.value, 10) + 1)
+      calc()
+    })
+    calc()
+  })()
+</script>
+
+<style>
+  .calc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 28px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 28px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  .calc-ctl {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .calc-label {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .calc-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .stepbtn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .stepbtn:hover {
+    background: var(--surface-2);
+  }
+  .calc-val {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    min-width: 5.5ch;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  input[type='range'] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 32px;
+    margin: 0;
+  }
+  .calc-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-3);
+    padding: 0 4px;
+  }
+  .calc-res {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .calc-yours,
+  .calc-cmp {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 18px;
+    border-radius: var(--r-md);
+  }
+  .calc-yours {
+    background: var(--accent-soft);
+  }
+  .calc-cmp {
+    background: var(--surface-2);
+  }
+  .calc-price {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .calc-cmp-price {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .calc-per {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-2);
+    letter-spacing: 0;
+  }
+  /* The #calc-tier / #calc-saving pills are raw spans (the script updates them by
+     id; Pill.astro takes no id prop), so Pill.astro's scoped .pill rules cannot
+     reach them. Port the .pill base + the two variants used here into this
+     component's scope. white-space:normal (not the base nowrap) so the long
+     composed tier label + savings sentence wrap inside the result panels — the
+     same relaxation the reference applied globally in its pricing block. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  .pill-accent {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+  .pill-success {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  @media (max-width: 860px) {
+    .calc {
+      grid-template-columns: 1fr;
+      padding: 22px;
+    }
+    .calc-res {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
