@@ -4,7 +4,7 @@
   "title": "Product website: pricing overhaul (calculator + tiers) + full mockup i18n (Assignment 11)",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "implement",
+  "phase": "done",
   "spec_path": ".claude/state/11-product-website-pricing-and-i18n.md",
   "branch": "feat/website-pricing-i18n (off main; assignment + updated reference/index.html committed as first commit)",
   "autonomous_mode": true,
@@ -20,23 +20,26 @@
       "id": "UC023-WI-1",
       "lane": "web",
       "title": "Wire mockup components to t() + extend mock.* (phone/board/mini/brand) so /en/ renders English; add missing keys to both locales; drop the 'kept literal' comment",
-      "status": "todo",
+      "status": "done",
       "depends_on": [],
-      "files_scope": "product-website/src/components/{PhoneMockup,DispatchBoard,MiniMockup,TinyPhone,HomeSections}.astro, src/data/{hero,features,brand}.ts, src/i18n/{cs,en}.json"
+      "files_scope": "product-website/src/components/{PhoneMockup,DispatchBoard,MiniMockup,TinyPhone,HomeSections}.astro, src/data/{hero,features,brand}.ts, src/i18n/{cs,en}.json",
+      "note": "DONE committed 1325c08. Wired phone/board/mini/brand mockups + #origin route list through i18n; copy threaded down as props from HomeSections (no t() inside mockups). SCOPE ADDITIONS (reviewer-reconciled, necessary): Hero.astro (forward phoneCopy/boardCopy to mockups rendered in .stage), Origin.astro + src/data/routes.ts (reviewer found #origin also rendered literal Czech on /en/ — same bug class, no other WI owned it; folded in). 13 new keys, 161 parity. Ground-truth verify: dist/en/index.html 0 hits for all 16 Czech mockup/origin strings, EN counterparts present, cs unregressed; build+check(0)+check:i18n green. impl-reviewer blocks_merge=false (2 rounds)."
     },
     {
       "id": "UC023-WI-2",
       "lane": "web",
       "title": "Pricing overhaul: PricingCalculator.astro (localized client script + pluralization) + tier cards + price-foot; replace PricingList; src/data/pricing.ts model; scoped CSS + new breakpoints; new calc.*/tier.*/price.* keys",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["UC023-WI-1"],
-      "files_scope": "product-website/src/components/PricingCalculator.astro (new), PricingList.astro, HomeSections.astro, src/data/pricing.ts, src/i18n/{cs,en}.json"
+      "files_scope": "product-website/src/components/PricingCalculator.astro (new), PricingList.astro, HomeSections.astro, src/data/pricing.ts, src/i18n/{cs,en}.json",
+      "note": "DONE committed 9a24e55. New #pricing: PricingCalculator.astro (range+steppers, your-price vs per-driver-licence comparison+savings) + 4 tier cards (medium highlighted, active synced to slider) + price-foot; PricingList.astro deleted (0 importers). Reference JS re-implemented as per-locale <script is:inline define:vars> (no lang-*/CT[lang] toggle); Czech auto/auta/aut pluralization + kc() U+00A0 formatter preserved; constants small<=3=1490/medium<=6=2490/large<=10=3490/custom>10=indiv, LIC=599+APPFEE=1500. Typed pricing.ts model; +33 keys (parity 193), price.cta removed, 3 extra aria/template keys added. Ground-truth verify: both pages render calc-cars+4 tiers; /en/ fully English 0 Czech pricing leaks; /cs/ intact; SSR n=3 -> 1 490 / cmp 3 297 / save 1 807 Kč (math correct); build+check(0)+parity green. Review: impl-reviewer's substantive pass cleared calc fidelity, boundary pluralization, savings math, a11y, per-locale script (0 defects) but idled before writing handoff; conductor completed its 2 residual checks (Icon 'check' exists, savings math) + independent verification. Effective blocks_merge=false."
     },
     {
       "id": "UC023-WI-3",
       "lane": "web",
       "title": "Head/JSON-LD: SoftwareApplication.offers array + FAQPage q8/q9; add faq.q8/a8/q9/a9 to dicts + src/data/faq.ts",
-      "status": "todo",
+      "status": "done",
+      "note": "DONE committed c7cf0d7. Base.astro: SoftwareApplication.offers -> 3-offer array (1490/2490/3490 CZK); FAQPage.mainEntity +q8/q9 verbatim from reference (JSON-LD emitted once, Czech, matches reference). Visible #faq +q8/q9 via faq.ts + faq.q8/a8/q9/a9 both locales (parity 197). Ground-truth verify (conductor, serving as review for this low-risk structured-data WI): 4-file scope; build+check(0)+parity green; offers array w/ 3 prices in both dist pages; FAQPage 9 Questions each; visible faq cs Czech / en English, 9 <details> in /en/.",
       "depends_on": ["UC023-WI-1"],
       "files_scope": "product-website/src/layouts/Base.astro, src/data/faq.ts, src/i18n/{cs,en}.json"
     },
@@ -44,12 +47,14 @@
       "id": "UC023-WI-4",
       "lane": "web",
       "title": "Verify: build + check + check:i18n; /en/-is-English assertion + no-literal scan; behavioral diff of #pricing vs new reference; conductor-run",
-      "status": "todo",
+      "status": "done",
       "depends_on": ["UC023-WI-1", "UC023-WI-2", "UC023-WI-3"],
       "owner": "conductor",
-      "files_scope": "product-website/**"
+      "files_scope": "product-website/**",
+      "note": "DONE (conductor verify). Clean rebuild: build OK (2 pages), check 0 errors/warnings/hints, check:i18n 199 keys parity. HOLISTIC /en/ Czech scan (strip <script>+tags, flag Czech-diacritic words minus allowed proper nouns) surfaced a WI-1 gap: phone pickupPlace/destPlace + driver mini still literal 'Kolín, nádraží'/'Masarykovo náměstí 12' on /en/ (the exact strings the user's original complaint named) while board+brand phones already rendered 'Station'/'Masaryk Sq.'/'Kolín, station'. FIXED (commit 2a58477): mock.pickupPlace/mock.destPlace keys + aligned mock.driverDest EN — town/name proper nouns kept, common-noun descriptors localized, consistent with already-shipped forms. Re-scan CLEAN (only Kolín/Masaryk/Novák/Škoda + Kč remain). AC sweep: AC#2 calc+4 tiers both pages; AC#3 /en/ English + /cs/ unregressed; AC#5 JSON-LD 3-offer array + 9 FAQ questions; AC#6 calc a11y (labelled range/aria-valuetext/live region/48px steppers) reviewer-confirmed; AC#7 reference immutable (1 commit), no web/api/tokens changes, all changes under product-website/."
     }
   ],
+  "gate_e": "PASS (autonomous): clean rebuild build+check(0)+check:i18n(199) green; holistic /en/-is-English scan clean after the WI-4 place-descriptor fix; all 7 ACs verified by ground truth. Web gates (eslint/vitest/size/e2e) N/A — product-website/ is outside web/.",
   "topo_order": "UC023-WI-1 -> UC023-WI-2 -> UC023-WI-3 -> UC023-WI-4 (conductor). WI-2/WI-3 are logically parallel but run sequentially: both touch src/i18n/*.json + HomeSections.astro in one working tree.",
   "updated_at": "2026-09-24"
 }
