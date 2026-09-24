@@ -79,12 +79,29 @@ const canonical = locale === 'cs' ? `${origin}/` : `${origin}/en/`
             operatingSystem: 'Web, Android, iOS (PWA)',
             description:
               'Objednávací aplikace pro zákazníky, aplikace pro řidiče a dispečink pro malé taxislužby.',
-            offers: {
-              '@type': 'Offer',
-              priceCurrency: 'CZK',
-              description:
-                'Měsíční cena podle velikosti flotily, zákaznická aplikace v ceně.',
-            },
+            offers: [
+              {
+                '@type': 'Offer',
+                name: 'Malá flotila (do 3 aut)',
+                price: '1490',
+                priceCurrency: 'CZK',
+                description: 'měsíčně bez DPH',
+              },
+              {
+                '@type': 'Offer',
+                name: 'Střední flotila (4–6 aut)',
+                price: '2490',
+                priceCurrency: 'CZK',
+                description: 'měsíčně bez DPH',
+              },
+              {
+                '@type': 'Offer',
+                name: 'Velká flotila (7–10 aut)',
+                price: '3490',
+                priceCurrency: 'CZK',
+                description: 'měsíčně bez DPH',
+              },
+            ],
             inLanguage: ['cs', 'en', 'de', 'ru', 'uk', 'fil'],
           },
           {
@@ -144,6 +161,22 @@ const canonical = locale === 'cs' ? `${origin}/` : `${origin}/en/`
                 acceptedAnswer: {
                   '@type': 'Answer',
                   text: 'Ano, kdykoli. Bez smlouvy na dobu určitou, data si odnesete.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Co když přidám auto?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Nic se nemění, dokud nepřekročíte hranici tarifu. Když ji překročíte na celý měsíc, přejdete od dalšího měsíce na vyšší tarif. Zpět můžete kdykoli.',
+                },
+              },
+              {
+                '@type': 'Question',
+                name: 'Platím za řidiče?',
+                acceptedAnswer: {
+                  '@type': 'Answer',
+                  text: 'Ne. Řidičů můžete mít, kolik chcete. Počítají se auta.',
                 },
               },
             ],
