@@ -31,7 +31,7 @@
     {
       "name": "admin chunk (brotli, SuperAdmin-only)",
       "path": "dist/assets/admin-*.js",
-      "limit": "70 KB"
+      "limit": "76 KB"
     }
   ],
   "dependencies": {

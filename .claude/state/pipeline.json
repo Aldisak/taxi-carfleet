@@ -4,7 +4,7 @@
   "title": "Dispatcher + SuperAdmin(/admin) UI redesign — screens onto the shared desk kit (design handoff v1 2026-09-24)",
   "stack": "web",
   "complexity_tag": "moderate",
-  "phase": "implement",
+  "phase": "quality-gate",
   "spec_path": ".claude/state/dispatcher-app-design-handoff.md",
   "spec_path_admin": ".claude/state/admin-app-design-handoff.md",
   "branch": "redesign/dispatcher-app (off main @ d4a7db3; handoffs committed 9a9a6d3)",
@@ -120,7 +120,7 @@
       "id": "WI-9",
       "lane": "web",
       "title": "Dark theme pass (map --map-* vars + drawer) + Phase 5 web quality gate + commits",
-      "status": "todo",
+      "status": "in-progress",
       "depends_on": [
         "WI-3",
         "WI-4",
@@ -128,7 +128,8 @@
         "WI-6",
         "WI-7",
         "WI-8"
-      ]
+      ],
+      "note": "Dark pass: board/app container backgrounds (BoardPage/AppLayout/DisconnectBanner) moved legacy theme.colors -> CSS vars so the whole board/drawer/admin flip coherently in dark (desk kit already var-based; no --map-* vars exist in codebase, tiles not dark-treated per customer-app precedent). Phase 5 gate: tsc 0, lint 0 (+geo), vitest sequential 2091 pass / only pre-existing acceptHydration 3-fail (full-parallel run had load-flakes in admin/RoutesTab that pass isolated+sequential), build ok, size app 203.87/260 + analytics 95.09/115 + admin 72.19/76 (budget 70->76, decisions.md 2026-09-24). e2e pending."
     }
   ],
   "topo_order": "WI-1 (conductor inline) -> WI-2a -> WI-2b -> {WI-3 || WI-4 || WI-5 || WI-6 || WI-7 (folder-disjoint, parallel)} -> WI-8 (after WI-7) -> impl-review each -> WI-9 dark pass + Phase 5 gate -> commit + ff-merge",

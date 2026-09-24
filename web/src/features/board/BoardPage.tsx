@@ -24,7 +24,7 @@ const BoardShell = styled.div<{ $showMap: boolean; $wideMap: boolean }>`
   height: 100%;
   min-width: ${({ theme }) => theme.breakpoints.desktop};
   overflow: hidden;
-  background: ${({ theme }) => theme.colors.background};
+  background: var(--bg);
 
   /* Wide (≥1600px): always show four columns when map is toggled */
   @media (min-width: 1600px) {
@@ -36,18 +36,18 @@ const BoardShell = styled.div<{ $showMap: boolean; $wideMap: boolean }>`
 const LeftColumn = styled.aside`
   height: 100%;
   overflow: hidden;
-  border-right: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.surface};
+  border-right: 1px solid var(--line);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
 `
 
 const ColumnHeader = styled.div`
   padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  border-bottom: 1px solid var(--line);
   font-size: ${({ theme }) => theme.typography.fontSizeSm};
   font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.textSecondary};
+  color: var(--ink-2);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   flex-shrink: 0;
@@ -56,7 +56,7 @@ const ColumnHeader = styled.div`
 const MiddleColumn = styled.main<{ $hidden?: boolean }>`
   height: 100%;
   overflow-y: auto;
-  background: ${({ theme }) => theme.colors.background};
+  background: var(--bg);
   display: ${({ $hidden }) => ($hidden ? 'none' : 'flex')};
   flex-direction: column;
 
@@ -71,7 +71,7 @@ const MapColumn = styled.div<{ $visible: boolean }>`
   overflow: hidden;
   display: ${({ $visible }) => ($visible ? 'flex' : 'none')};
   flex-direction: column;
-  border-left: 1px solid ${({ theme }) => theme.colors.border};
+  border-left: 1px solid var(--line);
 
   /* On wide screens, always visible when toggled */
   @media (min-width: 1600px) {
@@ -82,8 +82,8 @@ const MapColumn = styled.div<{ $visible: boolean }>`
 const RightColumn = styled.aside`
   height: 100%;
   overflow-y: auto;
-  border-left: 1px solid ${({ theme }) => theme.colors.border};
-  background: ${({ theme }) => theme.colors.surface};
+  border-left: 1px solid var(--line);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
 `
@@ -97,14 +97,14 @@ const MiddleColumnHeader = styled(ColumnHeader)`
 const MapToggleButton = styled.button`
   font-size: ${({ theme }) => theme.typography.fontSizeXs};
   padding: 2px ${({ theme }) => theme.spacing.xs};
-  border: 1px solid ${({ theme }) => theme.colors.border};
+  border: 1px solid var(--line);
   border-radius: ${({ theme }) => theme.borderRadius.sm};
   background: transparent;
-  color: ${({ theme }) => theme.colors.textSecondary};
+  color: var(--ink-2);
   cursor: pointer;
 
   &:hover {
-    background: ${({ theme }) => theme.colors.background};
+    background: var(--bg);
   }
 `
 

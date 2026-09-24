@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useHubConnectionState, isServerActionBlocked } from '../../shared/realtime/useFleetHub'
 
 const Banner = styled.div`
-  background: ${({ theme }) => theme.colors.warning};
-  color: ${({ theme }) => theme.colors.text};
+  background: var(--warning-bg);
+  color: var(--ink);
   font-size: ${({ theme }) => theme.typography.fontSizeSm};
   font-weight: ${({ theme }) => theme.typography.fontWeightMedium};
   padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};

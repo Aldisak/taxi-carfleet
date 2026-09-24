@@ -15,7 +15,7 @@ const Shell = styled.div`
   flex-direction: column;
   height: 100vh;
   min-width: ${({ theme }) => theme.breakpoints.desktop};
-  background: ${({ theme }) => theme.colors.background};
+  background: var(--bg);
 `
 
 const Content = styled.main`
