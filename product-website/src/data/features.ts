@@ -1,55 +1,37 @@
 // Feature pillars (reference #features). Each pillar has a tag, title, body,
-// a 5-item check list, and a bespoke MiniMockup keyed by `visual`.
-// Czech verbatim; WI-6 extracts to i18n.
+// a 5-item check list, and a bespoke MiniMockup keyed by `visual`. Copy is
+// referenced by i18n key; resolved per locale in HomeSections via t(locale, key).
 
 export type MiniMockupType = 'rider' | 'driver' | 'dispatch'
 
 export interface Pillar {
-  tag: string
-  title: string
-  body: string
-  items: string[]
+  tagKey: string
+  titleKey: string
+  bodyKey: string
+  itemKeys: string[]
   visual: MiniMockupType
 }
 
 export const features: Pillar[] = [
   {
-    tag: 'Zákazník',
-    title: 'Objednávka na tři ťuknutí',
-    body: 'Otevřít, vybrat cíl, objednat. Cena je vidět předem – pevná, nebo odhad. Zákazník sleduje auto na mapě, ví, jaké přijede a kdy, a na konci jízdy ohodnotí řidiče.',
-    items: [
-      'Přihlášení SMS kódem, žádné heslo',
-      'Sledování jízdy i bez přihlášení, přes odkaz',
-      'Šest jazyků včetně ukrajinštiny a ruštiny',
-      'Funguje i na levném telefonu se slabým signálem',
-      'Tlačítko Zavolat na každé obrazovce',
-    ],
+    tagKey: 'p1.tag',
+    titleKey: 'p1.title',
+    bodyKey: 'p1.body',
+    itemKeys: ['p1.l1', 'p1.l2', 'p1.l3', 'p1.l4', 'p1.l5'],
     visual: 'rider',
   },
   {
-    tag: 'Řidič',
-    title: 'Řidič vidí jen to, co teď potřebuje',
-    body: 'Nabídka jízdy přes celou obrazovku, s cenou a vzdáleností. Jedno velké tlačítko pro každý krok: přijmout, jsem na místě, zahájit, ukončit. Navigace jedním ťuknutím.',
-    items: [
-      'Pevná cena předvyplněná, změna jen s důvodem',
-      'Hotově, kartou, na fakturu',
-      'Denní přehled jízd a tržeb',
-      'Nic neinstalujete, otevře se jako aplikace',
-      'Po výpadku signálu pokračuje tam, kde skončil',
-    ],
+    tagKey: 'p2.tag',
+    titleKey: 'p2.title',
+    bodyKey: 'p2.body',
+    itemKeys: ['p2.l1', 'p2.l2', 'p2.l3', 'p2.l4', 'p2.l5'],
     visual: 'driver',
   },
   {
-    tag: 'Dispečink a majitel',
-    title: 'Auta, objednávky a mapa na jedné obrazovce',
-    body: 'Dispečer přijme telefonickou objednávku a přiřadí auto během pár vteřin. Objednávky z aplikace přibývají samy. Majitel vidí, jak se dařilo, kdo jezdil a kolik to stálo.',
-    items: [
-      'Objednávky z telefonu i z aplikace v jednom seznamu',
-      'Pevné trasy a zóny: nádraží – centrum 100 Kč nastavíte jednou',
-      'Reporty, analytika a export do CSV',
-      'Kdo co změnil, je v auditu',
-      'Dispečink otevřete v prohlížeči, bez instalace',
-    ],
+    tagKey: 'p3.tag',
+    titleKey: 'p3.title',
+    bodyKey: 'p3.body',
+    itemKeys: ['p3.l1', 'p3.l2', 'p3.l3', 'p3.l4', 'p3.l5'],
     visual: 'dispatch',
   },
 ]

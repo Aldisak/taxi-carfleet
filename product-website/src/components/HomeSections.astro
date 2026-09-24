@@ -1,0 +1,299 @@
+---
+// The full home composition, parameterized by locale. Both pages
+// (src/pages/index.astro = cs, src/pages/en/index.astro = en) render this so the
+// section order + markup live in ONE place. Every user-facing SECTION/chrome string
+// is resolved here via t(locale, key). Decorative mockup illustrations
+// (PhoneMockup / DispatchBoard / MiniMockup / TinyPhone + their src/data fixtures:
+// sample driver names, plates, demo routes, sample prices/numbers) are kept literal
+// in both locales on purpose — a screenshot of a Czech taxi app stays Czech; the
+// reference hard-coded them and did not localize them. Proper nouns (the "Taxi Fleet"
+// product name, "Kolín"/"Kutná Hora" place names, the demo phone/email) are likewise
+// left literal.
+import Base from '../layouts/Base.astro'
+import Navigation from './Navigation.astro'
+import Footer from './Footer.astro'
+import SectionHead from './SectionHead.astro'
+import Hero from './Hero.astro'
+import Card from './Card.astro'
+import Pillar from './Pillar.astro'
+import MiniMockup from './MiniMockup.astro'
+import TinyPhone from './TinyPhone.astro'
+import Step from './Step.astro'
+import PricingList from './PricingList.astro'
+import Origin from './Origin.astro'
+import FaqItem from './FaqItem.astro'
+import ContactForm from './ContactForm.astro'
+
+import { t, type Locale } from '../i18n/t'
+import { whyCards } from '../data/whyCards.ts'
+import { features } from '../data/features.ts'
+import { brandPhones } from '../data/brand.ts'
+import { steps } from '../data/steps.ts'
+import { pricing } from '../data/pricing.ts'
+import { faq } from '../data/faq.ts'
+
+interface Props {
+  locale: Locale
+}
+
+const { locale } = Astro.props
+const tr = (key: string) => t(locale, key)
+
+const contactMessages = {
+  sending: tr('msg.sending'),
+  ok: tr('msg.ok'),
+  err: tr('msg.err'),
+  req: tr('msg.req'),
+  copied: tr('msg.copied'),
+  copyFail: tr('msg.copyFail'),
+}
+---
+
+<Base
+  locale={locale}
+  title={tr('meta.title')}
+  description={tr('meta.description')}
+  ogDescription={tr('meta.ogDescription')}
+  skipLabel={tr('skip')}
+>
+  <Navigation
+    slot="header"
+    locale={locale}
+    brandLabel="Taxi Fleet"
+    sectionsLabel={tr('nav.sectionsLabel')}
+    navFeatures={tr('nav.features')}
+    navHow={tr('nav.how')}
+    navPricing={tr('nav.pricing')}
+    navFaq={tr('nav.faq')}
+    langGroupLabel={tr('nav.langGroupLabel')}
+    callLabel={tr('nav.call')}
+  />
+
+  <Hero
+    eyebrow={tr('hero.eyebrow')}
+    title={tr('hero.title')}
+    sub={tr('hero.sub')}
+    cta1={tr('hero.cta1')}
+    cta2={tr('hero.cta2')}
+    caption={tr('hero.caption')}
+  />
+
+  <section id="why">
+    <div class="wrap">
+      <SectionHead eyebrow={tr('why.eyebrow')} title={tr('why.title')} />
+      <div class="cards">
+        {whyCards.map((card) => <Card icon={card.icon} title={tr(card.titleKey)} body={tr(card.bodyKey)} />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <SectionHead eyebrow={tr('feat.eyebrow')} title={tr('feat.title')} lead={tr('feat.sub')} />
+      <div class="pillars">
+        {
+          features.map((pillar) => (
+            <Pillar
+              tag={tr(pillar.tagKey)}
+              title={tr(pillar.titleKey)}
+              body={tr(pillar.bodyKey)}
+              items={pillar.itemKeys.map((k) => tr(k))}
+            >
+              <MiniMockup slot="visual" type={pillar.visual} />
+            </Pillar>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="brand">
+    <div class="wrap">
+      <div class="band">
+        <div class="pillar-copy">
+          <span class="eyebrow">{tr('brand.eyebrow')}</span>
+          <h2 class="h-section">{tr('brand.title')}</h2>
+          <p>{tr('brand.body')}</p>
+        </div>
+        <div class="trio" aria-hidden="true">
+          {
+            brandPhones.map((phone) => (
+              <TinyPhone
+                variant={phone.variant}
+                fleet={phone.fleet}
+                route={phone.route}
+                price={phone.price}
+                order={phone.order}
+                orderPrice={phone.orderPrice}
+              />
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <SectionHead eyebrow={tr('how.eyebrow')} title={tr('how.title')} />
+      <div class="steps">
+        {steps.map((step) => <Step title={tr(step.titleKey)} body={tr(step.bodyKey)} />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="wrap">
+      <PricingList
+        eyebrow={tr('price.eyebrow')}
+        title={tr('price.title')}
+        body={tr('price.body')}
+        terms={pricing.termKeys.map((k) => tr(k))}
+        cta={tr(pricing.ctaKey)}
+        features={pricing.featureKeys.map((k) => tr(k))}
+      />
+    </div>
+  </section>
+
+  <section id="origin">
+    <div class="wrap">
+      <Origin
+        eyebrow={tr('origin.eyebrow')}
+        title={tr('origin.title')}
+        body={tr('origin.body')}
+        caption={tr('origin.caption')}
+        cityKolin="Kolín"
+        cityKutna="Kutná Hora"
+        routesLabel={tr('origin.routes')}
+      />
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <SectionHead eyebrow={tr('faq.eyebrow')} title={tr('faq.title')} />
+      <div class="faq">
+        {faq.map((entry) => <FaqItem question={tr(entry.questionKey)} answer={tr(entry.answerKey)} />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="wrap">
+      <ContactForm
+        eyebrow={tr('contact.eyebrow')}
+        title={tr('contact.title')}
+        phoneNumber="+420 123 456 789"
+        copyLabel={tr('contact.copy')}
+        hours={tr('contact.hours')}
+        formTitle={tr('contact.formTitle')}
+        nameLabel={tr('contact.name')}
+        phoneLabel={tr('contact.phone')}
+        fleetLabel={tr('contact.fleet')}
+        carsLabel={tr('contact.cars')}
+        noteLabel={tr('contact.note')}
+        sendLabel={tr('contact.send')}
+        privacy={tr('contact.privacy')}
+        required={tr('contact.required')}
+        messages={contactMessages}
+      />
+    </div>
+  </section>
+
+  <Footer
+    slot="footer"
+    companyLine="Taxi Fleet · info@example.cz · +420 123 456 789"
+    privacyLabel={tr('foot.privacy')}
+    termsLabel={tr('foot.terms')}
+    attributionLine={tr('foot.line')}
+  />
+</Base>
+
+<style is:global>
+  /* Section rhythm + brand band + steps grid + why/faq wrappers. Page-level
+     because sections live in the composition (faithful port of the reference's
+     global section/.cards/.band/.steps/.faq rules). */
+  section {
+    padding-block: 72px;
+  }
+  @media (max-width: 700px) {
+    section {
+      padding-block: 52px;
+    }
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  @media (max-width: 860px) {
+    .cards {
+      grid-template-columns: 1fr;
+    }
+  }
+  .pillars {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .band {
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: var(--r-lg);
+    padding: 48px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 40px;
+    align-items: center;
+  }
+  .band .h-section {
+    color: var(--bg);
+  }
+  .band p {
+    color: color-mix(in srgb, var(--bg) 70%, var(--ink));
+  }
+  .band .eyebrow {
+    color: color-mix(in srgb, var(--bg) 70%, var(--ink));
+  }
+  .band .pillar-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .trio {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 860px) {
+    .band {
+      grid-template-columns: 1fr;
+      padding: 32px 22px;
+    }
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    counter-reset: step;
+  }
+  @media (max-width: 860px) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+  }
+  .faq {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+</style>

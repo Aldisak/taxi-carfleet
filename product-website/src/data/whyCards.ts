@@ -1,26 +1,15 @@
-// "Why now" cards (reference #why). Czech verbatim; WI-6 extracts to i18n.
+// "Why now" cards (reference #why). Copy is referenced by i18n key; resolved per
+// locale in HomeSections via t(locale, key).
 import type { IconName } from '../components/Icon.astro'
 
 export interface WhyCard {
   icon: IconName
-  title: string
-  body: string
+  titleKey: string
+  bodyKey: string
 }
 
 export const whyCards: WhyCard[] = [
-  {
-    icon: 'globe',
-    title: 'Bolt a Liftago jsou i ve vašem městě',
-    body: 'Od jara 2026 objedná Bolt kdekoli v Česku. Když si zákazník zvykne na aplikaci, telefonní číslo vaší taxislužby si už nevyhledá.',
-  },
-  {
-    icon: 'device',
-    title: 'Konkurence ve vedlejším městě aplikaci má',
-    body: 'Většinou pronajatou od dodavatele, pod jeho účtem a s jeho vzhledem. Vaše aplikace bude vaše: vaše barva, vaše logo, vaše číslo.',
-  },
-  {
-    icon: 'currency',
-    title: 'Provize se nevyplatí',
-    body: 'Zprostředkovatel si bere z každé jízdy a určuje cenu. Stálí zákazníci, nádraží, pevné ceny a jízdy na letiště jsou vaše výhoda. Nechte si ji.',
-  },
+  { icon: 'globe', titleKey: 'why.c1t', bodyKey: 'why.c1b' },
+  { icon: 'device', titleKey: 'why.c2t', bodyKey: 'why.c2b' },
+  { icon: 'currency', titleKey: 'why.c3t', bodyKey: 'why.c3b' },
 ]

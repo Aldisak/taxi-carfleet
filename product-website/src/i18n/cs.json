@@ -141,5 +141,10 @@
   "msg.err": "Zprávu se nepodařilo odeslat. Zkuste to znovu, nebo nám zavolejte.",
   "msg.req": "Vyplňte prosím jméno a telefon.",
   "msg.copied": "Číslo zkopírováno",
-  "msg.copyFail": "Číslo je označené – zkopírujte ho ručně."
+  "msg.copyFail": "Číslo je označené – zkopírujte ho ručně.",
+  "meta.title": "Taxi Fleet – vlastní aplikace a dispečink pro malé taxislužby",
+  "meta.description": "Vlastní objednávací aplikace pro vaše zákazníky, aplikace pro řidiče a dispečink v jednom. Bez App Storu, bez licence za řidiče, bez provize. Pro taxislužby od 2 aut.",
+  "meta.ogDescription": "Zákazníci si objednají na tři ťuknutí a vidí cenu předem. Bez App Storu, bez licence za řidiče, bez provize z jízd.",
+  "nav.sectionsLabel": "Sekce",
+  "nav.langGroupLabel": "Jazyk / Language"
 }

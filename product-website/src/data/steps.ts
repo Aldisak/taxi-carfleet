@@ -1,22 +1,13 @@
-// "How it works" steps (reference #how). CSS counter renders the number.
-// Czech verbatim; WI-6 extracts to i18n.
+// "How it works" steps (reference #how). CSS counter renders the number. Copy is
+// referenced by i18n key; resolved per locale in HomeSections via t(locale, key).
 
 export interface Step {
-  title: string
-  body: string
+  titleKey: string
+  bodyKey: string
 }
 
 export const steps: Step[] = [
-  {
-    title: 'Zavoláte nám.',
-    body: 'Projdeme, jak dnes jezdíte: kolik aut, jaké ceny, kde.',
-  },
-  {
-    title: 'Nastavíme vaši flotilu.',
-    body: 'Barva, logo, telefon, pevné trasy, řidiči. Obvykle do týdne.',
-  },
-  {
-    title: 'Zákazníci objednávají sami.',
-    body: 'Odkaz dáte na web, na vizitky, do SMS. Telefon vám zůstává – jen zvoní méně.',
-  },
+  { titleKey: 'how.s1t', bodyKey: 'how.s1b' },
+  { titleKey: 'how.s2t', bodyKey: 'how.s2b' },
+  { titleKey: 'how.s3t', bodyKey: 'how.s3b' },
 ]

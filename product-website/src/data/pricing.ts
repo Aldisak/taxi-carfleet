@@ -1,20 +1,14 @@
-// Pricing section (reference #pricing). Czech verbatim; WI-6 extracts to i18n.
+// Pricing section (reference #pricing). Copy is referenced by i18n key; resolved
+// per locale in HomeSections via t(locale, key).
 
 export interface PricingData {
-  features: string[]
-  terms: string[]
-  cta: string
+  featureKeys: string[]
+  termKeys: string[]
+  ctaKey: string
 }
 
 export const pricing: PricingData = {
-  features: [
-    'Zákaznická, řidičská i dispečerská aplikace',
-    'Vaše značka a barvy',
-    'Pevné trasy a zóny',
-    'Reporty a analytika',
-    'Aktualizace a podpora',
-    'SMS a mapy za skutečnou cenu, s měsíčním limitem, který si nastavíte',
-  ],
-  terms: ['První měsíc zdarma', 'Bez smlouvy na dobu určitou', 'Bez poplatku za zavedení'],
-  cta: 'Zavolejte nám a řekneme vám cenu pro vaši flotilu',
+  featureKeys: ['price.l1', 'price.l2', 'price.l3', 'price.l4', 'price.l5', 'price.l6'],
+  termKeys: ['price.t1', 'price.t2', 'price.t3'],
+  ctaKey: 'price.cta',
 }

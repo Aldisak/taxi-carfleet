@@ -1,0 +1,25 @@
+{
+  "wi_id": "WI-6b",
+  "uc": "UC-022",
+  "owner": "conductor-inline (after two subagent stream-idle timeouts)",
+  "files_changed": [
+    "product-website/src/i18n/cs.json (+5 meta/aria keys -> 148)",
+    "product-website/src/i18n/en.json (+5 -> 148)",
+    "product-website/src/data/whyCards.ts (title/body -> titleKey/bodyKey)",
+    "product-website/src/data/features.ts (pillars -> tagKey/titleKey/bodyKey/itemKeys; miniMockupCopy kept literal)",
+    "product-website/src/data/steps.ts (-> titleKey/bodyKey)",
+    "product-website/src/data/pricing.ts (-> featureKeys/termKeys/ctaKey)",
+    "product-website/src/data/faq.ts (-> questionKey/answerKey)",
+    "product-website/src/components/HomeSections.astro (NEW: locale-parameterized composition, resolves t())",
+    "product-website/src/pages/index.astro (thin cs page -> HomeSections locale=cs)",
+    "product-website/src/pages/en/index.astro (NEW: en page -> HomeSections locale=en)"
+  ],
+  "decision_mockups_literal": "Decorative mockup illustrations (PhoneMockup/DispatchBoard/MiniMockup/TinyPhone + their fixtures in hero.ts/brand.ts/routes.ts/features.ts miniMockupCopy: sample driver names, plates, demo routes, sample prices/numbers) are LITERAL Czech in both locales by design — a screenshot of a Czech taxi app stays Czech; the reference hard-coded them. Proper nouns (Taxi Fleet brand, Kolin/Kutna Hora place names, demo phone/email) also literal. Deviation from the reference (which had mock.* as data-i18n so they flipped) — documented; making the mockups locale-aware is a follow-up.",
+  "verification": {
+    "parity": "OK 148 keys identical",
+    "build": "exit 0, emits dist/index.html (cs) + dist/en/index.html (en)",
+    "astro_check": "0 errors / 0 warnings / 0 hints (33 files)",
+    "spot_checks": "cs hero+nav Czech, en hero 'Your taxi service' + nav 'Features' + FAQ English, <br> real in both (0 escaped), aria-current on active /en/ link"
+  },
+  "hit_max_turns": false
+}

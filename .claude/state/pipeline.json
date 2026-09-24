@@ -87,11 +87,12 @@
       "id": "WI-6b",
       "lane": "web",
       "title": "Refactor data->keys + HomeSections + cs/en pages + define:vars wiring",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-6a"
       ],
-      "files_scope": "product-website/src/data/**, src/components/**, src/pages/**"
+      "files_scope": "product-website/src/data/**, src/components/**, src/pages/**",
+      "note": "DONE committed (conductor-inline after 2 subagent idle-timeouts): +5 meta/aria keys (148 total, parity OK); data files->keys; HomeSections locale-parameterized composition resolving t(); thin cs `/` + en `/en/` pages. Mockup illustrations + proper nouns stay literal Czech both locales (documented). build both locales + astro check 0; correct language per page; real <br>."
     },
     {
       "id": "WI-7",

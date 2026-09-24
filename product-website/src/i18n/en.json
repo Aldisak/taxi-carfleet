@@ -141,5 +141,10 @@
   "msg.err": "The message couldn't be sent. Try again, or give us a call.",
   "msg.req": "Please fill in your name and phone.",
   "msg.copied": "Number copied",
-  "msg.copyFail": "The number is selected – copy it manually."
+  "msg.copyFail": "The number is selected – copy it manually.",
+  "meta.title": "Taxi Fleet – your own app and dispatch for small taxi fleets",
+  "meta.description": "Your own booking app for your customers, a driver app, and dispatch in one. No app store, no per-driver licence, no commission. For taxi fleets from 2 cars.",
+  "meta.ogDescription": "Customers order in three taps and see the price up front. No app store, no per-driver licence, no commission on rides.",
+  "nav.sectionsLabel": "Sections",
+  "nav.langGroupLabel": "Language / Jazyk"
 }
