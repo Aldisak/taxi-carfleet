@@ -108,7 +108,22 @@
         "growing": "Wachsende Flotten",
         "declining": "Rückläufige Flotten",
         "inactive": "Inaktive Flotten"
-      }
+      },
+      "period": {
+        "thisMonth": "Dieser Monat",
+        "twelveWeeks": "12 Wochen"
+      },
+      "kpi": {
+        "activeFleets": "Aktive Flotten",
+        "ridesThisMonth": "Fahrten diesen Monat",
+        "fleetRevenue": "Flottenumsatz",
+        "smsCost": "SMS-Kosten",
+        "driversOnline": "Fahrer jetzt online",
+        "mapCredits": "Karten-Credits",
+        "apiErrorRate": "API-Fehlerrate (24 h)",
+        "avgAssignmentP50": "Ø Zuweisung (p50)"
+      },
+      "privacyNote": "SuperAdmin sieht keine personenbezogenen Kundendaten – nur Aggregate. Der Zugriff auf ein Flottendetail wird in deren Audit protokolliert."
     },
     "tenant": {
       "title": "Flotteneinstellungen",
@@ -172,8 +187,15 @@
         "mapCenterLngRange": "Der Längengrad muss zwischen -180 und 180 liegen.",
         "mapZoomRange": "Der Zoom muss zwischen 1 und 20 liegen.",
         "geoBudgetInvalid": "Das Guthabenbudget muss nicht negativ sein.",
-        "mapyKeyTooLong": "Der Schlüssel darf höchstens 512 Zeichen lang sein."
-      }
+        "mapyKeyTooLong": "Der Schlüssel darf höchstens 512 Zeichen lang sein.",
+        "colorContrast": "Die Farbe muss ausreichenden Kontrast (min. 3:1) zu Weiß oder Schwarz haben."
+      },
+      "deactivate": "Deaktivieren",
+      "saveAll": "Alles speichern",
+      "subtitle": "{{slug}} · erstellt {{created}} · {{drivers}} Fahrer",
+      "smsMeta": "{{count}} SMS · {{cost}} Kč diesen Monat",
+      "creditMeta": "{{used}} / {{budget}} Credits",
+      "autoDispatchHint": "Weist nach der Verzögerung automatisch den nächsten freien Fahrer zu."
     },
     "nav": {
       "fleets": "Flotten",
@@ -213,7 +235,9 @@
       "emailRequired": "E-Mail ist erforderlich.",
       "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
       "passwordRequired": "Passwort ist erforderlich."
-    }
+    },
+    "brandTitle": "Disposition",
+    "passwordHint": "Ihr Flottenadmin legt Ihr Passwort in Einstellungen -> Personen fest."
   },
   "board": {
     "form": {
@@ -632,7 +656,14 @@
       "search": "Suchen",
       "searchPlaceholder": "Code, Telefon oder Name",
       "apply": "Anwenden",
-      "exportCsv": "CSV exportieren"
+      "exportCsv": "CSV exportieren",
+      "statusChips": {
+        "all": "Alle",
+        "new": "Neu",
+        "inProgress": "Läuft",
+        "completed": "Abgeschlossen",
+        "cancelled": "Storniert"
+      }
     },
     "table": {
       "code": "Code",
@@ -652,7 +683,8 @@
       "page": "Seite {{page}} / {{total}}",
       "prev": "Zurück",
       "next": "Weiter"
-    }
+    },
+    "resultCount": "{{count}} Ergebnisse"
   },
   "driver": {
     "login": {

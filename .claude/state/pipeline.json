@@ -109,11 +109,12 @@
       "id": "WI-8",
       "lane": "web",
       "title": "AdminTenantSettings 4 panels one-save sticky footer + AdminPlatform Stat grid + 12-week table",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-7"
       ],
-      "files_scope": "web/src/features/admin/**"
+      "files_scope": "web/src/features/admin/**",
+      "note": "DONE committed: AdminTenantSettings desk (title row + Aktivní pill + 4 Panels + one Uložit vše + Deaktivovat sticky footer; live contrast rule min(vsWhite,vsBlack)<3 in adminTenantSettingsForm + colorContrast i18n x6). PlatformScreen desk (period FilterChips, 4x2 KPI Stat grid inside region 'Souhrn platformy', 12-week Table sparklines+Trend pills+legend, privacy Callout). AC9 e2e preserved (region + columnheader Flotila). 29 scoped + 115 admin tests + axe."
     },
     {
       "id": "WI-9",

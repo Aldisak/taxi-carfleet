@@ -108,7 +108,22 @@
         "growing": "Mga lumalagong fleet",
         "declining": "Mga bumababang fleet",
         "inactive": "Mga hindi aktibong fleet"
-      }
+      },
+      "period": {
+        "thisMonth": "Ngayong buwan",
+        "twelveWeeks": "12 linggo"
+      },
+      "kpi": {
+        "activeFleets": "Aktibong fleet",
+        "ridesThisMonth": "Biyahe ngayong buwan",
+        "fleetRevenue": "Kita ng fleet",
+        "smsCost": "Gastos sa SMS",
+        "driversOnline": "Mga driver online ngayon",
+        "mapCredits": "Map credits",
+        "apiErrorRate": "API error rate (24 h)",
+        "avgAssignmentP50": "Avg assignment (p50)"
+      },
+      "privacyNote": "Walang nakikitang personal na data ng customer ang SuperAdmin — mga aggregate lang. Naka-log sa audit ang pag-access sa detalye ng fleet."
     },
     "tenant": {
       "title": "Mga setting ng fleet",
@@ -172,8 +187,15 @@
         "mapCenterLngRange": "Ang longitude ay dapat nasa pagitan ng -180 at 180.",
         "mapZoomRange": "Ang zoom ay dapat nasa pagitan ng 1 at 20.",
         "geoBudgetInvalid": "Ang credit budget ay dapat hindi negatibo.",
-        "mapyKeyTooLong": "Ang key ay hindi hihigit sa 512 karakter."
-      }
+        "mapyKeyTooLong": "Ang key ay hindi hihigit sa 512 karakter.",
+        "colorContrast": "Ang kulay ay dapat may sapat na contrast (min 3:1) laban sa puti o itim."
+      },
+      "deactivate": "I-deactivate",
+      "saveAll": "I-save lahat",
+      "subtitle": "{{slug}} · ginawa {{created}} · {{drivers}} driver",
+      "smsMeta": "{{count}} SMS · {{cost}} Kč ngayong buwan",
+      "creditMeta": "{{used}} / {{budget}} credits",
+      "autoDispatchHint": "Awtomatikong itinatalaga ang pinakamalapit na libreng driver pagkatapos ng delay."
     },
     "nav": {
       "fleets": "Mga fleet",
@@ -213,7 +235,9 @@
       "emailRequired": "Kailangan ang e-mail.",
       "emailInvalid": "Maglagay ng wastong e-mail address.",
       "passwordRequired": "Kailangan ang password."
-    }
+    },
+    "brandTitle": "Dispatch",
+    "passwordHint": "Itinatakda ng fleet admin ang password sa Settings -> People."
   },
   "board": {
     "form": {
@@ -632,7 +656,14 @@
       "search": "Maghanap",
       "searchPlaceholder": "Code, telepono o pangalan",
       "apply": "Ilapat",
-      "exportCsv": "I-export ang CSV"
+      "exportCsv": "I-export ang CSV",
+      "statusChips": {
+        "all": "Lahat",
+        "new": "Bago",
+        "inProgress": "Isinasagawa",
+        "completed": "Tapos na",
+        "cancelled": "Kanselado"
+      }
     },
     "table": {
       "code": "Code",
@@ -652,7 +683,8 @@
       "page": "Pahina {{page}} / {{total}}",
       "prev": "Nakaraan",
       "next": "Susunod"
-    }
+    },
+    "resultCount": "{{count}} resulta"
   },
   "driver": {
     "login": {

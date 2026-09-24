@@ -103,6 +103,33 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     expect(screen.getByLabelText('Přiblížení mapy')).toHaveValue(12)
   })
 
+  it('renders the desk title row: fleet name, an Aktivní pill, and one Uložit vše save', async () => {
+    await renderPage()
+    // The tenant name shows in the title row (26/800), not only as the field value.
+    expect(screen.getAllByText('Taxi Demo').length).toBeGreaterThan(0)
+    // "Aktivní" appears both as the title-row status pill and the toggle label.
+    expect(screen.getAllByText('Aktivní').length).toBeGreaterThan(0)
+    // Exactly ONE page-level save (not a per-section save).
+    expect(screen.getAllByRole('button', { name: 'Uložit vše' })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Deaktivovat' })).toBeInTheDocument()
+  })
+
+  it('renders the four desk section panels', async () => {
+    await renderPage()
+    for (const heading of ['Flotila', 'Dispečink', 'SMS', 'Mapa a Mapy.com']) {
+      expect(screen.getByText(heading)).toBeInTheDocument()
+    }
+  })
+
+  it('Deaktivovat flips the Aktivní toggle off (committed via the single save)', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+    const activeToggle = screen.getByLabelText('Aktivní') as HTMLInputElement
+    expect(activeToggle.checked).toBe(true)
+    await user.click(screen.getByRole('button', { name: 'Deaktivovat' }))
+    expect(activeToggle.checked).toBe(false)
+  })
+
   it('loads the server-key field blank and shows the configured hint', async () => {
     await renderPage()
     const serverKey = screen.getByLabelText('Serverový klíč Mapy') as HTMLInputElement
@@ -123,7 +150,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     mockPut.mockResolvedValue(undefined)
     await renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
 
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(1))
     expect(mockPut).toHaveBeenCalledWith(
@@ -145,7 +172,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     mockPut.mockResolvedValue(undefined)
     await renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
 
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(1))
     expect(mockPut).toHaveBeenCalledWith(FLEET_ID, expect.objectContaining({ mapyServerKey: null }))
@@ -157,7 +184,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     await renderPage()
 
     await user.type(screen.getByLabelText('Serverový klíč Mapy'), 'new-secret-key')
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
 
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(1))
     expect(mockPut).toHaveBeenCalledWith(
@@ -173,7 +200,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     mockGet.mockResolvedValue(dto({ mapyBrowserKey: null }))
     await renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(1))
     expect(mockPut).toHaveBeenCalledWith(
       FLEET_ID,
@@ -182,7 +209,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
 
     mockPut.mockClear()
     await user.type(screen.getByLabelText('Klíč Mapy pro prohlížeč'), 'pub-key')
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
     await waitFor(() => expect(mockPut).toHaveBeenCalledTimes(1))
     expect(mockPut).toHaveBeenCalledWith(
       FLEET_ID,
@@ -197,7 +224,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     const hex = screen.getByLabelText('Barevný kód')
     await user.clear(hex)
     await user.type(hex, 'notacolor')
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
 
     expect(mockPut).not.toHaveBeenCalled()
     expect(hex).toHaveAttribute('aria-invalid', 'true')
@@ -209,7 +236,7 @@ describe('AdminTenantSettingsPage (UC-012)', () => {
     mockPut.mockRejectedValue(new Error('boom'))
     await renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'Uložit' }))
+    await user.click(screen.getByRole('button', { name: 'Uložit vše' }))
 
     expect(await screen.findByText(/nepodařilo uložit/i)).toBeInTheDocument()
   })

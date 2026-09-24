@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import styled from 'styled-components'
+import { Panel, Lbl, Ctrl, DeskButton, DeskPill } from '../../shared/ui/desk'
+import { Callout } from '../../shared/ui'
 import { useAdminTenantSettings, useUpdateAdminTenantSettings } from './useAdminTenantSettings'
 import {
   validateAdminTenantSettingsForm,
@@ -11,180 +13,198 @@ import {
   type AdminTenantSettingsFormErrors,
 } from './adminTenantSettingsForm'
 
+// ── Styled components (desk kit + CSS custom properties) ─────────────────────────
+
 const Page = styled.main`
-  max-width: 720px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: ${({ theme }) => theme.spacing.lg};
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.lg};
+  gap: 16px;
 `
 
-const TopBar = styled.div`
+const TitleRow = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: ${({ theme }) => theme.spacing.sm};
-`
-
-const Title = styled.h1`
-  font-size: ${({ theme }) => theme.typography.fontSizeXl};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  margin: 0;
 `
 
 const BackLink = styled(Link)`
-  color: ${({ theme }) => theme.colors.primary};
-  min-height: ${({ theme }) => theme.touchTargets.min};
   display: inline-flex;
   align-items: center;
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  color: var(--ink);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--surface-2);
+  }
 
   &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline: 2px solid var(--ink);
     outline-offset: 2px;
   }
 `
 
-const Form = styled.form`
+const Dot = styled.span`
+  width: 12px;
+  height: 12px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  flex-shrink: 0;
+`
+
+const TitleBlock = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.lg};
+  gap: 2px;
+  min-width: 0;
 `
 
-const Fieldset = styled.fieldset`
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  padding: ${({ theme }) => theme.spacing.md};
+const Title = styled.h1`
+  margin: 0;
+  font-size: 26px;
+  font-weight: var(--fw-extra);
+  color: var(--ink);
+  line-height: 1.1;
+`
+
+const Caption = styled.p`
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
+`
+
+const TitleActions = styled.div`
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+
+  @media (max-width: 860px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+`
+
+const PanelForm = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  padding: 14px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+`
+
+const Field = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
 `
 
-const Legend = styled.legend`
-  font-size: ${({ theme }) => theme.typography.fontSizeLg};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  padding: 0 ${({ theme }) => theme.spacing.xs};
+/** Spans both columns of the two-column panel grid (welcome text, toggles). */
+const FieldWide = styled(Field)`
+  grid-column: 1 / -1;
 `
 
-const FieldGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
+const Hint = styled.small`
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-caption);
+  color: var(--ink-3);
 `
 
-const FieldLabel = styled.label`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  color: ${({ theme }) => theme.colors.textSecondary};
-`
-
-const Input = styled.input`
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  min-height: ${({ theme }) => theme.touchTargets.min};
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 1px;
-  }
-
-  &[aria-invalid='true'] {
-    border-color: ${({ theme }) => theme.colors.error};
-  }
-`
-
-const TextArea = styled.textarea`
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeMd};
-  font-family: inherit;
-  resize: vertical;
-  min-height: 72px;
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.primary};
-    outline-offset: 1px;
-  }
-
-  &[aria-invalid='true'] {
-    border-color: ${({ theme }) => theme.colors.error};
-  }
-`
-
-const ToggleRow = styled.div`
+const ToggleRow = styled.label`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  min-height: ${({ theme }) => theme.touchTargets.min};
+  gap: 10px;
+  cursor: pointer;
+  font-size: var(--fs-body);
+  color: var(--ink);
 `
 
 const Checkbox = styled.input`
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
 `
 
-const HintText = styled.span`
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ theme }) => theme.colors.textSecondary};
-  font-style: italic;
+const Swatch = styled.span<{ $color: string }>`
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: ${({ $color }) => $color};
+  flex-shrink: 0;
 `
 
-const ErrorText = styled.span`
-  color: ${({ theme }) => theme.colors.error};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-`
-
-const Actions = styled.div`
+const SwatchRow = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
   align-items: center;
+  gap: 10px;
 `
 
-const PrimaryButton = styled.button`
-  min-height: ${({ theme }) => theme.touchTargets.min};
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.lg};
-  background: ${({ theme }) => theme.colors.primary};
-  color: #ffffff;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-weight: ${({ theme }) => theme.typography.fontWeightBold};
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &:focus-visible {
-    outline: 3px solid ${({ theme }) => theme.colors.text};
-    outline-offset: 2px;
-  }
+const SwatchCtrl = styled.div`
+  flex: 1 1 auto;
+  min-width: 0;
 `
 
-const Banner = styled.p<{ $error: boolean }>`
+const Footer = styled.div`
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 0;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+`
+
+const Message = styled.p`
   margin: 0;
-  padding: ${({ theme }) => theme.spacing.sm};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: ${({ theme }) => theme.typography.fontSizeSm};
-  color: ${({ $error, theme }) => ($error ? theme.colors.error : theme.colors.success)};
-  background: ${({ $error, theme }) => ($error ? theme.colors.error : theme.colors.success)}11;
-  border: 1px solid ${({ $error, theme }) => ($error ? theme.colors.error : theme.colors.success)};
+  padding: 16px;
+  color: var(--ink-2);
 `
 
 /**
- * SuperAdmin per-tenant settings editor (UC-012). Reached from the Edit link on
- * `AdminFleetsPage`. Reads `:fleetId` from the route, seeds the form from the fetched DTO via
- * `fromDto` once the query settles, and PUTs the mapped request on save. Grouped sections:
- * Fleet / Dispatch / SMS / Map & Mapy / Geo.
+ * SuperAdmin per-tenant settings editor (UC-012, restyled onto the desk kit for UC-021 WI-8).
+ * Reached from the Settings link on `AdminFleetsPage`. Reads `:fleetId` from the route, seeds the
+ * form from the fetched DTO via `fromDto` once the query settles, and PUTs the mapped request on a
+ * SINGLE page-level save (`Uložit vše`). Four desk `Panel`s in a 2-column grid: Flotila / Dispečink
+ * / SMS / Mapa a Mapy.com; a sticky footer carries the one save + a Deaktivovat action.
  *
- * SECURITY: the Mapy server-key field is write-only — it always loads blank (the DTO never
- * carries the value) and a blank submit maps to `null` (keep the stored key) via WI-3
- * `toUpdateRequest`. A configured/not-set hint is driven by `dto.mapyServerKeyConfigured`.
+ * `Deaktivovat` is a UI-only affordance: it flips the `isActive` form field to false; the change is
+ * committed with the single `Uložit vše` save (there is no separate deactivate mutation — one save
+ * for the whole page per the design). The title-row `Aktivní` pill reflects the current form state.
+ *
+ * The title-row fleet dot is ink: the tenant DTO carries a `primaryColorHex` brand color but the
+ * design specifies an ink dot in the SuperAdmin shell; the brand color is edited (with a live
+ * swatch) inside the Flotila panel.
+ *
+ * SECURITY: the Mapy server-key field is write-only — it always loads blank (the DTO never carries
+ * the value) and a blank submit maps to `null` (keep the stored key) via WI-3 `toUpdateRequest`. A
+ * configured/not-set hint is driven by `dto.mapyServerKeyConfigured`. The server key stays masked
+ * (type=password) always; the public browser key renders in the clear (it is not a secret).
  */
 export function AdminTenantSettingsPage() {
   const { t } = useTranslation()
@@ -225,12 +245,17 @@ export function AdminTenantSettingsPage() {
     })
   }
 
+  function errorFor(key: keyof AdminTenantSettingsFormErrors): string | undefined {
+    const code = errors[key]
+    return code ? t(code) : undefined
+  }
+
   if (isError) {
     return (
       <Page>
-        <Banner role="alert" $error>
+        <Callout tone="danger" role="alert">
           {t('admin.tenant.loadFailed')}
-        </Banner>
+        </Callout>
       </Page>
     )
   }
@@ -238,349 +263,295 @@ export function AdminTenantSettingsPage() {
   if (isLoading || !form) {
     return (
       <Page>
-        <p role="status">{t('admin.tenant.loading')}</p>
+        <Message role="status">{t('admin.tenant.loading')}</Message>
       </Page>
     )
   }
 
+  const swatchColor = form.primaryColorHex.trim() || 'var(--surface-2)'
+
   return (
     <Page>
-      <TopBar>
-        <Title>{t('admin.tenant.title')}</Title>
+      <TitleRow>
         <BackLink to="/admin">{t('admin.tenant.back')}</BackLink>
-      </TopBar>
+        <Dot aria-hidden="true" />
+        <TitleBlock>
+          <Title>{form.name}</Title>
+          <Caption>
+            {t('admin.tenant.subtitle', {
+              slug: fleetId,
+              created: '—',
+              drivers: '—',
+            })}
+          </Caption>
+        </TitleBlock>
+        <TitleActions>
+          <DeskPill tone={form.isActive ? 'success' : 'neutral'}>
+            {form.isActive ? t('admin.fleets.active') : t('admin.fleets.inactive')}
+          </DeskPill>
+        </TitleActions>
+      </TitleRow>
 
       {banner && (
-        <Banner role="status" aria-live="polite" $error={banner.error}>
+        <Callout tone={banner.error ? 'danger' : 'info'} role="status">
           {t(banner.key)}
-        </Banner>
+        </Callout>
       )}
 
-      <Form onSubmit={handleSubmit} noValidate>
-        {/* ── Fleet ─────────────────────────────────────────────── */}
-        <Fieldset>
-          <Legend>{t('admin.tenant.sections.fleet')}</Legend>
+      <form onSubmit={handleSubmit} noValidate>
+        <Grid>
+          {/* ── Flotila ─────────────────────────────────────────── */}
+          <Panel title={t('admin.tenant.sections.fleet')}>
+            <PanelForm>
+              <Field>
+                <Lbl htmlFor="ts-name">{t('admin.tenant.fields.name')}</Lbl>
+                <Ctrl id="ts-name" value={form.name} onChange={(v) => set('name', v)} error={errorFor('name')} />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-phone">{t('admin.tenant.fields.phone')}</Lbl>
+                <Ctrl
+                  id="ts-phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(v) => set('phone', v)}
+                  error={errorFor('phone')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-currency">{t('admin.tenant.fields.currency')}</Lbl>
+                <Ctrl
+                  id="ts-currency"
+                  value={form.currency}
+                  onChange={(v) => set('currency', v)}
+                  error={errorFor('currency')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-timezone">{t('admin.tenant.fields.timeZone')}</Lbl>
+                <Ctrl
+                  id="ts-timezone"
+                  value={form.timeZone}
+                  onChange={(v) => set('timeZone', v)}
+                  error={errorFor('timeZone')}
+                />
+              </Field>
+              <FieldWide>
+                <Lbl htmlFor="ts-color">{t('admin.tenant.fields.primaryColorHex')}</Lbl>
+                <SwatchRow>
+                  <Swatch $color={swatchColor} aria-hidden="true" />
+                  <SwatchCtrl>
+                    <Ctrl
+                      id="ts-color"
+                      value={form.primaryColorHex}
+                      placeholder="#1E88E5"
+                      onChange={(v) => set('primaryColorHex', v)}
+                      error={errorFor('primaryColorHex')}
+                    />
+                  </SwatchCtrl>
+                </SwatchRow>
+                <Hint>{t('admin.tenant.hints.primaryColorHex')}</Hint>
+              </FieldWide>
+              <FieldWide>
+                <ToggleRow htmlFor="ts-active">
+                  <Checkbox
+                    id="ts-active"
+                    type="checkbox"
+                    checked={form.isActive}
+                    onChange={(e) => set('isActive', e.target.checked)}
+                  />
+                  {t('admin.tenant.fields.isActive')}
+                </ToggleRow>
+              </FieldWide>
+            </PanelForm>
+          </Panel>
 
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-name">{t('admin.tenant.fields.name')}</FieldLabel>
-            <Input
-              id="ts-name"
-              value={form.name}
-              aria-invalid={errors.name ? 'true' : undefined}
-              onChange={(e) => set('name', e.target.value)}
-            />
-            {errors.name && <ErrorText role="alert">{t(errors.name)}</ErrorText>}
-          </FieldGroup>
+          {/* ── Dispečink ───────────────────────────────────────── */}
+          <Panel title={t('admin.tenant.sections.dispatch')}>
+            <PanelForm>
+              <Field>
+                <Lbl htmlFor="ts-offer-timeout">{t('admin.tenant.fields.offerTimeoutSeconds')}</Lbl>
+                <Ctrl
+                  id="ts-offer-timeout"
+                  type="number"
+                  value={form.offerTimeoutSeconds}
+                  onChange={(v) => set('offerTimeoutSeconds', v)}
+                  error={errorFor('offerTimeoutSeconds')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-max-radius">{t('admin.tenant.fields.maxOfferRadiusKm')}</Lbl>
+                <Ctrl
+                  id="ts-max-radius"
+                  type="number"
+                  value={form.maxOfferRadiusKm}
+                  onChange={(v) => set('maxOfferRadiusKm', v)}
+                  error={errorFor('maxOfferRadiusKm')}
+                />
+              </Field>
+              <FieldWide>
+                <ToggleRow htmlFor="ts-auto-dispatch">
+                  <Checkbox
+                    id="ts-auto-dispatch"
+                    type="checkbox"
+                    checked={form.autoDispatchEnabled}
+                    onChange={(e) => set('autoDispatchEnabled', e.target.checked)}
+                  />
+                  {t('admin.tenant.fields.autoDispatchEnabled')}
+                </ToggleRow>
+                <Hint>{t('admin.tenant.autoDispatchHint')}</Hint>
+              </FieldWide>
+              <Field>
+                <Lbl htmlFor="ts-auto-dispatch-after">
+                  {t('admin.tenant.fields.autoDispatchAfterSeconds')}
+                </Lbl>
+                <Ctrl
+                  id="ts-auto-dispatch-after"
+                  type="number"
+                  value={form.autoDispatchAfterSeconds}
+                  onChange={(v) => set('autoDispatchAfterSeconds', v)}
+                  error={errorFor('autoDispatchAfterSeconds')}
+                />
+              </Field>
+            </PanelForm>
+          </Panel>
 
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-phone">{t('admin.tenant.fields.phone')}</FieldLabel>
-            <Input
-              id="ts-phone"
-              type="tel"
-              value={form.phone}
-              aria-invalid={errors.phone ? 'true' : undefined}
-              onChange={(e) => set('phone', e.target.value)}
-            />
-            {errors.phone && <ErrorText role="alert">{t(errors.phone)}</ErrorText>}
-          </FieldGroup>
+          {/* ── SMS ─────────────────────────────────────────────── */}
+          <Panel title={t('admin.tenant.sections.sms')}>
+            <PanelForm>
+              <Field>
+                <Lbl htmlFor="ts-sms-sender">{t('admin.tenant.fields.smsSenderName')}</Lbl>
+                <Ctrl
+                  id="ts-sms-sender"
+                  value={form.smsSenderName}
+                  onChange={(v) => set('smsSenderName', v)}
+                  error={errorFor('smsSenderName')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-sms-cap">{t('admin.tenant.fields.smsMonthlyCapCzk')}</Lbl>
+                <Ctrl
+                  id="ts-sms-cap"
+                  type="number"
+                  value={form.smsMonthlyCapCzk}
+                  onChange={(v) => set('smsMonthlyCapCzk', v)}
+                  error={errorFor('smsMonthlyCapCzk')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-sms-unit-cost">{t('admin.tenant.fields.smsUnitCostCzk')}</Lbl>
+                <Ctrl
+                  id="ts-sms-unit-cost"
+                  type="number"
+                  value={form.smsUnitCostCzk}
+                  onChange={(v) => set('smsUnitCostCzk', v)}
+                  error={errorFor('smsUnitCostCzk')}
+                />
+              </Field>
+              <FieldWide>
+                <Lbl htmlFor="ts-welcome">{t('admin.tenant.fields.welcomeText')}</Lbl>
+                <Ctrl
+                  id="ts-welcome"
+                  value={form.welcomeText}
+                  onChange={(v) => set('welcomeText', v)}
+                  error={errorFor('welcomeText')}
+                />
+              </FieldWide>
+            </PanelForm>
+          </Panel>
 
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-currency">{t('admin.tenant.fields.currency')}</FieldLabel>
-            <Input
-              id="ts-currency"
-              value={form.currency}
-              aria-invalid={errors.currency ? 'true' : undefined}
-              onChange={(e) => set('currency', e.target.value)}
-            />
-            {errors.currency && <ErrorText role="alert">{t(errors.currency)}</ErrorText>}
-          </FieldGroup>
+          {/* ── Mapa a Mapy.com ─────────────────────────────────── */}
+          <Panel title={t('admin.tenant.sections.map')}>
+            <PanelForm>
+              <FieldWide>
+                <Lbl htmlFor="ts-mapy-browser">{t('admin.tenant.fields.mapyBrowserKey')}</Lbl>
+                <Ctrl
+                  id="ts-mapy-browser"
+                  value={form.mapyBrowserKey}
+                  onChange={(v) => set('mapyBrowserKey', v)}
+                  error={errorFor('mapyBrowserKey')}
+                />
+                <Hint>{t('admin.tenant.hints.mapyBrowserKeyKeep')}</Hint>
+              </FieldWide>
+              <FieldWide>
+                <Lbl htmlFor="ts-mapy-server">{t('admin.tenant.fields.mapyServerKey')}</Lbl>
+                <Ctrl
+                  id="ts-mapy-server"
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.mapyServerKey}
+                  onChange={(v) => set('mapyServerKey', v)}
+                  error={errorFor('mapyServerKey')}
+                />
+                <Hint>
+                  {form.mapyServerKeyConfigured
+                    ? t('admin.tenant.hints.mapyServerKeyConfigured')
+                    : t('admin.tenant.hints.mapyServerKeyNotSet')}
+                </Hint>
+                <Hint>{t('admin.tenant.hints.mapyServerKeyKeep')}</Hint>
+              </FieldWide>
+              <Field>
+                <Lbl htmlFor="ts-map-lat">{t('admin.tenant.fields.mapCenterLat')}</Lbl>
+                <Ctrl
+                  id="ts-map-lat"
+                  type="number"
+                  value={form.mapCenterLat}
+                  onChange={(v) => set('mapCenterLat', v)}
+                  error={errorFor('mapCenterLat')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-map-lng">{t('admin.tenant.fields.mapCenterLng')}</Lbl>
+                <Ctrl
+                  id="ts-map-lng"
+                  type="number"
+                  value={form.mapCenterLng}
+                  onChange={(v) => set('mapCenterLng', v)}
+                  error={errorFor('mapCenterLng')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-map-zoom">{t('admin.tenant.fields.mapZoom')}</Lbl>
+                <Ctrl
+                  id="ts-map-zoom"
+                  type="number"
+                  value={form.mapZoom}
+                  onChange={(v) => set('mapZoom', v)}
+                  error={errorFor('mapZoom')}
+                />
+              </Field>
+              <Field>
+                <Lbl htmlFor="ts-geo-budget">{t('admin.tenant.fields.geoMonthlyCreditBudget')}</Lbl>
+                <Ctrl
+                  id="ts-geo-budget"
+                  type="number"
+                  value={form.geoMonthlyCreditBudget}
+                  onChange={(v) => set('geoMonthlyCreditBudget', v)}
+                  error={errorFor('geoMonthlyCreditBudget')}
+                />
+              </Field>
+            </PanelForm>
+          </Panel>
+        </Grid>
 
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-timezone">{t('admin.tenant.fields.timeZone')}</FieldLabel>
-            <Input
-              id="ts-timezone"
-              value={form.timeZone}
-              aria-invalid={errors.timeZone ? 'true' : undefined}
-              onChange={(e) => set('timeZone', e.target.value)}
-            />
-            {errors.timeZone && <ErrorText role="alert">{t(errors.timeZone)}</ErrorText>}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-color">{t('admin.tenant.fields.primaryColorHex')}</FieldLabel>
-            <Input
-              id="ts-color"
-              value={form.primaryColorHex}
-              placeholder="#1E88E5"
-              aria-invalid={errors.primaryColorHex ? 'true' : undefined}
-              onChange={(e) => set('primaryColorHex', e.target.value)}
-            />
-            <HintText>{t('admin.tenant.hints.primaryColorHex')}</HintText>
-            {errors.primaryColorHex && <ErrorText role="alert">{t(errors.primaryColorHex)}</ErrorText>}
-          </FieldGroup>
-
-          <FieldGroup>
-            <ToggleRow>
-              <Checkbox
-                id="ts-active"
-                type="checkbox"
-                checked={form.isActive}
-                onChange={(e) => set('isActive', e.target.checked)}
-              />
-              <FieldLabel htmlFor="ts-active">{t('admin.tenant.fields.isActive')}</FieldLabel>
-            </ToggleRow>
-          </FieldGroup>
-        </Fieldset>
-
-        {/* ── Dispatch ──────────────────────────────────────────── */}
-        <Fieldset>
-          <Legend>{t('admin.tenant.sections.dispatch')}</Legend>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-offer-timeout">
-              {t('admin.tenant.fields.offerTimeoutSeconds')}
-            </FieldLabel>
-            <Input
-              id="ts-offer-timeout"
-              type="number"
-              min={10}
-              max={600}
-              value={form.offerTimeoutSeconds}
-              aria-invalid={errors.offerTimeoutSeconds ? 'true' : undefined}
-              onChange={(e) => set('offerTimeoutSeconds', e.target.value)}
-            />
-            {errors.offerTimeoutSeconds && (
-              <ErrorText role="alert">{t(errors.offerTimeoutSeconds)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <ToggleRow>
-              <Checkbox
-                id="ts-auto-dispatch"
-                type="checkbox"
-                checked={form.autoDispatchEnabled}
-                onChange={(e) => set('autoDispatchEnabled', e.target.checked)}
-              />
-              <FieldLabel htmlFor="ts-auto-dispatch">
-                {t('admin.tenant.fields.autoDispatchEnabled')}
-              </FieldLabel>
-            </ToggleRow>
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-auto-dispatch-after">
-              {t('admin.tenant.fields.autoDispatchAfterSeconds')}
-            </FieldLabel>
-            <Input
-              id="ts-auto-dispatch-after"
-              type="number"
-              min={0}
-              value={form.autoDispatchAfterSeconds}
-              aria-invalid={errors.autoDispatchAfterSeconds ? 'true' : undefined}
-              onChange={(e) => set('autoDispatchAfterSeconds', e.target.value)}
-            />
-            {errors.autoDispatchAfterSeconds && (
-              <ErrorText role="alert">{t(errors.autoDispatchAfterSeconds)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-max-radius">
-              {t('admin.tenant.fields.maxOfferRadiusKm')}
-            </FieldLabel>
-            <Input
-              id="ts-max-radius"
-              type="number"
-              min={1}
-              max={100}
-              value={form.maxOfferRadiusKm}
-              aria-invalid={errors.maxOfferRadiusKm ? 'true' : undefined}
-              onChange={(e) => set('maxOfferRadiusKm', e.target.value)}
-            />
-            {errors.maxOfferRadiusKm && (
-              <ErrorText role="alert">{t(errors.maxOfferRadiusKm)}</ErrorText>
-            )}
-          </FieldGroup>
-        </Fieldset>
-
-        {/* ── SMS ───────────────────────────────────────────────── */}
-        <Fieldset>
-          <Legend>{t('admin.tenant.sections.sms')}</Legend>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-sms-sender">
-              {t('admin.tenant.fields.smsSenderName')}
-            </FieldLabel>
-            <Input
-              id="ts-sms-sender"
-              value={form.smsSenderName}
-              aria-invalid={errors.smsSenderName ? 'true' : undefined}
-              onChange={(e) => set('smsSenderName', e.target.value)}
-            />
-            {errors.smsSenderName && (
-              <ErrorText role="alert">{t(errors.smsSenderName)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-sms-cap">
-              {t('admin.tenant.fields.smsMonthlyCapCzk')}
-            </FieldLabel>
-            <Input
-              id="ts-sms-cap"
-              type="number"
-              min={0}
-              value={form.smsMonthlyCapCzk}
-              aria-invalid={errors.smsMonthlyCapCzk ? 'true' : undefined}
-              onChange={(e) => set('smsMonthlyCapCzk', e.target.value)}
-            />
-            {errors.smsMonthlyCapCzk && (
-              <ErrorText role="alert">{t(errors.smsMonthlyCapCzk)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-sms-unit-cost">
-              {t('admin.tenant.fields.smsUnitCostCzk')}
-            </FieldLabel>
-            <Input
-              id="ts-sms-unit-cost"
-              type="number"
-              min={0}
-              value={form.smsUnitCostCzk}
-              aria-invalid={errors.smsUnitCostCzk ? 'true' : undefined}
-              onChange={(e) => set('smsUnitCostCzk', e.target.value)}
-            />
-            {errors.smsUnitCostCzk && (
-              <ErrorText role="alert">{t(errors.smsUnitCostCzk)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-welcome">{t('admin.tenant.fields.welcomeText')}</FieldLabel>
-            <TextArea
-              id="ts-welcome"
-              value={form.welcomeText}
-              aria-invalid={errors.welcomeText ? 'true' : undefined}
-              onChange={(e) => set('welcomeText', e.target.value)}
-            />
-            {errors.welcomeText && <ErrorText role="alert">{t(errors.welcomeText)}</ErrorText>}
-          </FieldGroup>
-        </Fieldset>
-
-        {/* ── Map & Mapy ────────────────────────────────────────── */}
-        <Fieldset>
-          <Legend>{t('admin.tenant.sections.map')}</Legend>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-mapy-browser">
-              {t('admin.tenant.fields.mapyBrowserKey')}
-            </FieldLabel>
-            <Input
-              id="ts-mapy-browser"
-              value={form.mapyBrowserKey}
-              aria-invalid={errors.mapyBrowserKey ? 'true' : undefined}
-              onChange={(e) => set('mapyBrowserKey', e.target.value)}
-            />
-            <HintText>{t('admin.tenant.hints.mapyBrowserKeyKeep')}</HintText>
-            {errors.mapyBrowserKey && (
-              <ErrorText role="alert">{t(errors.mapyBrowserKey)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-mapy-server">
-              {t('admin.tenant.fields.mapyServerKey')}
-            </FieldLabel>
-            <Input
-              id="ts-mapy-server"
-              type="password"
-              autoComplete="new-password"
-              value={form.mapyServerKey}
-              aria-invalid={errors.mapyServerKey ? 'true' : undefined}
-              onChange={(e) => set('mapyServerKey', e.target.value)}
-            />
-            <HintText>
-              {form.mapyServerKeyConfigured
-                ? t('admin.tenant.hints.mapyServerKeyConfigured')
-                : t('admin.tenant.hints.mapyServerKeyNotSet')}
-            </HintText>
-            <HintText>{t('admin.tenant.hints.mapyServerKeyKeep')}</HintText>
-            {errors.mapyServerKey && (
-              <ErrorText role="alert">{t(errors.mapyServerKey)}</ErrorText>
-            )}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-map-lat">{t('admin.tenant.fields.mapCenterLat')}</FieldLabel>
-            <Input
-              id="ts-map-lat"
-              type="number"
-              step="any"
-              value={form.mapCenterLat}
-              aria-invalid={errors.mapCenterLat ? 'true' : undefined}
-              onChange={(e) => set('mapCenterLat', e.target.value)}
-            />
-            {errors.mapCenterLat && <ErrorText role="alert">{t(errors.mapCenterLat)}</ErrorText>}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-map-lng">{t('admin.tenant.fields.mapCenterLng')}</FieldLabel>
-            <Input
-              id="ts-map-lng"
-              type="number"
-              step="any"
-              value={form.mapCenterLng}
-              aria-invalid={errors.mapCenterLng ? 'true' : undefined}
-              onChange={(e) => set('mapCenterLng', e.target.value)}
-            />
-            {errors.mapCenterLng && <ErrorText role="alert">{t(errors.mapCenterLng)}</ErrorText>}
-          </FieldGroup>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-map-zoom">{t('admin.tenant.fields.mapZoom')}</FieldLabel>
-            <Input
-              id="ts-map-zoom"
-              type="number"
-              min={1}
-              max={20}
-              value={form.mapZoom}
-              aria-invalid={errors.mapZoom ? 'true' : undefined}
-              onChange={(e) => set('mapZoom', e.target.value)}
-            />
-            {errors.mapZoom && <ErrorText role="alert">{t(errors.mapZoom)}</ErrorText>}
-          </FieldGroup>
-        </Fieldset>
-
-        {/* ── Geo ───────────────────────────────────────────────── */}
-        <Fieldset>
-          <Legend>{t('admin.tenant.sections.geo')}</Legend>
-
-          <FieldGroup>
-            <FieldLabel htmlFor="ts-geo-budget">
-              {t('admin.tenant.fields.geoMonthlyCreditBudget')}
-            </FieldLabel>
-            <Input
-              id="ts-geo-budget"
-              type="number"
-              min={0}
-              value={form.geoMonthlyCreditBudget}
-              aria-invalid={errors.geoMonthlyCreditBudget ? 'true' : undefined}
-              onChange={(e) => set('geoMonthlyCreditBudget', e.target.value)}
-            />
-            {errors.geoMonthlyCreditBudget && (
-              <ErrorText role="alert">{t(errors.geoMonthlyCreditBudget)}</ErrorText>
-            )}
-          </FieldGroup>
-        </Fieldset>
-
-        <Actions>
-          <PrimaryButton type="submit" disabled={update.isPending}>
-            {update.isPending ? t('admin.tenant.saving') : t('admin.tenant.save')}
-          </PrimaryButton>
-        </Actions>
-      </Form>
+        <Footer>
+          <DeskButton
+            type="button"
+            variant="danger"
+            onClick={() => set('isActive', false)}
+            disabled={!form.isActive}
+          >
+            {t('admin.tenant.deactivate')}
+          </DeskButton>
+          <DeskButton
+            type="submit"
+            variant="primary"
+            loading={update.isPending}
+            loadingLabel={t('admin.tenant.saving')}
+          >
+            {t('admin.tenant.saveAll')}
+          </DeskButton>
+        </Footer>
+      </form>
     </Page>
   )
 }

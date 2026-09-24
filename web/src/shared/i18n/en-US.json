@@ -108,7 +108,22 @@
         "growing": "Growing fleets",
         "declining": "Declining fleets",
         "inactive": "Inactive fleets"
-      }
+      },
+      "period": {
+        "thisMonth": "This month",
+        "twelveWeeks": "12 weeks"
+      },
+      "kpi": {
+        "activeFleets": "Active fleets",
+        "ridesThisMonth": "Rides this month",
+        "fleetRevenue": "Fleet revenue",
+        "smsCost": "SMS cost",
+        "driversOnline": "Drivers online now",
+        "mapCredits": "Map credits",
+        "apiErrorRate": "API error rate (24 h)",
+        "avgAssignmentP50": "Avg assignment (p50)"
+      },
+      "privacyNote": "SuperAdmin sees no customer personal data — only aggregates. Access to a fleet detail is logged to its audit."
     },
     "tenant": {
       "title": "Fleet settings",
@@ -172,8 +187,15 @@
         "mapCenterLngRange": "The longitude must be between -180 and 180.",
         "mapZoomRange": "The zoom must be between 1 and 20.",
         "geoBudgetInvalid": "The credit budget must be non-negative.",
-        "mapyKeyTooLong": "The key may be at most 512 characters."
-      }
+        "mapyKeyTooLong": "The key may be at most 512 characters.",
+        "colorContrast": "The colour must have sufficient contrast (min 3:1) against white or black."
+      },
+      "deactivate": "Deactivate",
+      "saveAll": "Save all",
+      "subtitle": "{{slug}} · created {{created}} · {{drivers}} drivers",
+      "smsMeta": "{{count}} SMS · {{cost}} Kč this month",
+      "creditMeta": "{{used}} / {{budget}} credits",
+      "autoDispatchHint": "Automatically assigns the nearest free driver after the delay."
     },
     "nav": {
       "fleets": "Fleets",
@@ -213,7 +235,9 @@
       "emailRequired": "Email is required.",
       "emailInvalid": "Enter a valid email address.",
       "passwordRequired": "Password is required."
-    }
+    },
+    "brandTitle": "Dispatch",
+    "passwordHint": "Your fleet admin sets your password in Settings -> People."
   },
   "board": {
     "form": {
@@ -632,7 +656,14 @@
       "search": "Search",
       "searchPlaceholder": "Code, phone or name",
       "apply": "Apply",
-      "exportCsv": "Export CSV"
+      "exportCsv": "Export CSV",
+      "statusChips": {
+        "all": "All",
+        "new": "New",
+        "inProgress": "In progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      }
     },
     "table": {
       "code": "Code",
@@ -652,7 +683,8 @@
       "page": "Page {{page}} / {{total}}",
       "prev": "Previous",
       "next": "Next"
-    }
+    },
+    "resultCount": "{{count}} results"
   },
   "driver": {
     "login": {

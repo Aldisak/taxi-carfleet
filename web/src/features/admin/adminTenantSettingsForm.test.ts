@@ -98,6 +98,36 @@ describe('validateAdminTenantSettingsForm', () => {
     )
   })
 
+  // Rule: require >= 3:1 contrast against BOTH white and black — i.e. min(ratioVsWhite, ratioVsBlack) >= 3.
+  // (The handoff's literal "both < 3:1" predicate is vacuous — proven by RGB scan: vsWhite<3 needs L>0.30
+  // while vsBlack<3 needs L<0.10, contradictory. The live reading is min-under-3; the offenders are the
+  // near-white and near-black extremes, not muddy mid-tones.)
+  it('rejects a near-white accent (vanishes on the light surface — fails 3:1 vs white)', () => {
+    expect(validateAdminTenantSettingsForm(values({ primaryColorHex: '#f0f0f0' })).primaryColorHex).toBe(
+      'admin.tenant.validation.colorContrast',
+    )
+  })
+
+  it('rejects a near-black accent (vanishes on the dark surface — fails 3:1 vs black)', () => {
+    expect(validateAdminTenantSettingsForm(values({ primaryColorHex: '#101010' })).primaryColorHex).toBe(
+      'admin.tenant.validation.colorContrast',
+    )
+  })
+
+  it('allows an accent that clears 3:1 against both white and black', () => {
+    expect(validateAdminTenantSettingsForm(values({ primaryColorHex: '#1e88e5' })).primaryColorHex).toBeUndefined()
+    // The platform default accent must not be rejected.
+    expect(validateAdminTenantSettingsForm(values({ primaryColorHex: '#0E7A4A' })).primaryColorHex).toBeUndefined()
+    // A mid-gray clears both surfaces (min ≈ 3.95:1).
+    expect(validateAdminTenantSettingsForm(values({ primaryColorHex: '#808080' })).primaryColorHex).toBeUndefined()
+  })
+
+  it('reports colorInvalid (not colorContrast) for a malformed hex', () => {
+    expect(validateAdminTenantSettingsForm(values({ primaryColorHex: '#ggg' })).primaryColorHex).toBe(
+      'admin.tenant.validation.colorInvalid',
+    )
+  })
+
   it('enforces offer-timeout 10..600 integer', () => {
     expect(validateAdminTenantSettingsForm(values({ offerTimeoutSeconds: '9' })).offerTimeoutSeconds).toBe(
       'admin.tenant.validation.offerTimeoutRange',

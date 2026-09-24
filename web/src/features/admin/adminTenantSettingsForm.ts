@@ -73,6 +73,7 @@ const K = {
   timeZoneRequired: 'admin.tenant.validation.timeZoneRequired',
   currencyInvalid: 'admin.tenant.validation.currencyInvalid',
   colorInvalid: 'admin.tenant.validation.colorInvalid',
+  colorContrast: 'admin.tenant.validation.colorContrast',
   offerTimeoutRange: 'admin.tenant.validation.offerTimeoutRange',
   autoDispatchAfterInvalid: 'admin.tenant.validation.autoDispatchAfterInvalid',
   maxOfferRadiusRange: 'admin.tenant.validation.maxOfferRadiusRange',
@@ -90,6 +91,40 @@ const K = {
 /** True when the value is a valid #RRGGBB hex color. */
 export function isValidHexColor(value: string): boolean {
   return HEX_COLOR.test(value)
+}
+
+/** Minimum acceptable contrast ratio of the accent against white or black (WCAG UI-component level). */
+const MIN_ACCENT_CONTRAST = 3
+
+/** sRGB channel (0..255) → linearized value for the WCAG relative-luminance formula. */
+function linearizeChannel(channel8bit: number): number {
+  const c = channel8bit / 255
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+}
+
+/** WCAG relative luminance of a valid #RRGGBB hex color (0..1). */
+function relativeLuminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return 0.2126 * linearizeChannel(r) + 0.7152 * linearizeChannel(g) + 0.0722 * linearizeChannel(b)
+}
+
+/**
+ * True when the accent keeps at least a 3:1 contrast ratio against BOTH white and black — i.e.
+ * `min(ratioVsWhite, ratioVsBlack) >= 3`. A near-white accent vanishes on the light-theme surface;
+ * a near-black one vanishes on the dark-theme surface; both are rejected.
+ *
+ * NOTE: the handoff's literal "reject accents with <3:1 against BOTH white and black" predicate is
+ * vacuous — `ratioVsWhite < 3` requires luminance > 0.30 while `ratioVsBlack < 3` requires < 0.10,
+ * a contradiction, so it never rejects anything (verified by an exhaustive RGB scan). The live,
+ * useful reading — the one implemented here — is the min-under-3 form above.
+ */
+export function hasSufficientAccentContrast(hex: string): boolean {
+  const luminance = relativeLuminance(hex)
+  const ratioVsWhite = 1.05 / (luminance + 0.05)
+  const ratioVsBlack = (luminance + 0.05) / 0.05
+  return Math.min(ratioVsWhite, ratioVsBlack) >= MIN_ACCENT_CONTRAST
 }
 
 /** True when the string parses as an integer within [min, max]. */
@@ -129,8 +164,13 @@ export function validateAdminTenantSettingsForm(
 
   if (!CURRENCY_CODE.test(values.currency.trim())) errors.currency = K.currencyInvalid
 
-  if (values.primaryColorHex.trim() && !isValidHexColor(values.primaryColorHex.trim())) {
-    errors.primaryColorHex = K.colorInvalid
+  const trimmedColor = values.primaryColorHex.trim()
+  if (trimmedColor) {
+    if (!isValidHexColor(trimmedColor)) {
+      errors.primaryColorHex = K.colorInvalid
+    } else if (!hasSufficientAccentContrast(trimmedColor)) {
+      errors.primaryColorHex = K.colorContrast
+    }
   }
 
   if (!isIntInRange(values.offerTimeoutSeconds, OFFER_TIMEOUT_MIN, OFFER_TIMEOUT_MAX)) {

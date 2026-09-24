@@ -108,7 +108,22 @@
         "growing": "Rostoucí flotily",
         "declining": "Klesající flotily",
         "inactive": "Neaktivní flotily"
-      }
+      },
+      "period": {
+        "thisMonth": "Tento měsíc",
+        "twelveWeeks": "12 týdnů"
+      },
+      "kpi": {
+        "activeFleets": "Aktivní flotily",
+        "ridesThisMonth": "Jízdy tento měsíc",
+        "fleetRevenue": "Tržby flotil",
+        "smsCost": "SMS náklady",
+        "driversOnline": "Řidiči online teď",
+        "mapCredits": "Mapové kredity",
+        "apiErrorRate": "Chybovost API (24 h)",
+        "avgAssignmentP50": "Průměrné přiřazení (p50)"
+      },
+      "privacyNote": "SuperAdmin nevidí osobní údaje zákazníků – jen agregáty. Přístup k detailu flotily se loguje do jejího auditu."
     },
     "tenant": {
       "title": "Nastavení flotily",
@@ -172,8 +187,15 @@
         "mapCenterLngRange": "Zeměpisná délka musí být mezi -180 a 180.",
         "mapZoomRange": "Přiblížení musí být mezi 1 a 20.",
         "geoBudgetInvalid": "Kreditní rozpočet musí být nezáporný.",
-        "mapyKeyTooLong": "Klíč může mít nejvýše 512 znaků."
-      }
+        "mapyKeyTooLong": "Klíč může mít nejvýše 512 znaků.",
+        "colorContrast": "Barva musí mít dostatečný kontrast (min. 3:1) vůči bílé nebo černé."
+      },
+      "deactivate": "Deaktivovat",
+      "saveAll": "Uložit vše",
+      "subtitle": "{{slug}} · vytvořeno {{created}} · {{drivers}} řidičů",
+      "smsMeta": "{{count}} SMS · {{cost}} Kč tento měsíc",
+      "creditMeta": "{{used}} / {{budget}} kreditů",
+      "autoDispatchHint": "Automaticky přidělí nejbližšího volného řidiče po uplynutí zpoždění."
     },
     "nav": {
       "fleets": "Flotily",
@@ -213,7 +235,9 @@
       "emailRequired": "E-mail je povinný.",
       "emailInvalid": "Zadejte platnou e-mailovou adresu.",
       "passwordRequired": "Heslo je povinné."
-    }
+    },
+    "brandTitle": "Dispečink",
+    "passwordHint": "Heslo vám nastaví správce flotily v Nastavení -> Lidé."
   },
   "board": {
     "form": {
@@ -632,7 +656,14 @@
       "search": "Hledat",
       "searchPlaceholder": "Kód, telefon nebo jméno",
       "apply": "Použít",
-      "exportCsv": "Exportovat CSV"
+      "exportCsv": "Exportovat CSV",
+      "statusChips": {
+        "all": "Vše",
+        "new": "Nová",
+        "inProgress": "Probíhá",
+        "completed": "Dokončená",
+        "cancelled": "Zrušená"
+      }
     },
     "table": {
       "code": "Kód",
@@ -652,7 +683,8 @@
       "page": "Strana {{page}} / {{total}}",
       "prev": "Předchozí",
       "next": "Další"
-    }
+    },
+    "resultCount": "{{count}} výsledků"
   },
   "driver": {
     "login": {
