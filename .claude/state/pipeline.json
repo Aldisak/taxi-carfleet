@@ -111,5 +111,5 @@
   "topo_order": "WI-1 -> {WI-2 + WI-3 (one agent run, same new tree)} -> {WI-4 + WI-5 (one agent run)} -> WI-6 -> WI-7 (conductor). Dispatch grouping keeps one agent per phase of the same npm project — no parallel-tree contention, fewer handoffs.",
   "pre_existing_worktree_note": "Never commit README.md (untracked, root). product-website/reference/index.html is immutable after WI-1. git add: explicit paths only.",
   "updated_at": "2026-09-24",
-  "ship": "pending ff-merge feat/product-website-astro -> main (local, no push)."
+  "ship": "DONE: ff-merged feat/product-website-astro -> main (local, no push). main @ 6594f24. 7 commits: assignment+reference 574316c, scaffold+tokens cc16382, layout+primitives e6c779c, hero+sections 185ffe7, i18n dicts 74fc834, i18n wiring+pages 2b82c55, verify 6594f24."
 }
