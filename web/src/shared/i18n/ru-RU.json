@@ -53,6 +53,20 @@
         "phoneRequired": "Укажите телефон.",
         "emailRequired": "Укажите эл. почту администратора.",
         "emailInvalid": "Введите корректный адрес эл. почты."
+      },
+      "summary": "{{total}} автопарков · {{active}} активных",
+      "settings": "Настройки",
+      "copyPassword": "Копировать",
+      "copiedPassword": "Скопировано",
+      "slugSuffix": ".carfleet.cz",
+      "passwordTitle": "Одноразовый пароль администратора",
+      "columns": {
+        "fleet": "Автопарк",
+        "drivers": "Водители",
+        "ridesPerMonth": "Поездки / мес",
+        "trend": "Тренд",
+        "status": "Статус",
+        "trend12w": "12 недель"
       }
     },
     "platform": {
@@ -160,6 +174,15 @@
         "geoBudgetInvalid": "Кредитный бюджет должен быть неотрицательным.",
         "mapyKeyTooLong": "Ключ не может превышать 512 символов."
       }
+    },
+    "nav": {
+      "fleets": "Автопарки",
+      "platform": "Обзор платформы"
+    },
+    "shell": {
+      "brand": "Carfleet · Администрирование",
+      "brandShort": "CF",
+      "roleLabel": "суперадмин"
     }
   },
   "nav": {
@@ -874,7 +897,22 @@
         "dropoff": "Назначение",
         "scheduledAt": "Запланированное время",
         "note": "Примечание",
-        "passengers": "Пассажиры"
+        "passengers": "Пассажиры",
+        "phone": "Телефон",
+        "name": "Имя",
+        "amount": "Сумма",
+        "priceType": "Тип цены",
+        "matchedRoute": "Маршрут"
+      },
+      "customer": "Клиент",
+      "priceCard": "Цена",
+      "created": "Создано",
+      "reload": "Обновить",
+      "priceFixed": "Фиксированная",
+      "priceEstimated": "Оценка",
+      "tabs": {
+        "history": "История",
+        "notifications": "Уведомления"
       }
     },
     "timeline": {

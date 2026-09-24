@@ -96,11 +96,12 @@
       "id": "WI-7",
       "lane": "web",
       "title": "Admin shell (unbranded header) + AdminLoginPage + AdminFleetsPage (table/sparkline/create+one-time-password)",
-      "status": "todo",
+      "status": "done",
       "depends_on": [
         "WI-2b"
       ],
-      "files_scope": "web/src/features/admin/** + AdminGuard"
+      "files_scope": "web/src/features/admin/** + AdminGuard",
+      "note": "DONE committed: AdminGuard renders unbranded AppHeader; AdminLoginPage desk card (#admin-email/#admin-password preserved); AdminFleetsPage two-Panel (desk Table + sparkline/healthBand pills + create form + copy one-time password). 21 scoped + 102 admin tests + axe. Deviations: fleet dot ink (AdminFleetDto has no primaryColorHex — API dep logged); settings=styled Link; pre-create warning carried by success callout."
     },
     {
       "id": "WI-8",

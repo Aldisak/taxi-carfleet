@@ -53,6 +53,20 @@
         "phoneRequired": "Телефон обов'язковий.",
         "emailRequired": "Ел. пошта адміністратора обов'язкова.",
         "emailInvalid": "Введіть дійсну адресу ел. пошти."
+      },
+      "summary": "{{total}} автопарків · {{active}} активних",
+      "settings": "Налаштування",
+      "copyPassword": "Копіювати",
+      "copiedPassword": "Скопійовано",
+      "slugSuffix": ".carfleet.cz",
+      "passwordTitle": "Одноразовий пароль адміністратора",
+      "columns": {
+        "fleet": "Автопарк",
+        "drivers": "Водії",
+        "ridesPerMonth": "Поїздки / міс",
+        "trend": "Тренд",
+        "status": "Статус",
+        "trend12w": "12 тижнів"
       }
     },
     "platform": {
@@ -160,6 +174,15 @@
         "geoBudgetInvalid": "Кредитний бюджет має бути невід’ємним.",
         "mapyKeyTooLong": "Ключ не може перевищувати 512 символів."
       }
+    },
+    "nav": {
+      "fleets": "Автопарки",
+      "platform": "Огляд платформи"
+    },
+    "shell": {
+      "brand": "Carfleet · Адміністрування",
+      "brandShort": "CF",
+      "roleLabel": "суперадмін"
     }
   },
   "nav": {
@@ -874,7 +897,22 @@
         "dropoff": "Призначення",
         "scheduledAt": "Запланований час",
         "note": "Примітка",
-        "passengers": "Пасажири"
+        "passengers": "Пасажири",
+        "phone": "Телефон",
+        "name": "Імʼя",
+        "amount": "Сума",
+        "priceType": "Тип ціни",
+        "matchedRoute": "Маршрут"
+      },
+      "customer": "Клієнт",
+      "priceCard": "Ціна",
+      "created": "Створено",
+      "reload": "Оновити",
+      "priceFixed": "Фіксована",
+      "priceEstimated": "Оцінка",
+      "tabs": {
+        "history": "Історія",
+        "notifications": "Сповіщення"
       }
     },
     "timeline": {

@@ -135,6 +135,19 @@ describe('AdminLoginPage — bad credentials', () => {
   })
 })
 
+describe('AdminLoginPage — e2e selector contract', () => {
+  it('keeps the #admin-email / #admin-password ids and a submit button (analytics.spec.ts)', () => {
+    renderAdminLogin()
+    const email = document.getElementById('admin-email')
+    const password = document.getElementById('admin-password')
+    expect(email).toBeInTheDocument()
+    expect(email).toHaveAttribute('type', 'email')
+    expect(password).toBeInTheDocument()
+    expect(password).toHaveAttribute('type', 'password')
+    expect(screen.getByRole('button', { name: /přihlásit/i })).toHaveAttribute('type', 'submit')
+  })
+})
+
 describe('AdminLoginPage — a11y', () => {
   it('has no axe violations', async () => {
     const { container } = renderAdminLogin()

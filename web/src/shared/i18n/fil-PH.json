@@ -53,6 +53,20 @@
         "phoneRequired": "Kailangan ang telepono.",
         "emailRequired": "Kailangan ang e-mail ng administrador.",
         "emailInvalid": "Maglagay ng wastong e-mail address."
+      },
+      "summary": "{{total}} fleet · {{active}} aktibo",
+      "settings": "Mga setting",
+      "copyPassword": "Kopyahin",
+      "copiedPassword": "Nakopya",
+      "slugSuffix": ".carfleet.cz",
+      "passwordTitle": "One-time admin password",
+      "columns": {
+        "fleet": "Fleet",
+        "drivers": "Mga driver",
+        "ridesPerMonth": "Biyahe / buwan",
+        "trend": "Trend",
+        "status": "Status",
+        "trend12w": "12 linggo"
       }
     },
     "platform": {
@@ -160,6 +174,15 @@
         "geoBudgetInvalid": "Ang credit budget ay dapat hindi negatibo.",
         "mapyKeyTooLong": "Ang key ay hindi hihigit sa 512 karakter."
       }
+    },
+    "nav": {
+      "fleets": "Mga fleet",
+      "platform": "Platform overview"
+    },
+    "shell": {
+      "brand": "Carfleet · System admin",
+      "brandShort": "CF",
+      "roleLabel": "superadmin"
     }
   },
   "nav": {
@@ -874,7 +897,22 @@
         "dropoff": "Destinasyon",
         "scheduledAt": "Nakatakdang oras",
         "note": "Tala",
-        "passengers": "Mga pasahero"
+        "passengers": "Mga pasahero",
+        "phone": "Telepono",
+        "name": "Pangalan",
+        "amount": "Halaga",
+        "priceType": "Uri ng presyo",
+        "matchedRoute": "Ruta"
+      },
+      "customer": "Customer",
+      "priceCard": "Presyo",
+      "created": "Ginawa",
+      "reload": "I-reload",
+      "priceFixed": "Fixed",
+      "priceEstimated": "Tantiya",
+      "tabs": {
+        "history": "Kasaysayan",
+        "notifications": "Mga notification"
       }
     },
     "timeline": {

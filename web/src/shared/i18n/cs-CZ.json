@@ -53,6 +53,20 @@
         "phoneRequired": "Telefon je povinný.",
         "emailRequired": "E-mail správce je povinný.",
         "emailInvalid": "Zadejte platnou e-mailovou adresu."
+      },
+      "summary": "{{total}} flotil · {{active}} aktivních",
+      "settings": "Nastavení",
+      "copyPassword": "Kopírovat",
+      "copiedPassword": "Zkopírováno",
+      "slugSuffix": ".carfleet.cz",
+      "passwordTitle": "Jednorázové heslo správce",
+      "columns": {
+        "fleet": "Flotila",
+        "drivers": "Řidiči",
+        "ridesPerMonth": "Jízdy / měsíc",
+        "trend": "Trend",
+        "status": "Stav",
+        "trend12w": "12 týdnů"
       }
     },
     "platform": {
@@ -160,6 +174,15 @@
         "geoBudgetInvalid": "Kreditní rozpočet musí být nezáporný.",
         "mapyKeyTooLong": "Klíč může mít nejvýše 512 znaků."
       }
+    },
+    "nav": {
+      "fleets": "Flotily",
+      "platform": "Přehled platformy"
+    },
+    "shell": {
+      "brand": "Carfleet · Správa systému",
+      "brandShort": "CF",
+      "roleLabel": "superadmin"
     }
   },
   "nav": {
@@ -874,7 +897,22 @@
         "dropoff": "Cíl",
         "scheduledAt": "Plánovaný čas",
         "note": "Poznámka",
-        "passengers": "Cestující"
+        "passengers": "Cestující",
+        "phone": "Telefon",
+        "name": "Jméno",
+        "amount": "Částka",
+        "priceType": "Typ ceny",
+        "matchedRoute": "Trasa"
+      },
+      "customer": "Zákazník",
+      "priceCard": "Cena",
+      "created": "Vytvořeno",
+      "reload": "Načíst znovu",
+      "priceFixed": "Pevná",
+      "priceEstimated": "Odhad",
+      "tabs": {
+        "history": "Historie",
+        "notifications": "Notifikace"
       }
     },
     "timeline": {

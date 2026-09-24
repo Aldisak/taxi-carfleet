@@ -1,19 +1,64 @@
 {
   "wi_id": "WI-7",
+  "lane": "web",
   "files_changed": [
-    "web/src/shared/i18n/LanguageSelector.tsx",
-    "web/src/shared/i18n/LanguageSelector.test.tsx",
-    "web/src/app/AppLayout.tsx",
-    "web/src/app/AppLayout.test.tsx",
-    "web/src/features/driver/settings/DriverSettingsPage.tsx",
-    "web/src/features/driver/settings/DriverSettingsPage.test.tsx",
-    "web/src/features/customer/shell/CustomerLayout.tsx",
-    "web/src/features/customer/shell/CustomerLayout.test.tsx"
+    "web/src/features/admin/AdminGuard.tsx",
+    "web/src/features/admin/AdminGuard.test.tsx",
+    "web/src/features/admin/AdminLoginPage.tsx",
+    "web/src/features/admin/AdminLoginPage.test.tsx",
+    "web/src/features/admin/AdminFleetsPage.tsx",
+    "web/src/features/admin/AdminFleetsPage.test.tsx"
   ],
-  "tests_added": 8,
-  "tests_passing": true,
-  "coverage_delta": "unmeasured (no coverage run in this WI; full suite 1499 passing)",
-  "hit_max_turns": false,
-  "notes": "Shared LanguageSelector (web/src/shared/i18n/LanguageSelector.tsx): styled NATIVE <select> mirroring VehicleSelector's styled-select pattern (theme tokens only). Iterates SUPPORTED_LOCALES registry (AC#8 - no hardcoded locale list), one <option> per entry showing nativeName. value={current} from useLanguage(), onChange -> setLanguage (cast e.target.value as LocaleCode - registry-constrained, the one legitimate narrowing). aria-label={t('common.language')}. min-height: theme.touchTargets.min (48px). Per advisor: DROPPED width:100% from the VehicleSelector template - the component sits in the dispatcher's horizontal <Nav> flex row and the customer's header row, where 100% width would blow out the layout; intrinsic width instead. No visible Label/Wrapper (aria-label is the single accessible name). PLACEMENTS: (1) Dispatcher - web/src/app/AppLayout.tsx <Nav>, inserted before the mute/logout NavButtons. (2) Driver - web/src/features/driver/settings/DriverSettingsPage.tsx, a new Section+SectionTitle(h2, t('common.language')) block styled identically to NavAppPreference's Section/Title, placed above NavAppPreference (settings section, not bottom nav); h2 is visual chrome, accessible name stays the select's aria-label 'Jazyk'. (3) Customer - web/src/features/customer/shell/CustomerLayout.tsx, wrapped LanguageSelector + CallButton in a new HeaderActions flex div on the right of the space-between header, so the selector sits next to CallButton without disturbing the Brand-left/actions-right layout. No cross-feature imports: component lives in shared/i18n, hosts import from '../shared/i18n/LanguageSelector' (or relative). TDD ladder: LanguageSelector.test.tsx RED (module missing) -> GREEN (5 tests: six native-name options, accessible name 'Jazyk' via combobox role, value reflects i18n.language, selecting de-DE switches i18n + persists app.language to localStorage asserted via waitFor on the async i18n.changeLanguage, axe clean via shared helper). Per advisor: asserted the OBSERVABLE (i18n.language + localStorage 'app.language' key from WI-2) rather than mocking languageStorage; skipped a computed-style 48px assertion (styled-components class rules don't resolve in jsdom getComputedStyle - would be vacuous/brittle; no such precedent test exists; token usage + axe are the guarantee). afterEach restores i18n.changeLanguage('cs-CZ') AND localStorage.clear() so the Czech baseline holds for the other 218 suites. Each of the three host tests extended with a 'renders the language selector' assertion using getByRole('combobox', { name: 'Jazyk' }) (native single-select maps to combobox role) - all RED before placement, GREEN after; host suites stay green. AXE: clean - vitest-axe (shared configured helper, color-contrast disabled per jsdom) reports no violations on LanguageSelector and on DriverSettingsPage (which now hosts it). MANUAL-VERIFY (out of gate scope, for reviewer): customer header at 320px viewport now holds Brand + LanguageSelector + CallButton(min-height 64px) under justify-content:space-between - Shell has overflow-x:hidden so it cannot scroll-break, but the three-item crowding was NOT visually eyeballed; confirm via manual Lighthouse/visual check. STAGED web/ only (git add web/); nothing in api/; NOT committed.",
-  "verification_output": "vitest --filter LanguageSelector: Test Files 1 passed (1); Tests 5 passed (5); EXIT=0 (re-run fresh). Full suite (Czech baseline): Test Files 219 passed (219); Tests 1499 passed (1499). tsc --noEmit: clean. lint (eslint --max-warnings 0 + check:geo): clean."
+  "header_wiring": {
+    "component": "web/src/app/AppHeader.tsx (reused, committed, unchanged)",
+    "mounted_in": "AdminGuard.tsx (renders above guarded content; router.tsx already wraps each /admin route in AdminGuard so the shell appears on /admin, /admin/fleets/:id/settings, /admin/platform — no router change needed)",
+    "props_passed": {
+      "unbranded": "true (forces ink dot; gates OFF connection pill + mute — admin has no fleet hub)",
+      "navItems": "[{ to: '/admin', label: t('admin.nav.fleets') }, { to: '/admin/platform', label: t('admin.nav.platform') }]",
+      "brand": "{ name: t('admin.shell.brand') = 'Carfleet · Správa systému', colorHex: null }",
+      "roleLabel": "t('admin.shell.roleLabel') = 'superadmin'",
+      "resolvedTheme": "useThemeMode().resolved",
+      "onToggleTheme": "setMode(resolved === 'light' ? 'dark' : 'light')",
+      "onLogout": "authStorage.clear() then navigate('/admin/login')"
+    },
+    "auth_guard": "unchanged — canAccessAdmin(role) gate + <Navigate to='/admin/login' replace> runs BEFORE the shell renders"
+  },
+  "onboarding_e2e_selectors_preserved": [
+    "#admin-email (input type=email) — used by web/e2e/analytics.spec.ts superAdminUiLogin",
+    "#admin-password (input type=password) — used by web/e2e/analytics.spec.ts",
+    "button[type=\"submit\"] on the login form (the DeskButton submit) — used by web/e2e/analytics.spec.ts",
+    "AdminFleetsPage data-testid=one-time-password (retained)",
+    "note: web/e2e/onboarding.spec.ts drives create-fleet + password entirely over the API and uses NO /admin UI selectors; the #admin-email/#admin-password/submit selectors live in analytics.spec.ts and are preserved. e2e files untouched."
+  ],
+  "i18n_requests": [
+    {
+      "key": "admin.fleets.passwordWarningPreCreate",
+      "suggested_cs": "Dočasné heslo správce se zobrazí jen jednou po vytvoření.",
+      "reason": "WI §2 asks for a WARNING Callout in the create form. The only existing key admin.fleets.passwordWarning embeds {{email}} and belongs to the POST-create success callout; no generic pre-create warning key exists and agents do not edit locale JSONs. The 'shown once' warning is currently carried by the success callout; a dedicated pre-create warning callout was omitted pending this key."
+    }
+  ],
+  "tests_added": 21,
+  "tests_passing": 21,
+  "test_counts": {
+    "AdminGuard.test.tsx": { "total": 7, "passing": 7 },
+    "AdminLoginPage.test.tsx": { "total": 5, "passing": 5 },
+    "AdminFleetsPage.test.tsx": { "total": 9, "passing": 9 },
+    "scoped_total_passing": 21,
+    "full_admin_folder_passing": 102
+  },
+  "coverage_delta": "not measured (WI did not request a coverage run)",
+  "verification_output": {
+    "vitest": "npx vitest run src/features/admin/AdminGuard src/features/admin/AdminLoginPage src/features/admin/AdminFleetsPage -> Test Files 3 passed (3), Tests 21 passed (21), exit 0 (incl. axe on all three)",
+    "tsc": "npx tsc --noEmit -p web/tsconfig.json -> exit 0, 0 errors",
+    "eslint": "npx eslint src/features/admin --max-warnings 0 -> exit 0, clean",
+    "full_admin_folder": "npx vitest run src/features/admin -> 14 files, 102 tests passed (no regression in PlatformScreen/AdminTenantSettings/others)"
+  },
+  "deviations": [
+    "Fleet dot colour: WI §2 asks for a per-fleet dot in the fleet's OWN primaryColorHex, but AdminFleetDto (GET /admin/fleets) carries NO primaryColorHex and it is not on FleetHealthRow either. Fabricating a hex would invent tenant data and break the no-new-hex rule. Degraded to the ink dot (var(--ink)) for every row — consistent with the design's 'admin is unbranded, ink dot' principle. API-lane dependency: add primaryColorHex to AdminFleetDto for a true per-fleet dot later.",
+    "Fleets table data join: the WI columns (drivers, rides/month, 12-week sparkline, trend/health) exist ONLY on FleetHealthRow via useAdminAnalytics, NOT on AdminFleetDto. AdminFleetsPage now calls BOTH hooks (both left untouched): rows come from useAdminFleets.items (authoritative, drives total/active summary), enriched by joining useAdminAnalytics on fleetId. Fleets with no analytics row render 0 drivers / 0 rides / empty sparkline / inactive band.",
+    "Settings control rendered as a styled(Link) (xs outline look) instead of <DeskButton as={Link}>: DeskButtonProps has no polymorphic `as` prop (tsc TS2322), so DeskButton cannot render an <a>. The link keeps role=link + href=/admin/fleets/:id/settings + focus ring, matching the xs outline desk style via CSS vars.",
+    "Pre-create warning Callout omitted pending an i18n key (see i18n_requests); success callout carries the 'shown once' warning meanwhile."
+  ],
+  "notes": "Restyled the SuperAdmin shell + login + fleets page onto @/shared/ui/desk, reusing the committed unbranded AppHeader (props prop-drilled from AdminGuard). Only additive coexistence (desk kit + CSS vars); no new hardcoded hex/magic px. useAdminFleets/useCreateFleet/useAdminLogin/useAdminAnalytics/createFleetForm/adminLoginForm/adminRoleGating/sparklinePath/healthBand all untouched. Health->pill-tone map and health->sparkline-stroke rule are small explicit local maps (colorToken from healthBand is a theme key, not a DeskPillTone). No memoization: the fleetId->health lookup Map is built inline per render (handful of fleets, no measured re-render problem) per rules/web-performance.md#memoization-policy. No customer phone numbers anywhere in /admin (privacy §4). AdminTenantSettingsPage.tsx and PlatformScreen.tsx untouched (WI-8). No api/, board, orders, or app files modified; locale JSONs and web/e2e/** untouched.",
+  "hit_max_turns": false
 }

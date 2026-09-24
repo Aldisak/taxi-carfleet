@@ -53,6 +53,20 @@
         "phoneRequired": "Das Telefon ist erforderlich.",
         "emailRequired": "Die E-Mail des Administrators ist erforderlich.",
         "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein."
+      },
+      "summary": "{{total}} Flotten · {{active}} aktiv",
+      "settings": "Einstellungen",
+      "copyPassword": "Kopieren",
+      "copiedPassword": "Kopiert",
+      "slugSuffix": ".carfleet.cz",
+      "passwordTitle": "Einmaliges Admin-Passwort",
+      "columns": {
+        "fleet": "Flotte",
+        "drivers": "Fahrer",
+        "ridesPerMonth": "Fahrten / Monat",
+        "trend": "Trend",
+        "status": "Status",
+        "trend12w": "12 Wochen"
       }
     },
     "platform": {
@@ -160,6 +174,15 @@
         "geoBudgetInvalid": "Das Guthabenbudget muss nicht negativ sein.",
         "mapyKeyTooLong": "Der Schlüssel darf höchstens 512 Zeichen lang sein."
       }
+    },
+    "nav": {
+      "fleets": "Flotten",
+      "platform": "Plattformübersicht"
+    },
+    "shell": {
+      "brand": "Carfleet · Systemverwaltung",
+      "brandShort": "CF",
+      "roleLabel": "Superadmin"
     }
   },
   "nav": {
@@ -874,7 +897,22 @@
         "dropoff": "Ziel",
         "scheduledAt": "Geplante Zeit",
         "note": "Notiz",
-        "passengers": "Fahrgäste"
+        "passengers": "Fahrgäste",
+        "phone": "Telefon",
+        "name": "Name",
+        "amount": "Betrag",
+        "priceType": "Preistyp",
+        "matchedRoute": "Route"
+      },
+      "customer": "Kunde",
+      "priceCard": "Preis",
+      "created": "Erstellt",
+      "reload": "Neu laden",
+      "priceFixed": "Fest",
+      "priceEstimated": "Schätzung",
+      "tabs": {
+        "history": "Verlauf",
+        "notifications": "Benachrichtigungen"
       }
     },
     "timeline": {
