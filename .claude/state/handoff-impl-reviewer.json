@@ -1,24 +1,13 @@
 {
-  "kind": "impl",
-  "wi_id": "WI-2a",
-  "commit_range": "staged",
+  "wi_id": "UC023-WI-1",
   "blocks_merge": false,
-  "summary": { "HIGH": 0, "MEDIUM": 0, "LOW": 1 },
   "findings": [
     {
-      "severity": "LOW",
-      "file": "web/src/shared/ui/desk/{Ctrl,Panel,Table,Stat,Timeline}.tsx",
-      "line": "Ctrl.tsx:44, Panel.tsx:45, Table.tsx:45, Stat.tsx:37/53, Timeline.tsx:62",
-      "description": "Typography-size literals `font-size: 12px` (label/th/count/stat-label) and `font-size: 13px` (timeline title) have exact matching tokens `--fs-caption` (12px) and `--fs-label` (13px) that ARE defined in GlobalStyle and ARE used elsewhere in the very same files (e.g. Ctrl ErrorText uses var(--fs-caption), Table body uses tokens). Consistency nit only — these are typography SIZES, not colors/radii, so they fall outside the WI-2a coexistence flag list, and the components still render entirely from CSS custom properties. No functional or theming impact (both light/dark inherit correctly). Prefer var(--fs-caption)/var(--fs-label) for uniformity. Stat value 26px and DeskSegmented inner 6px radius have NO matching token in the ramp/radii set and are legitimate layout literals."
+      "severity": "nit",
+      "file": "product-website/src/components/Hero.astro",
+      "detail": "Hero.astro is outside WI-1's originally-declared files_scope but was edited (adding phoneCopy/boardCopy props). This is a minimal, necessary, well-documented pass-through: PhoneMockup/DispatchBoard render inside Hero's .stage, so threading resolved copy props through Hero is the only way to reach them without importing t() into the mockup layer (which the assignment forbids). Accepted as correct; noting only that files_scope should have listed Hero. Same applies to Origin.astro/routes.ts, folded in via the origin extension.",
+      "suggestion": "No change needed; conductor should note the scope additions (Hero.astro, Origin.astro, routes.ts) when reconciling files_touched vs the original files_scope."
     }
   ],
-  "notes": {
-    "coexistence": "PASS. Zero hardcoded hex colors, zero rgba(), zero import of shared/theme/theme.ts across the entire desk kit. All color/radius/shadow/scrim/motion values read GlobalStyle CSS custom properties.",
-    "styled_components": "PASS. Every style prop is transient ($variant/$size/$selected/$accent/$hasError/$disabled/$tone/$active/$on/$num/$direction) — no non-DOM attribute leak. One exported component per file, PascalCase.tsx, JSDoc on every exported interface + component.",
-    "a11y": "PASS. All 11 components carry a vitest-axe assertion via '../../test/axe' (= @/shared/test/axe helper). Semantics: Table uses table/th/td with $num right-align; Tabs uses role=tablist/tab + aria-selected + roving tabIndex + ArrowLeft/Right + focus-follows-selection; FilterChip + DeskSegmented use real <button> + aria-pressed; Drawer uses role=dialog + aria-modal + focus trap (Tab/Shift+Tab wrap) + Escape + focus restore to trigger + --scrim + token focus ring; uppercase is CSS-only (text-transform), DOM text preserved; icons decorative aria-hidden or role=img+title.",
-    "i18n": "PASS. No hardcoded user-facing strings in kit components — all text arrives via props (title/label/children); accessible names via required label props (Drawer.closeLabel, Tabs.ariaLabel, DeskSegmented.ariaLabel).",
-    "typescript": "PASS. No `any`, no `as any`. Explicit JSX.Element / JSX.Element|null return types on all exported components; typed unions for variants/tones/directions.",
-    "icons": "PASS. Purely additive — 5 new glyphs (arrow-up, arrow-down, sun, moon, download) added to BOTH the IconName union AND the PATHS record; existing glyphs byte-untouched; Icon.test.tsx covers all 5 new names via it.each plus the decorative/labelled/size/axe cases.",
-    "checks": "tsc --noEmit, eslint, and scoped vitest (88 tests) all green per background run. Pre-existing unrelated acceptHydration.test.tsx failure explicitly out of scope."
-  }
+  "summary": "WI-1 (incl. the origin extension) is correct and complete; no blockers. All mockup components — PhoneMockup, DispatchBoard, MiniMockup, TinyPhone, AND the #origin fixed-route map (Origin.astro) — resolve every localizable label via props threaded from HomeSections (locale-resolved with t()); NO t() import in any mockup/Origin component (verified). Localize-vs-literal classification matches the assignment table, including the intended split where brand-route 'Kolín, nádraží → centrum' and origin 'Nádraží → centrum' localize while phone pickupPlace 'Kolín, nádraží' and the town→town origin row 'Kutná Hora → Kolín' stay literal proper nouns. Parity is 161/161 keys; the 13 new keys (12 mock.* + origin.route1) plus the reused-and-now-wired origin.anywhereKH are present in both cs.json and en.json; cs values are byte-identical to the original data-module literals (origin.route1 confirmed byte-equal to the old routes.ts string; NBSP retained on literal money incl. '31 250 Kč'; '·'/'→' preserved; detail strings kept their original regular spaces); en values are genuine translations. The prior MAJOR out-of-scope finding (Origin/routes.ts shipping Czech on /en/) is now RESOLVED in-scope by the origin extension: dist/en/index.html shows 0 hits for 'Nádraží'/'Kdekoli po Kutné Hoře'/'centrum' and renders 'Station → centre' + 'Anywhere in Kutná Hora'; dist cs unchanged (no regression). The only residual Czech in dist/en is 'Zavolat' inside FAQPage JSON-LD (faq.a4), genuinely WI-3 scope. blocks_merge=false."
 }

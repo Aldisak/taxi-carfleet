@@ -43,14 +43,16 @@ const {
       <a href="#pricing">{navPricing}</a>
       <a href="#faq">{navFaq}</a>
     </nav>
-    <div class="lang" role="group" aria-label={langGroupLabel}>
-      <a href="/" lang="cs" aria-current={locale === 'cs' ? 'true' : undefined}>CS</a>
-      <a href="/en/" lang="en" aria-current={locale === 'en' ? 'true' : undefined}>EN</a>
+    <div class="nav-right">
+      <div class="lang" role="group" aria-label={langGroupLabel}>
+        <a href="/" lang="cs" aria-current={locale === 'cs' ? 'true' : undefined}>CS</a>
+        <a href="/en/" lang="en" aria-current={locale === 'en' ? 'true' : undefined}>EN</a>
+      </div>
+      <Button variant="primary" href="#contact">
+        <Icon slot="icon" name="phone" />
+        <span class="cta-label">{callLabel}</span>
+      </Button>
     </div>
-    <Button variant="primary" href="#contact">
-      <Icon slot="icon" name="phone" />
-      <span class="cta-label">{callLabel}</span>
-    </Button>
   </div>
 </header>
 
@@ -69,6 +71,15 @@ const {
     align-items: center;
     gap: 18px;
     height: 68px;
+  }
+  .nav-right {
+    display: inline-flex;
+    gap: 8px;
+  }
+  @media (max-width: 900px) {
+    .nav-right {
+      margin-left: auto;
+    }
   }
   .brand {
     display: flex;

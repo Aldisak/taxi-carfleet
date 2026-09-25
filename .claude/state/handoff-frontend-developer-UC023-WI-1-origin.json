@@ -1,0 +1,34 @@
+{
+  "wi_id": "UC023-WI-1",
+  "origin_extension": {
+    "status": "done",
+    "reason": "impl-review found #origin fixed-route rows still rendered literal Czech on /en/ (AC#3 violation). Localized the route descriptors the same way WI-1 wired the other mockups: keys resolved in HomeSections, threaded down as props; Origin.astro no longer imports the fixture or calls t().",
+    "files_touched": [
+      "product-website/src/data/routes.ts",
+      "product-website/src/components/Origin.astro",
+      "product-website/src/components/HomeSections.astro",
+      "product-website/src/i18n/cs.json",
+      "product-website/src/i18n/en.json"
+    ],
+    "new_keys": {
+      "origin.route1": { "cs": "Nádraží → centrum", "en": "Station → centre" }
+    },
+    "reused_keys": {
+      "origin.anywhereKH": { "cs": "Kdekoli po Kutné Hoře", "en": "Anywhere in Kutná Hora", "note": "previously dead key, now wired to route row 2" }
+    },
+    "literal_rows": {
+      "row3": { "value": "Kutná Hora → Kolín", "reason": "both towns are proper nouns → cs == en, kept literal (no key) per WI-1 rule" }
+    },
+    "literal_prices": ["100 Kč", "110 Kč", "300 Kč"],
+    "verification": {
+      "npm_run_build": "success (2 pages built)",
+      "npm_run_check": "0 errors, 0 warnings, 0 hints",
+      "npm_run_check_i18n": "parity OK — cs.json and en.json identical key sets (161 keys)",
+      "dist_en_forbidden_literals": { "Nádraží": 0, "Kdekoli po Kutné Hoře": 0, "centrum": 0 },
+      "dist_en_expected_present": { "Station → centre": 1, "Anywhere in Kutná Hora": 1, "Kutná Hora → Kolín (literal town row)": 1 },
+      "dist_cs_no_regression": { "Nádraží → centrum": 1, "Kdekoli po Kutné Hoře": 1, "Kutná Hora → Kolín": 1 }
+    },
+    "staged": true,
+    "committed": false
+  }
+}

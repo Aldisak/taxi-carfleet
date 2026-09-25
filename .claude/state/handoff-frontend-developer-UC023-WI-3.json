@@ -1,0 +1,22 @@
+{
+  "wi_id": "UC023-WI-3",
+  "status": "done",
+  "files_touched": [
+    "product-website/src/layouts/Base.astro",
+    "product-website/src/data/faq.ts",
+    "product-website/src/i18n/cs.json",
+    "product-website/src/i18n/en.json"
+  ],
+  "new_i18n_keys": ["faq.q8", "faq.a8", "faq.q9", "faq.a9"],
+  "jsonld_offers": "array of 3 — confirmed",
+  "jsonld_faq_count": 9,
+  "verification": {
+    "build": "pass",
+    "check": "pass — 0 errors, 0 warnings, 0 hints",
+    "check_i18n": "pass — 197 keys, cs/en parity",
+    "jsonld_offers_array": "pass — offers is array with prices 1490/2490/3490 CZK, description 'měsíčně bez DPH'",
+    "faq_q8q9_visible_both_locales": "pass — dist/index.html #faq has Czech q8/q9; dist/en/index.html #faq has English q8/q9; Czech q8 text in dist/en appears only in JSON-LD (0 in visible <details>)"
+  },
+  "notes": "JSON-LD is emitted once (not per-locale) via set:html={JSON.stringify(...)} in Base.astro; the reference JSON-LD is Czich in both locales so offers/FAQ text kept Czech verbatim per the assignment (structured-data metadata, not visible UI). SoftwareApplication.offers changed from single Offer object to array of 3 (name/price/priceCurrency/description each), matching reference line 26 exactly. FAQPage.mainEntity grew from 7 to 9 Questions (q8 'Co když přidám auto?', q9 'Platím za řidiče?') verbatim from reference. Visible FAQ: added faq.q8/a8/q9/a9 to both dicts (cs = reference Czech, en = reference EN object) and appended two FaqEntry rows to faq.ts after q7. No pricing/mockup/other sections touched. reference/index.html not modified.",
+  "hit_max_turns": false
+}
